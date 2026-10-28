@@ -1,0 +1,14 @@
+{
+  "domain": "family_hub",
+  "name": "Family Hub",
+  "codeowners": ["@mobrien118"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/mobrien118/MyDashLight",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/mobrien118/MyDashLight/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}
