@@ -1,4 +1,4 @@
-"""Setting up Family Hub and changing its options."""
+"""Setting up MyDashLight and changing its options."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.family_hub.const import DEFAULT_PLANNER, DOMAIN
+from custom_components.mydashlight.const import DEFAULT_PLANNER, DOMAIN
 
 
 async def test_user_step_creates_the_entry(hass: HomeAssistant) -> None:
@@ -21,7 +21,7 @@ async def test_user_step_creates_the_entry(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Family Hub"
+    assert result["title"] == "MyDashLight"
     entry = result["result"]
     assert entry.data == {}
     assert entry.options == {

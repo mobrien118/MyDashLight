@@ -1,6 +1,6 @@
 {
-  "domain": "family_hub",
-  "name": "Family Hub",
+  "domain": "mydashlight",
+  "name": "MyDashLight",
   "codeowners": ["@mobrien118"],
   "config_flow": true,
   "dependencies": [],

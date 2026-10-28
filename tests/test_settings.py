@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from custom_components.family_hub.planner import PlannerSettings
-from custom_components.family_hub.settings import HubSettings
+from custom_components.mydashlight.planner import PlannerSettings
+from custom_components.mydashlight.settings import HubSettings
 
 
 def test_defaults_for_missing_options() -> None:

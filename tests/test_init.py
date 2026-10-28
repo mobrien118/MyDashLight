@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.family_hub.const import DOMAIN
+from custom_components.mydashlight.const import DOMAIN
 
 
 async def test_setup_and_unload(hass: HomeAssistant) -> None:

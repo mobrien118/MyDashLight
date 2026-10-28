@@ -1,4 +1,4 @@
-"""Config flow for Family Hub."""
+"""Config flow for MyDashLight."""
 
 from __future__ import annotations
 
@@ -80,8 +80,8 @@ def _validate_names(user_input: dict[str, Any]) -> dict[str, str]:
     return errors
 
 
-class FamilyHubConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Set up Family Hub."""
+class MyDashLightConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Set up MyDashLight."""
 
     VERSION = 1
 
@@ -110,11 +110,11 @@ class FamilyHubConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> FamilyHubOptionsFlow:
-        return FamilyHubOptionsFlow()
+    def async_get_options_flow(config_entry: ConfigEntry) -> MyDashLightOptionsFlow:
+        return MyDashLightOptionsFlow()
 
 
-class FamilyHubOptionsFlow(OptionsFlowWithReload):
+class MyDashLightOptionsFlow(OptionsFlowWithReload):
     """Names, carpool drivers and planner timing."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

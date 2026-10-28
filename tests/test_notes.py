@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.family_hub.notes import (
+from custom_components.mydashlight.notes import (
     DriverDirectory,
     RideNotes,
     parse_clock,
@@ -12,7 +12,7 @@ from custom_components.family_hub.notes import (
     parse_notes,
     write_notes,
 )
-from custom_components.family_hub.planner import NOT_NEEDED, UNASSIGNED
+from custom_components.mydashlight.planner import NOT_NEEDED, UNASSIGNED
 
 DIRECTORY = DriverDirectory(
     names={"mom": "Robin", "dad": "Sam"},

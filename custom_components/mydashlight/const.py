@@ -1,11 +1,11 @@
-"""Constants for Family Hub."""
+"""Constants for MyDashLight."""
 
 from __future__ import annotations
 
 from typing import Final
 
-DOMAIN: Final = "family_hub"
-TITLE: Final = "Family Hub"
+DOMAIN: Final = "mydashlight"
+TITLE: Final = "MyDashLight"
 
 # The two parents the planner routes. These ids are part of the plan the app reads,
 # so they stay fixed; the names people see come from the options.

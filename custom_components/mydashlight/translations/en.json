@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set up Family Hub",
-        "description": "Family Hub plans the kids' rides for the two parents who drive. Enter the names to show for each of them. You can change these later.",
+        "title": "Set up MyDashLight",
+        "description": "MyDashLight plans the kids' rides for the two parents who drive. Enter the names to show for each of them. You can change these later.",
         "data": {
           "mom_name": "First parent",
           "dad_name": "Second parent"
@@ -19,13 +19,13 @@
       "names_match": "The two parents need different names."
     },
     "abort": {
-      "single_instance_allowed": "Family Hub is already set up."
+      "single_instance_allowed": "MyDashLight is already set up."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Family Hub options",
+        "title": "MyDashLight options",
         "data": {
           "mom_name": "First parent",
           "dad_name": "Second parent",

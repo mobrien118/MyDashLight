@@ -8,7 +8,7 @@ separate database or server to look after.
 
 ## What's here
 
-`custom_components/family_hub` is a custom Home Assistant integration. This first version has the
+`custom_components/mydashlight` is a custom Home Assistant integration. This first version has the
 rides planner and the event-notes format, with setup and options screens. Google Calendar sync,
 travel times, the week's plan for the kitchen app, and reminders come next.
 
@@ -70,12 +70,12 @@ original, golden results for ten days, and a script that runs it; see the README
 ## Installing in Home Assistant
 
 With [HACS](https://hacs.xyz): open HACS, choose **Custom repositories** from the menu, add
-`https://github.com/mobrien118/MyDashLight` as an **Integration**, then download **Family Hub**.
+`https://github.com/mobrien118/MyDashLight` as an **Integration**, then download **MyDashLight**.
 
-By hand: copy `custom_components/family_hub` into the `custom_components` folder of your Home
+By hand: copy `custom_components/mydashlight` into the `custom_components` folder of your Home
 Assistant config.
 
-Then restart Home Assistant and add **Family Hub** under Settings > Devices & services.
+Then restart Home Assistant and add **MyDashLight** under Settings > Devices & services.
 
 ## License
 

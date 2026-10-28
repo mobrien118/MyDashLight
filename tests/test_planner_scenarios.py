@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from custom_components.family_hub.board import build_day
+from custom_components.mydashlight.board import build_day
 
 from .reference import KIDS, LABELS, busy_from_json, event_from_json, expected_json, travel
 

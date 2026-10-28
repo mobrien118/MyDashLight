@@ -1,7 +1,7 @@
 [project]
 name = "mydashlight"
 version = "0.1.0"
-description = "Family Hub: a kitchen family planner built on Home Assistant and Google Calendar"
+description = "MyDashLight: a kitchen family planner built on Home Assistant and Google Calendar"
 requires-python = ">=3.13"
 
 [tool.pytest.ini_options]

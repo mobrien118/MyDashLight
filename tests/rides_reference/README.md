@@ -2,7 +2,7 @@
 
 `planner-reference.js` is the working planner from the ride board mockup (Option B, 2026-10-27),
 with the example family's names changed to made-up ones.
-The Python port in `custom_components/family_hub/planner.py` and `board.py` must give the same
+The Python port in `custom_components/mydashlight/planner.py` and `board.py` must give the same
 answers. Don't edit it to make a test pass: change the design first, then the reference, then the port.
 
 | File | What it is |

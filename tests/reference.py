@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from custom_components.family_hub.board import CardLine, DayBoard, build_day
-from custom_components.family_hub.planner import (
+from custom_components.mydashlight.board import CardLine, DayBoard, build_day
+from custom_components.mydashlight.planner import (
     BusyBlock,
     DayPlan,
     DriverPlan,
