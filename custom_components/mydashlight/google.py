@@ -1,4 +1,5 @@
-"""A small Google Calendar API client: the calendar list and events in a time window.
+"""A small Google Calendar API client: the calendar list, events in a time window, and
+changes to one event's notes.
 
 No Home Assistant imports. Access tokens come from a ``TokenSource``, which is Home
 Assistant's OAuth session at runtime and a fixed token during setup.
@@ -27,6 +28,7 @@ _EVENT_FIELDS: Final = (
     "nextPageToken,items(id,etag,status,eventType,summary,location,description,start,end,"
     "transparency,recurringEventId,attendees(self,responseStatus))"
 )
+_NOTES_FIELDS: Final = "id,etag,description,recurringEventId"
 # Event types that never mean a kid's activity or a parent being busy.
 _IGNORED_EVENT_TYPES: Final = frozenset({"workingLocation", "birthday"})
 _DISABLED_REASONS: Final = frozenset({"accessNotConfigured", "SERVICE_DISABLED"})
@@ -47,6 +49,10 @@ class GoogleApiDisabled(GoogleError):
 
 class GoogleCalendarUnavailable(GoogleError):
     """The calendar is gone, or the signed-in account can no longer read it."""
+
+
+class GoogleConflict(GoogleError):
+    """The event changed since it was read, so the change wasn't saved. Read it again."""
 
 
 class TokenSource(Protocol):
@@ -100,8 +106,18 @@ class CalendarEvent:
         return not isinstance(self.start, datetime)
 
 
+@dataclass(frozen=True, slots=True)
+class EventNotes:
+    """The parts of one event needed to change its notes safely."""
+
+    id: str
+    etag: str
+    description: str
+    recurring_id: str | None = None
+
+
 class GoogleCalendarApi:
-    """Reads calendars and events with the signed-in Google account."""
+    """Reads calendars and events, and changes event notes, with the signed-in Google account."""
 
     def __init__(self, websession: ClientSession, tokens: TokenSource) -> None:
         self._session = websession
@@ -127,6 +143,25 @@ class GoogleCalendarApi:
         )
         return [event for item in items if (event := parse_event(item, calendar_id)) is not None]
 
+    async def async_get_notes(self, calendar_id: str, event_id: str) -> EventNotes:
+        """An event's notes and etag. A repeating event's id gives the whole series."""
+        body = await self._request("GET", _event_path(calendar_id, event_id), {"fields": _NOTES_FIELDS})
+        return _notes(body, event_id)
+
+    async def async_set_notes(self, calendar_id: str, event_id: str, etag: str, description: str) -> EventNotes:
+        """Save an event's notes, only if it hasn't changed since ``etag`` was read.
+
+        Raises :class:`GoogleConflict` when it has. Nobody gets an update email.
+        """
+        body = await self._request(
+            "PATCH",
+            _event_path(calendar_id, event_id),
+            {"fields": _NOTES_FIELDS, "sendUpdates": "none"},
+            json={"description": description},
+            headers={"If-Match": etag},
+        )
+        return _notes(body, event_id)
+
     async def _pages(self, path: str, params: dict[str, str]) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
         token: str | None = None
@@ -134,7 +169,7 @@ class GoogleCalendarApi:
             query = {**params, "maxResults": str(_PAGE_SIZE)}
             if token:
                 query["pageToken"] = token
-            body = await self._get(path, query)
+            body = await self._request("GET", path, query)
             items.extend(i for i in body.get("items", []) if isinstance(i, dict))
             token = body.get("nextPageToken")
             if not token:
@@ -142,13 +177,22 @@ class GoogleCalendarApi:
         _LOGGER.warning("Stopped reading %s after %d pages", path, _MAX_PAGES)
         return items
 
-    async def _get(self, path: str, params: Mapping[str, str]) -> dict[str, Any]:
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        params: Mapping[str, str],
+        json: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
         access_token = await self._tokens.async_get_access_token()
         try:
-            async with self._session.get(
+            async with self._session.request(
+                method,
                 API_BASE + path,
                 params=dict(params),
-                headers={"Authorization": f"Bearer {access_token}"},
+                json=dict(json) if json is not None else None,
+                headers={**(headers or {}), "Authorization": f"Bearer {access_token}"},
                 timeout=_TIMEOUT,
             ) as resp:
                 if resp.status < 400:
@@ -175,6 +219,8 @@ def _error_for(status: int, body: object, path: str) -> GoogleError:
     }
     if status == 401:
         return GoogleAuthError(message)
+    if status == 412:
+        return GoogleConflict(message)
     if status in (403, 429) and reasons & _DISABLED_REASONS:
         return GoogleApiDisabled(message)
     if status in (403, 429) and (status == 429 or reasons & _RATE_REASONS):
@@ -182,6 +228,20 @@ def _error_for(status: int, body: object, path: str) -> GoogleError:
     if status in (403, 404, 410):
         return GoogleCalendarUnavailable(f"{path}: {message}")
     return GoogleError(f"Google Calendar error {status}: {message}")
+
+
+def _event_path(calendar_id: str, event_id: str) -> str:
+    return f"/calendars/{quote(calendar_id, safe='')}/events/{quote(event_id, safe='')}"
+
+
+def _notes(body: Mapping[str, Any], event_id: str) -> EventNotes:
+    recurring = body.get("recurringEventId")
+    return EventNotes(
+        id=str(body.get("id") or event_id),
+        etag=str(body.get("etag") or ""),
+        description=str(body.get("description") or ""),
+        recurring_id=recurring if isinstance(recurring, str) else None,
+    )
 
 
 def parse_calendar(item: Mapping[str, Any]) -> CalendarInfo | None:

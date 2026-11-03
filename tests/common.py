@@ -49,24 +49,93 @@ OPTIONS: dict[str, Any] = {
 
 
 class FakeGoogle:
-    """Answers the Calendar API calls MyDashLight makes, from in-memory calendars."""
+    """Answers the Calendar API calls MyDashLight makes, from in-memory calendars.
+
+    Single events can be read and their notes patched. A patch needs the event's current
+    etag in If-Match, as Google does. Patching a repeating event's series also changes the
+    occurrences whose notes still match the series' old notes, the way occurrences nobody
+    changed by themselves follow the series.
+    """
 
     def __init__(self, aioclient_mock: AiohttpClientMocker) -> None:
         self.calendars: list[dict[str, Any]] = list(CALENDARS)
         self.events: dict[str, list[dict[str, Any]]] = {}
+        self.series: dict[str, dict[str, dict[str, Any]]] = {}
+        """Repeating events' series, by calendar id and then event id."""
         self.errors: dict[str, tuple[int, dict[str, Any]]] = {}
         """Error replies by calendar id, or "calendarList"."""
+        self.write_errors: dict[str, tuple[int, dict[str, Any]]] = {}
+        """Error replies to patches, by event id."""
+        self.edits_in_between = 0
+        """How many patches find that someone else just changed the event."""
         self.page_size = 250
         self.calls: list[URL] = []
-        aioclient_mock.get(re.compile(r"^https://www\.googleapis\.com/calendar/v3/"), side_effect=self._handle)
+        self.patches: list[tuple[str, str, str, dict[str, Any]]] = []
+        """(calendar id, event id, If-Match, body) for each patch saved."""
+        self._etags = 100
+        self._mock = aioclient_mock
+        base = re.compile(r"^https://www\.googleapis\.com/calendar/v3/")
+        aioclient_mock.get(base, side_effect=self._handle)
+        aioclient_mock.patch(base, side_effect=self._patch)
 
     def add(self, calendar_id: str, **event: Any) -> dict[str, Any]:
         item = {"etag": f'"{len(self.events.get(calendar_id, []))}"', **event}
         self.events.setdefault(calendar_id, []).append(item)
         return item
 
+    def add_series(self, calendar_id: str, **event: Any) -> dict[str, Any]:
+        item = {"etag": self._next_etag(), **event}
+        self.series.setdefault(calendar_id, {})[item["id"]] = item
+        return item
+
+    def event(self, calendar_id: str, event_id: str) -> dict[str, Any] | None:
+        for item in self.events.get(calendar_id, []):
+            if item["id"] == event_id:
+                return item
+        return self.series.get(calendar_id, {}).get(event_id)
+
+    def _next_etag(self) -> str:
+        self._etags += 1
+        return f'"{self._etags}"'
+
+    async def _patch(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
+        headers = self._mock.mock_calls[-1][3] or {}
+        assert url.query.get("sendUpdates") == "none"
+        match = re.search(r"/calendars/(.+)/events/(.+)$", url.path)
+        assert match, url
+        cal_id, event_id = match.groups()
+        item = self.event(cal_id, event_id)
+        if event_id in self.write_errors:
+            status, body = self.write_errors[event_id]
+            return AiohttpClientMockResponse(method, url, status=status, json=body)
+        if item is None:
+            return AiohttpClientMockResponse(method, url, status=HTTPStatus.NOT_FOUND, json=_error(404, "notFound"))
+        if self.edits_in_between:
+            self.edits_in_between -= 1
+            item["etag"] = self._next_etag()
+            item["description"] = (item.get("description") or "") + "\nEdited on a phone"
+        if headers.get("If-Match") != item["etag"]:
+            return AiohttpClientMockResponse(
+                method, url, status=HTTPStatus.PRECONDITION_FAILED, json=_error(412, "conditionNotMet")
+            )
+        self.patches.append((cal_id, event_id, headers["If-Match"], dict(data)))
+        old = item.get("description") or ""
+        if event_id in self.series.get(cal_id, {}):
+            for occurrence in self.events.get(cal_id, []):
+                if occurrence.get("recurringEventId") == event_id and (occurrence.get("description") or "") == old:
+                    occurrence.update(data)
+                    occurrence["etag"] = self._next_etag()
+        item.update(data)
+        item["etag"] = self._next_etag()
+        return AiohttpClientMockResponse(method, url, json=item)
+
     async def _handle(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
         self.calls.append(url)
+        if one := re.search(r"/calendars/(.+)/events/(.+)$", url.path):
+            item = self.event(*one.groups())
+            if item is None:
+                return AiohttpClientMockResponse(method, url, status=HTTPStatus.NOT_FOUND, json=_error(404, "notFound"))
+            return AiohttpClientMockResponse(method, url, json=item)
         if url.path.endswith("/users/me/calendarList"):
             return self._reply(method, url, "calendarList", self.calendars)
         match = re.search(r"/calendars/(.+)/events$", url.path)

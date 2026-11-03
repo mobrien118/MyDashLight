@@ -202,6 +202,92 @@
           "description": "How many days to return, from 1 to 7."
         }
       }
+    },
+    "set_ride": {
+      "name": "Set driver",
+      "description": "Sets who drops off or picks up for an event, and saves it in the event's notes.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
+        },
+        "side": {
+          "name": "Ride",
+          "description": "The drop-off, the pick-up, or both."
+        },
+        "driver": {
+          "name": "Driver",
+          "description": "mom or dad (the first or second parent, or their name), none when no ride is needed, a carpool driver's name, or empty for nobody yet."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
+        }
+      }
+    },
+    "set_stay": {
+      "name": "Set stay",
+      "description": "Sets whether the driver stays for the event instead of leaving and coming back.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
+        },
+        "stay": {
+          "name": "Stay",
+          "description": "Whether the driver stays."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
+        }
+      }
+    },
+    "set_arrive_by": {
+      "name": "Set arrive by",
+      "description": "Sets when the kid needs to be there. Leave the time empty to go back to a few minutes before the start.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
+        },
+        "time": {
+          "name": "Time",
+          "description": "When to be there. Empty clears it."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
+        }
+      }
+    },
+    "set_take_along": {
+      "name": "Set take-along",
+      "description": "Lets a parent bring the other kids along when drop-offs are close together, for one day.",
+      "fields": {
+        "parent": {
+          "name": "Parent",
+          "description": "mom or dad (the first or second parent), or their name."
+        },
+        "on": {
+          "name": "On",
+          "description": "Whether to take the other kids along."
+        },
+        "date": {
+          "name": "Date",
+          "description": "The day. Defaults to today."
+        }
+      }
+    },
+    "apply_suggestion": {
+      "name": "Apply suggested fix",
+      "description": "Makes the change a suggested fix in the plan describes.",
+      "fields": {
+        "suggestion": {
+          "name": "Suggestion",
+          "description": "The suggestion's id from Get ride plan."
+        }
+      }
     }
   },
   "exceptions": {
@@ -225,6 +311,42 @@
     },
     "set_up_again": {
       "message": "This MyDashLight entry was set up before Google sign-in was added. Delete it and add MyDashLight again."
+    },
+    "event_not_found": {
+      "message": "MyDashLight isn't planning an event with the id {event}. It may have moved out of the next 7 days, or been deleted."
+    },
+    "write_conflict": {
+      "message": "The event kept changing while MyDashLight was saving. Try again."
+    },
+    "cant_change_event": {
+      "message": "Google won't let MyDashLight change {title}. The event may have been deleted, or its calendar may be read-only for the signed-in account."
+    },
+    "write_failed": {
+      "message": "Couldn't save the change to Google Calendar: {error}"
+    },
+    "not_a_parent": {
+      "message": "{parent} isn't one of the parents MyDashLight plans for. Use {names}."
+    },
+    "date_passed": {
+      "message": "That day has passed. Pick today or a later day."
+    },
+    "suggestion_gone": {
+      "message": "That fix no longer applies, because the plan has changed. Check the latest plan."
+    }
+  },
+  "selector": {
+    "side": {
+      "options": {
+        "drop": "Drop-off",
+        "pick": "Pick-up",
+        "both": "Both"
+      }
+    },
+    "scope": {
+      "options": {
+        "this": "Just this one",
+        "series": "Every one"
+      }
     }
   }
 }

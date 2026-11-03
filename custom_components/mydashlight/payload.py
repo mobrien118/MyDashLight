@@ -13,6 +13,7 @@ from typing import Any
 from .board import CardLine, DayBoard, KidItem, Outing, Ride, build_day
 from .planner import (
     BusyBlock,
+    Change,
     Issue,
     Labels,
     PlannerSettings,
@@ -74,7 +75,13 @@ def plan_day(
         }
         if level == "problem":
             out["suggestions"] = [
-                {"label": s.label, "change": s.change.as_dict(), "who": s.who, "note": s.note}
+                {
+                    "id": suggestion_id(day.day.isoformat(), s.change),
+                    "label": s.label,
+                    "change": s.change.as_dict(),
+                    "who": s.who,
+                    "note": s.note,
+                }
                 for s in suggestions_for(
                     x,
                     day.events,
@@ -114,6 +121,14 @@ def plan_day(
         "issues": [issue(x, "problem") for x in board.plan.hard] + [issue(x, "heads_up") for x in board.plan.soft],
         "score": _num(board.plan.score),
     }
+
+
+def suggestion_id(day: str, change: Change) -> str:
+    """A fix's id for ``apply_suggestion``. It says what the fix does, so it stays the same
+    from one update to the next while the fix still applies."""
+    if change.along is not None:
+        return f"{day}|along|{change.along}"
+    return f"{day}|{change.event_id}|{change.side}|{change.value}"
 
 
 def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict[str, Any]:

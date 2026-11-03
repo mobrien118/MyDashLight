@@ -82,12 +82,12 @@ _DURATION_RE: Final = re.compile(
 )
 
 
-class _Keep:
+class Keep:
     def __repr__(self) -> str:
         return "KEEP"
 
 
-KEEP: Final = _Keep()
+KEEP: Final = Keep()
 """Leave a field as it is in :func:`write_notes`."""
 
 
@@ -180,11 +180,11 @@ def write_notes(
     description: str | None,
     directory: DriverDirectory,
     *,
-    drop: str | _Keep = KEEP,
-    pick: str | _Keep = KEEP,
-    stay: bool | _Keep = KEEP,
-    arrive_by: int | _Keep | None = KEEP,
-    travel: int | _Keep | None = KEEP,
+    drop: str | Keep = KEEP,
+    pick: str | Keep = KEEP,
+    stay: bool | Keep = KEEP,
+    arrive_by: int | Keep | None = KEEP,
+    travel: int | Keep | None = KEEP,
     event_start: int | None = None,
 ) -> str:
     """Return the description with ride settings changed.
@@ -206,7 +206,7 @@ def write_notes(
     changed = {
         f: _norm(f, v, directory)
         for f, v in wanted.items()
-        if not isinstance(v, _Keep) and _norm(f, v, directory) != current[f]
+        if not isinstance(v, Keep) and _norm(f, v, directory) != current[f]
     }
     if not changed:
         return original

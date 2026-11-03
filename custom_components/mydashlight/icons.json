@@ -2,6 +2,21 @@
   "services": {
     "get_plan": {
       "service": "mdi:car-clock"
+    },
+    "set_ride": {
+      "service": "mdi:car-arrow-right"
+    },
+    "set_stay": {
+      "service": "mdi:account-clock"
+    },
+    "set_arrive_by": {
+      "service": "mdi:clock-check-outline"
+    },
+    "set_take_along": {
+      "service": "mdi:car-multiple"
+    },
+    "apply_suggestion": {
+      "service": "mdi:auto-fix"
     }
   }
 }

@@ -37,7 +37,7 @@ DEFAULT_PLANNER: Final = {
 }
 
 # Google sign-in. calendarlist.readonly lists the calendars to pick from; events reads the
-# events and, in a later version, writes who drives into their notes.
+# events and writes who drives into their notes.
 OAUTH_AUTHORIZE: Final = "https://accounts.google.com/o/oauth2/v2/auth"
 OAUTH_TOKEN: Final = "https://oauth2.googleapis.com/token"
 SCOPES: Final = (
@@ -58,8 +58,25 @@ PLAN_DAYS: Final = 7
 """Today and the six days after it."""
 
 SERVICE_GET_PLAN: Final = "get_plan"
+SERVICE_SET_RIDE: Final = "set_ride"
+SERVICE_SET_STAY: Final = "set_stay"
+SERVICE_SET_ARRIVE_BY: Final = "set_arrive_by"
+SERVICE_SET_TAKE_ALONG: Final = "set_take_along"
+SERVICE_APPLY_SUGGESTION: Final = "apply_suggestion"
 ATTR_DATE: Final = "date"
 ATTR_DAYS: Final = "days"
+ATTR_EVENT: Final = "event"
+"""An event's ``id`` in the plan."""
+ATTR_SIDE: Final = "side"
+ATTR_DRIVER: Final = "driver"
+ATTR_SCOPE: Final = "scope"
+ATTR_STAY: Final = "stay"
+ATTR_TIME: Final = "time"
+ATTR_PARENT: Final = "parent"
+ATTR_ON: Final = "on"
+ATTR_SUGGESTION: Final = "suggestion"
+SCOPE_THIS: Final = "this"
+SCOPE_SERIES: Final = "series"
 
 # Drive times from Google Routes, set on the options' Drive times page.
 CONF_ROUTES_KEY: Final = "routes_api_key"

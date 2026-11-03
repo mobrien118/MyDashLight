@@ -1,17 +1,50 @@
-"""The ``mydashlight.get_plan`` service."""
+"""MyDashLight's services: read the plan, and change rides.
+
+Ride changes are saved in the notes of the event on the kid's Google calendar, then the
+plan is read again, so the change shows the same everywhere: in the app, on phones and in
+Google Calendar. Take-along is saved in Home Assistant.
+"""
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from collections.abc import Callable, Coroutine
+from datetime import date, time, timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse, callback
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
-from .const import ATTR_DATE, ATTR_DAYS, DOMAIN, PLAN_DAYS, SERVICE_GET_PLAN
+from .changes import RideChange, async_save
+from .const import (
+    ATTR_DATE,
+    ATTR_DAYS,
+    ATTR_DRIVER,
+    ATTR_EVENT,
+    ATTR_ON,
+    ATTR_PARENT,
+    ATTR_SCOPE,
+    ATTR_SIDE,
+    ATTR_STAY,
+    ATTR_SUGGESTION,
+    ATTR_TIME,
+    DOMAIN,
+    DRIVERS,
+    PLAN_DAYS,
+    SCOPE_SERIES,
+    SCOPE_THIS,
+    SERVICE_APPLY_SUGGESTION,
+    SERVICE_GET_PLAN,
+    SERVICE_SET_ARRIVE_BY,
+    SERVICE_SET_RIDE,
+    SERVICE_SET_STAY,
+    SERVICE_SET_TAKE_ALONG,
+)
+from .coordinator import target_for
+from .google import GoogleAuthError, GoogleCalendarUnavailable, GoogleConflict, GoogleError
+from .notes import KEEP
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -22,6 +55,27 @@ GET_PLAN_SCHEMA = vol.Schema(
         vol.Optional(ATTR_DAYS, default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=PLAN_DAYS)),
     }
 )
+_EVENT_FIELDS: dict[vol.Marker, Any] = {
+    vol.Required(ATTR_EVENT): cv.string,
+    vol.Optional(ATTR_SCOPE, default=SCOPE_THIS): vol.In([SCOPE_THIS, SCOPE_SERIES]),
+}
+SET_RIDE_SCHEMA = vol.Schema(
+    {
+        **_EVENT_FIELDS,
+        vol.Required(ATTR_SIDE): vol.In(["drop", "pick", "both"]),
+        vol.Optional(ATTR_DRIVER, default=""): vol.Any(None, cv.string),
+    }
+)
+SET_STAY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_STAY): cv.boolean})
+SET_ARRIVE_BY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Optional(ATTR_TIME): vol.Any(None, cv.time)})
+SET_TAKE_ALONG_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_PARENT): cv.string,
+        vol.Required(ATTR_ON): cv.boolean,
+        vol.Optional(ATTR_DATE): cv.date,
+    }
+)
+APPLY_SUGGESTION_SCHEMA = vol.Schema({vol.Required(ATTR_SUGGESTION): cv.string})
 
 
 @callback
@@ -29,6 +83,15 @@ def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_GET_PLAN, _async_get_plan, schema=GET_PLAN_SCHEMA, supports_response=SupportsResponse.ONLY
     )
+    changes: list[tuple[str, Callable[[ServiceCall], Coroutine[Any, Any, None]], vol.Schema]] = [
+        (SERVICE_SET_RIDE, _async_set_ride, SET_RIDE_SCHEMA),
+        (SERVICE_SET_STAY, _async_set_stay, SET_STAY_SCHEMA),
+        (SERVICE_SET_ARRIVE_BY, _async_set_arrive_by, SET_ARRIVE_BY_SCHEMA),
+        (SERVICE_SET_TAKE_ALONG, _async_set_take_along, SET_TAKE_ALONG_SCHEMA),
+        (SERVICE_APPLY_SUGGESTION, _async_apply_suggestion, APPLY_SUGGESTION_SCHEMA),
+    ]
+    for name, handler, schema in changes:
+        hass.services.async_register(DOMAIN, name, handler, schema=schema)
 
 
 def _loaded_entry(hass: HomeAssistant) -> MyDashLightConfigEntry:
@@ -58,3 +121,104 @@ async def _async_get_plan(call: ServiceCall) -> ServiceResponse:
         "drive_times": dict(data.drive_times),
         "days": days,
     }
+
+
+async def _async_set_ride(call: ServiceCall) -> None:
+    driver = call.data[ATTR_DRIVER] or ""
+    side = call.data[ATTR_SIDE]
+    change = RideChange(
+        drop=driver if side in ("drop", "both") else KEEP,
+        pick=driver if side in ("pick", "both") else KEEP,
+    )
+    await _async_change_event(call, change)
+
+
+async def _async_set_stay(call: ServiceCall) -> None:
+    await _async_change_event(call, RideChange(stay=call.data[ATTR_STAY]))
+
+
+async def _async_set_arrive_by(call: ServiceCall) -> None:
+    when: time | None = call.data.get(ATTR_TIME)
+    await _async_change_event(call, RideChange(arrive_by=None if when is None else when.hour * 60 + when.minute))
+
+
+async def _async_set_take_along(call: ServiceCall) -> None:
+    entry = _loaded_entry(call.hass)
+    coordinator = entry.runtime_data.coordinator
+    driver = coordinator.settings.directory.resolve(call.data[ATTR_PARENT])
+    if driver not in DRIVERS:
+        names = [coordinator.settings.directory.display(d) for d in DRIVERS]
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="not_a_parent",
+            translation_placeholders={"parent": call.data[ATTR_PARENT], "names": " or ".join(names)},
+        )
+    today = dt_util.now().date()
+    day: date = call.data.get(ATTR_DATE) or today
+    if day < today:
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="date_passed")
+    await _async_take_along(entry, day, driver, call.data[ATTR_ON])
+
+
+async def _async_apply_suggestion(call: ServiceCall) -> None:
+    entry = _loaded_entry(call.hass)
+    wanted = call.data[ATTR_SUGGESTION]
+    for day in entry.runtime_data.coordinator.data.days:
+        for issue in day["issues"]:
+            for suggestion in issue.get("suggestions", ()):
+                if suggestion["id"] == wanted:
+                    change = suggestion["change"]
+                    if "along" in change:
+                        await _async_take_along(entry, date.fromisoformat(day["date"]), change["along"], True)
+                    else:
+                        ride = RideChange(**{change["field"]: change["value"]})
+                        await _async_change_event(call, ride, ride_id=change["id"], day=day["date"])
+                    return
+    raise ServiceValidationError(translation_domain=DOMAIN, translation_key="suggestion_gone")
+
+
+async def _async_take_along(entry: MyDashLightConfigEntry, day: date, driver: str, on: bool) -> None:
+    coordinator = entry.runtime_data.coordinator
+    async with entry.runtime_data.write_lock:
+        if await coordinator.along.async_set(day, driver, on, dt_util.now().date()):
+            await coordinator.async_refresh()
+
+
+async def _async_change_event(
+    call: ServiceCall, change: RideChange, *, ride_id: str | None = None, day: str | None = None
+) -> None:
+    """Save a change to one planned event, or to every one when it repeats and that's asked."""
+    entry = _loaded_entry(call.hass)
+    coordinator = entry.runtime_data.coordinator
+    ride_id = ride_id or call.data[ATTR_EVENT]
+    found = coordinator.find(ride_id, day)
+    if found is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="event_not_found", translation_placeholders={"event": ride_id}
+        )
+    _, ride, ref = found
+    target = target_for(ride, ref)
+    series = ref.recurring_id if call.data.get(ATTR_SCOPE) == SCOPE_SERIES else None
+    also = coordinator.occurrences(ref.calendar_id, series) if series else []
+    async with entry.runtime_data.write_lock:
+        try:
+            written = await async_save(
+                entry.runtime_data.api, coordinator.settings.directory, target, change, series=series, also=also
+            )
+        except GoogleAuthError as err:
+            entry.async_start_reauth(call.hass)
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="auth_failed") from err
+        except GoogleConflict as err:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="write_conflict") from err
+        except GoogleCalendarUnavailable as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="cant_change_event",
+                translation_placeholders={"title": ride.title},
+            ) from err
+        except GoogleError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="write_failed", translation_placeholders={"error": str(err)}
+            ) from err
+        if written:
+            await coordinator.async_refresh()
