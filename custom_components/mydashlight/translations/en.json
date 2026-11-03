@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up MyDashLight",
+        "description": "MyDashLight plans the kids' rides for the two parents who drive. Enter the names to show for each of them. You can change these later.",
+        "data": {
+          "mom_name": "First parent",
+          "dad_name": "Second parent"
+        },
+        "data_description": {
+          "mom_name": "The name shown on the ride board, such as Robin.",
+          "dad_name": "The name shown on the ride board, such as Sam."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Enter a name.",
+      "names_match": "The two parents need different names."
+    },
+    "abort": {
+      "single_instance_allowed": "MyDashLight is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "MyDashLight options",
+        "data": {
+          "mom_name": "First parent",
+          "dad_name": "Second parent",
+          "mom_aliases": "Other names for the first parent",
+          "dad_aliases": "Other names for the second parent",
+          "carpools": "Carpool drivers"
+        },
+        "data_description": {
+          "mom_aliases": "Names that mean this parent in event notes, such as a nickname or Mom.",
+          "dad_aliases": "Names that mean this parent in event notes, such as Dad.",
+          "carpools": "Other people who drive, such as the Parkers. Rides with them are shown but not planned."
+        },
+        "sections": {
+          "planner": {
+            "name": "Planner timing",
+            "description": "How the ride planner judges a plan. The defaults suit most families.",
+            "data": {
+              "arrive_early": "Arrive before the start",
+              "go_home_margin": "Go home between stops after",
+              "take_along_window": "Take-along window",
+              "waiting_after": "Kid waiting after",
+              "too_early": "Too early after",
+              "tight_slack": "No time to spare under",
+              "no_address_travel": "Drive time with no address"
+            },
+            "data_description": {
+              "arrive_early": "When an event has no Arrive by time, aim to get there this long before it starts.",
+              "go_home_margin": "Drive home between stops when that frees at least this much more time than waiting.",
+              "take_along_window": "With take-along on, kids whose drop-offs are this close together leave home together.",
+              "waiting_after": "Reaching a pick-up later than this after it ends counts as the kid waiting.",
+              "too_early": "Getting there more than this long before the target is flagged.",
+              "tight_slack": "Less spare time than this before the next stop is flagged.",
+              "no_address_travel": "The drive time used for an event with no location."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "name_required": "Enter a name.",
+      "names_match": "The two parents need different names."
+    }
+  }
+}
