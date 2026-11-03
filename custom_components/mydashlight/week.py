@@ -63,6 +63,10 @@ class EventRef:
     sides: tuple[Side, ...]
     """The sides this day's copy plans. A split event plans its drop-off on the first day
     and its pick-up on the last."""
+    popups: tuple[int, ...] | None = None
+    """The event's pop-up reminders, or None for the calendar's default."""
+    private: tuple[tuple[str, str], ...] = ()
+    """The event's private properties, where MyDashLight marks the reminder it set."""
 
 
 @dataclass(slots=True)
@@ -195,7 +199,9 @@ def build_week(
                 elif ride_id != ride.id:
                     ride = replace(ride, id=ride_id)
                 target.events.append(ride)
-                target.refs[ride_id] = EventRef(ev.calendar_id, ev.id, ev.etag, ev.recurring_id, sides)
+                target.refs[ride_id] = EventRef(
+                    ev.calendar_id, ev.id, ev.etag, ev.recurring_id, sides, ev.popups, ev.private
+                )
                 if notes.problems:
                     target.problems[ride_id] = notes.problems
                 if notes.travel is not None and "drop" in sides:

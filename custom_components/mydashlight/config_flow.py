@@ -35,21 +35,28 @@ from homeassistant.helpers.selector import (
 from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
+from .alerts import notify_services
 from .const import (
     CONF_ARRIVE_EARLY,
     CONF_CALENDAR_ID,
+    CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
     CONF_DAD_ALIASES,
     CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
+    CONF_DAD_NOTIFY,
     CONF_GO_HOME_MARGIN,
+    CONF_KID_NOTIFY,
     CONF_KIDS,
     CONF_MOM_ALIASES,
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
+    CONF_MOM_NOTIFY,
     CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
+    CONF_NO_DRIVER_ALERTS,
     CONF_PLANNER,
+    CONF_REMIND_BEFORE,
     CONF_REMOVE_ROUTES_KEY,
     CONF_ROUTES_DAILY_LIMIT,
     CONF_ROUTES_KEY,
@@ -58,8 +65,11 @@ from .const import (
     CONF_TOO_EARLY,
     CONF_WAITING_AFTER,
     DEFAULT_PLANNER,
+    DEFAULT_REMIND_BEFORE,
     DEFAULT_ROUTES_DAILY_LIMIT,
     DOMAIN,
+    DRIVERS,
+    NOTIFY_OFF,
     SCOPES,
     TITLE,
 )
@@ -92,6 +102,21 @@ _PLANNER_LIMITS = {
     CONF_TIGHT_SLACK: 30,
     CONF_NO_ADDRESS_TRAVEL: 120,
 }
+
+
+def _people(options: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """Each parent and kid as (the name their notifier field shows, their id)."""
+    out: list[tuple[str, str]] = [
+        (_clean_name(options.get(CONF_MOM_NAME) or "") or "First parent", "mom"),
+        (_clean_name(options.get(CONF_DAD_NAME) or "") or "Second parent", "dad"),
+    ]
+    for kid in options.get(CONF_KIDS) or []:
+        if isinstance(kid, Mapping) and kid.get(CONF_CALENDAR_ID):
+            label = _clean_name(kid.get(CONF_NAME) or "") or str(kid[CONF_CALENDAR_ID])
+            while any(label.casefold() == taken.casefold() for taken, _ in out):
+                label += " (kid)"
+            out.append((label, str(kid[CONF_CALENDAR_ID])))
+    return out
 
 
 def _clean_name(value: str) -> str:
@@ -326,7 +351,7 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
         self._kid_names: _KidNames | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=["settings", "calendars", "drive_times"])
+        return self.async_show_menu(step_id="init", menu_options=["settings", "calendars", "drive_times", "reminders"])
 
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -439,6 +464,54 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
             errors=errors,
             description_placeholders={"key_state": "set" if has_key else "not set"},
         )
+
+    async def async_step_reminders(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Who gets reminders on their phone, and when."""
+        options = self.config_entry.options
+        people = _people(options)
+        if user_input is not None:
+            kid_notify = {who: user_input.get(label, NOTIFY_OFF) for label, who in people if who not in DRIVERS}
+            by_driver = {who: user_input.get(label, NOTIFY_OFF) for label, who in people if who in DRIVERS}
+            return self.async_create_entry(
+                data={
+                    **options,
+                    CONF_MOM_NOTIFY: by_driver.get("mom", NOTIFY_OFF),
+                    CONF_DAD_NOTIFY: by_driver.get("dad", NOTIFY_OFF),
+                    CONF_KID_NOTIFY: kid_notify,
+                    CONF_REMIND_BEFORE: int(user_input[CONF_REMIND_BEFORE]),
+                    CONF_CALENDAR_REMINDERS: bool(user_input[CONF_CALENDAR_REMINDERS]),
+                    CONF_NO_DRIVER_ALERTS: bool(user_input[CONF_NO_DRIVER_ALERTS]),
+                }
+            )
+        current = {
+            "mom": options.get(CONF_MOM_NOTIFY) or NOTIFY_OFF,
+            "dad": options.get(CONF_DAD_NOTIFY) or NOTIFY_OFF,
+            **(options.get(CONF_KID_NOTIFY) or {}),
+        }
+        services = notify_services(self.hass)
+        fields: dict[vol.Marker, Any] = {}
+        for label, who in people:
+            value = current.get(who) or NOTIFY_OFF
+            choices = [*services, value] if value != NOTIFY_OFF and value not in services else services
+            fields[vol.Optional(label, default=value)] = SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value=NOTIFY_OFF, label="No reminders"),
+                        *(SelectOptionDict(value=c, label=f"notify.{c}") for c in choices),
+                    ],
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            )
+        fields[vol.Required(CONF_REMIND_BEFORE, default=options.get(CONF_REMIND_BEFORE, DEFAULT_REMIND_BEFORE))] = (
+            _minutes(120)
+        )
+        fields[vol.Required(CONF_CALENDAR_REMINDERS, default=options.get(CONF_CALENDAR_REMINDERS, True))] = (
+            BooleanSelector()
+        )
+        fields[vol.Required(CONF_NO_DRIVER_ALERTS, default=options.get(CONF_NO_DRIVER_ALERTS, True))] = (
+            BooleanSelector()
+        )
+        return self.async_show_form(step_id="reminders", data_schema=vol.Schema(fields))
 
     async def _check_routes_key(self, key: str) -> dict[str, str]:
         """Try the key with one short lookup from home to home."""

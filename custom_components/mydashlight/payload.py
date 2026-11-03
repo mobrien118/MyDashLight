@@ -168,10 +168,13 @@ def _outing(o: Outing) -> dict[str, Any]:
         "start": _num(o.start),
         "end": _num(o.end),
         "lead": o.lead,
+        "title": o.title,
         "lines": list(o.lines),
         "kids": list(o.kids),
         "warn": o.warn or None,
         "target": o.target.id if o.target else None,
+        "first_drop": o.first_drop.id if o.first_drop else None,
+        "riders": dict(o.riders),
     }
 
 

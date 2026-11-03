@@ -12,7 +12,9 @@ separate database or server to look after.
 reads each kid's calendar and each parent's own calendars every minute, and plans the week's
 rides, with drive times from Google Routes. The `mydashlight.get_plan` action returns the plan,
 the other actions change who drives (saving it in the events' notes), and the kitchen app
-subscribes to the plan over Home Assistant's WebSocket API. Reminders come next.
+subscribes to the plan over Home Assistant's WebSocket API. Before each drive, the driver and the
+kids in the car get a reminder on their phones, and the drive's first drop-off gets a reminder in
+Google Calendar.
 
 | Module | Job |
 | --- | --- |
@@ -31,9 +33,11 @@ subscribes to the plan over Home Assistant's WebSocket API. Reminders come next.
 | `coordinator.py` | Reads the calendars every minute and replans. |
 | `services.py` | The `mydashlight` actions: get the plan, and change rides. |
 | `websocket.py` | The app's live plan, `mydashlight/rides/subscribe`. |
+| `reminders.py` | Works out the reminders from the plan: when each drive's reminder goes off, the Google Calendar reminder for each drop-off, and the rides with no driver. |
+| `alerts.py` | Sends the reminders through each person's notifier, and saves the Google Calendar reminders. |
 
 `planner.py`, `board.py`, `notes.py`, `google.py`, `changes.py`, `week.py`, `payload.py`,
-`routes.py`, `travel.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
+`routes.py`, `travel.py`, `reminders.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
 their own.
 
 ## Calendars
@@ -138,6 +142,31 @@ for all seven days, plus:
 
 `{"plan": null}` means MyDashLight isn't running at the moment, for example while Home Assistant
 restarts. A plan follows when it's back.
+
+## Reminders
+
+Under **Settings > Devices & services > MyDashLight > Configure > Reminders**, pick a notifier for
+each parent and each kid who should get reminders. A notifier is a `notify` action, such as the one
+the Home Assistant app adds for each phone. Anyone left on **No reminders** gets none.
+
+- **Before each drive.** Leave time is worked back from when the kid has to be there (Arrive by,
+  or a few minutes before the start) and the drive time. The reminder goes off 15 minutes before
+  that, or whatever **Remind before leaving** says. The driver's says where to go, stop by stop.
+  Each kid in the car with a notifier gets one saying when they leave, or when they'll be picked up
+  and where. If the plan changes so a drive leaves at least 5 minutes earlier than it was
+  reminded for, it's reminded again. A reminder that came due while Home Assistant was off is still
+  sent if the drive hasn't left yet.
+- **In Google Calendar.** The same reminder is saved on the kid's event for each drive's first
+  drop-off, as a pop-up that many minutes before the event starts. It moves when leave time does,
+  and comes off if the drive goes away. MyDashLight marks the reminders it sets, so it never
+  touches a reminder someone else set on an event that no longer needs one. Two limits, both
+  Google's: a reminder belongs to the account MyDashLight signs in with, so it pops up for that
+  person only; and Google only reminds before an event starts, so pick-ups get the phone
+  reminder only. Turn off **Also save drop-off reminders in Google Calendar** to skip this.
+- **Rides with no driver.** A drop-off or pick-up in the next two days with nobody driving yet is
+  sent once to both parents' notifiers, several at a time when there are several.
+
+What has been sent is kept in Home Assistant, so a restart doesn't send it again.
 
 ## Development
 

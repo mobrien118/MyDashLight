@@ -12,27 +12,46 @@ from typing import Any
 from .const import (
     CONF_ARRIVE_EARLY,
     CONF_CALENDAR_ID,
+    CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
     CONF_DAD_ALIASES,
     CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
+    CONF_DAD_NOTIFY,
     CONF_GO_HOME_MARGIN,
+    CONF_KID_NOTIFY,
     CONF_KIDS,
     CONF_MOM_ALIASES,
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
+    CONF_MOM_NOTIFY,
     CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
+    CONF_NO_DRIVER_ALERTS,
     CONF_PLANNER,
+    CONF_REMIND_BEFORE,
     CONF_TAKE_ALONG_WINDOW,
     CONF_TIGHT_SLACK,
     CONF_TOO_EARLY,
     CONF_WAITING_AFTER,
     DEFAULT_PLANNER,
+    DEFAULT_REMIND_BEFORE,
+    NOTIFY_OFF,
 )
 from .notes import DriverDirectory
 from .planner import PlannerSettings
 from .week import CalendarRoles, KidCalendar
+
+
+@dataclass(frozen=True, slots=True)
+class ReminderSettings:
+    notify: Mapping[str, str] = field(default_factory=dict)
+    """Each person's notify service, by driver id or kid calendar id. Nobody else gets one."""
+    before: int = DEFAULT_REMIND_BEFORE
+    """Minutes before leaving."""
+    no_driver_alerts: bool = True
+    calendar: bool = True
+    """Also save each drive's reminder on its first drop-off event in Google Calendar."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +60,7 @@ class HubSettings:
     directory: DriverDirectory
     no_address_travel: int
     roles: CalendarRoles = field(default_factory=CalendarRoles)
+    reminders: ReminderSettings = field(default_factory=ReminderSettings)
 
     @property
     def driver_names(self) -> Mapping[str, str]:
@@ -80,7 +100,21 @@ class HubSettings:
                     "dad": _ids(options.get(CONF_DAD_CALENDARS)),
                 },
             ),
+            reminders=ReminderSettings(
+                notify=_notifiers(options, kids),
+                before=int(options.get(CONF_REMIND_BEFORE, DEFAULT_REMIND_BEFORE)),
+                no_driver_alerts=bool(options.get(CONF_NO_DRIVER_ALERTS, True)),
+                calendar=bool(options.get(CONF_CALENDAR_REMINDERS, True)),
+            ),
         )
+
+
+def _notifiers(options: Mapping[str, Any], kids: tuple[KidCalendar, ...]) -> dict[str, str]:
+    kid_notify = options.get(CONF_KID_NOTIFY)
+    kid_notify = kid_notify if isinstance(kid_notify, Mapping) else {}
+    pairs = [("mom", options.get(CONF_MOM_NOTIFY)), ("dad", options.get(CONF_DAD_NOTIFY))]
+    pairs += [(k.calendar_id, kid_notify.get(k.calendar_id)) for k in kids]
+    return {who: str(service) for who, service in pairs if service and service != NOTIFY_OFF}
 
 
 def _name(value: object, default: str) -> str:
