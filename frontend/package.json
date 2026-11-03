@@ -1,0 +1,25 @@
+{
+  "name": "mydashlight-frontend",
+  "private": true,
+  "version": "0.7.0",
+  "description": "The MyDashLight kitchen app: the rides board, served by the Home Assistant integration",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "sample": "python scripts/sample_plan.py > test/fixtures/week.json"
+  },
+  "dependencies": {
+    "home-assistant-js-websocket": "9.6.0",
+    "lit": "3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "esbuild": "0.25.10",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

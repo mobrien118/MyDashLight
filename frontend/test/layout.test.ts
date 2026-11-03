@@ -1,0 +1,165 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  attention,
+  columnsFor,
+  compactCardHeight,
+  dayTag,
+  layout,
+  minWidth,
+  pack,
+  routeOf,
+  placeNames,
+  tAt,
+  wrapRows,
+  yAt,
+  type Board,
+} from "../src/layout.ts";
+import { sampleWeek } from "./helpers.ts";
+
+const plan = sampleWeek();
+const FIRST = plan.days[0]!.date;
+const today = { date: FIRST, minutes: 16 * 60 };
+
+function overlaps(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }): boolean {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+test("a column per kid, then one per driver, in the order set up in Home Assistant", () => {
+  const { columns } = columnsFor(plan, 1160);
+  assert.deepEqual(
+    columns.map((c) => [c.kind, c.name]),
+    [
+      ["kid", "Ava"],
+      ["kid", "Ben"],
+      ["kid", "Cleo"],
+      ["driver", "Robin"],
+      ["driver", "Sam"],
+    ],
+  );
+  // The kitchen screen's widths: as in the design.
+  assert.equal(columns[0]!.w, 179);
+  assert.equal(columns[3]!.w, 251);
+  assert.equal(columns[0]!.sub, "7 this week · needs a ride");
+  assert.equal(columns[0]!.subWarn, true);
+  assert.match(columns[3]!.sub, /^\d+ trips this week · .* driving$/);
+  for (let i = 1; i < columns.length; i++) assert.ok(columns[i]!.x >= columns[i - 1]!.x + columns[i - 1]!.w);
+});
+
+test("a narrow screen scrolls sideways instead of squeezing the columns", () => {
+  const { width, columns } = columnsFor(plan, 390);
+  assert.equal(width, minWidth(3, 2));
+  assert.ok(columns.every((c) => c.w >= 150));
+});
+
+for (const mode of ["timeline", "compact"] as const) {
+  test(`${mode}: every activity has a card, and nothing in a column overlaps`, () => {
+    const b = layout(plan, mode, 1160, today);
+    for (const day of plan.days) {
+      for (const e of day.events) {
+        assert.ok(b.cards.some((c) => c.target.day === day.date && c.target.event === e.id), `${day.date} ${e.id}`);
+      }
+    }
+    // Boxes in one column only share space when they're side by side (a double-booking).
+    const boxes = [...b.cards, ...b.rides, ...b.trips, ...b.stays];
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!;
+        const c = boxes[j]!;
+        if (!overlaps(a, c)) continue;
+        const clash = ("clash" in a && a.clash) || ("clash" in c && c.clash);
+        assert.ok(clash, `${a.key} overlaps ${c.key}`);
+      }
+    }
+    assert.equal(b.dayHeads.length, 7);
+    assert.ok(b.height > 0);
+  });
+}
+
+test("timeline: the driver's trips, the clash with work, and now", () => {
+  const b = layout(plan, "timeline", 1160, today);
+  const sam = b.columns.find((c) => c.name === "Sam")!;
+  const day0 = b.trips.filter((t) => t.key.startsWith(FIRST) && t.x > sam.x);
+  assert.ok(day0.some((t) => t.l1 === "Leave 4:25" && t.bad && t.kids.length === 2));
+  assert.ok(b.overlaps.some((o) => o.key.startsWith(FIRST) && o.x > sam.x));
+  assert.ok(b.busy.some((x) => x.label === "Work until 4:40"));
+  assert.ok(b.preps.some((p) => p.label === "Arrive by 5:15"));
+  assert.equal(b.now?.label, "Now 4:00");
+  assert.ok(b.stays.some((s) => s.l1 === "At Piano with Ava"));
+  assert.ok(b.rides.some((r) => r.l1 === "In Sam’s car" && r.l2 === "Home → Football field"));
+  // Each ride is linked to its driver's column.
+  for (const band of b.bands) assert.ok(band.w >= 0);
+});
+
+test("compact: things sit in start order across columns", () => {
+  const b = layout(plan, "compact", 1160, today);
+  const day0 = [...b.cards, ...b.trips].filter((x) => x.key.startsWith(FIRST)).sort((p, q) => p.y - q.y);
+  assert.ok(day0.length > 0);
+  // Trips list their stops instead of a route.
+  assert.ok(b.trips.every((t) => t.stops !== null));
+  assert.ok(b.busy.some((x) => x.label === "Work 1:00–4:40"));
+  assert.equal(b.now, null);
+});
+
+test("moving between modes keeps the same moment on screen", () => {
+  const tl: Board = layout(plan, "timeline", 1160, today);
+  const t = 2 * 1440 + 9 * 60;
+  const y = yAt(tl, t);
+  assert.ok(Math.abs(tAt(tl, y) - t) <= 1);
+  const cp = layout(plan, "compact", 1160, today);
+  assert.ok(yAt(cp, t) > yAt(cp, 1440));
+});
+
+test("the needs-attention list", () => {
+  const { items, problems } = attention(plan, FIRST);
+  assert.equal(problems, 4);
+  assert.deepEqual(
+    items.filter((i) => i.tone !== "heads_up").map((i) => i.title),
+    ["Sam is still at Work", "No pick-up for Ava", `Sun · No pick-up for Ava`, "Tue · Cleo is double-booked"],
+  );
+  const busy = items[0]!;
+  assert.equal(busy.suggestions.length, 2);
+  assert.equal(busy.suggestions[0]!.label, "Take Ben along");
+  assert.equal(busy.target?.event, "soccer");
+  const clash = items.find((i) => i.title.endsWith("double-booked"))!;
+  assert.equal(clash.body, "Soccer 5:00–6:30 and Art class 6:00–7:00 overlap.");
+  // Seen from later in the week, other days are named.
+  assert.equal(attention(plan, plan.days[3]!.date).items.find((i) => i.title.includes("pick-up"))?.title, "Thu · No pick-up for Ava");
+});
+
+test("day tags", () => {
+  assert.equal(dayTag("2026-11-05", "2026-11-05"), "Today");
+  assert.equal(dayTag("2026-11-06", "2026-11-05"), "Tomorrow");
+  assert.equal(dayTag("2026-11-07", "2026-11-05"), "");
+});
+
+test("routes read as short place names", () => {
+  const names = placeNames(plan);
+  const sam = plan.days[0]!.drivers["dad"]!;
+  const trip = sam.segments.filter((g) => g.type !== "home" && g.start! < 1060);
+  assert.equal(routeOf(trip, names).join(" → "), "Home → Soccer fields → Home → Football field → Home");
+});
+
+test("packing side by side", () => {
+  const packed = pack([
+    { item: "a", s: 0, en: 60 },
+    { item: "b", s: 30, en: 90 },
+    { item: "c", s: 100, en: 120 },
+  ]);
+  assert.deepEqual(
+    packed.map((p) => [p.item, p.col, p.cols]),
+    [
+      ["a", 0, 2],
+      ["b", 1, 2],
+      ["c", 0, 1],
+    ],
+  );
+});
+
+test("wrapped text in Compact gets room for every line", () => {
+  assert.equal(wrapRows("Home 4:40 with Robin", 1000), 1);
+  assert.equal(wrapRows("Robin stays · leaves 3:30", 130, 7), 2);
+  assert.equal(wrapRows("Supercalifragilistic", 70, 7), 2);
+  const e = plan.days[0]!.events[0]!;
+  assert.ok(compactCardHeight(e, 150) > compactCardHeight(e, 300));
+});

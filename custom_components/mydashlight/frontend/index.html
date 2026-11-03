@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f4f3ef" />
+    <title>MyDashLight rides</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #f4f3ef;
+        overflow: hidden;
+      }
+      mydashlight-board {
+        height: 100%;
+      }
+      #problem {
+        position: fixed;
+        left: 50%;
+        top: 40%;
+        transform: translate(-50%, -50%);
+        max-width: min(460px, 90%);
+        padding: 18px 20px;
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid #e3e1db;
+        font: 15px/22px system-ui, sans-serif;
+        color: #3d434b;
+        text-align: center;
+        z-index: 50;
+      }
+    </style>
+  </head>
+  <body>
+    <mydashlight-board kiosk></mydashlight-board>
+    <div id="problem" role="alert" hidden><p></p></div>
+    <script type="module" src="%SCRIPT%"></script>
+  </body>
+</html>

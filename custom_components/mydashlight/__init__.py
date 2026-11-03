@@ -29,6 +29,7 @@ from .alerts import CalendarReminders, Notifier, async_remove_sent
 from .api import OAuthTokens
 from .const import CONF_ROUTES_DAILY_LIMIT, CONF_ROUTES_KEY, DEFAULT_ROUTES_DAILY_LIMIT, DOMAIN, SIGNAL_PLAN_UPDATED
 from .coordinator import MyDashLightCoordinator
+from .frontend import async_register_panel, async_remove_panel
 from .google import GoogleAuthError, GoogleCalendarApi, GoogleError
 from .lookups import RoutesLookups
 from .routes import RoutesApi
@@ -113,6 +114,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     entry.async_on_unload(reminders.async_stop)
     entry.async_on_unload(lambda: async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, None))
     plan_updated()
+    # The kitchen app: the Rides item in the sidebar, and the kitchen page.
+    await async_register_panel(hass)
+    entry.async_on_unload(lambda: async_remove_panel(hass))
     return True
 
 
