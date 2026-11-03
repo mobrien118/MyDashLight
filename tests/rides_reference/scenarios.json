@@ -224,9 +224,11 @@
               {
                 "label": "Take Ben along",
                 "change": {
-                  "id": "football",
+                  "id": "soccer",
                   "field": "along",
-                  "value": true
+                  "value": [
+                    "ben"
+                  ]
                 },
                 "note": "Sam leaves right as Work ends"
               },
@@ -1107,7 +1109,10 @@
             "drop": "dad",
             "pick": "mom",
             "stay": false,
-            "arriveBy": null
+            "arriveBy": null,
+            "along": [
+              "ben"
+            ]
           },
           {
             "id": "football",
@@ -1120,8 +1125,7 @@
             "drop": "dad",
             "pick": "dad",
             "stay": false,
-            "arriveBy": 1035,
-            "along": true
+            "arriveBy": 1035
           },
           {
             "id": "volley",
@@ -1787,9 +1791,11 @@
               {
                 "label": "Take Ben along",
                 "change": {
-                  "id": "football",
+                  "id": "soccer",
                   "field": "along",
-                  "value": true
+                  "value": [
+                    "ben"
+                  ]
                 },
                 "note": "Sam leaves right as Work ends"
               },

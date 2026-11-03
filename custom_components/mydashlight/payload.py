@@ -115,7 +115,7 @@ def plan_day(
 def suggestion_id(day: str, change: Change) -> str:
     """A fix's id for ``apply_suggestion``. It says what the fix does, so it stays the same
     from one update to the next while the fix still applies."""
-    value = "yes" if change.value is True else change.value
+    value = "+".join(change.value) if isinstance(change.value, tuple) else change.value
     return f"{day}|{change.event_id}|{change.field}|{value}"
 
 
@@ -135,7 +135,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "pick": e.pick,
         "stay": e.stay,
         "arrive_by": e.arrive_by,
-        "along": e.along,
+        "along": list(e.along),
         "sides": list(ref.sides),
         "calendar_id": ref.calendar_id,
         "event_id": ref.event_id,

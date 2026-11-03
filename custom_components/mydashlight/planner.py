@@ -50,9 +50,9 @@ class RideEvent:
     pick: str = UNASSIGNED
     stay: bool = False
     arrive_by: int | None = None
-    along: bool = False
-    """Take-along: the kid leaves home with the same driver's trip just before this drop-off,
-    so the driver doesn't come home to collect them."""
+    along: tuple[str, ...] = ()
+    """Kids taken along on this drop-off. They leave home in the same car, so the driver can go
+    on to their own drop-offs without coming home for them."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,14 +210,15 @@ class DayPlan:
 
 @dataclass(frozen=True, slots=True)
 class Change:
-    """A single edit to try: give one side of an event to a driver, or take its kid along."""
+    """A single edit to try: give one side of an event to a driver, or take kids along on it."""
 
     event_id: str
     field: Literal["drop", "pick", "along"]
-    value: str | bool
+    value: str | tuple[str, ...]
 
-    def as_dict(self) -> dict[str, str | bool]:
-        return {"id": self.event_id, "field": self.field, "value": self.value}
+    def as_dict(self) -> dict[str, str | list[str]]:
+        value = list(self.value) if isinstance(self.value, tuple) else self.value
+        return {"id": self.event_id, "field": self.field, "value": value}
 
 
 @dataclass(slots=True)
@@ -467,7 +468,7 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
     """Sort tasks into stops that start and end at home, tracking who is in the car."""
     stops = [Stop(HOME, "start")]
     car: list[str] = []
-    for i, k in enumerate(tasks):
+    for k in tasks:
         kid = k.event.kid
         if k.type != "pick":
             if kid not in car:
@@ -475,15 +476,8 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
                 if stops[-1].loc != HOME:
                     stops.append(Stop(HOME, "fetch"))
                 car = [kid]
-                # Take-along drop-offs right after this one leave home now too, so there's no
-                # trip back for them.
-                for o in tasks[i + 1 :]:
-                    if o.type == "pick":
-                        continue
-                    if not o.event.along:
-                        break
-                    if o.event.kid not in car:
-                        car.append(o.event.kid)
+                # The kids taken along on this drop-off leave home in the same car.
+                car += [a for a in dict.fromkeys(k.event.along) if a != kid]
                 stops[-1].car = list(car)
             car = [x for x in car if x != kid]
             stop = Stop(k.event.loc, k.type, event=k.event, deadline=k.t)
@@ -600,7 +594,7 @@ def apply_change(
             continue
         n = e
         if change.field == "along":
-            n = replace(n, along=bool(change.value))
+            n = replace(n, along=tuple(change.value))
         elif change.field == "drop":
             n = replace(n, drop=str(change.value) or UNASSIGNED)
         else:
@@ -625,7 +619,7 @@ def suggestions_for(
 ) -> list[Suggestion]:
     """Single changes that clear this issue without adding a worse one, best first."""
     cands: list[tuple[str | None, Change, str]] = []
-    along_kid: dict[str, str] = {}
+    along_kid: dict[Change, str] = {}
     if issue.kind == "unassigned" and issue.event is not None and issue.side is not None:
         verb = " drops off" if issue.side == "drop" else " picks up"
         for drv in drivers:
@@ -648,15 +642,17 @@ def suggestions_for(
                     )
         # Take a kid along on an earlier drop-off by the same driver, if it's close enough.
         for e in events:
-            if e.drop != d or e.along:
+            if e.drop != d:
                 continue
-            t = arrive_at(e, settings)
-            if any(
-                f is not e and f.drop == d and 0 <= t - arrive_at(f, settings) <= settings.take_along_window
-                for f in events
-            ):
-                cands.append((None, Change(e.id, "along", True), d))
-                along_kid[e.id] = e.kid
+            for f in events:
+                gap = arrive_at(e, settings) - arrive_at(f, settings)
+                if f is e or f.drop != d or f.kid == e.kid or not 0 <= gap <= settings.take_along_window:
+                    continue
+                if e.kid in f.along:
+                    continue
+                change = Change(f.id, "along", (*f.along, e.kid))
+                cands.append((None, change, d))
+                along_kid[change] = e.kid
 
     base_soft = {x.key for x in base.soft}
     key = issue.key
@@ -666,7 +662,7 @@ def suggestions_for(
         if key in {x.key for x in p.hard} or len(p.hard) >= len(base.hard):
             continue
         if label is None:
-            kid = along_kid[change.event_id]
+            kid = along_kid[change]
             # Only offer it when the kid really does ride along on someone else's trip.
             if not any(g.type == "drive" and kid in g.kids[1:] for g in p[who].segments):
                 continue

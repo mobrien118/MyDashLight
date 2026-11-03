@@ -111,6 +111,8 @@ def build_week(
     tz: tzinfo,
 ) -> WeekInput:
     """Sort the events read from each calendar into each day's planner input."""
+    # Kids taken along are named in the notes, so the notes need the kids' names.
+    directory = replace(directory, kids={k.calendar_id: k.name for k in roles.kids})
     day_list = [today + timedelta(days=i) for i in range(days)]
     by_day = {d: DayInput(d) for d in day_list}
     places: dict[str, str] = {}

@@ -97,11 +97,12 @@ set_take_along:
       example: abc123def456
       selector:
         text:
-    "on":
-      required: true
-      default: true
+    kids:
+      required: false
+      example: "Ben, Cleo"
       selector:
-        boolean:
+        text:
+          multiple: true
     scope:
       required: false
       default: this
@@ -116,6 +117,6 @@ apply_suggestion:
   fields:
     suggestion:
       required: true
-      example: "2026-11-03|abc123def456|along|yes"
+      example: "2026-11-03|abc123def456|pick|dad"
       selector:
         text:

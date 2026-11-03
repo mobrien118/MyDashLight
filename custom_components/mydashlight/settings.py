@@ -53,6 +53,7 @@ class HubSettings:
             "mom": _name(options.get(CONF_MOM_NAME), "Mom"),
             "dad": _name(options.get(CONF_DAD_NAME), "Dad"),
         }
+        kids = _kids(options.get(CONF_KIDS))
         return cls(
             planner=PlannerSettings(
                 arrive_early=int(planner[CONF_ARRIVE_EARLY]),
@@ -69,10 +70,11 @@ class HubSettings:
                     "dad": _names(options.get(CONF_DAD_ALIASES)),
                 },
                 carpools=_names(options.get(CONF_CARPOOLS)),
+                kids={k.calendar_id: k.name for k in kids},
             ),
             no_address_travel=int(planner[CONF_NO_ADDRESS_TRAVEL]),
             roles=CalendarRoles(
-                kids=_kids(options.get(CONF_KIDS)),
+                kids=kids,
                 busy={
                     "mom": _ids(options.get(CONF_MOM_CALENDARS)),
                     "dad": _ids(options.get(CONF_DAD_CALENDARS)),

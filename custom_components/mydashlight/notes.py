@@ -8,7 +8,7 @@ The ride lines live in a block at the end of the event's description, after a he
     Drop-off: Sam
     Pick-up: the Parkers
     Stay: yes
-    Take along: yes
+    Take along: Ben
     Arrive by: 5:15 PM
     Travel: 25 min
 
@@ -45,7 +45,7 @@ RIDES_HEADER: Final = "--- Rides ---"
 
 Field = Literal["drop", "pick", "stay", "along", "arrive_by", "travel"]
 FIELDS: Final[tuple[Field, ...]] = ("drop", "pick", "stay", "along", "arrive_by", "travel")
-_YES_NO: Final[frozenset[Field]] = frozenset({"stay", "along"})
+
 
 _LABELS: Final[dict[str, Field]] = {
     "dropoff": "drop",
@@ -66,7 +66,9 @@ _WRITE_LABELS: Final[dict[Field, str]] = {
     "travel": "Travel",
 }
 _NOT_NEEDED_WORDS: Final = frozenset({"not needed", "none", "no", "n/a", "na", "no ride", "not required"})
-_YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying", "along"})
+_YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying"})
+_NOBODY: Final = frozenset({"", "none", "no", "nobody", "no one", "n/a", "na"})
+_LIST_SPLIT_RE: Final = re.compile(r"\s*(?:,|&|\+|/|\band\b)\s*", re.IGNORECASE)
 _NO: Final = frozenset({"no", "n", "false", "off", ""})
 
 _HEADER_RE: Final = re.compile(r"^\s*-{2,}\s*rides\s*-{2,}\s*$", re.IGNORECASE)
@@ -98,16 +100,26 @@ KEEP: Final = Keep()
 
 @dataclass(frozen=True, slots=True)
 class DriverDirectory:
-    """How driver names in notes map to the parents the planner routes.
+    """How names in notes map to the parents the planner routes, and to the kids.
 
     ``names`` gives each routed driver's display name, which is also what gets written.
     ``aliases`` adds other names for them (such as Rae or Mom). ``carpools`` lists known
-    carpool drivers, so "the parkers" is shown as "the Parkers".
+    carpool drivers, so "the parkers" is shown as "the Parkers". ``kids`` gives each kid's
+    display name by kid id, for the kids taken along.
     """
 
     names: Mapping[str, str]
     aliases: Mapping[str, Iterable[str]] = field(default_factory=dict)
     carpools: Iterable[str] = ()
+    kids: Mapping[str, str] = field(default_factory=dict)
+
+    def kid(self, value: str) -> str | None:
+        """The kid id for a kid's name (or id), or None when it isn't one of the kids."""
+        key = " ".join(value.split()).casefold()
+        for kid, name in self.kids.items():
+            if key in (kid.casefold(), " ".join(name.split()).casefold()):
+                return kid
+        return None
 
     def resolve(self, value: str) -> str:
         """The driver id, :data:`NOT_NEEDED`, :data:`UNASSIGNED`, or a carpool name."""
@@ -141,8 +153,9 @@ class RideNotes:
     drop: str = UNASSIGNED
     pick: str = UNASSIGNED
     stay: bool = False
-    along: bool = False
-    """Take along: the kid rides with the driver's trip just before this drop-off."""
+    along: tuple[str, ...] = ()
+    """Kid ids taken along on this drop-off, so the driver can go on to their own drop-offs
+    without coming home for them."""
     arrive_by: int | None = None
     """Minutes after midnight."""
     travel: int | None = None
@@ -190,7 +203,7 @@ def write_notes(
     drop: str | Keep = KEEP,
     pick: str | Keep = KEEP,
     stay: bool | Keep = KEEP,
-    along: bool | Keep = KEEP,
+    along: Iterable[str] | Keep = KEEP,
     arrive_by: int | Keep | None = KEEP,
     travel: int | Keep | None = KEEP,
     event_start: int | None = None,
@@ -337,7 +350,8 @@ def _locate(doc: _Doc) -> dict[Field, list[int]]:
 
 def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> RideNotes:
     drivers = {"drop": UNASSIGNED, "pick": UNASSIGNED}
-    flags = {"stay": False, "along": False}
+    stay = False
+    along: list[str] = []
     arrive_by: int | None = None
     travel: int | None = None
     problems: list[str] = []
@@ -352,10 +366,17 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         label = _WRITE_LABELS[fld]
         if fld in ("drop", "pick"):
             drivers[fld] = directory.resolve(raw)
-        elif fld in _YES_NO:
+        elif fld == "along":
+            if raw.casefold() not in _NOBODY:
+                for name in filter(None, _LIST_SPLIT_RE.split(raw)):
+                    if (kid := directory.kid(name)) is None:
+                        problems.append(f"{label}: “{name}” isn’t one of the kids")
+                    elif kid not in along:
+                        along.append(kid)
+        elif fld == "stay":
             word = raw.casefold()
             if word in _YES:
-                flags[fld] = True
+                stay = True
             elif word not in _NO:
                 problems.append(f"{label}: “{raw}” isn’t yes or no")
         elif fld == "arrive_by":
@@ -366,8 +387,8 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     return RideNotes(
         drop=drivers["drop"],
         pick=drivers["pick"],
-        stay=flags["stay"],
-        along=flags["along"],
+        stay=stay,
+        along=tuple(along),
         arrive_by=arrive_by,
         travel=travel,
         has_block=doc.header is not None,
@@ -378,8 +399,12 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
 def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
     if fld in ("drop", "pick"):
         return directory.resolve(str(value or ""))
-    if fld in _YES_NO:
+    if fld == "stay":
         return bool(value)
+    if fld == "along":
+        names = [value] if isinstance(value, str) else list(value) if isinstance(value, Iterable) else []
+        kids = [directory.kid(str(v)) for v in names]
+        return tuple(dict.fromkeys(k for k in kids if k is not None))
     if isinstance(value, (int, float)):
         return int(value)
     return None
@@ -391,8 +416,11 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
     if fld in ("drop", "pick"):
         v = str(value)
         return None if v == UNASSIGNED else f"{label}: {directory.display(v)}"
-    if fld in _YES_NO:
+    if fld == "stay":
         return f"{label}: yes" if value else None
+    if fld == "along":
+        assert isinstance(value, tuple)
+        return f"{label}: {', '.join(directory.kids[k] for k in value)}" if value else None
     if not isinstance(value, int):
         return None
     if fld == "arrive_by":

@@ -4,9 +4,9 @@
 //
 // Times are minutes after midnight on the event's day. Drivers: 'mom' (Robin), 'dad' (Sam).
 // Any other drop/pick value is a free-form carpool name; '' means unassigned, 'none' means not needed.
-// An event with along: true is a take-along: its kid leaves home with the same driver's trip before it
-// (piggybacking), instead of the driver coming home to collect them. Changed 2026-11-03 from a
-// per-driver, per-day toggle, after Marty explained take-along is per event.
+// An event's along lists the kids taken along on its drop-off: they leave home in the same car, so the
+// driver can go on to their own drop-offs without coming home for them (piggybacking). Changed
+// 2026-11-03 from a per-driver, per-day toggle, after Marty explained take-along is per event.
 // The example data, place names and travel table below stand in for the Google calendars
 // and the Routes API.
 'use strict';
@@ -100,13 +100,8 @@ function planDriver(d, events, busy) {
       if (car.indexOf(kid) < 0) {
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
         car = [kid];
-        // Take-along drop-offs right after this one leave home now too, so there's no trip back for them.
-        for (var j = i + 1; j < tasks.length; j++) {
-          var o = tasks[j];
-          if (o.type === 'pick') continue;
-          if (!o.e.along) break;
-          if (car.indexOf(o.e.kid) < 0) car.push(o.e.kid);
-        }
+        // The kids taken along on this drop-off leave home in the same car.
+        (k.e.along || []).forEach(function (a) { if (car.indexOf(a) < 0) car.push(a); });
         cur().car = car.slice();
       }
       car = car.filter(function (x) { return x !== kid; });
@@ -271,13 +266,15 @@ function suggestionsFor(issue, events, base, busy) {
         if (e[f] === d) cands.push({ label: PEOPLE[o] + ' does ' + K[e.kid].name + '’s ' + (f === 'drop' ? 'drop-off' : 'pick-up'), change: { id: e.id, field: f, value: o }, who: o });
       });
     });
-    // Take a kid along on an earlier drop-off by the same driver, within 45 minutes of it.
+    // Take a kid along on an earlier drop-off by the same driver, at most 45 minutes before theirs.
     events.forEach(function (e) {
-      if (e.drop !== d || e.along) return;
-      var earlier = events.some(function (f) {
-        return f !== e && f.drop === d && arriveAt(e) - arriveAt(f) >= 0 && arriveAt(e) - arriveAt(f) <= 45;
+      if (e.drop !== d) return;
+      events.forEach(function (f) {
+        var gap = arriveAt(e) - arriveAt(f);
+        if (f === e || f.drop !== d || f.kid === e.kid || gap < 0 || gap > 45) return;
+        if ((f.along || []).indexOf(e.kid) >= 0) return;
+        cands.push({ label: null, change: { id: f.id, field: 'along', value: (f.along || []).concat([e.kid]) }, who: d, kid: e.kid });
       });
-      if (earlier) cands.push({ label: null, change: { id: e.id, field: 'along', value: true }, who: d, kid: e.kid });
     });
   }
   var baseSoft = base.soft.map(issueKey);

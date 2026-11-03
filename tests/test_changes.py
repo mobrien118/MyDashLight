@@ -244,18 +244,19 @@ async def test_take_along(hass: HomeAssistant, google: FakeGoogle) -> None:
     # Robin comes home for Ben between the drop-offs.
     assert first_drive(entry)["kids"] == [AVA]
 
-    await call(hass, "set_take_along", event="swim", on=True)
+    await call(hass, "set_take_along", event="piano", kids=["ben"])
 
-    assert google.event(BEN, "swim")["description"] == (
-        "--- Rides ---\nDrop-off: Robin\nPick-up: Robin\nTake along: yes"
+    assert google.event(AVA, "piano")["description"] == (
+        "--- Rides ---\nDrop-off: Robin\nPick-up: Robin\nTake along: Ben"
     )
-    assert planned(entry, "swim")["along"] is True
+    assert planned(entry, "piano")["along"] == [BEN]
     # Now Ben rides along to Ava's drop-off, then on to the pool.
     assert first_drive(entry)["kids"] == [AVA, BEN]
 
-    await call(hass, "set_take_along", event="swim", on=False)
-    assert planned(entry, "swim")["along"] is False
+    await call(hass, "set_take_along", event="piano")
+    assert planned(entry, "piano")["along"] == []
     assert first_drive(entry)["kids"] == [AVA]
+    assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Robin"
 
 
 def suggestions(entry: MockConfigEntry) -> list[dict[str, Any]]:
@@ -291,10 +292,10 @@ async def test_apply_a_take_along_fix(hass: HomeAssistant, google: FakeGoogle) -
     google.add(ROBIN, **timed("work", "Work", "2026-11-03T09:00:00-06:00", "2026-11-03T15:30:00-06:00"))
     entry = await load(hass)
     along = [s for s in suggestions(entry) if s["change"]["field"] == "along"]
-    assert [(s["id"], s["label"]) for s in along] == [("2026-11-03|swim|along|yes", "Take Ben along")]
+    assert [(s["id"], s["label"]) for s in along] == [(f"2026-11-03|piano|along|{BEN}", "Take Ben along")]
 
     await call(hass, "apply_suggestion", suggestion=along[0]["id"])
 
-    assert google.event(BEN, "swim")["description"].endswith("Take along: yes")
-    assert planned(entry, "swim")["along"] is True
+    assert google.event(AVA, "piano")["description"].endswith("Take along: Ben")
+    assert planned(entry, "piano")["along"] == [BEN]
     assert first_drive(entry)["kids"] == [AVA, BEN]

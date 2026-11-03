@@ -23,7 +23,7 @@ from .const import (
     ATTR_DAYS,
     ATTR_DRIVER,
     ATTR_EVENT,
-    ATTR_ON,
+    ATTR_KIDS,
     ATTR_SCOPE,
     ATTR_SIDE,
     ATTR_STAY,
@@ -66,7 +66,9 @@ SET_RIDE_SCHEMA = vol.Schema(
 )
 SET_STAY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_STAY): cv.boolean})
 SET_ARRIVE_BY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Optional(ATTR_TIME): vol.Any(None, cv.time)})
-SET_TAKE_ALONG_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_ON): cv.boolean})
+SET_TAKE_ALONG_SCHEMA = vol.Schema(
+    {**_EVENT_FIELDS, vol.Optional(ATTR_KIDS, default=[]): vol.All(cv.ensure_list, [cv.string])}
+)
 APPLY_SUGGESTION_SCHEMA = vol.Schema({vol.Required(ATTR_SUGGESTION): cv.string})
 
 
@@ -135,7 +137,7 @@ async def _async_set_arrive_by(call: ServiceCall) -> None:
 
 
 async def _async_set_take_along(call: ServiceCall) -> None:
-    await _async_change_event(call, RideChange(along=call.data[ATTR_ON]))
+    await _async_change_event(call, RideChange(along=tuple(call.data[ATTR_KIDS])))
 
 
 async def _async_apply_suggestion(call: ServiceCall) -> None:
@@ -146,7 +148,13 @@ async def _async_apply_suggestion(call: ServiceCall) -> None:
             for suggestion in issue.get("suggestions", ()):
                 if suggestion["id"] == wanted:
                     change = suggestion["change"]
-                    ride = RideChange(**{change["field"]: change["value"]})
+                    value = change["value"]
+                    if change["field"] == "along":
+                        ride = RideChange(along=tuple(value))
+                    elif change["field"] == "drop":
+                        ride = RideChange(drop=value)
+                    else:
+                        ride = RideChange(pick=value)
                     await _async_change_event(call, ride, ride_id=change["id"], day=day["date"])
                     return
     raise ServiceValidationError(translation_domain=DOMAIN, translation_key="suggestion_gone")

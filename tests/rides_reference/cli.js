@@ -73,7 +73,7 @@ function scenarios() {
   var day = function (i) { return P.cloneEvents().filter(function (e) { return e.day === i; }); };
   var out = P.DAYS.map(function (d, i) { return scenario(d.label + ' (example week)', i, day(i)); });
   var t1 = day(0);
-  t1.forEach(function (e) { if (e.id === 'football') e.along = true; });
+  t1.forEach(function (e) { if (e.id === 'soccer') e.along = ['ben']; });
   out.push(scenario('Thursday with Sam taking Ben along to Cleo’s drop-off', 0, t1));
   var t2 = day(0);
   t2.forEach(function (e) { if (e.id === 'soccer') e.drop = 'mom'; });

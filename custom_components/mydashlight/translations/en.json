@@ -263,15 +263,15 @@
     },
     "set_take_along": {
       "name": "Set take-along",
-      "description": "Sets whether the kid rides along on the same driver's trip just before this drop-off, so the driver doesn't come home for them.",
+      "description": "Sets which kids ride along on this drop-off, so the driver can go on to their own drop-offs without coming home for them.",
       "fields": {
         "event": {
           "name": "Event",
           "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
         },
-        "on": {
-          "name": "Take along",
-          "description": "Whether the kid rides along."
+        "kids": {
+          "name": "Kids",
+          "description": "The kids taken along, by name. Leave empty to take nobody along."
         },
         "scope": {
           "name": "Repeating events",

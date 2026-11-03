@@ -120,19 +120,42 @@ def test_stay(value: str, stay: bool) -> None:
     assert notes.problems == ()
 
 
+KIDS = DriverDirectory(names={"mom": "Robin", "dad": "Sam"}, kids={"k1": "Ava", "k2": "Ben", "k3": "Cleo"})
+
+
 @pytest.mark.parametrize("label", ["Take along", "Take-along", "Takealong", "Along"])
 def test_take_along(label: str) -> None:
-    assert parse(f"{label}: yes").along is True
-    notes = parse(f"{label}: sometimes")
-    assert notes.along is False
-    assert notes.problems == ("Take along: “sometimes” isn’t yes or no",)
+    assert parse_notes(f"{label}: Ben", KIDS).along == ("k2",)
+
+
+@pytest.mark.parametrize(
+    ("value", "along"),
+    [
+        ("Ben, Cleo", ("k2", "k3")),
+        ("ben and cleo", ("k2", "k3")),
+        ("Cleo & Ben", ("k3", "k2")),
+        ("Ben + Ben", ("k2",)),
+        ("none", ()),
+        ("", ()),
+    ],
+)
+def test_take_along_lists(value: str, along: tuple[str, ...]) -> None:
+    notes = parse_notes(f"Take along: {value}", KIDS)
+    assert notes.along == along
+    assert notes.problems == ()
+
+
+def test_take_along_names_someone_who_is_not_a_kid() -> None:
+    notes = parse_notes("Take along: Ben, Zed", KIDS)
+    assert notes.along == ("k2",)
+    assert notes.problems == ("Take along: “Zed” isn’t one of the kids",)
 
 
 def test_write_take_along() -> None:
-    text = write_notes("Bring water.\n\n--- Rides ---\nDrop-off: Sam", DIRECTORY, along=True)
-    assert text == "Bring water.\n\n--- Rides ---\nDrop-off: Sam\nTake along: yes"
-    assert write_notes(text, DIRECTORY, along=False) == "Bring water.\n\n--- Rides ---\nDrop-off: Sam"
-    assert write_notes(text, DIRECTORY, along=True) == text
+    text = write_notes("Bring water.\n\n--- Rides ---\nDrop-off: Sam", KIDS, along=["ben", "k3"])
+    assert text == "Bring water.\n\n--- Rides ---\nDrop-off: Sam\nTake along: Ben, Cleo"
+    assert write_notes(text, KIDS, along=("k2", "k3")) == text
+    assert write_notes(text, KIDS, along=()) == "Bring water.\n\n--- Rides ---\nDrop-off: Sam"
 
 
 def test_unreadable_values_are_reported_not_guessed() -> None:

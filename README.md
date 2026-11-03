@@ -80,7 +80,7 @@ Bring shin guards. Field 3.
 Drop-off: Sam
 Pick-up: the Parkers
 Stay: yes
-Take along: yes
+Take along: Ben
 Arrive by: 5:15 PM
 Travel: 25 min
 ```
@@ -89,7 +89,7 @@ Travel: 25 min
 | --- | --- | --- |
 | Drop-off, Pick-up | A parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver) | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
-| Take along | yes | The driver comes home for this kid between drop-offs. With yes, the kid rides along on the same driver's trip just before this drop-off |
+| Take along | Kids' names, such as Ben, Cleo | Nobody else rides along. Kids named here leave home in the same car on this drop-off, so the driver can go on to their own drop-offs without coming home for them |
 | Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive 5 minutes before the start |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 
@@ -110,7 +110,7 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to a few minutes before the start |
-| `mydashlight.set_take_along` | Whether the kid rides along on the same driver's trip just before this drop-off, so the driver doesn't come home for them |
+| `mydashlight.set_take_along` | Which kids ride along on this drop-off (`kids`, by name), so the driver can go on to their own drop-offs without coming home for them. No kids takes nobody along |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
 
 The event actions take the event's `id` from `get_plan`. For a repeating event, `scope: this`
