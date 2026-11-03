@@ -4,16 +4,16 @@ Signs in to Google, reads the kids' calendars and the parents' own calendars eve
 and plans the week's rides with drive times from Google Routes. ``mydashlight.get_plan``
 returns the plan, and the other services save who drives, Stay, Take along and Arrive by into
 the events' notes. The kitchen app subscribes to ``mydashlight/rides/subscribe`` for the plan as
-it changes.
+it changes. Each parent can get a reminder on their phone before each drive leaves.
 """
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -25,6 +25,7 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
+from .alerts import CalendarReminders, Notifier, async_remove_sent
 from .api import OAuthTokens
 from .const import CONF_ROUTES_DAILY_LIMIT, CONF_ROUTES_KEY, DEFAULT_ROUTES_DAILY_LIMIT, DOMAIN, SIGNAL_PLAN_UPDATED
 from .coordinator import MyDashLightCoordinator
@@ -44,7 +45,9 @@ class MyDashLightData:
     settings: HubSettings
     api: GoogleCalendarApi
     coordinator: MyDashLightCoordinator
-    write_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    notifier: Notifier
+    calendar_reminders: CalendarReminders
+    write_lock: asyncio.Lock
     """One change to Google at a time, so two taps don't race each other."""
 
 
@@ -91,14 +94,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     await lookups.async_load()
     coordinator = MyDashLightCoordinator(hass, entry, api, settings, lookups)
     await coordinator.async_config_entry_first_refresh()
-    entry.runtime_data = MyDashLightData(settings, api, coordinator)
-    # Tell the app's live subscriptions about every new plan. This listener also keeps the
-    # coordinator polling, which it only does while something listens.
-    entry.async_on_unload(
-        coordinator.async_add_listener(lambda: async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, entry))
-    )
+    notifier = Notifier(hass, settings.reminders)
+    await notifier.async_load()
+    lock = asyncio.Lock()
+    reminders = CalendarReminders(hass, api, lock, settings.reminders)
+    entry.runtime_data = MyDashLightData(settings, api, coordinator, notifier, reminders, lock)
+
+    @callback
+    def plan_updated() -> None:
+        # Tell the app's live subscriptions and the reminders about every new plan.
+        async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, entry)
+        if coordinator.last_update_success:
+            notifier.async_plan_updated(coordinator.data.days)
+            reminders.async_plan_updated(coordinator.data.days, coordinator.data.week.days)
+
+    # This listener also keeps the coordinator polling, which it only does while something listens.
+    entry.async_on_unload(coordinator.async_add_listener(plan_updated))
+    entry.async_on_unload(notifier.async_stop)
+    entry.async_on_unload(reminders.async_stop)
     entry.async_on_unload(lambda: async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, None))
-    async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, entry)
+    plan_updated()
     # The kitchen app: the Rides item in the sidebar, and the kitchen page.
     await async_register_panel(hass)
     entry.async_on_unload(lambda: async_remove_panel(hass))
@@ -111,5 +126,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> None:
-    """Delete the saved drive times along with the entry."""
+    """Delete the saved drive times and the record of sent reminders along with the entry."""
     await RoutesLookups(hass, None, 0).async_remove()
+    await async_remove_sent(hass)

@@ -28,6 +28,7 @@ from .planner import (
     Segment,
     TravelFn,
     fmt,
+    fmt12,
     minutes_text,
     plan_all,
 )
@@ -80,10 +81,16 @@ class Outing:
     end: float
     legs: list[Segment]
     lead: str = ""
+    title: str = ""
+    """What the outing is for, such as "Drive Ava to Piano"."""
     lines: list[str] = field(default_factory=list)
     kids: list[str] = field(default_factory=list)
     warn: str = ""
     target: RideEvent | None = None
+    first_drop: RideEvent | None = None
+    """The first event someone is dropped off at, which holds the calendar reminder."""
+    riders: dict[str, str] = field(default_factory=dict)
+    """What each kid in the car needs to know, by kid: when they leave or are picked up."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,6 +222,13 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
     for o in outings:
         lines: list[str] = []
         kids: list[str] = []
+        jobs: list[tuple[str, str, list[str]]] = []
+        riders: dict[str, str] = {}
+        name = labels.driver(d)
+        first = o.legs[0]
+        if first.type == "drive" and first.from_loc == HOME:
+            for x in first.kids:
+                riders[x] = f"Leave home at {fmt12(o.start)} with {name}"
         for g in o.legs:
             for x in g.kids:
                 if x not in kids:
@@ -225,6 +239,22 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
             at = fmt(s.arrive)
             place = labels.short_place(s.loc)
             k = labels.kid(s.event.kid) if s.event else ""
+            if s.kind in ("drop", "stay") and o.first_drop is None:
+                o.first_drop = s.event
+            if s.kind == "pick" and s.event is not None:
+                when = fmt12(max(s.arrive, s.ready or 0))
+                if s.event.kid in riders:
+                    riders[s.event.kid] += f". Pick-up at {when} at {place}"
+                else:
+                    riders[s.event.kid] = f"{name} picks you up at {place} at {when}"
+            if s.kind == "fetch":
+                for x in s.car:
+                    riders.setdefault(x, f"{name} picks you up at home at {fmt12(s.arrive)}")
+            if s.kind in ("drop", "stay", "pick") and k:
+                if jobs and jobs[-1][0] == s.kind and jobs[-1][1] == place:
+                    jobs[-1][2].append(k)
+                else:
+                    jobs.append((s.kind, place, [k]))
             if s.kind == "drop":
                 lines.append(f"{at}  {place}, drop off {k}")
             elif s.kind == "stay":
@@ -245,16 +275,38 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         for b in busy.get(d, ()):
             if b.start < o.end and b.end > o.start:
                 warn = f"Still at {b.title} until {fmt(b.end)}"
-        first = o.legs[0]
         if first.type == "drive" and first.from_loc == HOME:
             o.lead = f"Leave {fmt(o.start)}"
         else:
             o.lead = f"From {labels.short_place(first.from_loc or first.loc or '')} {fmt(o.start)}"
         o.lines = lines
+        o.title = _outing_title(jobs)
         o.kids = kids
+        o.riders = {x: riders.get(x, f"Ride with {name} at {fmt12(o.start)}") for x in kids}
         o.warn = warn
         o.target = next((g.serves for g in o.legs if g.serves is not None), None)
     return outings
+
+
+def _outing_title(jobs: list[tuple[str, str, list[str]]]) -> str:
+    """ "Drive Ava to Piano", "Pick up Ava and Ben at School", or each stop in turn."""
+    if not jobs:
+        return "Drive"
+    if len(jobs) == 1:
+        kind, place, names = jobs[0]
+        who = _and(names)
+        if kind == "drop":
+            return f"Drive {who} to {place}"
+        if kind == "stay":
+            return f"Drive {who} to {place} and stay"
+        return f"Pick up {who} at {place}"
+    verbs = {"drop": "drop off {} at {}", "stay": "take {} to {} and stay", "pick": "pick up {} at {}"}
+    text = ", ".join(verbs[kind].format(_and(names), place) for kind, place, names in jobs)
+    return text[0].upper() + text[1:]
+
+
+def _and(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
 
 
 def _card_lines(

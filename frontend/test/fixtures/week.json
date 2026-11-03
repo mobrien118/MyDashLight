@@ -237,6 +237,7 @@
        "start": 930,
        "end": 1000,
        "lead": "Leave 3:30",
+       "title": "Drive Ava to Piano studio and stay",
        "lines": [
         "3:40  Piano studio, stay with Ava",
         "4:30  Leave Piano studio",
@@ -246,12 +247,17 @@
         "kid-a@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "piano"
+       "target": "piano",
+       "first_drop": "piano",
+       "riders": {
+        "kid-a@group.calendar.google.com": "Leave home at 3:30 PM with Robin"
+       }
       },
       {
        "start": 1095,
        "end": 1125,
        "lead": "Leave 6:15",
+       "title": "Pick up Cleo at Soccer fields",
        "lines": [
         "6:30  Soccer fields, pick up Cleo",
         "6:45  Home"
@@ -260,7 +266,11 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "soccer"
+       "target": "soccer",
+       "first_drop": null,
+       "riders": {
+        "kid-c@group.calendar.google.com": "Robin picks you up at Soccer fields at 6:30 PM"
+       }
       }
      ],
      "busy": []
@@ -367,6 +377,7 @@
        "start": 985,
        "end": 1055,
        "lead": "Leave 4:25",
+       "title": "Drop off Cleo at Soccer fields, drop off Ben at Football field",
        "lines": [
         "4:40  Soccer fields, drop off Cleo",
         "4:55  Home, get Ben",
@@ -378,12 +389,18 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": "Still at Work until 4:40",
-       "target": "soccer"
+       "target": "soccer",
+       "first_drop": "soccer",
+       "riders": {
+        "kid-c@group.calendar.google.com": "Leave home at 4:25 PM with Sam",
+        "kid-b@group.calendar.google.com": "Sam picks you up at home at 4:55 PM"
+       }
       },
       {
        "start": 1120,
        "end": 1160,
        "lead": "Leave 6:40",
+       "title": "Pick up Ben at Football field",
        "lines": [
         "7:00  Football field, pick up Ben",
         "7:20  Home"
@@ -392,7 +409,11 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "football"
+       "target": "football",
+       "first_drop": null,
+       "riders": {
+        "kid-b@group.calendar.google.com": "Sam picks you up at Football field at 7:00 PM"
+       }
       }
      ],
      "busy": [
@@ -817,6 +838,7 @@
        "start": 1000,
        "end": 1030,
        "lead": "Leave 4:40",
+       "title": "Drive Cleo to Soccer fields",
        "lines": [
         "4:55  Soccer fields, drop off Cleo",
         "5:10  Home"
@@ -825,12 +847,17 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "fri-soccer"
+       "target": "fri-soccer",
+       "first_drop": "fri-soccer",
+       "riders": {
+        "kid-c@group.calendar.google.com": "Leave home at 4:40 PM with Robin"
+       }
       },
       {
        "start": 1065,
        "end": 1095,
        "lead": "Leave 5:45",
+       "title": "Pick up Cleo at Soccer fields",
        "lines": [
         "6:00  Soccer fields, pick up Cleo",
         "6:15  Home"
@@ -839,7 +866,11 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "fri-soccer"
+       "target": "fri-soccer",
+       "first_drop": null,
+       "riders": {
+        "kid-c@group.calendar.google.com": "Robin picks you up at Soccer fields at 6:00 PM"
+       }
       }
      ],
      "busy": []
@@ -920,6 +951,7 @@
        "start": 1066,
        "end": 1084,
        "lead": "Leave 5:46",
+       "title": "Drive Ben to Liam's house",
        "lines": [
         "5:55  Liam's house, drop off Ben",
         "6:04  Home"
@@ -928,12 +960,17 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "fri-party"
+       "target": "fri-party",
+       "first_drop": "fri-party",
+       "riders": {
+        "kid-b@group.calendar.google.com": "Leave home at 5:46 PM with Sam"
+       }
       },
       {
        "start": 1221,
        "end": 1239,
        "lead": "Leave 8:21",
+       "title": "Pick up Ben at Liam's house",
        "lines": [
         "8:30  Liam's house, pick up Ben",
         "8:39  Home"
@@ -942,7 +979,11 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "fri-party"
+       "target": "fri-party",
+       "first_drop": null,
+       "riders": {
+        "kid-b@group.calendar.google.com": "Sam picks you up at Liam's house at 8:30 PM"
+       }
       }
      ],
      "busy": [
@@ -1226,6 +1267,7 @@
        "start": 620,
        "end": 800,
        "lead": "Leave 10:20",
+       "title": "Drive Ben to Football field and stay",
        "lines": [
         "10:40  Football field, stay with Ben",
         "1:00  Leave Football field",
@@ -1235,7 +1277,11 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "sat-football"
+       "target": "sat-football",
+       "first_drop": "sat-football",
+       "riders": {
+        "kid-b@group.calendar.google.com": "Leave home at 10:20 AM with Robin"
+       }
       }
      ],
      "busy": []
@@ -1330,6 +1376,7 @@
        "start": 510,
        "end": 630,
        "lead": "Leave 8:30",
+       "title": "Drive Cleo to Soccer fields and stay",
        "lines": [
         "8:45  Soccer fields, stay with Cleo",
         "10:15  Leave Soccer fields",
@@ -1339,12 +1386,17 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "sat-soccer"
+       "target": "sat-soccer",
+       "first_drop": "sat-soccer",
+       "riders": {
+        "kid-c@group.calendar.google.com": "Leave home at 8:30 AM with Sam"
+       }
       },
       {
        "start": 892,
        "end": 908,
        "lead": "Leave 2:52",
+       "title": "Pick up Ava at Middle school gym",
        "lines": [
         "3:00  Middle school gym, pick up Ava",
         "3:08  Home"
@@ -1353,7 +1405,11 @@
         "kid-a@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "sat-tourney"
+       "target": "sat-tourney",
+       "first_drop": null,
+       "riders": {
+        "kid-a@group.calendar.google.com": "Sam picks you up at Middle school gym at 3:00 PM"
+       }
       }
      ],
      "busy": []
@@ -1569,6 +1625,7 @@
        "start": 1063,
        "end": 1087,
        "lead": "Leave 5:43",
+       "title": "Drive Ava to Church",
        "lines": [
         "5:55  Church, drop off Ava",
         "6:07  Home"
@@ -1577,7 +1634,11 @@
         "kid-a@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "sun-youth"
+       "target": "sun-youth",
+       "first_drop": "sun-youth",
+       "riders": {
+        "kid-a@group.calendar.google.com": "Leave home at 5:43 PM with Robin"
+       }
       }
      ],
      "busy": []
@@ -1864,6 +1925,7 @@
        "start": 930,
        "end": 950,
        "lead": "Leave 3:30",
+       "title": "Drive Ava to Piano studio",
        "lines": [
         "3:40  Piano studio, drop off Ava",
         "3:50  Home"
@@ -1873,12 +1935,18 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "mon-piano"
+       "target": "mon-piano",
+       "first_drop": "mon-piano",
+       "riders": {
+        "kid-a@group.calendar.google.com": "Leave home at 3:30 PM with Robin",
+        "kid-b@group.calendar.google.com": "Leave home at 3:30 PM with Robin"
+       }
       },
       {
        "start": 980,
        "end": 1000,
        "lead": "Leave 4:20",
+       "title": "Pick up Ava at Piano studio",
        "lines": [
         "4:30  Piano studio, pick up Ava",
         "4:40  Home"
@@ -1887,19 +1955,26 @@
         "kid-a@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "mon-piano"
+       "target": "mon-piano",
+       "first_drop": null,
+       "riders": {
+        "kid-a@group.calendar.google.com": "Robin picks you up at Piano studio at 4:30 PM"
+       }
       },
       {
        "start": 1025,
        "end": 1065,
        "lead": "Leave 5:05",
+       "title": "Drive Ben to Football field",
        "lines": [
         "5:25  Football field, drop off Ben",
         "5:45  Home"
        ],
        "kids": [],
        "warn": null,
-       "target": "mon-football"
+       "target": "mon-football",
+       "first_drop": "mon-football",
+       "riders": {}
       }
      ],
      "busy": []
@@ -1942,6 +2017,7 @@
        "start": 1120,
        "end": 1160,
        "lead": "Leave 6:40",
+       "title": "Pick up Ben at Football field",
        "lines": [
         "7:00  Football field, pick up Ben",
         "7:20  Home"
@@ -1950,7 +2026,11 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "mon-football"
+       "target": "mon-football",
+       "first_drop": null,
+       "riders": {
+        "kid-b@group.calendar.google.com": "Sam picks you up at Football field at 7:00 PM"
+       }
       }
      ],
      "busy": [
@@ -2250,6 +2330,7 @@
        "start": 1000,
        "end": 1030,
        "lead": "Leave 4:40",
+       "title": "Drive Cleo to Soccer fields",
        "lines": [
         "4:55  Soccer fields, drop off Cleo",
         "5:10  Home"
@@ -2258,12 +2339,17 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "tue-soccer"
+       "target": "tue-soccer",
+       "first_drop": "tue-soccer",
+       "riders": {
+        "kid-c@group.calendar.google.com": "Leave home at 4:40 PM with Robin"
+       }
       },
       {
        "start": 1192,
        "end": 1208,
        "lead": "Leave 7:52",
+       "title": "Pick up Ava at Middle school gym",
        "lines": [
         "8:00  Middle school gym, pick up Ava",
         "8:08  Home"
@@ -2272,7 +2358,11 @@
         "kid-a@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "tue-volley"
+       "target": "tue-volley",
+       "first_drop": null,
+       "riders": {
+        "kid-a@group.calendar.google.com": "Robin picks you up at Middle school gym at 8:00 PM"
+       }
       }
      ],
      "busy": []
@@ -2370,6 +2460,7 @@
        "start": 1064,
        "end": 1151,
        "lead": "Leave 5:44",
+       "title": "Drop off Cleo at Dance studio, pick up Cleo at Soccer fields, pick up Cleo at Dance studio",
        "lines": [
         "5:55  Dance studio, drop off Cleo",
         "6:30  Soccer fields, pick up Cleo",
@@ -2380,7 +2471,11 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "tue-art"
+       "target": "tue-art",
+       "first_drop": "tue-art",
+       "riders": {
+        "kid-c@group.calendar.google.com": "Leave home at 5:44 PM with Sam. Pick-up at 6:30 PM at Soccer fields. Pick-up at 7:00 PM at Dance studio"
+       }
       }
      ],
      "busy": [
@@ -2690,6 +2785,7 @@
        "start": 944,
        "end": 966,
        "lead": "Leave 3:44",
+       "title": "Drive Cleo to Dance studio",
        "lines": [
         "3:55  Dance studio, drop off Cleo",
         "4:06  Home"
@@ -2698,12 +2794,17 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "wed-dance"
+       "target": "wed-dance",
+       "first_drop": "wed-dance",
+       "riders": {
+        "kid-c@group.calendar.google.com": "Leave home at 3:44 PM with Robin"
+       }
       },
       {
        "start": 1009,
        "end": 1031,
        "lead": "Leave 4:49",
+       "title": "Pick up Cleo at Dance studio",
        "lines": [
         "5:00  Dance studio, pick up Cleo",
         "5:11  Home"
@@ -2712,7 +2813,11 @@
         "kid-c@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "wed-dance"
+       "target": "wed-dance",
+       "first_drop": null,
+       "riders": {
+        "kid-c@group.calendar.google.com": "Robin picks you up at Dance studio at 5:00 PM"
+       }
       }
      ],
      "busy": [
@@ -2799,6 +2904,7 @@
        "start": 1025,
        "end": 1065,
        "lead": "Leave 5:05",
+       "title": "Drive Ben to Football field",
        "lines": [
         "5:25  Football field, drop off Ben",
         "5:45  Home"
@@ -2807,12 +2913,17 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "wed-football"
+       "target": "wed-football",
+       "first_drop": "wed-football",
+       "riders": {
+        "kid-b@group.calendar.google.com": "Leave home at 5:05 PM with Sam"
+       }
       },
       {
        "start": 1120,
        "end": 1160,
        "lead": "Leave 6:40",
+       "title": "Pick up Ben at Football field",
        "lines": [
         "7:00  Football field, pick up Ben",
         "7:20  Home"
@@ -2821,7 +2932,11 @@
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "wed-football"
+       "target": "wed-football",
+       "first_drop": null,
+       "riders": {
+        "kid-b@group.calendar.google.com": "Sam picks you up at Football field at 7:00 PM"
+       }
       }
      ],
      "busy": [

@@ -81,6 +81,20 @@ ATTR_SUGGESTION: Final = "suggestion"
 SCOPE_THIS: Final = "this"
 SCOPE_SERIES: Final = "series"
 
+# Reminders, set on the options' Reminders page. Each person's notifier is a service name in
+# the notify domain, such as "mobile_app_robins_phone".
+CONF_MOM_NOTIFY: Final = "mom_notify"
+CONF_DAD_NOTIFY: Final = "dad_notify"
+CONF_KID_NOTIFY: Final = "kid_notify"
+"""Each kid's notify service, by the kid's calendar id."""
+CONF_REMIND_BEFORE: Final = "remind_before"
+CONF_CALENDAR_REMINDERS: Final = "calendar_reminders"
+"""Save each drive's reminder on its first drop-off event in Google Calendar too."""
+CONF_NO_DRIVER_ALERTS: Final = "no_driver_alerts"
+DEFAULT_REMIND_BEFORE: Final = 15
+"""Minutes before leaving."""
+NOTIFY_OFF: Final = "off"
+
 # Drive times from Google Routes, set on the options' Drive times page.
 CONF_ROUTES_KEY: Final = "routes_api_key"
 CONF_ROUTES_DAILY_LIMIT: Final = "routes_daily_limit"

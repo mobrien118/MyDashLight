@@ -45,6 +45,8 @@ OPTIONS: dict[str, Any] = {
     "kids": [{"calendar_id": AVA, "name": "Ava"}, {"calendar_id": BEN, "name": "Ben"}],
     "mom_calendars": [ROBIN],
     "dad_calendars": [SAM],
+    # Off here so the tests of other changes see only their own saves. test_alerts turns it on.
+    "calendar_reminders": False,
 }
 
 

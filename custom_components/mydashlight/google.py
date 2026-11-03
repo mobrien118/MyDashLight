@@ -26,8 +26,10 @@ _MAX_PAGES: Final = 40
 _CALENDAR_FIELDS: Final = "nextPageToken,items(id,summary,summaryOverride,primary,accessRole)"
 _EVENT_FIELDS: Final = (
     "nextPageToken,items(id,etag,status,eventType,summary,location,description,start,end,"
-    "transparency,recurringEventId,attendees(self,responseStatus))"
+    "transparency,recurringEventId,attendees(self,responseStatus),reminders,extendedProperties(private))"
 )
+REMINDER_MARK: Final = "mydashlight_reminder"
+"""Private event property holding the minutes of the reminder MyDashLight set, or empty."""
 _NOTES_FIELDS: Final = "id,etag,description,recurringEventId"
 # Event types that never mean a kid's activity or a parent being busy.
 _IGNORED_EVENT_TYPES: Final = frozenset({"workingLocation", "birthday"})
@@ -100,6 +102,16 @@ class CalendarEvent:
     declined: bool = False
     """The signed-in person declined it."""
     recurring_id: str | None = None
+    popups: tuple[int, ...] | None = None
+    """The signed-in person's pop-up reminders, in minutes before the start, or None when
+    the event uses the calendar's default reminders."""
+    private: tuple[tuple[str, str], ...] = ()
+    """Private properties, only seen on this calendar's copy of the event."""
+
+    @property
+    def reminder_mark(self) -> str:
+        """The minutes of the reminder MyDashLight set, or empty when it set none."""
+        return dict(self.private).get(REMINDER_MARK, "")
 
     @property
     def all_day(self) -> bool:
@@ -161,6 +173,37 @@ class GoogleCalendarApi:
             headers={"If-Match": etag},
         )
         return _notes(body, event_id)
+
+    async def async_set_reminder(
+        self,
+        calendar_id: str,
+        event_id: str,
+        etag: str,
+        minutes: int | None,
+        private: Mapping[str, str],
+    ) -> str:
+        """Give an event one pop-up reminder ``minutes`` before it starts, or None to go back
+        to the calendar's default. Marks it as MyDashLight's, so it can be taken back later.
+
+        The reminder is the signed-in person's. Raises :class:`GoogleConflict` when the event
+        changed since ``etag``. Returns the new etag.
+        """
+        reminders: dict[str, Any] = (
+            {"useDefault": True}
+            if minutes is None
+            else {"useDefault": False, "overrides": [{"method": "popup", "minutes": minutes}]}
+        )
+        body = await self._request(
+            "PATCH",
+            _event_path(calendar_id, event_id),
+            {"fields": "id,etag", "sendUpdates": "none"},
+            json={
+                "reminders": reminders,
+                "extendedProperties": {"private": {**private, REMINDER_MARK: "" if minutes is None else str(minutes)}},
+            },
+            headers={"If-Match": etag},
+        )
+        return str(body.get("etag") or "")
 
     async def _pages(self, path: str, params: dict[str, str]) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
@@ -282,7 +325,28 @@ def parse_event(item: Mapping[str, Any], calendar_id: str) -> CalendarEvent | No
         busy=item.get("transparency") != "transparent",
         declined=declined,
         recurring_id=item.get("recurringEventId") if isinstance(item.get("recurringEventId"), str) else None,
+        popups=_popups(item.get("reminders")),
+        private=_private(item.get("extendedProperties")),
     )
+
+
+def _popups(value: object) -> tuple[int, ...] | None:
+    if not isinstance(value, dict) or value.get("useDefault", True):
+        return None
+    return tuple(
+        sorted(
+            int(o["minutes"])
+            for o in value.get("overrides") or []
+            if isinstance(o, dict) and o.get("method") == "popup" and isinstance(o.get("minutes"), int)
+        )
+    )
+
+
+def _private(value: object) -> tuple[tuple[str, str], ...]:
+    private = value.get("private") if isinstance(value, dict) else None
+    if not isinstance(private, dict):
+        return ()
+    return tuple(sorted((str(k), str(v)) for k, v in private.items()))
 
 
 def _when(value: object) -> datetime | date | None:

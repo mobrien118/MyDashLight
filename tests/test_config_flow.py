@@ -135,7 +135,7 @@ async def test_full_flow(
     assert entry.unique_id == ACCOUNT
     assert entry.data["auth_implementation"] == DOMAIN
     assert entry.data["token"]["refresh_token"] == "mock-refresh-token"
-    assert entry.options == {**OPTIONS, "carpools": []}
+    assert entry.options == {k: v for k, v in OPTIONS.items() if k != "calendar_reminders"} | {"carpools": []}
     assert entry.runtime_data.coordinator.last_update_success
 
 
@@ -255,7 +255,7 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["settings", "calendars", "drive_times"]
+    assert result["menu_options"] == ["settings", "calendars", "drive_times", "reminders"]
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     assert result["step_id"] == "settings"
 
