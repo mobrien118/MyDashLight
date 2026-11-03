@@ -1,0 +1,299 @@
+"""Turns a week of Google Calendar events into the planner's input for each day.
+
+Kid calendars give the activities that need rides. Each parent's own calendars give the
+times they can't drive. Pure module, no Home Assistant imports.
+
+Times are wall-clock minutes after midnight in the household's time zone, as the planner
+expects. An evening event that ends after midnight stays on its start day (an end of 1450
+is 12:10 AM). An event that runs past :data:`NEXT_MORNING` the next day, such as a weekend
+trip, is split: the drop-off on its first day and the pick-up on its last day.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
+from datetime import date, datetime, time, timedelta, tzinfo
+from typing import Any, Final
+
+from .google import CalendarEvent
+from .notes import DriverDirectory, RideNotes, parse_notes
+from .planner import HOME, NOT_NEEDED, BusyBlock, Labels, RideEvent, Side, TravelFn
+
+DAY: Final = 1440
+NEXT_MORNING: Final = DAY + 6 * 60
+"""Events ending by 6 AM the next day stay on their start day."""
+NO_TITLE: Final = "Event"
+NO_ADDRESS: Final = "?"
+"""Prefix of the place key for an event with no location."""
+
+
+@dataclass(frozen=True, slots=True)
+class KidCalendar:
+    calendar_id: str
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class CalendarRoles:
+    """Which calendars MyDashLight reads, and what each one means."""
+
+    kids: tuple[KidCalendar, ...] = ()
+    busy: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    """Each routed driver's own calendars, where their events mean they can't drive."""
+
+    @property
+    def calendar_ids(self) -> tuple[str, ...]:
+        """Every calendar to read, each once, kids first."""
+        out: list[str] = []
+        for cal_id in [k.calendar_id for k in self.kids] + [c for ids in self.busy.values() for c in ids]:
+            if cal_id not in out:
+                out.append(cal_id)
+        return tuple(out)
+
+
+@dataclass(frozen=True, slots=True)
+class EventRef:
+    """Where a ride event came from, so a change can be written back to it."""
+
+    calendar_id: str
+    event_id: str
+    etag: str
+    recurring_id: str | None
+    sides: tuple[Side, ...]
+    """The sides this day's copy plans. A split event plans its drop-off on the first day
+    and its pick-up on the last."""
+
+
+@dataclass(slots=True)
+class DayInput:
+    """Everything the planner needs for one day."""
+
+    day: date
+    events: list[RideEvent] = field(default_factory=list)
+    refs: dict[str, EventRef] = field(default_factory=dict)
+    problems: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    """Lines in an event's notes that couldn't be read, by ride event id."""
+    busy: dict[str, list[BusyBlock]] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class WeekInput:
+    days: list[DayInput]
+    labels: Labels
+    kids: tuple[str, ...]
+    travel_overrides: dict[str, int]
+    """Drive minutes set in event notes, by place key."""
+
+
+def window(today: date, days: int, tz: tzinfo) -> tuple[datetime, datetime]:
+    """The time span to read: midnight today until :data:`NEXT_MORNING` after the last day."""
+    start = datetime.combine(today, time(0), tz)
+    end = datetime.combine(today + timedelta(days=days), time(0), tz) + timedelta(minutes=NEXT_MORNING - DAY)
+    return start, end
+
+
+def place_key(location: str) -> str:
+    return " ".join(location.split()).casefold()
+
+
+def short_place(location: str) -> str:
+    """The first part of an address, such as the school's name."""
+    return location.split(",", 1)[0].strip() or location
+
+
+def build_week(
+    events: Mapping[str, Sequence[CalendarEvent]],
+    roles: CalendarRoles,
+    directory: DriverDirectory,
+    today: date,
+    days: int,
+    tz: tzinfo,
+) -> WeekInput:
+    """Sort the events read from each calendar into each day's planner input."""
+    day_list = [today + timedelta(days=i) for i in range(days)]
+    by_day = {d: DayInput(d) for d in day_list}
+    places: dict[str, str] = {}
+    short: dict[str, str] = {}
+    overrides: dict[str, int] = {}
+
+    for kid in roles.kids:
+        for ev in sorted(events.get(kid.calendar_id, ()), key=_sort_key):
+            if ev.all_day or ev.declined:
+                continue
+            assert isinstance(ev.start, datetime)
+            assert isinstance(ev.end, datetime)
+            first = ev.start.astimezone(tz).date()
+            start = _minutes(ev.start, first, tz)
+            end = max(_minutes(ev.end, first, tz), start)
+            title = ev.title or NO_TITLE
+            notes = parse_notes(ev.description, directory, start)
+            base_id = ev.id
+            if ev.location:
+                loc = place_key(ev.location)
+                places.setdefault(loc, ev.location)
+                short.setdefault(loc, short_place(ev.location))
+            else:
+                loc = ""
+            pieces: list[tuple[date, RideEvent, tuple[Side, ...]]] = []
+            if end <= NEXT_MORNING:
+                pieces.append(
+                    (
+                        first,
+                        RideEvent(base_id, kid.calendar_id, title, loc, start, end, **_sides(notes)),
+                        ("drop", "pick"),
+                    )
+                )
+            else:
+                last = ev.end.astimezone(tz).date()
+                pieces.append(
+                    (
+                        first,
+                        RideEvent(
+                            base_id,
+                            kid.calendar_id,
+                            title,
+                            loc,
+                            start,
+                            max(start, DAY),
+                            drop=notes.drop,
+                            pick=NOT_NEEDED,
+                            arrive_by=notes.arrive_by,
+                        ),
+                        ("drop",),
+                    )
+                )
+                pieces.append(
+                    (
+                        last,
+                        RideEvent(
+                            base_id,
+                            kid.calendar_id,
+                            title,
+                            loc,
+                            0,
+                            _minutes(ev.end, last, tz),
+                            drop=NOT_NEEDED,
+                            pick=notes.pick,
+                        ),
+                        ("pick",),
+                    )
+                )
+            for day, ride, sides in pieces:
+                target = by_day.get(day)
+                if target is None:
+                    continue
+                ride_id = _unique_id(base_id, target.refs)
+                if not ride.loc:
+                    key = f"{NO_ADDRESS}{ride_id}"
+                    places[key] = title
+                    short[key] = title
+                    ride = replace(ride, id=ride_id, loc=key)
+                elif ride_id != ride.id:
+                    ride = replace(ride, id=ride_id)
+                target.events.append(ride)
+                target.refs[ride_id] = EventRef(ev.calendar_id, ev.id, ev.etag, ev.recurring_id, sides)
+                if notes.problems:
+                    target.problems[ride_id] = notes.problems
+                if notes.travel is not None and "drop" in sides:
+                    overrides[ride.loc] = max(overrides.get(ride.loc, 0), notes.travel)
+
+    for driver, cal_ids in roles.busy.items():
+        seen: set[tuple[str, str]] = set()
+        for cal_id in cal_ids:
+            for ev in events.get(cal_id, ()):
+                if not ev.busy or ev.declined or (ev.id, str(ev.start)) in seen:
+                    continue
+                seen.add((ev.id, str(ev.start)))
+                for d in day_list:
+                    block = _busy_on(ev, d, tz)
+                    if block is not None:
+                        by_day[d].busy.setdefault(driver, []).append(block)
+    for d in day_list:
+        by_day[d].events.sort(key=lambda e: (e.start, e.end, e.id))
+        for blocks in by_day[d].busy.values():
+            blocks.sort(key=lambda b: (b.start, b.end, b.title))
+
+    return WeekInput(
+        days=[by_day[d] for d in day_list],
+        labels=Labels(
+            kids={k.calendar_id: k.name for k in roles.kids},
+            drivers=dict(directory.names),
+            places={HOME: "Home", **places},
+            short_places={HOME: "Home", **short},
+        ),
+        kids=tuple(k.calendar_id for k in roles.kids),
+        travel_overrides=overrides,
+    )
+
+
+def make_travel(
+    overrides: Mapping[str, int],
+    default: float,
+    base: Callable[[str, str], float | None] | None = None,
+) -> TravelFn:
+    """Drive minutes between two places.
+
+    A drive time set in an event's notes is the time to get to that event, so it wins for
+    trips to that place. Then the computed time, if there is one, then the notes' time for
+    the place being left (usually the same trip the other way), then ``default``.
+    """
+
+    def travel(a: str, b: str) -> float:
+        if a == b:
+            return 0
+        if b in overrides:
+            return overrides[b]
+        if base is not None and not (a.startswith(NO_ADDRESS) or b.startswith(NO_ADDRESS)):
+            minutes = base(a, b)
+            if minutes is not None:
+                return minutes
+        if a in overrides:
+            return overrides[a]
+        return default
+
+    return travel
+
+
+def addresses(week: WeekInput) -> list[str]:
+    """Every place key with a real address, for computing drive times."""
+    return sorted({e.loc for d in week.days for e in d.events if e.loc and not e.loc.startswith(NO_ADDRESS)})
+
+
+def _sides(notes: RideNotes) -> dict[str, Any]:
+    return {"drop": notes.drop, "pick": notes.pick, "stay": notes.stay, "arrive_by": notes.arrive_by}
+
+
+def _sort_key(ev: CalendarEvent) -> tuple[str, str]:
+    return (str(ev.start), ev.id)
+
+
+def _minutes(moment: datetime, day: date, tz: tzinfo) -> int:
+    local = moment.astimezone(tz)
+    return (local.date() - day).days * DAY + local.hour * 60 + local.minute
+
+
+def _unique_id(event_id: str, taken: Iterable[str]) -> str:
+    # The same event can be on two kids' calendars. Each kid gets their own ride event.
+    used = set(taken)
+    if event_id not in used:
+        return event_id
+    n = 2
+    while f"{event_id}~{n}" in used:
+        n += 1
+    return f"{event_id}~{n}"
+
+
+def _busy_on(ev: CalendarEvent, day: date, tz: tzinfo) -> BusyBlock | None:
+    """The part of a parent's event that falls in this day's planning span, if any."""
+    title = ev.title or "Busy"
+    if ev.all_day:
+        assert isinstance(ev.start, date)
+        assert isinstance(ev.end, date)
+        # An all-day event only counts when it's marked Busy. Google marks new ones Free.
+        return BusyBlock(0, DAY, title) if ev.start <= day < ev.end else None
+    assert isinstance(ev.start, datetime)
+    assert isinstance(ev.end, datetime)
+    start = max(_minutes(ev.start, day, tz), 0)
+    end = min(_minutes(ev.end, day, tz), NEXT_MORNING)
+    return BusyBlock(start, end, title) if end > start else None

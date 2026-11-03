@@ -6,17 +6,22 @@ Pure module, no Home Assistant imports.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .const import (
     CONF_ARRIVE_EARLY,
+    CONF_CALENDAR_ID,
     CONF_CARPOOLS,
     CONF_DAD_ALIASES,
+    CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
     CONF_GO_HOME_MARGIN,
+    CONF_KIDS,
     CONF_MOM_ALIASES,
+    CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
+    CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
     CONF_PLANNER,
     CONF_TAKE_ALONG_WINDOW,
@@ -27,6 +32,7 @@ from .const import (
 )
 from .notes import DriverDirectory
 from .planner import PlannerSettings
+from .week import CalendarRoles, KidCalendar
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +40,7 @@ class HubSettings:
     planner: PlannerSettings
     directory: DriverDirectory
     no_address_travel: int
+    roles: CalendarRoles = field(default_factory=CalendarRoles)
 
     @property
     def driver_names(self) -> Mapping[str, str]:
@@ -64,6 +71,13 @@ class HubSettings:
                 carpools=_names(options.get(CONF_CARPOOLS)),
             ),
             no_address_travel=int(planner[CONF_NO_ADDRESS_TRAVEL]),
+            roles=CalendarRoles(
+                kids=_kids(options.get(CONF_KIDS)),
+                busy={
+                    "mom": _ids(options.get(CONF_MOM_CALENDARS)),
+                    "dad": _ids(options.get(CONF_DAD_CALENDARS)),
+                },
+            ),
         )
 
 
@@ -85,3 +99,22 @@ def _names(value: object) -> tuple[str, ...]:
         if name and name.casefold() not in {n.casefold() for n in out}:
             out.append(name)
     return tuple(out)
+
+
+def _kids(value: object) -> tuple[KidCalendar, ...]:
+    if not isinstance(value, (list, tuple)):
+        return ()
+    out: list[KidCalendar] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            continue
+        cal_id = str(item.get(CONF_CALENDAR_ID) or "")
+        if cal_id and all(k.calendar_id != cal_id for k in out):
+            out.append(KidCalendar(cal_id, _name(item.get(CONF_NAME), cal_id)))
+    return tuple(out)
+
+
+def _ids(value: object) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple)):
+        return ()
+    return tuple(dict.fromkeys(str(v) for v in value if v))

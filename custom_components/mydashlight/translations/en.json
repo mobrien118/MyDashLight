@@ -1,9 +1,21 @@
 {
+  "application_credentials": {
+    "description": "MyDashLight signs in to Google with your own OAuth client. Follow the [setup instructions]({more_info_url}): set up the [sign-in screen]({oauth_consent_url}), then [create an OAuth client]({oauth_creds_url}) of type **Web application** and paste its client ID and secret here."
+  },
   "config": {
     "step": {
-      "user": {
-        "title": "Set up MyDashLight",
-        "description": "MyDashLight plans the kids' rides for the two parents who drive. Enter the names to show for each of them. You can change these later.",
+      "pick_implementation": {
+        "title": "Pick the Google OAuth client",
+        "data": {
+          "implementation": "OAuth client"
+        }
+      },
+      "auth": {
+        "title": "Sign in to Google"
+      },
+      "parents": {
+        "title": "The parents who drive",
+        "description": "MyDashLight plans the kids' rides for two parents. Enter the name to show for each. You can change these later.",
         "data": {
           "mom_name": "First parent",
           "dad_name": "Second parent"
@@ -12,20 +24,77 @@
           "mom_name": "The name shown on the ride board, such as Robin.",
           "dad_name": "The name shown on the ride board, such as Sam."
         }
+      },
+      "calendars": {
+        "title": "Pick the calendars",
+        "description": "Signed in as {account}. MyDashLight plans rides for the activities on each kid's calendar. Events on a parent's busy calendars mean that parent can't drive then. Calendars you don't pick are never read.\n\nThe first parent is {mom} and the second is {dad}.",
+        "data": {
+          "kids": "Kids' calendars",
+          "mom_calendars": "First parent's busy calendars",
+          "dad_calendars": "Second parent's busy calendars"
+        },
+        "data_description": {
+          "kids": "One calendar per kid, holding the activities that need rides.",
+          "mom_calendars": "Optional. Events marked Free, and events this parent declined, don't count.",
+          "dad_calendars": "Optional. Events marked Free, and events this parent declined, don't count."
+        }
+      },
+      "kid_name": {
+        "title": "Kid {number} of {count}",
+        "description": "The name shown on the ride board for the calendar {calendar}.",
+        "data": {
+          "name": "Name"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Google again",
+        "description": "Google no longer accepts MyDashLight's sign-in for {account}. Sign in again with the same account."
       }
     },
     "error": {
       "name_required": "Enter a name.",
-      "names_match": "The two parents need different names."
+      "names_match": "The two parents need different names.",
+      "kids_required": "Pick at least one kid's calendar.",
+      "kid_calendar_as_busy": "A kid's calendar can't also be a parent's busy calendar.",
+      "shared_busy_calendar": "Pick each busy calendar for one parent only. A calendar both parents use belongs to neither.",
+      "kid_names_match": "Two kids can't have the same name."
     },
     "abort": {
-      "single_instance_allowed": "MyDashLight is already set up."
+      "single_instance_allowed": "MyDashLight is already set up.",
+      "already_configured": "This Google account is already set up.",
+      "already_in_progress": "MyDashLight setup is already open in another window.",
+      "api_disabled": "The Google Calendar API is turned off in your Google Cloud project. Turn it on, then try again.",
+      "cannot_connect": "Couldn't reach Google Calendar. Try again in a few minutes.",
+      "oauth_unauthorized": "Google turned down the sign-in. Try again.",
+      "no_primary_calendar": "This Google account has no main calendar, so MyDashLight can't tell which account it is.",
+      "wrong_account": "That's a different Google account. Sign in with {account} instead, or remove MyDashLight and set it up again.",
+      "reauth_successful": "Signed in again.",
+      "missing_credentials": "Add your Google OAuth client first, under Settings > Devices & services > Application credentials.",
+      "missing_configuration": "Add your Google OAuth client first, under Settings > Devices & services > Application credentials.",
+      "authorize_url_timeout": "Timed out while making the Google sign-in link.",
+      "no_url_available": "Home Assistant has no URL to send Google back to. Set one under Settings > System > Network. [More help]({docs_url})",
+      "oauth_error": "Google sent back a sign-in that can't be used.",
+      "oauth_failed": "Couldn't finish the Google sign-in.",
+      "oauth_timeout": "Timed out while finishing the Google sign-in.",
+      "oauth_implementation_unavailable": "The Google OAuth client isn't available right now.",
+      "user_rejected_authorize": "The Google sign-in was cancelled: {error}",
+      "unknown": "Something unexpected went wrong. The Home Assistant log has the details."
+    },
+    "create_entry": {
+      "default": "MyDashLight is set up and reading your calendars."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "MyDashLight options",
+        "menu_options": {
+          "settings": "Names and planner timing",
+          "calendars": "Calendars"
+        }
+      },
+      "settings": {
+        "title": "Names and planner timing",
         "data": {
           "mom_name": "First parent",
           "dad_name": "Second parent",
@@ -62,11 +131,81 @@
             }
           }
         }
+      },
+      "calendars": {
+        "title": "Pick the calendars",
+        "description": "Signed in as {account}. MyDashLight plans rides for the activities on each kid's calendar. Events on a parent's busy calendars mean that parent can't drive then. Calendars you don't pick are never read.\n\nThe first parent is {mom} and the second is {dad}.",
+        "data": {
+          "kids": "Kids' calendars",
+          "mom_calendars": "First parent's busy calendars",
+          "dad_calendars": "Second parent's busy calendars"
+        },
+        "data_description": {
+          "kids": "One calendar per kid, holding the activities that need rides.",
+          "mom_calendars": "Optional. Events marked Free, and events this parent declined, don't count.",
+          "dad_calendars": "Optional. Events marked Free, and events this parent declined, don't count."
+        }
+      },
+      "kid_name": {
+        "title": "Kid {number} of {count}",
+        "description": "The name shown on the ride board for the calendar {calendar}.",
+        "data": {
+          "name": "Name"
+        }
       }
     },
     "error": {
       "name_required": "Enter a name.",
-      "names_match": "The two parents need different names."
+      "names_match": "The two parents need different names.",
+      "kids_required": "Pick at least one kid's calendar.",
+      "kid_calendar_as_busy": "A kid's calendar can't also be a parent's busy calendar.",
+      "shared_busy_calendar": "Pick each busy calendar for one parent only. A calendar both parents use belongs to neither.",
+      "kid_names_match": "Two kids can't have the same name."
+    },
+    "abort": {
+      "api_disabled": "The Google Calendar API is turned off in your Google Cloud project. Turn it on, then try again.",
+      "cannot_connect": "Couldn't reach Google Calendar. Try again in a few minutes.",
+      "oauth_unauthorized": "Google turned down the sign-in. Try again.",
+      "not_loaded": "MyDashLight isn't running right now, so it can't list your calendars. Check the Home Assistant log, then try again."
+    }
+  },
+  "services": {
+    "get_plan": {
+      "name": "Get ride plan",
+      "description": "Returns the planned rides for one or more days: each parent's route, the problems found and suggested fixes.",
+      "fields": {
+        "date": {
+          "name": "Date",
+          "description": "The first day to return. Defaults to today."
+        },
+        "days": {
+          "name": "Days",
+          "description": "How many days to return, from 1 to 7."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "MyDashLight isn't running. Check its status under Settings > Devices & services."
+    },
+    "date_not_planned": {
+      "message": "MyDashLight plans {first} through {last}. Pick days in that range."
+    },
+    "no_credentials": {
+      "message": "The Google OAuth client for MyDashLight is missing. Add it under Settings > Devices & services > Application credentials."
+    },
+    "auth_failed": {
+      "message": "Google no longer accepts MyDashLight's sign-in. Sign in again."
+    },
+    "api_disabled": {
+      "message": "The Google Calendar API is turned off in your Google Cloud project."
+    },
+    "google_error": {
+      "message": "Couldn't read Google Calendar: {error}"
+    },
+    "set_up_again": {
+      "message": "This MyDashLight entry was set up before Google sign-in was added. Delete it and add MyDashLight again."
     }
   }
 }

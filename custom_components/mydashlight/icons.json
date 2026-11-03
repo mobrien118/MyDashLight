@@ -1,0 +1,7 @@
+{
+  "services": {
+    "get_plan": {
+      "service": "mdi:car-clock"
+    }
+  }
+}

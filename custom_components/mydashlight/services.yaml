@@ -1,0 +1,15 @@
+get_plan:
+  fields:
+    date:
+      required: false
+      example: "2026-11-03"
+      selector:
+        date:
+    days:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 7
+          mode: box
