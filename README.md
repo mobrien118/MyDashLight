@@ -11,8 +11,8 @@ separate database or server to look after.
 `custom_components/mydashlight` is a custom Home Assistant integration. It signs in to Google,
 reads each kid's calendar and each parent's own calendars every minute, and plans the week's
 rides, with drive times from Google Routes. The `mydashlight.get_plan` action returns the plan,
-and the other actions change who drives, saving it in the events' notes. The kitchen app and
-reminders come next.
+the other actions change who drives (saving it in the events' notes), and the kitchen app
+subscribes to the plan over Home Assistant's WebSocket API. Reminders come next.
 
 | Module | Job |
 | --- | --- |
@@ -30,6 +30,7 @@ reminders come next.
 | `config_flow.py` | Google sign-in and the setup and options screens. |
 | `coordinator.py` | Reads the calendars every minute and replans. |
 | `services.py` | The `mydashlight` actions: get the plan, and change rides. |
+| `websocket.py` | The app's live plan, `mydashlight/rides/subscribe`. |
 
 `planner.py`, `board.py`, `notes.py`, `google.py`, `changes.py`, `week.py`, `payload.py`,
 `routes.py`, `travel.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
@@ -121,6 +122,22 @@ in the next 7 days get the change too.
 Each change reads the event fresh and saves it only if nobody changed it in the meantime. If
 someone did, say on a phone at the same moment, the change is applied again on top of their edit.
 Nobody gets an update email.
+
+## Live plan for the app
+
+The kitchen app sends `{"type": "mydashlight/rides/subscribe"}` over Home Assistant's WebSocket
+API. It gets the week's plan straight away as an event, `{"plan": ...}`, and again whenever the
+plan changes, including right after one of the actions above. The plan is what `get_plan` returns
+for all seven days, plus:
+
+- `people`: the two drivers (`mom` and `dad`, with their names), the kids in order (each kid's
+  `id` is their calendar's id, as in each event's `kid`), and the carpool names, for the app's
+  pickers.
+- `status`: `ok` is false, with the `error`, when the last read of the calendars failed. The plan
+  is then the last one that worked.
+
+`{"plan": null}` means MyDashLight isn't running at the moment, for example while Home Assistant
+restarts. A plan follows when it's back.
 
 ## Development
 

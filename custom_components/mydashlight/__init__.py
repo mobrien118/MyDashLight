@@ -2,8 +2,9 @@
 
 Signs in to Google, reads the kids' calendars and the parents' own calendars every minute,
 and plans the week's rides with drive times from Google Routes. ``mydashlight.get_plan``
-returns the plan, and the other services save who drives, Stay and Arrive by into the
-events' notes. The kitchen app comes later.
+returns the plan, and the other services save who drives, Stay, Take along and Arrive by into
+the events' notes. The kitchen app subscribes to ``mydashlight/rides/subscribe`` for the plan as
+it changes.
 """
 
 from __future__ import annotations
@@ -21,16 +22,18 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
     OAuth2Session,
     async_get_config_entry_implementation,
 )
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
 from .api import OAuthTokens
-from .const import CONF_ROUTES_DAILY_LIMIT, CONF_ROUTES_KEY, DEFAULT_ROUTES_DAILY_LIMIT, DOMAIN
+from .const import CONF_ROUTES_DAILY_LIMIT, CONF_ROUTES_KEY, DEFAULT_ROUTES_DAILY_LIMIT, DOMAIN, SIGNAL_PLAN_UPDATED
 from .coordinator import MyDashLightCoordinator
 from .google import GoogleAuthError, GoogleCalendarApi, GoogleError
 from .lookups import RoutesLookups
 from .routes import RoutesApi
 from .services import async_setup_services
 from .settings import HubSettings
+from .websocket import async_setup_websocket
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -48,8 +51,9 @@ type MyDashLightConfigEntry = ConfigEntry[MyDashLightData]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the services."""
+    """Register the services and the app's live subscription."""
     async_setup_services(hass)
+    async_setup_websocket(hass)
     return True
 
 
@@ -87,14 +91,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     coordinator = MyDashLightCoordinator(hass, entry, api, settings, lookups)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = MyDashLightData(settings, api, coordinator)
-    # A coordinator only polls while something listens. Nothing does yet (the plan is read
-    # through get_plan), so keep it polling until the entry unloads.
-    entry.async_on_unload(coordinator.async_add_listener(_keep_polling))
+    # Tell the app's live subscriptions about every new plan. This listener also keeps the
+    # coordinator polling, which it only does while something listens.
+    entry.async_on_unload(
+        coordinator.async_add_listener(lambda: async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, entry))
+    )
+    entry.async_on_unload(lambda: async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, None))
+    async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, entry)
     return True
-
-
-def _keep_polling() -> None:
-    """The plan changed. The service reads it when asked, so there's nothing to do here."""
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> bool:

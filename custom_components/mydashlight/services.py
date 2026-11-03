@@ -97,7 +97,8 @@ def _loaded_entry(hass: HomeAssistant) -> MyDashLightConfigEntry:
 
 async def _async_get_plan(call: ServiceCall) -> ServiceResponse:
     entry = _loaded_entry(call.hass)
-    data = entry.runtime_data.coordinator.data
+    coordinator = entry.runtime_data.coordinator
+    data = coordinator.data
     first: date = call.data.get(ATTR_DATE) or dt_util.now().date()
     wanted = {(first + timedelta(days=i)).isoformat() for i in range(call.data[ATTR_DAYS])}
     days: list[Any] = [d for d in data.days if d["date"] in wanted]
@@ -108,13 +109,7 @@ async def _async_get_plan(call: ServiceCall) -> ServiceResponse:
             translation_key="date_not_planned",
             translation_placeholders={"first": planned[0], "last": planned[-1]},
         )
-    return {
-        "updated": data.updated.isoformat(),
-        "time_zone": data.time_zone,
-        "unavailable_calendars": list(data.unavailable),
-        "drive_times": dict(data.drive_times),
-        "days": days,
-    }
+    return coordinator.payload(days)
 
 
 async def _async_set_ride(call: ServiceCall) -> None:
