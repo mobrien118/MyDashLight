@@ -1,23 +1,86 @@
 """MyDashLight: the kitchen family planner's backend in Home Assistant.
 
-This first version loads the settings. Google Calendar sync, travel times, the week's ride
-plan and the services that change it come in later versions.
+Signs in to Google, reads the kids' calendars and the parents' own calendars every minute,
+and plans the week's rides. ``mydashlight.get_plan`` returns the plan. Travel times from
+Google Routes, writing who drives back to the events, and the kitchen app come later.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.config_entry_oauth2_flow import (
+    ImplementationUnavailableError,
+    OAuth2Session,
+    async_get_config_entry_implementation,
+)
+from homeassistant.helpers.typing import ConfigType
 
+from .api import OAuthTokens
+from .const import DOMAIN
+from .coordinator import MyDashLightCoordinator
+from .google import GoogleAuthError, GoogleCalendarApi, GoogleError
+from .services import async_setup_services
 from .settings import HubSettings
 
-type MyDashLightConfigEntry = ConfigEntry[HubSettings]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+@dataclass(slots=True)
+class MyDashLightData:
+    settings: HubSettings
+    api: GoogleCalendarApi
+    coordinator: MyDashLightCoordinator
+
+
+type MyDashLightConfigEntry = ConfigEntry[MyDashLightData]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the services."""
+    async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> bool:
     """Set up MyDashLight from a config entry."""
-    entry.runtime_data = HubSettings.from_options(entry.options)
+    if "auth_implementation" not in entry.data:
+        # Set up with version 0.1, before MyDashLight signed in to Google.
+        raise ConfigEntryError(translation_domain=DOMAIN, translation_key="set_up_again")
+    try:
+        implementation = await async_get_config_entry_implementation(hass, entry)
+    except (ImplementationUnavailableError, ValueError) as err:
+        # The OAuth client was removed from Application credentials, or isn't loaded yet.
+        raise ConfigEntryNotReady(translation_domain=DOMAIN, translation_key="no_credentials") from err
+
+    tokens = OAuthTokens(OAuth2Session(hass, entry, implementation))
+    try:
+        await tokens.async_get_access_token()
+    except GoogleAuthError as err:
+        raise ConfigEntryAuthFailed(translation_domain=DOMAIN, translation_key="auth_failed") from err
+    except GoogleError as err:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN, translation_key="google_error", translation_placeholders={"error": str(err)}
+        ) from err
+
+    settings = HubSettings.from_options(entry.options)
+    api = GoogleCalendarApi(async_get_clientsession(hass), tokens)
+    coordinator = MyDashLightCoordinator(hass, entry, api, settings)
+    await coordinator.async_config_entry_first_refresh()
+    entry.runtime_data = MyDashLightData(settings, api, coordinator)
+    # A coordinator only polls while something listens. Nothing does yet (the plan is read
+    # through get_plan), so keep it polling until the entry unloads.
+    entry.async_on_unload(coordinator.async_add_listener(_keep_polling))
     return True
+
+
+def _keep_polling() -> None:
+    """The plan changed. The service reads it when asked, so there's nothing to do here."""
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> bool:

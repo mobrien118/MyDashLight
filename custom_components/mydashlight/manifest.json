@@ -1,14 +1,18 @@
 {
   "domain": "mydashlight",
   "name": "MyDashLight",
-  "codeowners": ["@mobrien118"],
+  "codeowners": [
+    "@mobrien118"
+  ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "application_credentials"
+  ],
   "documentation": "https://github.com/mobrien118/MyDashLight",
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/mobrien118/MyDashLight/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
