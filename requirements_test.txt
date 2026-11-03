@@ -1,2 +1,5 @@
 # Pins Home Assistant too (2026.2.3 for this version).
 pytest-homeassistant-custom-component==0.13.316
+# Home Assistant's own pages, which the Rides sidebar item needs. The version matches
+# Home Assistant's frontend requirement for the version pinned above.
+home-assistant-frontend==20260128.6

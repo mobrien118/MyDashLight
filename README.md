@@ -14,6 +14,9 @@ rides, with drive times from Google Routes. The `mydashlight.get_plan` action re
 the other actions change who drives (saving it in the events' notes), and the kitchen app
 subscribes to the plan over Home Assistant's WebSocket API. Reminders come next.
 
+`frontend` is the kitchen app, which the integration serves from Home Assistant. See
+[The rides board](#the-rides-board).
+
 | Module | Job |
 | --- | --- |
 | `planner.py` | Works out each parent's driving for a day: the route, leave-by times, problems (late, kid waiting, clashes with a parent's calendar, no driver) and the best fixes for each. |
@@ -31,6 +34,7 @@ subscribes to the plan over Home Assistant's WebSocket API. Reminders come next.
 | `coordinator.py` | Reads the calendars every minute and replans. |
 | `services.py` | The `mydashlight` actions: get the plan, and change rides. |
 | `websocket.py` | The app's live plan, `mydashlight/rides/subscribe`. |
+| `frontend.py` | Serves the kitchen app: the Rides sidebar item and the kitchen page. |
 
 `planner.py`, `board.py`, `notes.py`, `google.py`, `changes.py`, `week.py`, `payload.py`,
 `routes.py`, `travel.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
@@ -123,6 +127,33 @@ Each change reads the event fresh and saves it only if nobody changed it in the 
 someone did, say on a phone at the same moment, the change is applied again on top of their edit.
 Nobody gets an update email.
 
+## The rides board
+
+The kitchen app's first screen is everyone's week of rides: a column for each kid, then one for
+each parent. A kid's column holds their activities and their time in a car; a parent's column
+holds their trips out of the house, with dots for who's in the car, and the busy times from their
+own calendar. A tinted band links a kid's car time to whoever is driving. Two views, switched at
+the top:
+
+- **Timeline** spaces everything by the clock, so overlaps and tight handoffs are easy to see.
+- **Compact** drops the time scale: everything sits in start order, with each trip's stops listed.
+
+The **Needs attention** list shows problems across the week (no driver, late, a kid waiting, a
+parent still at work, a kid double-booked) with the suggested fixes, plus heads-ups for today
+and tomorrow. Tap any activity, car or trip to change who drives each way, whether the driver
+stays, who's taken along, and the arrive-by time. A repeating activity asks whether to change just
+that day or every time. Each change is saved in the event's notes on Google straight away.
+
+There are two ways to open it, both signed in with your Home Assistant login:
+
+- **Rides** in Home Assistant's sidebar. This works in the Home Assistant app on a phone too.
+- `<your Home Assistant URL>/mydashlight-kitchen`, a full-screen page for the kitchen screen. It
+  uses the sign-in Home Assistant already keeps in that browser, or asks once. After three minutes
+  without a touch it closes anything open and scrolls back to now.
+
+The app is built from `frontend/` into `custom_components/mydashlight/frontend`, so a HACS update
+brings it along.
+
 ## Live plan for the app
 
 The kitchen app sends `{"type": "mydashlight/rides/subscribe"}` over Home Assistant's WebSocket
@@ -152,6 +183,22 @@ ruff check . && ruff format --check . && mypy
 
 The planner is a port of the one in the ride board mockup. `tests/rides_reference` holds that
 original, golden results for ten days, and a script that runs it; see the README there.
+
+The kitchen app is TypeScript with [Lit](https://lit.dev), in `frontend/`. The built files in
+`custom_components/mydashlight/frontend` are committed, and CI checks they match the source, so
+run the build after any change:
+
+```sh
+cd frontend
+npm ci
+npm run check && npm test
+npm run build
+```
+
+Its tests and the offline preview use a sample week that the real planner draws
+(`frontend/scripts/sample_plan.py`, run with the Python environment above). Regenerate it with
+`npm run sample` after a planner change. `node build.mjs --preview` writes `preview.html`, the
+board on that sample week, which opens in any browser and saves nothing.
 
 ## Installing in Home Assistant
 

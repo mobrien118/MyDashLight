@@ -1,0 +1,56 @@
+// Builds the app into the integration, which serves it from Home Assistant.
+//
+//   node build.mjs                      panel.js, kiosk.js and index.html for the integration
+//   node build.mjs --preview plan.json --out preview.html
+//                                       one self-contained page with a fixed plan, nothing saved
+
+import { build } from "esbuild";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const out = resolve(here, "../custom_components/mydashlight/frontend");
+const common = {
+  bundle: true,
+  format: "esm",
+  target: "es2021",
+  minify: true,
+  legalComments: "eof",
+  charset: "utf8",
+  logLevel: "warning",
+};
+
+const args = process.argv.slice(2);
+const flag = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+
+if (args.includes("--preview")) {
+  const plan = await readFile(resolve(flag("--preview") ?? resolve(here, "test/fixtures/week.json")), "utf8");
+  const target = resolve(flag("--out") ?? resolve(here, "preview.html"));
+  const res = await build({
+    ...common,
+    entryPoints: [resolve(here, "src/preview.ts")],
+    write: false,
+    define: { PREVIEW_PLAN: JSON.stringify(JSON.parse(plan)) },
+  });
+  const js = res.outputFiles[0].text.replaceAll("</script", "<\\/script");
+  const page = (await readFile(resolve(here, "src/kiosk.html"), "utf8"))
+    .replace("<title>MyDashLight rides</title>", "<title>Rides board preview</title>")
+    .replace("<mydashlight-board kiosk>", "<mydashlight-board>")
+    .replace('<script type="module" src="%SCRIPT%"></script>', () => `<script type="module">${js}</script>`);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, page);
+  console.log(`Wrote ${target}`);
+} else {
+  await mkdir(out, { recursive: true });
+  await build({
+    ...common,
+    entryPoints: { panel: resolve(here, "src/panel.ts"), kiosk: resolve(here, "src/kiosk.ts") },
+    outdir: out,
+  });
+  // Home Assistant fills in the script's address, with a version so browsers fetch new builds.
+  await writeFile(resolve(out, "index.html"), await readFile(resolve(here, "src/kiosk.html"), "utf8"));
+}
