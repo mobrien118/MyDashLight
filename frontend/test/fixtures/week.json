@@ -1,0 +1,2980 @@
+{
+ "updated": "2026-11-05T22:10:00+00:00",
+ "time_zone": "America/Chicago",
+ "unavailable_calendars": [],
+ "drive_times": {
+  "source": "routes",
+  "looked_up": 21,
+  "estimated": 0,
+  "lookups_today": 3,
+  "daily_limit": 150
+ },
+ "days": [
+  {
+   "date": "2026-11-05",
+   "events": [
+    {
+     "id": "piano",
+     "kid": "kid-a@group.calendar.google.com",
+     "title": "Piano",
+     "place": "piano studio, 410 elm st",
+     "place_name": "Piano studio, 410 Elm St",
+     "short_place": "Piano studio",
+     "start": 945,
+     "end": 990,
+     "drop": "mom",
+     "pick": "mom",
+     "stay": true,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-a@group.calendar.google.com",
+     "event_id": "piano-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Robin stays · leaves 3:30",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 4:40 with Robin",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "soccer",
+     "kid": "kid-c@group.calendar.google.com",
+     "title": "Soccer",
+     "place": "soccer fields, 2200 park rd",
+     "place_name": "Soccer fields, 2200 Park Rd",
+     "short_place": "Soccer fields",
+     "start": 1020,
+     "end": 1110,
+     "drop": "dad",
+     "pick": "mom",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-c@group.calendar.google.com",
+     "event_id": "soccer-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 4:25 with Sam",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 6:45 with Robin",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "football",
+     "kid": "kid-b@group.calendar.google.com",
+     "title": "Football",
+     "place": "football field, 90 stadium dr",
+     "place_name": "Football field, 90 Stadium Dr",
+     "short_place": "Football field",
+     "start": 1050,
+     "end": 1140,
+     "drop": "dad",
+     "pick": "dad",
+     "stay": false,
+     "arrive_by": 1035,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-b@group.calendar.google.com",
+     "event_id": "football-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 4:55 with Sam",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 7:20 with Sam",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "volley",
+     "kid": "kid-a@group.calendar.google.com",
+     "title": "Volleyball",
+     "place": "middle school gym, 15 school ln",
+     "place_name": "Middle school gym, 15 School Ln",
+     "short_place": "Middle school gym",
+     "start": 1095,
+     "end": 1200,
+     "drop": "Dustin",
+     "pick": "",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-a@group.calendar.google.com",
+     "event_id": "volley-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Goes with Dustin",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "No ride home yet",
+       "tone": "pending"
+      }
+     }
+    }
+   ],
+   "drivers": {
+    "mom": {
+     "name": "Robin",
+     "leave": 930,
+     "drive": 50,
+     "trips": 2,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 930,
+       "end": 940,
+       "from": "home",
+       "to": "piano studio, 410 elm st",
+       "place": null,
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "stay",
+       "start": 940,
+       "end": 990,
+       "from": null,
+       "to": null,
+       "place": "piano studio, 410 elm st",
+       "kids": [],
+       "event": "piano",
+       "serves": "piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 990,
+       "end": 1000,
+       "from": "piano studio, 410 elm st",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 1000,
+       "end": 1095,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1095,
+       "end": 1110,
+       "from": "home",
+       "to": "soccer fields, 2200 park rd",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1110,
+       "end": 1125,
+       "from": "soccer fields, 2200 park rd",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "soccer",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 930,
+       "end": 1000,
+       "lead": "Leave 3:30",
+       "lines": [
+        "3:40  Piano studio, stay with Ava",
+        "4:30  Leave Piano studio",
+        "4:40  Home"
+       ],
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "piano"
+      },
+      {
+       "start": 1095,
+       "end": 1125,
+       "lead": "Leave 6:15",
+       "lines": [
+        "6:30  Soccer fields, pick up Cleo",
+        "6:45  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "soccer"
+      }
+     ],
+     "busy": []
+    },
+    "dad": {
+     "name": "Sam",
+     "leave": 985,
+     "drive": 110,
+     "trips": 3,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 985,
+       "end": 1000,
+       "from": "home",
+       "to": "soccer fields, 2200 park rd",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "soccer",
+       "overlaps_busy": true
+      },
+      {
+       "type": "drive",
+       "start": 1000,
+       "end": 1015,
+       "from": "soccer fields, 2200 park rd",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1015,
+       "end": 1035,
+       "from": "home",
+       "to": "football field, 90 stadium dr",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1035,
+       "end": 1055,
+       "from": "football field, 90 stadium dr",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 1055,
+       "end": 1120,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1120,
+       "end": 1140,
+       "from": "home",
+       "to": "football field, 90 stadium dr",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1140,
+       "end": 1160,
+       "from": "football field, 90 stadium dr",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "football",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 985,
+       "end": 1055,
+       "lead": "Leave 4:25",
+       "lines": [
+        "4:40  Soccer fields, drop off Cleo",
+        "4:55  Home, get Ben",
+        "5:15  Football field, drop off Ben",
+        "5:35  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com",
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": "Still at Work until 4:40",
+       "target": "soccer"
+      },
+      {
+       "start": 1120,
+       "end": 1160,
+       "lead": "Leave 6:40",
+       "lines": [
+        "7:00  Football field, pick up Ben",
+        "7:20  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "football"
+      }
+     ],
+     "busy": [
+      {
+       "start": 780,
+       "end": 1000,
+       "title": "Work"
+      }
+     ]
+    }
+   },
+   "rides": [
+    {
+     "index": 0,
+     "kid": "kid-a@group.calendar.google.com",
+     "driver": "mom",
+     "start": 930,
+     "end": 940,
+     "own": true,
+     "serves": [
+      "piano"
+     ]
+    },
+    {
+     "index": 1,
+     "kid": "kid-a@group.calendar.google.com",
+     "driver": "mom",
+     "start": 990,
+     "end": 1000,
+     "own": true,
+     "serves": [
+      "piano"
+     ]
+    },
+    {
+     "index": 2,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1110,
+     "end": 1125,
+     "own": true,
+     "serves": [
+      "soccer"
+     ]
+    },
+    {
+     "index": 3,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "dad",
+     "start": 985,
+     "end": 1000,
+     "own": true,
+     "serves": [
+      "soccer"
+     ]
+    },
+    {
+     "index": 4,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1015,
+     "end": 1035,
+     "own": true,
+     "serves": [
+      "football"
+     ]
+    },
+    {
+     "index": 5,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1140,
+     "end": 1160,
+     "own": true,
+     "serves": [
+      "football"
+     ]
+    }
+   ],
+   "kids": {
+    "kid-a@group.calendar.google.com": {
+     "name": "Ava",
+     "items": [
+      {
+       "type": "act",
+       "start": 945,
+       "end": 990,
+       "clash": false,
+       "event": "piano"
+      },
+      {
+       "type": "act",
+       "start": 1095,
+       "end": 1200,
+       "clash": false,
+       "event": "volley"
+      },
+      {
+       "type": "ride",
+       "start": 930,
+       "end": 940,
+       "clash": false,
+       "ride": 0
+      },
+      {
+       "type": "ride",
+       "start": 990,
+       "end": 1000,
+       "clash": false,
+       "ride": 1
+      }
+     ]
+    },
+    "kid-b@group.calendar.google.com": {
+     "name": "Ben",
+     "items": [
+      {
+       "type": "act",
+       "start": 1050,
+       "end": 1140,
+       "clash": false,
+       "event": "football"
+      },
+      {
+       "type": "ride",
+       "start": 1015,
+       "end": 1035,
+       "clash": false,
+       "ride": 4
+      },
+      {
+       "type": "ride",
+       "start": 1140,
+       "end": 1160,
+       "clash": false,
+       "ride": 5
+      }
+     ]
+    },
+    "kid-c@group.calendar.google.com": {
+     "name": "Cleo",
+     "items": [
+      {
+       "type": "act",
+       "start": 1020,
+       "end": 1110,
+       "clash": false,
+       "event": "soccer"
+      },
+      {
+       "type": "ride",
+       "start": 1110,
+       "end": 1125,
+       "clash": false,
+       "ride": 2
+      },
+      {
+       "type": "ride",
+       "start": 985,
+       "end": 1000,
+       "clash": false,
+       "ride": 3
+      }
+     ]
+    }
+   },
+   "clashes": [],
+   "issues": [
+    {
+     "key": "busy|dad|soccer||Work",
+     "level": "problem",
+     "kind": "busy",
+     "driver": "dad",
+     "event": "soccer",
+     "side": null,
+     "minutes": 15,
+     "at": null,
+     "title": "Sam is still at Work",
+     "body": "Leaving at 4:25 for Cleo’s soccer overlaps Work until 4:40.",
+     "note": null,
+     "suggestions": [
+      {
+       "id": "2026-11-05|soccer|along|kid-b@group.calendar.google.com",
+       "label": "Take Ben along",
+       "change": {
+        "id": "soccer",
+        "field": "along",
+        "value": [
+         "kid-b@group.calendar.google.com"
+        ]
+       },
+       "who": "dad",
+       "note": "Sam leaves right as Work ends"
+      },
+      {
+       "id": "2026-11-05|soccer|drop|mom",
+       "label": "Robin does Cleo’s drop-off",
+       "change": {
+        "id": "soccer",
+        "field": "drop",
+        "value": "mom"
+       },
+       "who": "mom",
+       "note": "Robin leaves Piano right at 4:30"
+      }
+     ]
+    },
+    {
+     "key": "unassigned||volley|pick|",
+     "level": "problem",
+     "kind": "unassigned",
+     "driver": null,
+     "event": "volley",
+     "side": "pick",
+     "minutes": null,
+     "at": null,
+     "title": "No pick-up for Ava",
+     "body": "Volleyball ends at 8:00, Middle school gym, 15 School Ln.",
+     "note": null,
+     "suggestions": [
+      {
+       "id": "2026-11-05|volley|pick|mom",
+       "label": "Robin picks up",
+       "change": {
+        "id": "volley",
+        "field": "pick",
+        "value": "mom"
+       },
+       "who": "mom",
+       "note": "+16 min of driving for Robin"
+      },
+      {
+       "id": "2026-11-05|volley|pick|dad",
+       "label": "Sam picks up",
+       "change": {
+        "id": "volley",
+        "field": "pick",
+        "value": "dad"
+       },
+       "who": "dad",
+       "note": "+16 min of driving for Sam"
+      }
+     ]
+    }
+   ],
+   "score": 2310
+  },
+  {
+   "date": "2026-11-06",
+   "events": [
+    {
+     "id": "fri-soccer",
+     "kid": "kid-c@group.calendar.google.com",
+     "title": "Soccer practice",
+     "place": "soccer fields, 2200 park rd",
+     "place_name": "Soccer fields, 2200 Park Rd",
+     "short_place": "Soccer fields",
+     "start": 1020,
+     "end": 1080,
+     "drop": "mom",
+     "pick": "mom",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-c@group.calendar.google.com",
+     "event_id": "fri-soccer-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 4:40 with Robin",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 6:15 with Robin",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "fri-party",
+     "kid": "kid-b@group.calendar.google.com",
+     "title": "Birthday party",
+     "place": "liam's house, 31 oak ct",
+     "place_name": "Liam's house, 31 Oak Ct",
+     "short_place": "Liam's house",
+     "start": 1080,
+     "end": 1230,
+     "drop": "dad",
+     "pick": "dad",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-b@group.calendar.google.com",
+     "event_id": "fri-party-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 5:46 with Sam",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 8:39 with Sam",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "fri-sit",
+     "kid": "kid-a@group.calendar.google.com",
+     "title": "Babysitting",
+     "place": "next door, 12 maple ave",
+     "place_name": "Next door, 12 Maple Ave",
+     "short_place": "Next door",
+     "start": 1110,
+     "end": 1290,
+     "drop": "none",
+     "pick": "none",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-a@group.calendar.google.com",
+     "event_id": "fri-sit-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "No ride needed",
+       "tone": "muted"
+      },
+      "pick": null
+     }
+    }
+   ],
+   "drivers": {
+    "mom": {
+     "name": "Robin",
+     "leave": 1000,
+     "drive": 60,
+     "trips": 2,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 1000,
+       "end": 1015,
+       "from": "home",
+       "to": "soccer fields, 2200 park rd",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "fri-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1015,
+       "end": 1030,
+       "from": "soccer fields, 2200 park rd",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "fri-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 1030,
+       "end": 1065,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1065,
+       "end": 1080,
+       "from": "home",
+       "to": "soccer fields, 2200 park rd",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "fri-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1080,
+       "end": 1095,
+       "from": "soccer fields, 2200 park rd",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "fri-soccer",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 1000,
+       "end": 1030,
+       "lead": "Leave 4:40",
+       "lines": [
+        "4:55  Soccer fields, drop off Cleo",
+        "5:10  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "fri-soccer"
+      },
+      {
+       "start": 1065,
+       "end": 1095,
+       "lead": "Leave 5:45",
+       "lines": [
+        "6:00  Soccer fields, pick up Cleo",
+        "6:15  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "fri-soccer"
+      }
+     ],
+     "busy": []
+    },
+    "dad": {
+     "name": "Sam",
+     "leave": 1066,
+     "drive": 36,
+     "trips": 2,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 1066,
+       "end": 1075,
+       "from": "home",
+       "to": "liam's house, 31 oak ct",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "fri-party",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1075,
+       "end": 1084,
+       "from": "liam's house, 31 oak ct",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "fri-party",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 1084,
+       "end": 1221,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1221,
+       "end": 1230,
+       "from": "home",
+       "to": "liam's house, 31 oak ct",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "fri-party",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1230,
+       "end": 1239,
+       "from": "liam's house, 31 oak ct",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "fri-party",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 1066,
+       "end": 1084,
+       "lead": "Leave 5:46",
+       "lines": [
+        "5:55  Liam's house, drop off Ben",
+        "6:04  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "fri-party"
+      },
+      {
+       "start": 1221,
+       "end": 1239,
+       "lead": "Leave 8:21",
+       "lines": [
+        "8:30  Liam's house, pick up Ben",
+        "8:39  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "fri-party"
+      }
+     ],
+     "busy": [
+      {
+       "start": 540,
+       "end": 960,
+       "title": "Work"
+      }
+     ]
+    }
+   },
+   "rides": [
+    {
+     "index": 0,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1000,
+     "end": 1015,
+     "own": true,
+     "serves": [
+      "fri-soccer"
+     ]
+    },
+    {
+     "index": 1,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1080,
+     "end": 1095,
+     "own": true,
+     "serves": [
+      "fri-soccer"
+     ]
+    },
+    {
+     "index": 2,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1066,
+     "end": 1075,
+     "own": true,
+     "serves": [
+      "fri-party"
+     ]
+    },
+    {
+     "index": 3,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1230,
+     "end": 1239,
+     "own": true,
+     "serves": [
+      "fri-party"
+     ]
+    }
+   ],
+   "kids": {
+    "kid-a@group.calendar.google.com": {
+     "name": "Ava",
+     "items": [
+      {
+       "type": "act",
+       "start": 1110,
+       "end": 1290,
+       "clash": false,
+       "event": "fri-sit"
+      }
+     ]
+    },
+    "kid-b@group.calendar.google.com": {
+     "name": "Ben",
+     "items": [
+      {
+       "type": "act",
+       "start": 1080,
+       "end": 1230,
+       "clash": false,
+       "event": "fri-party"
+      },
+      {
+       "type": "ride",
+       "start": 1066,
+       "end": 1075,
+       "clash": false,
+       "ride": 2
+      },
+      {
+       "type": "ride",
+       "start": 1230,
+       "end": 1239,
+       "clash": false,
+       "ride": 3
+      }
+     ]
+    },
+    "kid-c@group.calendar.google.com": {
+     "name": "Cleo",
+     "items": [
+      {
+       "type": "act",
+       "start": 1020,
+       "end": 1080,
+       "clash": false,
+       "event": "fri-soccer"
+      },
+      {
+       "type": "ride",
+       "start": 1000,
+       "end": 1015,
+       "clash": false,
+       "ride": 0
+      },
+      {
+       "type": "ride",
+       "start": 1080,
+       "end": 1095,
+       "clash": false,
+       "ride": 1
+      }
+     ]
+    }
+   },
+   "clashes": [],
+   "issues": [],
+   "score": 96
+  },
+  {
+   "date": "2026-11-07",
+   "events": [
+    {
+     "id": "sat-tourney",
+     "kid": "kid-a@group.calendar.google.com",
+     "title": "Volleyball tournament",
+     "place": "middle school gym, 15 school ln",
+     "place_name": "Middle school gym, 15 School Ln",
+     "short_place": "Middle school gym",
+     "start": 480,
+     "end": 900,
+     "drop": "the Cunninghams",
+     "pick": "dad",
+     "stay": false,
+     "arrive_by": 465,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-a@group.calendar.google.com",
+     "event_id": "sat-tourney-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Goes with the Cunninghams",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 3:08 with Sam",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "sat-soccer",
+     "kid": "kid-c@group.calendar.google.com",
+     "title": "Soccer game",
+     "place": "soccer fields, 2200 park rd",
+     "place_name": "Soccer fields, 2200 Park Rd",
+     "short_place": "Soccer fields",
+     "start": 540,
+     "end": 615,
+     "drop": "dad",
+     "pick": "dad",
+     "stay": true,
+     "arrive_by": 525,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-c@group.calendar.google.com",
+     "event_id": "sat-soccer-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Sam stays · leaves 8:30",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 10:30 with Sam",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "sat-football",
+     "kid": "kid-b@group.calendar.google.com",
+     "title": "Football game",
+     "place": "football field, 90 stadium dr",
+     "place_name": "Football field, 90 Stadium Dr",
+     "short_place": "Football field",
+     "start": 660,
+     "end": 780,
+     "drop": "mom",
+     "pick": "mom",
+     "stay": true,
+     "arrive_by": 640,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-b@group.calendar.google.com",
+     "event_id": "sat-football-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Robin stays · leaves 10:20",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 1:20 with Robin",
+       "tone": "normal"
+      }
+     }
+    }
+   ],
+   "drivers": {
+    "mom": {
+     "name": "Robin",
+     "leave": 620,
+     "drive": 40,
+     "trips": 1,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 620,
+       "end": 640,
+       "from": "home",
+       "to": "football field, 90 stadium dr",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sat-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "stay",
+       "start": 640,
+       "end": 780,
+       "from": null,
+       "to": null,
+       "place": "football field, 90 stadium dr",
+       "kids": [],
+       "event": "sat-football",
+       "serves": "sat-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 780,
+       "end": 800,
+       "from": "football field, 90 stadium dr",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sat-football",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 620,
+       "end": 800,
+       "lead": "Leave 10:20",
+       "lines": [
+        "10:40  Football field, stay with Ben",
+        "1:00  Leave Football field",
+        "1:20  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "sat-football"
+      }
+     ],
+     "busy": []
+    },
+    "dad": {
+     "name": "Sam",
+     "leave": 510,
+     "drive": 46,
+     "trips": 2,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 510,
+       "end": 525,
+       "from": "home",
+       "to": "soccer fields, 2200 park rd",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sat-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "stay",
+       "start": 525,
+       "end": 615,
+       "from": null,
+       "to": null,
+       "place": "soccer fields, 2200 park rd",
+       "kids": [],
+       "event": "sat-soccer",
+       "serves": "sat-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 615,
+       "end": 630,
+       "from": "soccer fields, 2200 park rd",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sat-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 630,
+       "end": 892,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 892,
+       "end": 900,
+       "from": "home",
+       "to": "middle school gym, 15 school ln",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "sat-tourney",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 900,
+       "end": 908,
+       "from": "middle school gym, 15 school ln",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sat-tourney",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 510,
+       "end": 630,
+       "lead": "Leave 8:30",
+       "lines": [
+        "8:45  Soccer fields, stay with Cleo",
+        "10:15  Leave Soccer fields",
+        "10:30  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "sat-soccer"
+      },
+      {
+       "start": 892,
+       "end": 908,
+       "lead": "Leave 2:52",
+       "lines": [
+        "3:00  Middle school gym, pick up Ava",
+        "3:08  Home"
+       ],
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "sat-tourney"
+      }
+     ],
+     "busy": []
+    }
+   },
+   "rides": [
+    {
+     "index": 0,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "mom",
+     "start": 620,
+     "end": 640,
+     "own": true,
+     "serves": [
+      "sat-football"
+     ]
+    },
+    {
+     "index": 1,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "mom",
+     "start": 780,
+     "end": 800,
+     "own": true,
+     "serves": [
+      "sat-football"
+     ]
+    },
+    {
+     "index": 2,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "dad",
+     "start": 510,
+     "end": 525,
+     "own": true,
+     "serves": [
+      "sat-soccer"
+     ]
+    },
+    {
+     "index": 3,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "dad",
+     "start": 615,
+     "end": 630,
+     "own": true,
+     "serves": [
+      "sat-soccer"
+     ]
+    },
+    {
+     "index": 4,
+     "kid": "kid-a@group.calendar.google.com",
+     "driver": "dad",
+     "start": 900,
+     "end": 908,
+     "own": true,
+     "serves": [
+      "sat-tourney"
+     ]
+    }
+   ],
+   "kids": {
+    "kid-a@group.calendar.google.com": {
+     "name": "Ava",
+     "items": [
+      {
+       "type": "act",
+       "start": 480,
+       "end": 900,
+       "clash": false,
+       "event": "sat-tourney"
+      },
+      {
+       "type": "ride",
+       "start": 900,
+       "end": 908,
+       "clash": false,
+       "ride": 4
+      }
+     ]
+    },
+    "kid-b@group.calendar.google.com": {
+     "name": "Ben",
+     "items": [
+      {
+       "type": "act",
+       "start": 660,
+       "end": 780,
+       "clash": false,
+       "event": "sat-football"
+      },
+      {
+       "type": "ride",
+       "start": 620,
+       "end": 640,
+       "clash": false,
+       "ride": 0
+      },
+      {
+       "type": "ride",
+       "start": 780,
+       "end": 800,
+       "clash": false,
+       "ride": 1
+      }
+     ]
+    },
+    "kid-c@group.calendar.google.com": {
+     "name": "Cleo",
+     "items": [
+      {
+       "type": "act",
+       "start": 540,
+       "end": 615,
+       "clash": false,
+       "event": "sat-soccer"
+      },
+      {
+       "type": "ride",
+       "start": 510,
+       "end": 525,
+       "clash": false,
+       "ride": 2
+      },
+      {
+       "type": "ride",
+       "start": 615,
+       "end": 630,
+       "clash": false,
+       "ride": 3
+      }
+     ]
+    }
+   },
+   "clashes": [],
+   "issues": [],
+   "score": 86
+  },
+  {
+   "date": "2026-11-08",
+   "events": [
+    {
+     "id": "sun-youth",
+     "kid": "kid-a@group.calendar.google.com",
+     "title": "Youth group",
+     "place": "church, 7 chapel way",
+     "place_name": "Church, 7 Chapel Way",
+     "short_place": "Church",
+     "start": 1080,
+     "end": 1170,
+     "drop": "mom",
+     "pick": "",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-a@group.calendar.google.com",
+     "event_id": "sun-youth-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 5:43 with Robin",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "No ride home yet",
+       "tone": "pending"
+      }
+     }
+    }
+   ],
+   "drivers": {
+    "mom": {
+     "name": "Robin",
+     "leave": 1063,
+     "drive": 24,
+     "trips": 1,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 1063,
+       "end": 1075,
+       "from": "home",
+       "to": "church, 7 chapel way",
+       "place": null,
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sun-youth",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1075,
+       "end": 1087,
+       "from": "church, 7 chapel way",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "sun-youth",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 1063,
+       "end": 1087,
+       "lead": "Leave 5:43",
+       "lines": [
+        "5:55  Church, drop off Ava",
+        "6:07  Home"
+       ],
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "sun-youth"
+      }
+     ],
+     "busy": []
+    },
+    "dad": {
+     "name": "Sam",
+     "leave": null,
+     "drive": 0,
+     "trips": 0,
+     "segments": [],
+     "outings": [],
+     "busy": []
+    }
+   },
+   "rides": [
+    {
+     "index": 0,
+     "kid": "kid-a@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1063,
+     "end": 1075,
+     "own": true,
+     "serves": [
+      "sun-youth"
+     ]
+    }
+   ],
+   "kids": {
+    "kid-a@group.calendar.google.com": {
+     "name": "Ava",
+     "items": [
+      {
+       "type": "act",
+       "start": 1080,
+       "end": 1170,
+       "clash": false,
+       "event": "sun-youth"
+      },
+      {
+       "type": "ride",
+       "start": 1063,
+       "end": 1075,
+       "clash": false,
+       "ride": 0
+      }
+     ]
+    },
+    "kid-b@group.calendar.google.com": {
+     "name": "Ben",
+     "items": []
+    },
+    "kid-c@group.calendar.google.com": {
+     "name": "Cleo",
+     "items": []
+    }
+   },
+   "clashes": [],
+   "issues": [
+    {
+     "key": "unassigned||sun-youth|pick|",
+     "level": "problem",
+     "kind": "unassigned",
+     "driver": null,
+     "event": "sun-youth",
+     "side": "pick",
+     "minutes": null,
+     "at": null,
+     "title": "No pick-up for Ava",
+     "body": "Youth group ends at 7:30, Church, 7 Chapel Way.",
+     "note": null,
+     "suggestions": [
+      {
+       "id": "2026-11-08|sun-youth|pick|mom",
+       "label": "Robin picks up",
+       "change": {
+        "id": "sun-youth",
+        "field": "pick",
+        "value": "mom"
+       },
+       "who": "mom",
+       "note": "+24 min of driving for Robin"
+      },
+      {
+       "id": "2026-11-08|sun-youth|pick|dad",
+       "label": "Sam picks up",
+       "change": {
+        "id": "sun-youth",
+        "field": "pick",
+        "value": "dad"
+       },
+       "who": "dad",
+       "note": "+24 min of driving for Sam"
+      }
+     ]
+    }
+   ],
+   "score": 1024
+  },
+  {
+   "date": "2026-11-09",
+   "events": [
+    {
+     "id": "mon-piano",
+     "kid": "kid-a@group.calendar.google.com",
+     "title": "Piano",
+     "place": "piano studio, 410 elm st",
+     "place_name": "Piano studio, 410 Elm St",
+     "short_place": "Piano studio",
+     "start": 945,
+     "end": 990,
+     "drop": "mom",
+     "pick": "mom",
+     "stay": false,
+     "arrive_by": null,
+     "along": [
+      "kid-b@group.calendar.google.com"
+     ],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-a@group.calendar.google.com",
+     "event_id": "mon-piano-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 3:30 with Robin",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 4:40 with Robin",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "mon-football",
+     "kid": "kid-b@group.calendar.google.com",
+     "title": "Football",
+     "place": "football field, 90 stadium dr",
+     "place_name": "Football field, 90 Stadium Dr",
+     "short_place": "Football field",
+     "start": 1050,
+     "end": 1140,
+     "drop": "mom",
+     "pick": "dad",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-b@group.calendar.google.com",
+     "event_id": "mon-football-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Drop-off: Robin",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 7:20 with Sam",
+       "tone": "normal"
+      }
+     }
+    }
+   ],
+   "drivers": {
+    "mom": {
+     "name": "Robin",
+     "leave": 930,
+     "drive": 80,
+     "trips": 3,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 930,
+       "end": 940,
+       "from": "home",
+       "to": "piano studio, 410 elm st",
+       "place": null,
+       "kids": [
+        "kid-a@group.calendar.google.com",
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "mon-piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 940,
+       "end": 950,
+       "from": "piano studio, 410 elm st",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "mon-piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 950,
+       "end": 980,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 980,
+       "end": 990,
+       "from": "home",
+       "to": "piano studio, 410 elm st",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "mon-piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 990,
+       "end": 1000,
+       "from": "piano studio, 410 elm st",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "mon-piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 1000,
+       "end": 1025,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1025,
+       "end": 1045,
+       "from": "home",
+       "to": "football field, 90 stadium dr",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "mon-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1045,
+       "end": 1065,
+       "from": "football field, 90 stadium dr",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "mon-football",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 930,
+       "end": 950,
+       "lead": "Leave 3:30",
+       "lines": [
+        "3:40  Piano studio, drop off Ava",
+        "3:50  Home"
+       ],
+       "kids": [
+        "kid-a@group.calendar.google.com",
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "mon-piano"
+      },
+      {
+       "start": 980,
+       "end": 1000,
+       "lead": "Leave 4:20",
+       "lines": [
+        "4:30  Piano studio, pick up Ava",
+        "4:40  Home"
+       ],
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "mon-piano"
+      },
+      {
+       "start": 1025,
+       "end": 1065,
+       "lead": "Leave 5:05",
+       "lines": [
+        "5:25  Football field, drop off Ben",
+        "5:45  Home"
+       ],
+       "kids": [],
+       "warn": null,
+       "target": "mon-football"
+      }
+     ],
+     "busy": []
+    },
+    "dad": {
+     "name": "Sam",
+     "leave": 1120,
+     "drive": 40,
+     "trips": 1,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 1120,
+       "end": 1140,
+       "from": "home",
+       "to": "football field, 90 stadium dr",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "mon-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1140,
+       "end": 1160,
+       "from": "football field, 90 stadium dr",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "mon-football",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 1120,
+       "end": 1160,
+       "lead": "Leave 6:40",
+       "lines": [
+        "7:00  Football field, pick up Ben",
+        "7:20  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "mon-football"
+      }
+     ],
+     "busy": [
+      {
+       "start": 540,
+       "end": 1020,
+       "title": "Work"
+      }
+     ]
+    }
+   },
+   "rides": [
+    {
+     "index": 0,
+     "kid": "kid-a@group.calendar.google.com",
+     "driver": "mom",
+     "start": 930,
+     "end": 940,
+     "own": true,
+     "serves": [
+      "mon-piano"
+     ]
+    },
+    {
+     "index": 1,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "mom",
+     "start": 930,
+     "end": 950,
+     "own": false,
+     "serves": [
+      "mon-piano"
+     ]
+    },
+    {
+     "index": 2,
+     "kid": "kid-a@group.calendar.google.com",
+     "driver": "mom",
+     "start": 990,
+     "end": 1000,
+     "own": true,
+     "serves": [
+      "mon-piano"
+     ]
+    },
+    {
+     "index": 3,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1140,
+     "end": 1160,
+     "own": true,
+     "serves": [
+      "mon-football"
+     ]
+    }
+   ],
+   "kids": {
+    "kid-a@group.calendar.google.com": {
+     "name": "Ava",
+     "items": [
+      {
+       "type": "act",
+       "start": 945,
+       "end": 990,
+       "clash": false,
+       "event": "mon-piano"
+      },
+      {
+       "type": "ride",
+       "start": 930,
+       "end": 940,
+       "clash": false,
+       "ride": 0
+      },
+      {
+       "type": "ride",
+       "start": 990,
+       "end": 1000,
+       "clash": false,
+       "ride": 2
+      }
+     ]
+    },
+    "kid-b@group.calendar.google.com": {
+     "name": "Ben",
+     "items": [
+      {
+       "type": "act",
+       "start": 1050,
+       "end": 1140,
+       "clash": false,
+       "event": "mon-football"
+      },
+      {
+       "type": "ride",
+       "start": 930,
+       "end": 950,
+       "clash": false,
+       "ride": 1
+      },
+      {
+       "type": "ride",
+       "start": 1140,
+       "end": 1160,
+       "clash": false,
+       "ride": 3
+      }
+     ]
+    },
+    "kid-c@group.calendar.google.com": {
+     "name": "Cleo",
+     "items": []
+    }
+   },
+   "clashes": [],
+   "issues": [],
+   "score": 120
+  },
+  {
+   "date": "2026-11-10",
+   "events": [
+    {
+     "id": "tue-soccer",
+     "kid": "kid-c@group.calendar.google.com",
+     "title": "Soccer",
+     "place": "soccer fields, 2200 park rd",
+     "place_name": "Soccer fields, 2200 Park Rd",
+     "short_place": "Soccer fields",
+     "start": 1020,
+     "end": 1110,
+     "drop": "mom",
+     "pick": "dad",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-c@group.calendar.google.com",
+     "event_id": "tue-soccer-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 4:40 with Robin",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Pick-up: Sam",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "tue-art",
+     "kid": "kid-c@group.calendar.google.com",
+     "title": "Art class",
+     "place": "dance studio, 88 main st",
+     "place_name": "Dance studio, 88 Main St",
+     "short_place": "Dance studio",
+     "start": 1080,
+     "end": 1140,
+     "drop": "dad",
+     "pick": "dad",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-c@group.calendar.google.com",
+     "event_id": "tue-art-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 5:44 with Sam",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 7:11 with Sam",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "tue-volley",
+     "kid": "kid-a@group.calendar.google.com",
+     "title": "Volleyball",
+     "place": "middle school gym, 15 school ln",
+     "place_name": "Middle school gym, 15 School Ln",
+     "short_place": "Middle school gym",
+     "start": 1095,
+     "end": 1200,
+     "drop": "the Smiths",
+     "pick": "mom",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-a@group.calendar.google.com",
+     "event_id": "tue-volley-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Goes with the Smiths",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 8:08 with Robin",
+       "tone": "normal"
+      }
+     }
+    }
+   ],
+   "drivers": {
+    "mom": {
+     "name": "Robin",
+     "leave": 1000,
+     "drive": 46,
+     "trips": 2,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 1000,
+       "end": 1015,
+       "from": "home",
+       "to": "soccer fields, 2200 park rd",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "tue-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1015,
+       "end": 1030,
+       "from": "soccer fields, 2200 park rd",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "tue-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 1030,
+       "end": 1192,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1192,
+       "end": 1200,
+       "from": "home",
+       "to": "middle school gym, 15 school ln",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "tue-volley",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1200,
+       "end": 1208,
+       "from": "middle school gym, 15 school ln",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "tue-volley",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 1000,
+       "end": 1030,
+       "lead": "Leave 4:40",
+       "lines": [
+        "4:55  Soccer fields, drop off Cleo",
+        "5:10  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "tue-soccer"
+      },
+      {
+       "start": 1192,
+       "end": 1208,
+       "lead": "Leave 7:52",
+       "lines": [
+        "8:00  Middle school gym, pick up Ava",
+        "8:08  Home"
+       ],
+       "kids": [
+        "kid-a@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "tue-volley"
+      }
+     ],
+     "busy": []
+    },
+    "dad": {
+     "name": "Sam",
+     "leave": 1064,
+     "drive": 40,
+     "trips": 1,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 1064,
+       "end": 1075,
+       "from": "home",
+       "to": "dance studio, 88 main st",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "tue-art",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1075,
+       "end": 1101,
+       "from": null,
+       "to": null,
+       "place": "dance studio, 88 main st",
+       "kids": [],
+       "event": null,
+       "serves": "tue-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1101,
+       "end": 1110,
+       "from": "dance studio, 88 main st",
+       "to": "soccer fields, 2200 park rd",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "tue-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1110,
+       "end": 1131,
+       "from": null,
+       "to": null,
+       "place": "soccer fields, 2200 park rd",
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "tue-art",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1131,
+       "end": 1140,
+       "from": "soccer fields, 2200 park rd",
+       "to": "dance studio, 88 main st",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "tue-art",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1140,
+       "end": 1151,
+       "from": "dance studio, 88 main st",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com",
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "tue-art",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 1064,
+       "end": 1151,
+       "lead": "Leave 5:44",
+       "lines": [
+        "5:55  Dance studio, drop off Cleo",
+        "6:30  Soccer fields, pick up Cleo",
+        "7:00  Dance studio, pick up Cleo",
+        "7:11  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "tue-art"
+      }
+     ],
+     "busy": [
+      {
+       "start": 540,
+       "end": 1020,
+       "title": "Work"
+      }
+     ]
+    }
+   },
+   "rides": [
+    {
+     "index": 0,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1000,
+     "end": 1015,
+     "own": true,
+     "serves": [
+      "tue-soccer"
+     ]
+    },
+    {
+     "index": 1,
+     "kid": "kid-a@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1200,
+     "end": 1208,
+     "own": true,
+     "serves": [
+      "tue-volley"
+     ]
+    },
+    {
+     "index": 2,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1064,
+     "end": 1075,
+     "own": true,
+     "serves": [
+      "tue-art"
+     ]
+    },
+    {
+     "index": 3,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1110,
+     "end": 1151,
+     "own": true,
+     "serves": [
+      "tue-art"
+     ]
+    },
+    {
+     "index": 4,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1140,
+     "end": 1151,
+     "own": true,
+     "serves": [
+      "tue-art"
+     ]
+    }
+   ],
+   "kids": {
+    "kid-a@group.calendar.google.com": {
+     "name": "Ava",
+     "items": [
+      {
+       "type": "act",
+       "start": 1095,
+       "end": 1200,
+       "clash": false,
+       "event": "tue-volley"
+      },
+      {
+       "type": "ride",
+       "start": 1200,
+       "end": 1208,
+       "clash": false,
+       "ride": 1
+      }
+     ]
+    },
+    "kid-b@group.calendar.google.com": {
+     "name": "Ben",
+     "items": []
+    },
+    "kid-c@group.calendar.google.com": {
+     "name": "Cleo",
+     "items": [
+      {
+       "type": "act",
+       "start": 1020,
+       "end": 1110,
+       "clash": true,
+       "event": "tue-soccer"
+      },
+      {
+       "type": "act",
+       "start": 1080,
+       "end": 1140,
+       "clash": true,
+       "event": "tue-art"
+      },
+      {
+       "type": "ride",
+       "start": 1000,
+       "end": 1015,
+       "clash": false,
+       "ride": 0
+      },
+      {
+       "type": "ride",
+       "start": 1064,
+       "end": 1075,
+       "clash": true,
+       "ride": 2
+      },
+      {
+       "type": "ride",
+       "start": 1140,
+       "end": 1151,
+       "clash": false,
+       "ride": 3
+      },
+      {
+       "type": "ride",
+       "start": 1140,
+       "end": 1151,
+       "clash": false,
+       "ride": 4
+      }
+     ]
+    }
+   },
+   "clashes": [
+    {
+     "kid": "kid-c@group.calendar.google.com",
+     "a": {
+      "type": "act",
+      "start": 1020,
+      "end": 1110,
+      "clash": true,
+      "event": "tue-soccer"
+     },
+     "b": {
+      "type": "act",
+      "start": 1080,
+      "end": 1140,
+      "clash": true,
+      "event": "tue-art"
+     }
+    }
+   ],
+   "issues": [],
+   "score": 86
+  },
+  {
+   "date": "2026-11-11",
+   "events": [
+    {
+     "id": "wed-dance",
+     "kid": "kid-c@group.calendar.google.com",
+     "title": "Dance",
+     "place": "dance studio, 88 main st",
+     "place_name": "Dance studio, 88 Main St",
+     "short_place": "Dance studio",
+     "start": 960,
+     "end": 1020,
+     "drop": "mom",
+     "pick": "mom",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-c@group.calendar.google.com",
+     "event_id": "wed-dance-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 3:44 with Robin",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 5:11 with Robin",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "wed-football",
+     "kid": "kid-b@group.calendar.google.com",
+     "title": "Football",
+     "place": "football field, 90 stadium dr",
+     "place_name": "Football field, 90 Stadium Dr",
+     "short_place": "Football field",
+     "start": 1050,
+     "end": 1140,
+     "drop": "dad",
+     "pick": "dad",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "kid-b@group.calendar.google.com",
+     "event_id": "wed-football-google",
+     "recurring": true,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 5:05 with Sam",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 7:20 with Sam",
+       "tone": "normal"
+      }
+     }
+    }
+   ],
+   "drivers": {
+    "mom": {
+     "name": "Robin",
+     "leave": 944,
+     "drive": 44,
+     "trips": 2,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 944,
+       "end": 955,
+       "from": "home",
+       "to": "dance studio, 88 main st",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "wed-dance",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 955,
+       "end": 966,
+       "from": "dance studio, 88 main st",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "wed-dance",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 966,
+       "end": 1009,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1009,
+       "end": 1020,
+       "from": "home",
+       "to": "dance studio, 88 main st",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "wed-dance",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1020,
+       "end": 1031,
+       "from": "dance studio, 88 main st",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "wed-dance",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 944,
+       "end": 966,
+       "lead": "Leave 3:44",
+       "lines": [
+        "3:55  Dance studio, drop off Cleo",
+        "4:06  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "wed-dance"
+      },
+      {
+       "start": 1009,
+       "end": 1031,
+       "lead": "Leave 4:49",
+       "lines": [
+        "5:00  Dance studio, pick up Cleo",
+        "5:11  Home"
+       ],
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "wed-dance"
+      }
+     ],
+     "busy": [
+      {
+       "start": 720,
+       "end": 780,
+       "title": "Dentist"
+      }
+     ]
+    },
+    "dad": {
+     "name": "Sam",
+     "leave": 1025,
+     "drive": 80,
+     "trips": 2,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 1025,
+       "end": 1045,
+       "from": "home",
+       "to": "football field, 90 stadium dr",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "wed-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1045,
+       "end": 1065,
+       "from": "football field, 90 stadium dr",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "wed-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 1065,
+       "end": 1120,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1120,
+       "end": 1140,
+       "from": "home",
+       "to": "football field, 90 stadium dr",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "wed-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1140,
+       "end": 1160,
+       "from": "football field, 90 stadium dr",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "wed-football",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 1025,
+       "end": 1065,
+       "lead": "Leave 5:05",
+       "lines": [
+        "5:25  Football field, drop off Ben",
+        "5:45  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "wed-football"
+      },
+      {
+       "start": 1120,
+       "end": 1160,
+       "lead": "Leave 6:40",
+       "lines": [
+        "7:00  Football field, pick up Ben",
+        "7:20  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "wed-football"
+      }
+     ],
+     "busy": [
+      {
+       "start": 540,
+       "end": 1020,
+       "title": "Work"
+      }
+     ]
+    }
+   },
+   "rides": [
+    {
+     "index": 0,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "mom",
+     "start": 944,
+     "end": 955,
+     "own": true,
+     "serves": [
+      "wed-dance"
+     ]
+    },
+    {
+     "index": 1,
+     "kid": "kid-c@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1020,
+     "end": 1031,
+     "own": true,
+     "serves": [
+      "wed-dance"
+     ]
+    },
+    {
+     "index": 2,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1025,
+     "end": 1045,
+     "own": true,
+     "serves": [
+      "wed-football"
+     ]
+    },
+    {
+     "index": 3,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 1140,
+     "end": 1160,
+     "own": true,
+     "serves": [
+      "wed-football"
+     ]
+    }
+   ],
+   "kids": {
+    "kid-a@group.calendar.google.com": {
+     "name": "Ava",
+     "items": []
+    },
+    "kid-b@group.calendar.google.com": {
+     "name": "Ben",
+     "items": [
+      {
+       "type": "act",
+       "start": 1050,
+       "end": 1140,
+       "clash": false,
+       "event": "wed-football"
+      },
+      {
+       "type": "ride",
+       "start": 1025,
+       "end": 1045,
+       "clash": false,
+       "ride": 2
+      },
+      {
+       "type": "ride",
+       "start": 1140,
+       "end": 1160,
+       "clash": false,
+       "ride": 3
+      }
+     ]
+    },
+    "kid-c@group.calendar.google.com": {
+     "name": "Cleo",
+     "items": [
+      {
+       "type": "act",
+       "start": 960,
+       "end": 1020,
+       "clash": false,
+       "event": "wed-dance"
+      },
+      {
+       "type": "ride",
+       "start": 944,
+       "end": 955,
+       "clash": false,
+       "ride": 0
+      },
+      {
+       "type": "ride",
+       "start": 1020,
+       "end": 1031,
+       "clash": false,
+       "ride": 1
+      }
+     ]
+    }
+   },
+   "clashes": [],
+   "issues": [],
+   "score": 124
+  }
+ ],
+ "people": {
+  "drivers": [
+   {
+    "id": "mom",
+    "name": "Robin"
+   },
+   {
+    "id": "dad",
+    "name": "Sam"
+   }
+  ],
+  "kids": [
+   {
+    "id": "kid-a@group.calendar.google.com",
+    "name": "Ava"
+   },
+   {
+    "id": "kid-b@group.calendar.google.com",
+    "name": "Ben"
+   },
+   {
+    "id": "kid-c@group.calendar.google.com",
+    "name": "Cleo"
+   }
+  ],
+  "carpools": [
+   "Dustin",
+   "the Cunninghams",
+   "the Smiths"
+  ]
+ },
+ "status": {
+  "ok": true,
+  "error": null
+ }
+}
