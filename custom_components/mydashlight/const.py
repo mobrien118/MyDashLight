@@ -57,6 +57,10 @@ UPDATE_SECONDS: Final = 60
 PLAN_DAYS: Final = 7
 """Today and the six days after it."""
 
+SIGNAL_PLAN_UPDATED: Final = f"{DOMAIN}_plan_updated"
+"""Sent with the config entry when its plan changes, and with None when it stops."""
+WS_SUBSCRIBE: Final = f"{DOMAIN}/rides/subscribe"
+
 SERVICE_GET_PLAN: Final = "get_plan"
 SERVICE_SET_RIDE: Final = "set_ride"
 SERVICE_SET_STAY: Final = "set_stay"

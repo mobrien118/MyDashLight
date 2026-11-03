@@ -48,6 +48,16 @@ class PlanData:
     drive_times: dict[str, Any] = field(default_factory=dict)
     """Where the drive times came from: see :data:`~.lookups.Status`."""
 
+    def as_dict(self, days: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+        """The plan as the app and ``get_plan`` see it: every day, or just ``days``."""
+        return {
+            "updated": self.updated.isoformat(),
+            "time_zone": self.time_zone,
+            "unavailable_calendars": list(self.unavailable),
+            "drive_times": dict(self.drive_times),
+            "days": self.days if days is None else days,
+        }
+
 
 class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
     config_entry: MyDashLightConfigEntry
@@ -131,6 +141,21 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         # Suggested fixes replan the day many times over, so keep that off the event loop.
         days = await self.hass.async_add_executor_job(plan_week, week, drive.travel_for, self.settings.planner, DRIVERS)
         return days, drive
+
+    def payload(self, days: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
+        """The plan for the app and ``get_plan``, with who's who and whether it's up to date."""
+        if self.data is None:
+            return None
+        out = self.data.as_dict(days)
+        directory = self.settings.directory
+        out["people"] = {
+            "drivers": [{"id": d, "name": directory.display(d)} for d in DRIVERS],
+            "kids": [{"id": k.calendar_id, "name": k.name} for k in self.settings.roles.kids],
+            "carpools": list(directory.carpools),
+        }
+        error = None if self.last_update_success or self.last_exception is None else str(self.last_exception)
+        out["status"] = {"ok": self.last_update_success, "error": error}
+        return out
 
     def find(self, ride_id: str, day: str | None = None) -> tuple[DayInput, RideEvent, EventRef] | None:
         """A planned event by its id in the plan, preferring the day it's dropped off.
