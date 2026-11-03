@@ -1,15 +1,17 @@
 # Rides planner reference
 
 `planner-reference.js` is the working planner from the ride board mockup (Option B, 2026-10-27),
-with the example family's names changed to made-up ones.
+with the example family's names changed to made-up ones. One design change since: take-along
+is set on an event (its kid rides along on the same driver's trip just before it), not on a
+parent for the whole day (Marty, 2026-11-03).
 The Python port in `custom_components/mydashlight/planner.py` and `board.py` must give the same
 answers. Don't edit it to make a test pass: change the design first, then the reference, then the port.
 
 | File | What it is |
 | --- | --- |
-| `planner-reference.js` | The reference planner, unchanged from the mockup. |
+| `planner-reference.js` | The reference planner from the mockup, with per-event take-along. |
 | `cli.js` | Runs the reference for the tests. |
-| `scenarios.json` | Golden results for the example week plus three Thursday variants (take-along, a swapped driver, a double-booking). |
+| `scenarios.json` | Golden results for the example week plus three Thursday variants (a take-along, a swapped driver, a double-booking). |
 
 Regenerate the golden file after a deliberate change to the reference:
 

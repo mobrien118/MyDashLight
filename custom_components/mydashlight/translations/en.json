@@ -124,7 +124,7 @@
             "data_description": {
               "arrive_early": "When an event has no Arrive by time, aim to get there this long before it starts.",
               "go_home_margin": "Drive home between stops when that frees at least this much more time than waiting.",
-              "take_along_window": "With take-along on, kids whose drop-offs are this close together leave home together.",
+              "take_along_window": "Suggest taking a kid along on an earlier drop-off only when it is at most this long before theirs.",
               "waiting_after": "Reaching a pick-up later than this after it ends counts as the kid waiting.",
               "too_early": "Getting there more than this long before the target is flagged.",
               "tight_slack": "Less spare time than this before the next stop is flagged.",
@@ -263,19 +263,19 @@
     },
     "set_take_along": {
       "name": "Set take-along",
-      "description": "Lets a parent bring the other kids along when drop-offs are close together, for one day.",
+      "description": "Sets whether the kid rides along on the same driver's trip just before this drop-off, so the driver doesn't come home for them.",
       "fields": {
-        "parent": {
-          "name": "Parent",
-          "description": "mom or dad (the first or second parent), or their name."
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
         },
         "on": {
-          "name": "On",
-          "description": "Whether to take the other kids along."
+          "name": "Take along",
+          "description": "Whether the kid rides along."
         },
-        "date": {
-          "name": "Date",
-          "description": "The day. Defaults to today."
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
         }
       }
     },
@@ -323,12 +323,6 @@
     },
     "write_failed": {
       "message": "Couldn't save the change to Google Calendar: {error}"
-    },
-    "not_a_parent": {
-      "message": "{parent} isn't one of the parents MyDashLight plans for. Use {names}."
-    },
-    "date_passed": {
-      "message": "That day has passed. Pick today or a later day."
     },
     "suggestion_gone": {
       "message": "That fix no longer applies, because the plan has changed. Check the latest plan."

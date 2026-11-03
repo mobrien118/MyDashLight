@@ -23,7 +23,6 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 )
 from homeassistant.helpers.typing import ConfigType
 
-from .along import TakeAlong
 from .api import OAuthTokens
 from .const import CONF_ROUTES_DAILY_LIMIT, CONF_ROUTES_KEY, DEFAULT_ROUTES_DAILY_LIMIT, DOMAIN
 from .coordinator import MyDashLightCoordinator
@@ -85,9 +84,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
         int(entry.options.get(CONF_ROUTES_DAILY_LIMIT, DEFAULT_ROUTES_DAILY_LIMIT)),
     )
     await lookups.async_load()
-    along = TakeAlong(hass)
-    await along.async_load()
-    coordinator = MyDashLightCoordinator(hass, entry, api, settings, lookups, along)
+    coordinator = MyDashLightCoordinator(hass, entry, api, settings, lookups)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = MyDashLightData(settings, api, coordinator)
     # A coordinator only polls while something listens. Nothing does yet (the plan is read
@@ -106,6 +103,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> None:
-    """Delete the saved drive times and take-along choices along with the entry."""
+    """Delete the saved drive times along with the entry."""
     await RoutesLookups(hass, None, 0).async_remove()
-    await TakeAlong(hass).async_remove()

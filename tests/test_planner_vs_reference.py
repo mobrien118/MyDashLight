@@ -51,6 +51,7 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
                 "pick": pick,
                 "stay": drop == pick and drop in ("mom", "dad") and rng.random() < 0.5,
                 "arriveBy": start - rng.choice([10, 15, 20, 30]) if rng.random() < 0.3 else None,
+                "along": rng.random() < 0.3,
             }
         )
     busy: dict[str, list[dict[str, Any]]] = {}
@@ -58,8 +59,7 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
         if rng.random() < 0.5:
             end = rng.randrange(14 * 60, 18 * 60, 5)
             busy[d] = [{"start": end - rng.choice([60, 120, 240, 480]), "end": end, "title": "Work"}]
-    along = {"mom": rng.random() < 0.4, "dad": rng.random() < 0.4}
-    return {"events": events, "along": along, "busy": busy}
+    return {"events": events, "busy": busy}
 
 
 def test_matches_reference_on_random_days() -> None:

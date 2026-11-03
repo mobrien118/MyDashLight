@@ -92,9 +92,9 @@ set_arrive_by:
 
 set_take_along:
   fields:
-    parent:
+    event:
       required: true
-      example: mom
+      example: abc123def456
       selector:
         text:
     "on":
@@ -102,16 +102,20 @@ set_take_along:
       default: true
       selector:
         boolean:
-    date:
+    scope:
       required: false
-      example: "2026-11-03"
+      default: this
       selector:
-        date:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series
 
 apply_suggestion:
   fields:
     suggestion:
       required: true
-      example: "2026-11-03|abc123def456|pick|dad"
+      example: "2026-11-03|abc123def456|along|yes"
       selector:
         text:

@@ -8,6 +8,7 @@ The ride lines live in a block at the end of the event's description, after a he
     Drop-off: Sam
     Pick-up: the Parkers
     Stay: yes
+    Take along: yes
     Arrive by: 5:15 PM
     Travel: 25 min
 
@@ -42,13 +43,16 @@ from .planner import NOT_NEEDED, UNASSIGNED, fmt12
 
 RIDES_HEADER: Final = "--- Rides ---"
 
-Field = Literal["drop", "pick", "stay", "arrive_by", "travel"]
-FIELDS: Final[tuple[Field, ...]] = ("drop", "pick", "stay", "arrive_by", "travel")
+Field = Literal["drop", "pick", "stay", "along", "arrive_by", "travel"]
+FIELDS: Final[tuple[Field, ...]] = ("drop", "pick", "stay", "along", "arrive_by", "travel")
+_YES_NO: Final[frozenset[Field]] = frozenset({"stay", "along"})
 
 _LABELS: Final[dict[str, Field]] = {
     "dropoff": "drop",
     "pickup": "pick",
     "stay": "stay",
+    "takealong": "along",
+    "along": "along",
     "arriveby": "arrive_by",
     "travel": "travel",
     "traveltime": "travel",
@@ -57,11 +61,12 @@ _WRITE_LABELS: Final[dict[Field, str]] = {
     "drop": "Drop-off",
     "pick": "Pick-up",
     "stay": "Stay",
+    "along": "Take along",
     "arrive_by": "Arrive by",
     "travel": "Travel",
 }
 _NOT_NEEDED_WORDS: Final = frozenset({"not needed", "none", "no", "n/a", "na", "no ride", "not required"})
-_YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying"})
+_YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying", "along"})
 _NO: Final = frozenset({"no", "n", "false", "off", ""})
 
 _HEADER_RE: Final = re.compile(r"^\s*-{2,}\s*rides\s*-{2,}\s*$", re.IGNORECASE)
@@ -136,6 +141,8 @@ class RideNotes:
     drop: str = UNASSIGNED
     pick: str = UNASSIGNED
     stay: bool = False
+    along: bool = False
+    """Take along: the kid rides with the driver's trip just before this drop-off."""
     arrive_by: int | None = None
     """Minutes after midnight."""
     travel: int | None = None
@@ -183,6 +190,7 @@ def write_notes(
     drop: str | Keep = KEEP,
     pick: str | Keep = KEEP,
     stay: bool | Keep = KEEP,
+    along: bool | Keep = KEEP,
     arrive_by: int | Keep | None = KEEP,
     travel: int | Keep | None = KEEP,
     event_start: int | None = None,
@@ -200,6 +208,7 @@ def write_notes(
         "drop": drop,
         "pick": pick,
         "stay": stay,
+        "along": along,
         "arrive_by": arrive_by,
         "travel": travel,
     }
@@ -328,7 +337,7 @@ def _locate(doc: _Doc) -> dict[Field, list[int]]:
 
 def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> RideNotes:
     drivers = {"drop": UNASSIGNED, "pick": UNASSIGNED}
-    stay = False
+    flags = {"stay": False, "along": False}
     arrive_by: int | None = None
     travel: int | None = None
     problems: list[str] = []
@@ -343,10 +352,10 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         label = _WRITE_LABELS[fld]
         if fld in ("drop", "pick"):
             drivers[fld] = directory.resolve(raw)
-        elif fld == "stay":
+        elif fld in _YES_NO:
             word = raw.casefold()
             if word in _YES:
-                stay = True
+                flags[fld] = True
             elif word not in _NO:
                 problems.append(f"{label}: “{raw}” isn’t yes or no")
         elif fld == "arrive_by":
@@ -357,7 +366,8 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     return RideNotes(
         drop=drivers["drop"],
         pick=drivers["pick"],
-        stay=stay,
+        stay=flags["stay"],
+        along=flags["along"],
         arrive_by=arrive_by,
         travel=travel,
         has_block=doc.header is not None,
@@ -368,7 +378,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
 def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
     if fld in ("drop", "pick"):
         return directory.resolve(str(value or ""))
-    if fld == "stay":
+    if fld in _YES_NO:
         return bool(value)
     if isinstance(value, (int, float)):
         return int(value)
@@ -381,7 +391,7 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
     if fld in ("drop", "pick"):
         v = str(value)
         return None if v == UNASSIGNED else f"{label}: {directory.display(v)}"
-    if fld == "stay":
+    if fld in _YES_NO:
         return f"{label}: yes" if value else None
     if not isinstance(value, int):
         return None

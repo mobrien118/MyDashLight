@@ -21,7 +21,6 @@ reminders come next.
 | `notes.py` | Reads and writes ride details in a Google Calendar event's notes. |
 | `google.py` | A small Google Calendar client: the calendar list, the events in a time span, and saving one event's notes. |
 | `changes.py` | Saves a ride change into an event's notes without overwriting someone else's edit. |
-| `along.py` | Keeps each day's take-along choices in Home Assistant. |
 | `week.py` | Sorts a week of calendar events into each day's activities and busy times. |
 | `payload.py` | Plans each day and writes the result as plain data for the app. |
 | `routes.py` | A small Google Routes client, and the cache of drive times by trip and hour of the week. |
@@ -81,6 +80,7 @@ Bring shin guards. Field 3.
 Drop-off: Sam
 Pick-up: the Parkers
 Stay: yes
+Take along: yes
 Arrive by: 5:15 PM
 Travel: 25 min
 ```
@@ -89,6 +89,7 @@ Travel: 25 min
 | --- | --- | --- |
 | Drop-off, Pick-up | A parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver) | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
+| Take along | yes | The driver comes home for this kid between drop-offs. With yes, the kid rides along on the same driver's trip just before this drop-off |
 | Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive 5 minutes before the start |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 
@@ -109,7 +110,7 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to a few minutes before the start |
-| `mydashlight.set_take_along` | Whether a parent brings the other kids along on a day, when drop-offs are close together |
+| `mydashlight.set_take_along` | Whether the kid rides along on the same driver's trip just before this drop-off, so the driver doesn't come home for them |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
 
 The event actions take the event's `id` from `get_plan`. For a repeating event, `scope: this`
@@ -120,9 +121,6 @@ in the next 7 days get the change too.
 Each change reads the event fresh and saves it only if nobody changed it in the meantime. If
 someone did, say on a phone at the same moment, the change is applied again on top of their edit.
 Nobody gets an update email.
-
-Take-along is about a parent's whole day rather than one event, so it's kept in Home Assistant
-rather than in event notes.
 
 ## Development
 

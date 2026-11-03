@@ -13,7 +13,6 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .along import TakeAlong
 from .changes import Target
 from .const import DOMAIN, DRIVERS, PLAN_DAYS, UPDATE_SECONDS
 from .google import (
@@ -60,7 +59,6 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         api: GoogleCalendarApi,
         settings: HubSettings,
         lookups: RoutesLookups,
-        along: TakeAlong,
     ) -> None:
         super().__init__(
             hass,
@@ -72,7 +70,6 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         self.api = api
         self.settings = settings
         self.lookups = lookups
-        self.along = along
         self._unavailable: set[str] = set()
 
     async def _async_update_data(self) -> PlanData:
@@ -132,9 +129,7 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         cache = self.lookups.cache if self.lookups.status(now) not in ("off", "no_home") else None
         drive = DriveTimes(week, cache, self.settings.no_address_travel, now.timestamp())
         # Suggested fixes replan the day many times over, so keep that off the event loop.
-        days = await self.hass.async_add_executor_job(
-            plan_week, week, drive.travel_for, self.settings.planner, DRIVERS, dict(self.along.days)
-        )
+        days = await self.hass.async_add_executor_job(plan_week, week, drive.travel_for, self.settings.planner, DRIVERS)
         return days, drive
 
     def find(self, ride_id: str, day: str | None = None) -> tuple[DayInput, RideEvent, EventRef] | None:

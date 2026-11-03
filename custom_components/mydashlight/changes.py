@@ -30,6 +30,7 @@ class RideChange:
     drop: str | Keep = KEEP
     pick: str | Keep = KEEP
     stay: bool | Keep = KEEP
+    along: bool | Keep = KEEP
     arrive_by: int | Keep | None = KEEP
     """Minutes after midnight, or None to go back to the default."""
 
@@ -40,6 +41,7 @@ class RideChange:
             drop=self.drop,
             pick=self.pick,
             stay=self.stay,
+            along=self.along,
             arrive_by=self.arrive_by,
             event_start=event_start,
         )

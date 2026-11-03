@@ -65,7 +65,6 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: MyDashL
             "unavailable": [alias.get(c, "other") for c in data.unavailable],
             "drive_times": dict(data.drive_times),
             "drive_times_saved": len(entry.runtime_data.coordinator.lookups.cache.entries),
-            "take_along": coordinator.along.days,
             "days": [
                 {
                     "date": d["date"],

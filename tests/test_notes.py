@@ -120,6 +120,21 @@ def test_stay(value: str, stay: bool) -> None:
     assert notes.problems == ()
 
 
+@pytest.mark.parametrize("label", ["Take along", "Take-along", "Takealong", "Along"])
+def test_take_along(label: str) -> None:
+    assert parse(f"{label}: yes").along is True
+    notes = parse(f"{label}: sometimes")
+    assert notes.along is False
+    assert notes.problems == ("Take along: “sometimes” isn’t yes or no",)
+
+
+def test_write_take_along() -> None:
+    text = write_notes("Bring water.\n\n--- Rides ---\nDrop-off: Sam", DIRECTORY, along=True)
+    assert text == "Bring water.\n\n--- Rides ---\nDrop-off: Sam\nTake along: yes"
+    assert write_notes(text, DIRECTORY, along=False) == "Bring water.\n\n--- Rides ---\nDrop-off: Sam"
+    assert write_notes(text, DIRECTORY, along=True) == text
+
+
 def test_unreadable_values_are_reported_not_guessed() -> None:
     notes = parse("--- Rides ---\nStay: maybe\nArrive by: soonish\nTravel: a while")
     assert notes.stay is False

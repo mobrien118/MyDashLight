@@ -20,11 +20,10 @@ SCENARIOS: list[dict[str, Any]] = json.loads(
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=[s["name"] for s in SCENARIOS])
 def test_scenario(scenario: dict[str, Any]) -> None:
     events = [event_from_json(e) for e in scenario["input"]["events"]]
-    along = scenario["input"]["along"]
     busy = busy_from_json(scenario["input"]["busy"])
-    board = build_day(events, along, busy, travel, LABELS, kids=KIDS)
+    board = build_day(events, busy, travel, LABELS, kids=KIDS)
 
-    got = expected_json(events, along, busy, board)
+    got = expected_json(events, busy, board)
 
     want = scenario["expected"]
     # Compare part by part so a failure says which part is off.
@@ -36,7 +35,7 @@ def test_scenario(scenario: dict[str, Any]) -> None:
 def test_scenarios_cover_the_tricky_cases() -> None:
     """The golden file still exercises take-along, a swapped driver and a double-booking."""
     names = " ".join(s["name"] for s in SCENARIOS)
-    assert "taking kids along" in names
+    assert any(e.get("along") for s in SCENARIOS for e in s["input"]["events"])
     assert "drop-off" in names
     assert any("double_booked" in s["expected"] for s in SCENARIOS)
     assert len(SCENARIOS) == 10

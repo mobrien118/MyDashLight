@@ -86,6 +86,7 @@ def event_from_json(e: Mapping[str, Any]) -> RideEvent:
         pick=e["pick"],
         stay=e["stay"],
         arrive_by=e["arriveBy"],
+        along=bool(e.get("along")),
     )
 
 
@@ -135,14 +136,13 @@ def issue_json(x: Issue) -> dict[str, Any]:
 
 def expected_json(
     events: Sequence[RideEvent],
-    along: Mapping[str, bool],
     busy: Mapping[str, Sequence[BusyBlock]],
     board: DayBoard,
 ) -> dict[str, Any]:
     plan: DayPlan = board.plan
     suggestions = []
     for x in plan.hard:
-        options = suggestions_for(x, events, along, plan, busy, travel, LABELS)
+        options = suggestions_for(x, events, plan, busy, travel, LABELS)
         if options:
             suggestions.append(
                 {
@@ -176,12 +176,11 @@ def _line(line: CardLine | None) -> dict[str, str] | None:
 def board_json(day: Mapping[str, Any]) -> dict[str, Any]:
     """Everything cli.js prints for one day in ``board`` mode."""
     events = [event_from_json(e) for e in day["events"]]
-    along = dict(day["along"])
     busy = busy_from_json(day["busy"])
-    board = build_day(events, along, busy, travel, LABELS, kids=KIDS)
+    board = build_day(events, busy, travel, LABELS, kids=KIDS)
     plan = board.plan
     return {
-        "expected": expected_json(events, along, busy, board),
+        "expected": expected_json(events, busy, board),
         "score": _num(plan.score),
         "issue_texts": [{"key": x.key, **_text(x)} for x in [*plan.hard, *plan.soft]],
         "rides": [

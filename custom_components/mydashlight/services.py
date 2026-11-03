@@ -2,7 +2,7 @@
 
 Ride changes are saved in the notes of the event on the kid's Google calendar, then the
 plan is read again, so the change shows the same everywhere: in the app, on phones and in
-Google Calendar. Take-along is saved in Home Assistant.
+Google Calendar. Nothing about rides is kept in Home Assistant.
 """
 
 from __future__ import annotations
@@ -24,14 +24,12 @@ from .const import (
     ATTR_DRIVER,
     ATTR_EVENT,
     ATTR_ON,
-    ATTR_PARENT,
     ATTR_SCOPE,
     ATTR_SIDE,
     ATTR_STAY,
     ATTR_SUGGESTION,
     ATTR_TIME,
     DOMAIN,
-    DRIVERS,
     PLAN_DAYS,
     SCOPE_SERIES,
     SCOPE_THIS,
@@ -68,13 +66,7 @@ SET_RIDE_SCHEMA = vol.Schema(
 )
 SET_STAY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_STAY): cv.boolean})
 SET_ARRIVE_BY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Optional(ATTR_TIME): vol.Any(None, cv.time)})
-SET_TAKE_ALONG_SCHEMA = vol.Schema(
-    {
-        vol.Required(ATTR_PARENT): cv.string,
-        vol.Required(ATTR_ON): cv.boolean,
-        vol.Optional(ATTR_DATE): cv.date,
-    }
-)
+SET_TAKE_ALONG_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_ON): cv.boolean})
 APPLY_SUGGESTION_SCHEMA = vol.Schema({vol.Required(ATTR_SUGGESTION): cv.string})
 
 
@@ -143,21 +135,7 @@ async def _async_set_arrive_by(call: ServiceCall) -> None:
 
 
 async def _async_set_take_along(call: ServiceCall) -> None:
-    entry = _loaded_entry(call.hass)
-    coordinator = entry.runtime_data.coordinator
-    driver = coordinator.settings.directory.resolve(call.data[ATTR_PARENT])
-    if driver not in DRIVERS:
-        names = [coordinator.settings.directory.display(d) for d in DRIVERS]
-        raise ServiceValidationError(
-            translation_domain=DOMAIN,
-            translation_key="not_a_parent",
-            translation_placeholders={"parent": call.data[ATTR_PARENT], "names": " or ".join(names)},
-        )
-    today = dt_util.now().date()
-    day: date = call.data.get(ATTR_DATE) or today
-    if day < today:
-        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="date_passed")
-    await _async_take_along(entry, day, driver, call.data[ATTR_ON])
+    await _async_change_event(call, RideChange(along=call.data[ATTR_ON]))
 
 
 async def _async_apply_suggestion(call: ServiceCall) -> None:
@@ -168,20 +146,10 @@ async def _async_apply_suggestion(call: ServiceCall) -> None:
             for suggestion in issue.get("suggestions", ()):
                 if suggestion["id"] == wanted:
                     change = suggestion["change"]
-                    if "along" in change:
-                        await _async_take_along(entry, date.fromisoformat(day["date"]), change["along"], True)
-                    else:
-                        ride = RideChange(**{change["field"]: change["value"]})
-                        await _async_change_event(call, ride, ride_id=change["id"], day=day["date"])
+                    ride = RideChange(**{change["field"]: change["value"]})
+                    await _async_change_event(call, ride, ride_id=change["id"], day=day["date"])
                     return
     raise ServiceValidationError(translation_domain=DOMAIN, translation_key="suggestion_gone")
-
-
-async def _async_take_along(entry: MyDashLightConfigEntry, day: date, driver: str, on: bool) -> None:
-    coordinator = entry.runtime_data.coordinator
-    async with entry.runtime_data.write_lock:
-        if await coordinator.along.async_set(day, driver, on, dt_util.now().date()):
-            await coordinator.async_refresh()
 
 
 async def _async_change_event(

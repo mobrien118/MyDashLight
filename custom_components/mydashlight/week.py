@@ -159,6 +159,7 @@ def build_week(
                             drop=notes.drop,
                             pick=NOT_NEEDED,
                             arrive_by=notes.arrive_by,
+                            along=notes.along,
                         ),
                         ("drop",),
                     )
@@ -278,7 +279,13 @@ def addresses(week: WeekInput) -> list[str]:
 
 
 def _sides(notes: RideNotes) -> dict[str, Any]:
-    return {"drop": notes.drop, "pick": notes.pick, "stay": notes.stay, "arrive_by": notes.arrive_by}
+    return {
+        "drop": notes.drop,
+        "pick": notes.pick,
+        "stay": notes.stay,
+        "arrive_by": notes.arrive_by,
+        "along": notes.along,
+    }
 
 
 def _sort_key(ev: CalendarEvent) -> tuple[str, str]:

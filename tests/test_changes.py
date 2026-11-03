@@ -217,56 +217,45 @@ async def test_not_loaded(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert err.value.translation_key == "not_loaded"
 
 
-async def test_take_along(hass: HomeAssistant, google: FakeGoogle, hass_storage: dict[str, Any]) -> None:
+def driven_together(google: FakeGoogle) -> None:
+    """Robin drops Ava at piano for 4:00, then Ben at the pool for 4:15."""
+    google.event(AVA, "piano")["description"] = "Drop-off: Robin\nPick-up: Robin"
+    google.add(
+        BEN,
+        **timed(
+            "swim",
+            "Swim",
+            "2026-11-03T16:15:00-06:00",
+            "2026-11-03T17:15:00-06:00",
+            location=SWIM,
+            description="Drop-off: Robin\nPick-up: Robin",
+        ),
+    )
+
+
+def first_drive(entry: MockConfigEntry) -> dict[str, Any]:
+    days: list[dict[str, Any]] = entry.runtime_data.coordinator.data.days
+    return next(g for g in days[0]["drivers"]["mom"]["segments"] if g["type"] == "drive")
+
+
+async def test_take_along(hass: HomeAssistant, google: FakeGoogle) -> None:
+    driven_together(google)
     entry = await load(hass)
-    days = lambda: entry.runtime_data.coordinator.data.days  # noqa: E731
+    # Robin comes home for Ben between the drop-offs.
+    assert first_drive(entry)["kids"] == [AVA]
 
-    await call(hass, "set_take_along", parent="Robin", on=True)
-    await call(hass, "set_take_along", parent="dad", on=True, date="2026-11-05")
-    assert days()[0]["along"] == {"mom": True, "dad": False}
-    assert days()[2]["along"] == {"mom": False, "dad": True}
-    assert hass_storage[f"{DOMAIN}.take_along"]["data"] == {
-        "days": {"2026-11-03": {"mom": True}, "2026-11-05": {"dad": True}}
-    }
+    await call(hass, "set_take_along", event="swim", on=True)
 
-    updated = entry.runtime_data.coordinator.data.updated
-    await call(hass, "set_take_along", parent="mom", on=True)
-    assert entry.runtime_data.coordinator.data.updated is updated  # already on: no replan
+    assert google.event(BEN, "swim")["description"] == (
+        "--- Rides ---\nDrop-off: Robin\nPick-up: Robin\nTake along: yes"
+    )
+    assert planned(entry, "swim")["along"] is True
+    # Now Ben rides along to Ava's drop-off, then on to the pool.
+    assert first_drive(entry)["kids"] == [AVA, BEN]
 
-    await call(hass, "set_take_along", parent="mom", on=False)
-    assert days()[0]["along"] == {"mom": False, "dad": False}
-    assert hass_storage[f"{DOMAIN}.take_along"]["data"] == {"days": {"2026-11-05": {"dad": True}}}
-
-    with pytest.raises(ServiceValidationError) as err:
-        await call(hass, "set_take_along", parent="the Parkers", on=True)
-    assert err.value.translation_key == "not_a_parent"
-    assert err.value.translation_placeholders == {"parent": "the Parkers", "names": "Robin or Sam"}
-    with pytest.raises(ServiceValidationError) as err:
-        await call(hass, "set_take_along", parent="mom", on=True, date="2026-11-02")
-    assert err.value.translation_key == "date_passed"
-
-
-async def test_take_along_is_kept(
-    hass: HomeAssistant, google: FakeGoogle, hass_storage: dict[str, Any], freezer: FrozenDateTimeFactory
-) -> None:
-    hass_storage[f"{DOMAIN}.take_along"] = {
-        "version": 1,
-        "key": f"{DOMAIN}.take_along",
-        "data": {"days": {"2026-11-01": {"mom": True}, "2026-11-04": {"dad": True}}},
-    }
-    entry = await load(hass)
-    assert entry.runtime_data.coordinator.data.days[1]["along"] == {"mom": False, "dad": True}
-
-    # Days that have passed are dropped on the next change.
-    await call(hass, "set_take_along", parent="mom", on=True)
-    assert hass_storage[f"{DOMAIN}.take_along"]["data"]["days"] == {
-        "2026-11-03": {"mom": True},
-        "2026-11-04": {"dad": True},
-    }
-
-    await hass.config_entries.async_remove(entry.entry_id)
-    await hass.async_block_till_done()
-    assert f"{DOMAIN}.take_along" not in hass_storage
+    await call(hass, "set_take_along", event="swim", on=False)
+    assert planned(entry, "swim")["along"] is False
+    assert first_drive(entry)["kids"] == [AVA]
 
 
 def suggestions(entry: MockConfigEntry) -> list[dict[str, Any]]:
@@ -296,27 +285,16 @@ async def test_apply_a_suggested_fix(hass: HomeAssistant, google: FakeGoogle) ->
 
 
 async def test_apply_a_take_along_fix(hass: HomeAssistant, google: FakeGoogle) -> None:
-    # Robin works until 3:30, then drops Ava at piano for 4:00 and Ben at the pool for 4:15.
-    # Going home for Ben in between means leaving during work; taking him along doesn't.
-    google.event(AVA, "piano")["description"] = "Drop-off: Robin\nPick-up: Robin"
-    google.add(
-        BEN,
-        **timed(
-            "swim",
-            "Swim",
-            "2026-11-03T16:15:00-06:00",
-            "2026-11-03T17:15:00-06:00",
-            location=SWIM,
-            description="Drop-off: Robin\nPick-up: Robin",
-        ),
-    )
+    # Robin works until 3:30. Coming home for Ben between the drop-offs means leaving
+    # during work; taking him along doesn't.
+    driven_together(google)
     google.add(ROBIN, **timed("work", "Work", "2026-11-03T09:00:00-06:00", "2026-11-03T15:30:00-06:00"))
     entry = await load(hass)
-    along = [s for s in suggestions(entry) if "along" in s["change"]]
-    assert along, suggestions(entry)
+    along = [s for s in suggestions(entry) if s["change"]["field"] == "along"]
+    assert [(s["id"], s["label"]) for s in along] == [("2026-11-03|swim|along|yes", "Take Ben along")]
 
     await call(hass, "apply_suggestion", suggestion=along[0]["id"])
 
-    assert along[0]["id"] == "2026-11-03|along|mom"
-    assert entry.runtime_data.coordinator.data.days[0]["along"]["mom"] is True
-    assert google.patches == []
+    assert google.event(BEN, "swim")["description"].endswith("Take along: yes")
+    assert planned(entry, "swim")["along"] is True
+    assert first_drive(entry)["kids"] == [AVA, BEN]
