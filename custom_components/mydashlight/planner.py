@@ -50,6 +50,9 @@ class RideEvent:
     pick: str = UNASSIGNED
     stay: bool = False
     arrive_by: int | None = None
+    along: tuple[str, ...] = ()
+    """Kids taken along on this drop-off. They leave home in the same car, so the driver can go
+    on to their own drop-offs without coming home for them."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +73,7 @@ class PlannerSettings:
     go_home_margin: int = 15
     """Go home between stops when that frees at least this much more idle time."""
     take_along_window: int = 45
-    """With take-along on, kids whose drop-offs are this close leave home together."""
+    """Suggest taking a kid along on a drop-off at most this long before theirs."""
     waiting_after: int = 5
     """Reaching a pick-up more than this long after it ends leaves the kid waiting."""
     too_early: int = 15
@@ -207,17 +210,15 @@ class DayPlan:
 
 @dataclass(frozen=True, slots=True)
 class Change:
-    """A single edit to try: give one side of an event to a driver, or toggle take-along."""
+    """A single edit to try: give one side of an event to a driver, or take kids along on it."""
 
-    event_id: str | None = None
-    side: Side | None = None
-    value: str | None = None
-    along: str | None = None
+    event_id: str
+    field: Literal["drop", "pick", "along"]
+    value: str | tuple[str, ...]
 
-    def as_dict(self) -> dict[str, str]:
-        if self.along is not None:
-            return {"along": self.along}
-        return {"id": self.event_id or "", "field": self.side or "", "value": self.value or ""}
+    def as_dict(self) -> dict[str, str | list[str]]:
+        value = list(self.value) if isinstance(self.value, tuple) else self.value
+        return {"id": self.event_id, "field": self.field, "value": value}
 
 
 @dataclass(slots=True)
@@ -268,7 +269,6 @@ class _Task:
 def plan_driver(
     driver: str,
     events: Sequence[RideEvent],
-    along: bool,
     busy: Mapping[str, Sequence[BusyBlock]],
     travel: TravelFn,
     settings: PlannerSettings = DEFAULT_SETTINGS,
@@ -288,7 +288,7 @@ def plan_driver(
     if not tasks:
         return out
 
-    stops = _build_stops(tasks, along, settings)
+    stops = _build_stops(tasks)
     n = len(stops)
 
     # Backward pass: the latest arrival and departure at each stop that still make every deadline.
@@ -464,11 +464,11 @@ def plan_driver(
     return out
 
 
-def _build_stops(tasks: list[_Task], along: bool, settings: PlannerSettings) -> list[Stop]:
+def _build_stops(tasks: list[_Task]) -> list[Stop]:
     """Sort tasks into stops that start and end at home, tracking who is in the car."""
     stops = [Stop(HOME, "start")]
     car: list[str] = []
-    for i, k in enumerate(tasks):
+    for k in tasks:
         kid = k.event.kid
         if k.type != "pick":
             if kid not in car:
@@ -476,10 +476,8 @@ def _build_stops(tasks: list[_Task], along: bool, settings: PlannerSettings) -> 
                 if stops[-1].loc != HOME:
                     stops.append(Stop(HOME, "fetch"))
                 car = [kid]
-                if along:
-                    for o in tasks[i + 1 :]:
-                        if o.type != "pick" and o.t - k.t <= settings.take_along_window and o.event.kid not in car:
-                            car.append(o.event.kid)
+                # The kids taken along on this drop-off leave home in the same car.
+                car += [a for a in dict.fromkeys(k.event.along) if a != kid]
                 stops[-1].car = list(car)
             car = [x for x in car if x != kid]
             stop = Stop(k.event.loc, k.type, event=k.event, deadline=k.t)
@@ -498,14 +496,13 @@ def _build_stops(tasks: list[_Task], along: bool, settings: PlannerSettings) -> 
 
 def plan_all(
     events: Sequence[RideEvent],
-    along: Mapping[str, bool],
     busy: Mapping[str, Sequence[BusyBlock]],
     travel: TravelFn,
     settings: PlannerSettings = DEFAULT_SETTINGS,
     drivers: Sequence[str] = DEFAULT_DRIVERS,
 ) -> DayPlan:
     """Plan every routed driver's day and collect the issues across them."""
-    plans = {d: plan_driver(d, events, bool(along.get(d)), busy, travel, settings) for d in drivers}
+    plans = {d: plan_driver(d, events, busy, travel, settings) for d in drivers}
     hard = [x for d in drivers for x in plans[d].issues]
     for e in events:
         if e.drop == UNASSIGNED:
@@ -586,35 +583,32 @@ def minutes_text(v: float | None) -> str:
 
 def apply_change(
     events: Sequence[RideEvent],
-    along: Mapping[str, bool],
     change: Change,
     drivers: Sequence[str] = DEFAULT_DRIVERS,
-) -> tuple[list[RideEvent], dict[str, bool]]:
-    """Return the events and take-along flags with one change applied."""
+) -> list[RideEvent]:
+    """Return the events with one change applied."""
     new_events: list[RideEvent] = []
     for e in events:
-        if change.event_id is None or e.id != change.event_id:
+        if e.id != change.event_id:
             new_events.append(e)
             continue
         n = e
-        if change.side == "drop":
-            n = replace(n, drop=change.value or UNASSIGNED)
-        elif change.side == "pick":
-            n = replace(n, pick=change.value or UNASSIGNED)
+        if change.field == "along":
+            n = replace(n, along=tuple(change.value))
+        elif change.field == "drop":
+            n = replace(n, drop=str(change.value) or UNASSIGNED)
+        else:
+            n = replace(n, pick=str(change.value) or UNASSIGNED)
         # Stay only makes sense when the same routed parent drives both ways.
         if n.drop != n.pick or n.drop not in drivers:
             n = replace(n, stay=False)
         new_events.append(n)
-    new_along = dict(along)
-    if change.along is not None:
-        new_along[change.along] = not new_along.get(change.along, False)
-    return new_events, new_along
+    return new_events
 
 
 def suggestions_for(
     issue: Issue,
     events: Sequence[RideEvent],
-    along: Mapping[str, bool],
     base: DayPlan,
     busy: Mapping[str, Sequence[BusyBlock]],
     travel: TravelFn,
@@ -625,6 +619,7 @@ def suggestions_for(
 ) -> list[Suggestion]:
     """Single changes that clear this issue without adding a worse one, best first."""
     cands: list[tuple[str | None, Change, str]] = []
+    along_kid: dict[Change, str] = {}
     if issue.kind == "unassigned" and issue.event is not None and issue.side is not None:
         verb = " drops off" if issue.side == "drop" else " picks up"
         for drv in drivers:
@@ -645,22 +640,33 @@ def suggestions_for(
                             o,
                         )
                     )
-        if not along.get(d):
-            cands.append((None, Change(along=d), d))
+        # Take a kid along on an earlier drop-off by the same driver, if it's close enough.
+        for e in events:
+            if e.drop != d:
+                continue
+            for f in events:
+                gap = arrive_at(e, settings) - arrive_at(f, settings)
+                if f is e or f.drop != d or f.kid == e.kid or not 0 <= gap <= settings.take_along_window:
+                    continue
+                if e.kid in f.along:
+                    continue
+                change = Change(f.id, "along", (*f.along, e.kid))
+                cands.append((None, change, d))
+                along_kid[change] = e.kid
 
     base_soft = {x.key for x in base.soft}
     key = issue.key
     good: list[Suggestion] = []
     for label, change, who in cands:
-        next_events, next_along = apply_change(events, along, change, drivers)
-        p = plan_all(next_events, next_along, busy, travel, settings, drivers)
+        p = plan_all(apply_change(events, change, drivers), busy, travel, settings, drivers)
         if key in {x.key for x in p.hard} or len(p.hard) >= len(base.hard):
             continue
         if label is None:
-            multi = next((g for g in p[who].segments if g.type == "drive" and len(g.kids) > 1), None)
-            if multi is None:
+            kid = along_kid[change]
+            # Only offer it when the kid really does ride along on someone else's trip.
+            if not any(g.type == "drive" and kid in g.kids[1:] for g in p[who].segments):
                 continue
-            label = "Take " + " and ".join(labels.kid(k) for k in multi.kids[1:]) + " along"
+            label = f"Take {labels.kid(kid)} along"
         extra = [x for x in p.soft if x.key not in base_soft]
         delta = p[who].drive - base[who].drive
         if extra:

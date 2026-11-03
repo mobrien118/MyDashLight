@@ -111,6 +111,8 @@ def build_week(
     tz: tzinfo,
 ) -> WeekInput:
     """Sort the events read from each calendar into each day's planner input."""
+    # Kids taken along are named in the notes, so the notes need the kids' names.
+    directory = replace(directory, kids={k.calendar_id: k.name for k in roles.kids})
     day_list = [today + timedelta(days=i) for i in range(days)]
     by_day = {d: DayInput(d) for d in day_list}
     places: dict[str, str] = {}
@@ -159,6 +161,7 @@ def build_week(
                             drop=notes.drop,
                             pick=NOT_NEEDED,
                             arrive_by=notes.arrive_by,
+                            along=notes.along,
                         ),
                         ("drop",),
                     )
@@ -278,7 +281,13 @@ def addresses(week: WeekInput) -> list[str]:
 
 
 def _sides(notes: RideNotes) -> dict[str, Any]:
-    return {"drop": notes.drop, "pick": notes.pick, "stay": notes.stay, "arrive_by": notes.arrive_by}
+    return {
+        "drop": notes.drop,
+        "pick": notes.pick,
+        "stay": notes.stay,
+        "arrive_by": notes.arrive_by,
+        "along": notes.along,
+    }
 
 
 def _sort_key(ev: CalendarEvent) -> tuple[str, str]:

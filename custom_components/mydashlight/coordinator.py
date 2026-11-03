@@ -13,6 +13,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .changes import Target
 from .const import DOMAIN, DRIVERS, PLAN_DAYS, UPDATE_SECONDS
 from .google import (
     CalendarEvent,
@@ -24,9 +25,10 @@ from .google import (
 )
 from .lookups import RoutesLookups, Status
 from .payload import plan_week
+from .planner import RideEvent
 from .settings import HubSettings
 from .travel import DriveTimes
-from .week import WeekInput, build_week, window
+from .week import DayInput, EventRef, WeekInput, build_week, window
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -130,6 +132,31 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         days = await self.hass.async_add_executor_job(plan_week, week, drive.travel_for, self.settings.planner, DRIVERS)
         return days, drive
 
+    def find(self, ride_id: str, day: str | None = None) -> tuple[DayInput, RideEvent, EventRef] | None:
+        """A planned event by its id in the plan, preferring the day it's dropped off.
+
+        An event that runs over several days is planned on each of them under the same id.
+        ``day`` (an ISO date) looks only on that day.
+        """
+        found: list[tuple[DayInput, RideEvent, EventRef]] = [
+            (d, e, d.refs[e.id])
+            for d in (self.data.week.days if self.data else [])
+            if day is None or d.day.isoformat() == day
+            for e in d.events
+            if e.id == ride_id
+        ]
+        return next((f for f in found if "drop" in f[2].sides), found[0] if found else None)
+
+    def occurrences(self, calendar_id: str, series: str) -> list[Target]:
+        """The planned occurrences of a repeating event."""
+        out: dict[str, Target] = {}
+        for d in self.data.week.days if self.data else []:
+            for e in d.events:
+                ref = d.refs[e.id]
+                if ref.calendar_id == calendar_id and ref.recurring_id == series and ref.event_id not in out:
+                    out[ref.event_id] = target_for(e, ref)
+        return list(out.values())
+
     def _note_unavailable(self, unavailable: list[str]) -> None:
         now = set(unavailable)
         for cal_id in sorted(now - self._unavailable):
@@ -141,3 +168,8 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         for cal_id in sorted(self._unavailable - now):
             _LOGGER.info("The calendar %s can be read again", cal_id)
         self._unavailable = now
+
+
+def target_for(event: RideEvent, ref: EventRef) -> Target:
+    """Where to save a change to a planned event. Its start reads times like "15 min early"."""
+    return Target(ref.calendar_id, ref.event_id, event.start if "drop" in ref.sides else None)

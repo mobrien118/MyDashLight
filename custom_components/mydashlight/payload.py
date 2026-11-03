@@ -6,13 +6,14 @@ no Home Assistant imports.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 import math
 from typing import Any
 
 from .board import CardLine, DayBoard, KidItem, Outing, Ride, build_day
 from .planner import (
     BusyBlock,
+    Change,
     Issue,
     Labels,
     PlannerSettings,
@@ -32,17 +33,9 @@ def plan_week(
     travel_for: Callable[[DayInput], TravelFn],
     settings: PlannerSettings,
     drivers: Sequence[str],
-    along: Mapping[str, Mapping[str, bool]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Every day's plan, with each day's drive times from ``travel_for``.
-
-    ``along`` gives each day's take-along choices, by ISO date.
-    """
-    along = along or {}
-    return [
-        plan_day(day, week.labels, week.kids, travel_for(day), settings, drivers, along.get(day.day.isoformat(), {}))
-        for day in week.days
-    ]
+    """Every day's plan, with each day's drive times from ``travel_for``."""
+    return [plan_day(day, week.labels, week.kids, travel_for(day), settings, drivers) for day in week.days]
 
 
 def plan_day(
@@ -52,9 +45,8 @@ def plan_day(
     travel: TravelFn,
     settings: PlannerSettings,
     drivers: Sequence[str],
-    along: Mapping[str, bool],
 ) -> dict[str, Any]:
-    board = build_day(day.events, along, day.busy, travel, labels, settings, drivers, kids)
+    board = build_day(day.events, day.busy, travel, labels, settings, drivers, kids)
     rides = board.rides
 
     def issue(x: Issue, level: str) -> dict[str, Any]:
@@ -74,11 +66,16 @@ def plan_day(
         }
         if level == "problem":
             out["suggestions"] = [
-                {"label": s.label, "change": s.change.as_dict(), "who": s.who, "note": s.note}
+                {
+                    "id": suggestion_id(day.day.isoformat(), s.change),
+                    "label": s.label,
+                    "change": s.change.as_dict(),
+                    "who": s.who,
+                    "note": s.note,
+                }
                 for s in suggestions_for(
                     x,
                     day.events,
-                    along,
                     board.plan,
                     day.busy,
                     travel,
@@ -92,7 +89,6 @@ def plan_day(
 
     return {
         "date": day.day.isoformat(),
-        "along": {d: bool(along.get(d)) for d in drivers},
         "events": [_event(e, day, labels, board) for e in day.events],
         "drivers": {
             d: {
@@ -116,6 +112,13 @@ def plan_day(
     }
 
 
+def suggestion_id(day: str, change: Change) -> str:
+    """A fix's id for ``apply_suggestion``. It says what the fix does, so it stays the same
+    from one update to the next while the fix still applies."""
+    value = "+".join(change.value) if isinstance(change.value, tuple) else change.value
+    return f"{day}|{change.event_id}|{change.field}|{value}"
+
+
 def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict[str, Any]:
     ref = day.refs[e.id]
     lines = board.lines.get(e.id)
@@ -132,6 +135,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "pick": e.pick,
         "stay": e.stay,
         "arrive_by": e.arrive_by,
+        "along": list(e.along),
         "sides": list(ref.sides),
         "calendar_id": ref.calendar_id,
         "event_id": ref.event_id,

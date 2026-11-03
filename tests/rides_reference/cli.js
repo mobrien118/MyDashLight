@@ -4,7 +4,7 @@
 //   node tests/rides_reference/cli.js scenarios > tests/rides_reference/scenarios.json
 //       Rebuilds the golden scenarios: each day of the example week, plus three Thursday variants.
 //   node tests/rides_reference/cli.js board < days.json
-//       Reads [{events, along, busy}, ...] and prints everything the planner and buildDay
+//       Reads [{events, busy}, ...] and prints everything the planner and buildDay
 //       produce for each day. tests/test_planner_vs_reference.py feeds it random days.
 'use strict';
 var P = require('./planner-reference.js');
@@ -41,14 +41,14 @@ function clash(c) {
   return { kid: c.kid, a: c.a.e ? c.a.e.id : null, b: c.b.type === 'act' ? c.b.e.id : 'ride' };
 }
 
-function expected(evs, along, busy, plan, clashes) {
+function expected(evs, busy, plan, clashes) {
   var ex = {
     mom: driver(plan.mom), dad: driver(plan.dad),
     issues: plan.hard.map(issue), heads_ups: plan.soft.map(issue),
     suggestions: plan.hard.map(function (x) {
       return {
         for: P.issueKey(x),
-        options: P.suggestionsFor(x, evs, along, plan, busy).map(function (c) { return { label: c.label, change: c.change, note: c.note }; })
+        options: P.suggestionsFor(x, evs, plan, busy).map(function (c) { return { label: c.label, change: c.change, note: c.note }; })
       };
     }).filter(function (s) { return s.options.length; })
   };
@@ -57,29 +57,30 @@ function expected(evs, along, busy, plan, clashes) {
 }
 
 // buildDay reads busy times from BUSY_BY_DAY, so a day's busy times go in slot 0.
-function buildDay(evs, along, busy) {
+function buildDay(evs, busy) {
   P.BUSY_BY_DAY[0] = busy;
-  return P.buildDay(0, evs, along);
+  return P.buildDay(0, evs);
 }
 
-function scenario(name, day, evs, along) {
+function scenario(name, day, evs) {
   var busy = P.BUSY_BY_DAY[day] || {};
-  var plan = P.planAll(evs, along, busy);
-  var bd = P.buildDay(day, evs, along);
-  return { name: name, day: day, input: { events: evs, along: along, busy: busy }, expected: expected(evs, along, busy, plan, bd.clashes) };
+  var plan = P.planAll(evs, busy);
+  var bd = P.buildDay(day, evs);
+  return { name: name, day: day, input: { events: evs, busy: busy }, expected: expected(evs, busy, plan, bd.clashes) };
 }
 
 function scenarios() {
-  var noAlong = { mom: false, dad: false };
   var day = function (i) { return P.cloneEvents().filter(function (e) { return e.day === i; }); };
-  var out = P.DAYS.map(function (d, i) { return scenario(d.label + ' (example week)', i, day(i), noAlong); });
-  out.push(scenario('Thursday with Sam taking kids along', 0, day(0), { mom: false, dad: true }));
+  var out = P.DAYS.map(function (d, i) { return scenario(d.label + ' (example week)', i, day(i)); });
+  var t1 = day(0);
+  t1.forEach(function (e) { if (e.id === 'soccer') e.along = ['ben']; });
+  out.push(scenario('Thursday with Sam taking Ben along to Cleo’s drop-off', 0, t1));
   var t2 = day(0);
   t2.forEach(function (e) { if (e.id === 'soccer') e.drop = 'mom'; });
-  out.push(scenario("Thursday with Robin doing Cleo's drop-off", 0, t2, noAlong));
+  out.push(scenario("Thursday with Robin doing Cleo's drop-off", 0, t2));
   var t3 = day(0);
   t3.forEach(function (e) { if (e.id === 'volley') { e.start = 960; e.end = 1050; } });
-  out.push(scenario('Thursday with volleyball moved on top of piano (double-booked)', 0, t3, noAlong));
+  out.push(scenario('Thursday with volleyball moved on top of piano (double-booked)', 0, t3));
   return {
     note: "Expected planner output for the reference data in planner-reference.js. Times use the event day's local time. Travel times come from the DRIVE table there.",
     scenarios: out
@@ -91,8 +92,8 @@ var TONE = { '#8A5A00': 'pending', '#3D434B': 'normal', '#B42318': 'problem', '#
 function cardLine(l) { return l ? { text: l.text, tone: TONE[l.ink] } : null; }
 
 function board(day) {
-  var evs = day.events, along = day.along, busy = day.busy;
-  var bd = buildDay(evs, along, busy);
+  var evs = day.events, busy = day.busy;
+  var bd = buildDay(evs, busy);
   var plan = bd.plan;
   var lines = {};
   Object.keys(bd.lines).forEach(function (id) { lines[id] = { drop: cardLine(bd.lines[id].drop), pick: cardLine(bd.lines[id].pick) }; });
@@ -107,7 +108,7 @@ function board(day) {
     return { key: P.issueKey(x), title: t.title, body: t.body, note: t.note || null };
   });
   return {
-    expected: expected(evs, along, busy, plan, bd.clashes),
+    expected: expected(evs, busy, plan, bd.clashes),
     score: plan.score,
     issue_texts: issueTexts,
     rides: bd.rideList.map(function (r) { return { kid: r.kid, driver: r.d, start: r.s, end: r.en, own: r.own, legs: r.legs.length }; }),

@@ -10,15 +10,17 @@ separate database or server to look after.
 
 `custom_components/mydashlight` is a custom Home Assistant integration. It signs in to Google,
 reads each kid's calendar and each parent's own calendars every minute, and plans the week's
-rides, with drive times from Google Routes. The `mydashlight.get_plan` action returns the plan.
-Writing who drives back to the events, the kitchen app, and reminders come next.
+rides, with drive times from Google Routes. The `mydashlight.get_plan` action returns the plan,
+and the other actions change who drives, saving it in the events' notes. The kitchen app and
+reminders come next.
 
 | Module | Job |
 | --- | --- |
 | `planner.py` | Works out each parent's driving for a day: the route, leave-by times, problems (late, kid waiting, clashes with a parent's calendar, no driver) and the best fixes for each. |
 | `board.py` | Everything the ride board shows for a day: who is in which car, double-bookings, each driver's outings as a list of stops, and the ride line on each activity card. |
 | `notes.py` | Reads and writes ride details in a Google Calendar event's notes. |
-| `google.py` | A small Google Calendar client: the calendar list and the events in a time span. |
+| `google.py` | A small Google Calendar client: the calendar list, the events in a time span, and saving one event's notes. |
+| `changes.py` | Saves a ride change into an event's notes without overwriting someone else's edit. |
 | `week.py` | Sorts a week of calendar events into each day's activities and busy times. |
 | `payload.py` | Plans each day and writes the result as plain data for the app. |
 | `routes.py` | A small Google Routes client, and the cache of drive times by trip and hour of the week. |
@@ -27,10 +29,10 @@ Writing who drives back to the events, the kitchen app, and reminders come next.
 | `settings.py` | Turns the integration's options into planner, notes and calendar settings. |
 | `config_flow.py` | Google sign-in and the setup and options screens. |
 | `coordinator.py` | Reads the calendars every minute and replans. |
-| `services.py` | The `mydashlight.get_plan` action. |
+| `services.py` | The `mydashlight` actions: get the plan, and change rides. |
 
-`planner.py`, `board.py`, `notes.py`, `google.py`, `week.py`, `payload.py`, `routes.py`,
-`travel.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
+`planner.py`, `board.py`, `notes.py`, `google.py`, `changes.py`, `week.py`, `payload.py`,
+`routes.py`, `travel.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
 their own.
 
 ## Calendars
@@ -78,6 +80,7 @@ Bring shin guards. Field 3.
 Drop-off: Sam
 Pick-up: the Parkers
 Stay: yes
+Take along: Ben
 Arrive by: 5:15 PM
 Travel: 25 min
 ```
@@ -86,6 +89,7 @@ Travel: 25 min
 | --- | --- | --- |
 | Drop-off, Pick-up | A parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver) | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
+| Take along | Kids' names, such as Ben, Cleo | Nobody else rides along. Kids named here leave home in the same car on this drop-off, so the driver can go on to their own drop-offs without coming home for them |
 | Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive 5 minutes before the start |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 
@@ -95,6 +99,28 @@ If the notes have no block yet, ride lines anywhere count, so a quick line typed
 and the app moves them into a block the next time it changes the ride. The app only ever changes
 the block. Everything else in the notes stays as it was, in plain text or in the HTML Google uses
 once someone edits notes on the web.
+
+## Changing rides
+
+These actions change a ride and replan straight away. Ride details are saved in the event's
+notes on Google, so they show the same in the app, on phones and in Google Calendar.
+
+| Action | What it changes |
+| --- | --- |
+| `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet |
+| `mydashlight.set_stay` | Whether the driver stays for the event |
+| `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to a few minutes before the start |
+| `mydashlight.set_take_along` | Which kids ride along on this drop-off (`kids`, by name), so the driver can go on to their own drop-offs without coming home for them. No kids takes nobody along |
+| `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
+
+The event actions take the event's `id` from `get_plan`. For a repeating event, `scope: this`
+changes just that one (Google keeps it as a changed occurrence) and `scope: series` changes every
+one. Occurrences someone already changed by themselves keep their own notes in Google, so the ones
+in the next 7 days get the change too.
+
+Each change reads the event fresh and saves it only if nobody changed it in the meantime. If
+someone did, say on a phone at the same moment, the change is applied again on top of their edit.
+Nobody gets an update email.
 
 ## Development
 

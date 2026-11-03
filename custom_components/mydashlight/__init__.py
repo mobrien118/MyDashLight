@@ -2,12 +2,14 @@
 
 Signs in to Google, reads the kids' calendars and the parents' own calendars every minute,
 and plans the week's rides with drive times from Google Routes. ``mydashlight.get_plan``
-returns the plan. Writing who drives back to the events, and the kitchen app, come later.
+returns the plan, and the other services save who drives, Stay and Arrive by into the
+events' notes. The kitchen app comes later.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import asyncio
+from dataclasses import dataclass, field
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -38,6 +40,8 @@ class MyDashLightData:
     settings: HubSettings
     api: GoogleCalendarApi
     coordinator: MyDashLightCoordinator
+    write_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    """One change to Google at a time, so two taps don't race each other."""
 
 
 type MyDashLightConfigEntry = ConfigEntry[MyDashLightData]

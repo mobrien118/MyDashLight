@@ -112,7 +112,6 @@ class DayBoard:
 
 def build_day(
     events: Sequence[RideEvent],
-    along: Mapping[str, bool],
     busy: Mapping[str, Sequence[BusyBlock]],
     travel: TravelFn,
     labels: Labels,
@@ -121,7 +120,7 @@ def build_day(
     kids: Sequence[str] = (),
 ) -> DayBoard:
     """Plan the day and work out everything the board shows for it."""
-    plan = plan_all(events, along, busy, travel, settings, drivers)
+    plan = plan_all(events, busy, travel, settings, drivers)
     rides = _rides(plan, drivers)
     kid_items = _kid_items(events, rides, kids)
     return DayBoard(

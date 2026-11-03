@@ -261,7 +261,7 @@ def test_plan_payload() -> None:
 
     assert [d["date"] for d in days] == ["2026-11-03", "2026-11-04"]
     tue = days[0]
-    assert tue["along"] == {"mom": False, "dad": False}
+    assert "along" not in tue
     assert [e["id"] for e in tue["events"]] == ["piano", "soccer", "dance"]
     piano = tue["events"][0]
     assert piano["place_name"] == SCHOOL

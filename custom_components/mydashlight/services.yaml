@@ -13,3 +13,110 @@ get_plan:
           min: 1
           max: 7
           mode: box
+
+set_ride:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    side:
+      required: true
+      default: drop
+      selector:
+        select:
+          translation_key: side
+          options:
+            - drop
+            - pick
+            - both
+    driver:
+      required: false
+      example: mom
+      selector:
+        text:
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series
+
+set_stay:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    stay:
+      required: true
+      default: true
+      selector:
+        boolean:
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series
+
+set_arrive_by:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    time:
+      required: false
+      example: "17:15"
+      selector:
+        time:
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series
+
+set_take_along:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    kids:
+      required: false
+      example: "Ben, Cleo"
+      selector:
+        text:
+          multiple: true
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series
+
+apply_suggestion:
+  fields:
+    suggestion:
+      required: true
+      example: "2026-11-03|abc123def456|pick|dad"
+      selector:
+        text:

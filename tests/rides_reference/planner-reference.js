@@ -4,6 +4,9 @@
 //
 // Times are minutes after midnight on the event's day. Drivers: 'mom' (Robin), 'dad' (Sam).
 // Any other drop/pick value is a free-form carpool name; '' means unassigned, 'none' means not needed.
+// An event's along lists the kids taken along on its drop-off: they leave home in the same car, so the
+// driver can go on to their own drop-offs without coming home for them (piggybacking). Changed
+// 2026-11-03 from a per-driver, per-day toggle, after Marty explained take-along is per event.
 // The example data, place names and travel table below stand in for the Google calendars
 // and the Routes API.
 'use strict';
@@ -75,7 +78,7 @@ function fmt(m) {
 }
 
 // One parent's day: string their drop-offs and pick-ups into a route and time it.
-function planDriver(d, events, along, busy) {
+function planDriver(d, events, busy) {
   var tasks = [];
   events.forEach(function (e) {
     if (e.stay && e.drop === d && e.pick === d) tasks.push({ type: 'stay', e: e, t: arriveAt(e) });
@@ -97,9 +100,8 @@ function planDriver(d, events, along, busy) {
       if (car.indexOf(kid) < 0) {
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
         car = [kid];
-        if (along) tasks.slice(i + 1).forEach(function (o) {
-          if (o.type !== 'pick' && o.t - k.t <= 45 && car.indexOf(o.e.kid) < 0) car.push(o.e.kid);
-        });
+        // The kids taken along on this drop-off leave home in the same car.
+        (k.e.along || []).forEach(function (a) { if (car.indexOf(a) < 0) car.push(a); });
         cur().car = car.slice();
       }
       car = car.filter(function (x) { return x !== kid; });
@@ -208,8 +210,8 @@ function planDriver(d, events, along, busy) {
   return out;
 }
 
-function planAll(events, along, busy) {
-  var mom = planDriver('mom', events, along.mom, busy), dad = planDriver('dad', events, along.dad, busy);
+function planAll(events, busy) {
+  var mom = planDriver('mom', events, busy), dad = planDriver('dad', events, busy);
   var hard = mom.issues.concat(dad.issues);
   events.forEach(function (e) {
     if (e.drop === '') hard.push({ kind: 'unassigned', e: e, end: 'drop' });
@@ -237,7 +239,7 @@ function issueText(x) {
   return { title: '', body: '' };
 }
 
-function applyChange(events, along, c) {
+function applyChange(events, c) {
   var ev = events.map(function (e) {
     if (!c.id || e.id !== c.id) return e;
     var n = Object.assign({}, e);
@@ -247,13 +249,11 @@ function applyChange(events, along, c) {
     if (n.drop !== n.pick || (n.drop !== 'mom' && n.drop !== 'dad')) n.stay = false;
     return n;
   });
-  var al = Object.assign({}, along);
-  if (c.along) al[c.along] = !al[c.along];
-  return { events: ev, along: al };
+  return ev;
 }
 
 // Fixes worth offering: single changes that clear this problem without adding a worse one.
-function suggestionsFor(issue, events, along, base, busy) {
+function suggestionsFor(issue, events, base, busy) {
   var cands = [];
   if (issue.kind === 'unassigned') {
     ['mom', 'dad'].forEach(function (p) {
@@ -266,20 +266,29 @@ function suggestionsFor(issue, events, along, base, busy) {
         if (e[f] === d) cands.push({ label: PEOPLE[o] + ' does ' + K[e.kid].name + '’s ' + (f === 'drop' ? 'drop-off' : 'pick-up'), change: { id: e.id, field: f, value: o }, who: o });
       });
     });
-    if (!along[d]) cands.push({ label: null, change: { along: d }, who: d });
+    // Take a kid along on an earlier drop-off by the same driver, at most 45 minutes before theirs.
+    events.forEach(function (e) {
+      if (e.drop !== d) return;
+      events.forEach(function (f) {
+        var gap = arriveAt(e) - arriveAt(f);
+        if (f === e || f.drop !== d || f.kid === e.kid || gap < 0 || gap > 45) return;
+        if ((f.along || []).indexOf(e.kid) >= 0) return;
+        cands.push({ label: null, change: { id: f.id, field: 'along', value: (f.along || []).concat([e.kid]) }, who: d, kid: e.kid });
+      });
+    });
   }
   var baseSoft = base.soft.map(issueKey);
   var key = issueKey(issue);
   var good = [];
   cands.forEach(function (c) {
-    var next = applyChange(events, along, c.change);
-    var p = planAll(next.events, next.along, busy);
+    var next = applyChange(events, c.change);
+    var p = planAll(next, busy);
     var keys = p.hard.map(issueKey);
     if (keys.indexOf(key) >= 0 || p.hard.length >= base.hard.length) return;
     if (c.label === null) {
-      var multi = p[c.who].segs.filter(function (g) { return g.type === 'drive' && g.kids.length > 1; })[0];
-      if (!multi) return;
-      c.label = 'Take ' + multi.kids.slice(1).map(function (k) { return K[k].name; }).join(' and ') + ' along';
+      var rides = p[c.who].segs.some(function (g) { return g.type === 'drive' && g.kids.length > 1 && g.kids.indexOf(c.kid) > 0; });
+      if (!rides) return;
+      c.label = 'Take ' + K[c.kid].name + ' along';
     }
     var extra = p.soft.filter(function (x) { return baseSoft.indexOf(issueKey(x)) < 0; });
     var delta = p[c.who].drive - base[c.who].drive;
@@ -338,9 +347,9 @@ function anchorMap(a) {
 }
 
 // Everything about one day that doesn't depend on the view: who's in which car, clashes, outings, ride lines.
-function buildDay(i, evs, along) {
+function buildDay(i, evs) {
   var busy = BUSY_BY_DAY[i] || {};
-  var plan = planAll(evs, along, busy);
+  var plan = planAll(evs, busy);
 
   // Back-to-back legs in the same car are one ride, split where a kid stops riding along
   // for someone else's stop and starts heading to their own (or the other way round).

@@ -38,11 +38,13 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
         end = start + rng.choice([30, 45, 60, 75, 90, 120, 240])
         drop = rng.choice(DRIVER_CHOICES)
         pick = drop if rng.random() < 0.4 else rng.choice(DRIVER_CHOICES)
+        kid = rng.choice(KIDS)
+        along = rng.sample([k for k in KIDS if k != kid], rng.randint(1, 2)) if rng.random() < 0.3 else []
         events.append(
             {
                 "id": f"d{n}e{i}",
                 "day": 0,
-                "kid": rng.choice(KIDS),
+                "kid": kid,
                 "title": rng.choice(["Piano", "Soccer", "Football", "Volleyball", "Dance"]),
                 "loc": rng.choice(PLACES[1:]),
                 "start": start,
@@ -51,6 +53,7 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
                 "pick": pick,
                 "stay": drop == pick and drop in ("mom", "dad") and rng.random() < 0.5,
                 "arriveBy": start - rng.choice([10, 15, 20, 30]) if rng.random() < 0.3 else None,
+                "along": along,
             }
         )
     busy: dict[str, list[dict[str, Any]]] = {}
@@ -58,8 +61,7 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
         if rng.random() < 0.5:
             end = rng.randrange(14 * 60, 18 * 60, 5)
             busy[d] = [{"start": end - rng.choice([60, 120, 240, 480]), "end": end, "title": "Work"}]
-    along = {"mom": rng.random() < 0.4, "dad": rng.random() < 0.4}
-    return {"events": events, "along": along, "busy": busy}
+    return {"events": events, "busy": busy}
 
 
 def test_matches_reference_on_random_days() -> None:
