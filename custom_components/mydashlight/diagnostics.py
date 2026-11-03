@@ -17,6 +17,7 @@ from .const import (
     CONF_MOM_ALIASES,
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
+    CONF_ROUTES_KEY,
 )
 
 if TYPE_CHECKING:
@@ -32,6 +33,7 @@ TO_REDACT = {
     CONF_KIDS,
     CONF_MOM_CALENDARS,
     CONF_DAD_CALENDARS,
+    CONF_ROUTES_KEY,
 }
 
 
@@ -61,6 +63,8 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: MyDashL
             "time_zone": data.time_zone,
             "events_read": {alias.get(c, "other"): n for c, n in data.event_counts.items()},
             "unavailable": [alias.get(c, "other") for c in data.unavailable],
+            "drive_times": dict(data.drive_times),
+            "drive_times_saved": len(entry.runtime_data.coordinator.lookups.cache.entries),
             "days": [
                 {
                     "date": d["date"],

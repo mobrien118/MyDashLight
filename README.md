@@ -10,10 +10,8 @@ separate database or server to look after.
 
 `custom_components/mydashlight` is a custom Home Assistant integration. It signs in to Google,
 reads each kid's calendar and each parent's own calendars every minute, and plans the week's
-rides. The `mydashlight.get_plan` action returns the plan. Travel times from Google Routes,
-writing who drives back to the events, the kitchen app, and reminders come next. Until travel
-times are in, every drive counts as the "Drive time with no address" setting (15 minutes) unless
-an event's notes give a Travel time.
+rides, with drive times from Google Routes. The `mydashlight.get_plan` action returns the plan.
+Writing who drives back to the events, the kitchen app, and reminders come next.
 
 | Module | Job |
 | --- | --- |
@@ -23,13 +21,17 @@ an event's notes give a Travel time.
 | `google.py` | A small Google Calendar client: the calendar list and the events in a time span. |
 | `week.py` | Sorts a week of calendar events into each day's activities and busy times. |
 | `payload.py` | Plans each day and writes the result as plain data for the app. |
+| `routes.py` | A small Google Routes client, and the cache of drive times by trip and hour of the week. |
+| `travel.py` | Each day's drive times for the planner, and which trips still need looking up. |
+| `lookups.py` | Looks up those trips within the daily limit and saves what it learns. |
 | `settings.py` | Turns the integration's options into planner, notes and calendar settings. |
 | `config_flow.py` | Google sign-in and the setup and options screens. |
 | `coordinator.py` | Reads the calendars every minute and replans. |
 | `services.py` | The `mydashlight.get_plan` action. |
 
-`planner.py`, `board.py`, `notes.py`, `google.py`, `week.py`, `payload.py` and `settings.py` don't
-import Home Assistant, so they can be tested and reused on their own.
+`planner.py`, `board.py`, `notes.py`, `google.py`, `week.py`, `payload.py`, `routes.py`,
+`travel.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
+their own.
 
 ## Calendars
 
@@ -46,6 +48,23 @@ it starts. A longer one, such as a weekend trip, is planned as a drop-off on its
 pick-up on its last. Change the calendars later under the integration's **Configure** button.
 
 To see the plan, run the **MyDashLight: Get ride plan** action in Developer tools > Actions.
+
+## Drive times
+
+With a Google Routes API key (the integration's **Configure** button, then **Drive times**),
+each trip's drive time is looked up with the usual traffic for the hour it's driven on that
+weekday, starting from your home location in Home Assistant. A trip to an activity counts as
+leaving half an hour before it starts, and a trip home as leaving when it ends.
+
+- Only the trips the plan actually uses are looked up, today's first.
+- Each drive time is kept for 30 days, so a weekly activity costs about one lookup a month.
+- Lookups stop for the day at the daily limit (150 by default, which stays under 5,000 a month).
+  Trips over the limit are estimated and looked up the next day.
+- A Travel line in an event's notes always wins for trips to that event.
+- Without a key, or for an event with no location, every drive counts as the "Drive time with
+  no address" setting (15 minutes).
+
+`get_plan` says where the drive times came from under `drive_times`.
 
 ## Ride details in event notes
 
@@ -117,6 +136,9 @@ between Google and your Home Assistant.
    `<your Home Assistant URL>/auth/external/callback`, which it uses otherwise.
 4. Add **MyDashLight**. Home Assistant asks for the client ID and secret the first time, then
    sends you to Google to sign in.
+
+For drive times, turn on the **Routes API** in the same project, create an API key limited to
+the Routes API, and add it under **Configure** > **Drive times**.
 
 MyDashLight asks Google for two permissions: to see your list of calendars, and to see and edit
 events. It only reads events for now; editing is for writing who drives into an event's notes.

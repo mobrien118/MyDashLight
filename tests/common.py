@@ -130,3 +130,27 @@ def make_entry(
         },
         options=dict(OPTIONS if options is None else options),
     )
+
+
+ROUTES_KEY = "routes-key"
+
+
+class FakeRoutes:
+    """Answers Google Routes lookups with fixed drive times, by destination."""
+
+    def __init__(self, aioclient_mock: AiohttpClientMocker) -> None:
+        self.minutes: dict[str, float] = {}
+        """Drive minutes by destination address; "home" for home."""
+        self.default = 22.5
+        self.status: int | None = None
+        self.error: dict[str, Any] = {}
+        self.bodies: list[dict[str, Any]] = []
+        aioclient_mock.post("https://routes.googleapis.com/directions/v2:computeRoutes", side_effect=self._handle)
+
+    async def _handle(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
+        self.bodies.append(data)
+        if self.status is not None:
+            return AiohttpClientMockResponse(method, url, status=self.status, json=self.error)
+        dest = data["destination"].get("address", "home")
+        minutes = self.minutes.get(dest, self.default)
+        return AiohttpClientMockResponse(method, url, json={"routes": [{"duration": f"{int(minutes * 60)}s"}]})

@@ -25,8 +25,10 @@ from .common import (
     JOINT,
     OPTIONS,
     ROBIN,
+    ROUTES_KEY,
     SAM,
     FakeGoogle,
+    FakeRoutes,
     google_error,
     make_entry,
     setup_credentials,
@@ -253,7 +255,7 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["settings", "calendars"]
+    assert result["menu_options"] == ["settings", "calendars", "drive_times"]
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     assert result["step_id"] == "settings"
 
@@ -341,3 +343,114 @@ async def test_options_calendars_when_not_loaded(hass: HomeAssistant) -> None:
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "calendars"})
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "not_loaded"
+
+
+async def drive_times_form(hass: HomeAssistant, entry: MockConfigEntry) -> dict[str, Any]:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    return await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "drive_times"})
+
+
+async def test_options_drive_times_add_key(
+    hass: HomeAssistant, google: FakeGoogle, aioclient_mock: AiohttpClientMocker
+) -> None:
+    routes = FakeRoutes(aioclient_mock)
+    entry = await loaded_entry(hass)
+
+    result = await drive_times_form(hass, entry)
+    assert result["step_id"] == "drive_times"
+    assert result["description_placeholders"] == {"key_state": "not set"}
+    assert "remove_routes_key" not in result["data_schema"].schema
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"routes_api_key": f" {ROUTES_KEY} ", "routes_daily_limit": 100.0}
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["routes_api_key"] == ROUTES_KEY
+    assert entry.options["routes_daily_limit"] == 100
+    assert entry.options["kids"] == OPTIONS["kids"]
+    # The key was checked with one lookup from home to home before it was saved.
+    assert routes.bodies[0]["origin"] == routes.bodies[0]["destination"]
+    lookups = entry.runtime_data.coordinator.lookups
+    assert lookups.api is not None
+    assert lookups.daily_limit == 100
+
+
+@pytest.mark.parametrize(
+    ("status", "error"),
+    [
+        (403, {"routes_api_key": "routes_key_rejected"}),
+        (429, {"base": "routes_quota"}),
+        (503, {"base": "cannot_connect"}),
+    ],
+)
+async def test_options_drive_times_bad_key(
+    hass: HomeAssistant,
+    google: FakeGoogle,
+    aioclient_mock: AiohttpClientMocker,
+    status: int,
+    error: dict[str, str],
+) -> None:
+    routes = FakeRoutes(aioclient_mock)
+    routes.status = status
+    entry = await loaded_entry(hass)
+
+    result = await drive_times_form(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"routes_api_key": "bad", "routes_daily_limit": 150}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == error
+    assert "routes_api_key" not in entry.options
+
+
+async def test_options_drive_times_no_route_still_accepts_the_key(
+    hass: HomeAssistant, google: FakeGoogle, aioclient_mock: AiohttpClientMocker
+) -> None:
+    routes = FakeRoutes(aioclient_mock)
+    routes.status = 400
+    entry = await loaded_entry(hass)
+    result = await drive_times_form(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"routes_api_key": ROUTES_KEY, "routes_daily_limit": 150}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["routes_api_key"] == ROUTES_KEY
+
+
+async def test_options_drive_times_keep_and_remove_key(
+    hass: HomeAssistant, google: FakeGoogle, aioclient_mock: AiohttpClientMocker
+) -> None:
+    routes = FakeRoutes(aioclient_mock)
+    entry = make_entry({**OPTIONS, "routes_api_key": ROUTES_KEY})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    asked = len(routes.bodies)
+
+    result = await drive_times_form(hass, entry)
+    assert result["description_placeholders"] == {"key_state": "set"}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"routes_daily_limit": 50})
+    await hass.async_block_till_done()
+    assert entry.options["routes_api_key"] == ROUTES_KEY  # an empty field keeps the key
+    assert entry.options["routes_daily_limit"] == 50
+    assert len(routes.bodies) >= asked
+
+    result = await drive_times_form(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"routes_daily_limit": 50, "remove_routes_key": True}
+    )
+    await hass.async_block_till_done()
+    assert "routes_api_key" not in entry.options
+    assert entry.runtime_data.coordinator.lookups.api is None
+
+
+async def test_options_drive_times_needs_home(hass: HomeAssistant, google: FakeGoogle) -> None:
+    entry = await loaded_entry(hass)
+    hass.config.latitude = 0
+    hass.config.longitude = 0
+    result = await drive_times_form(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"routes_api_key": ROUTES_KEY, "routes_daily_limit": 150}
+    )
+    assert result["errors"] == {"base": "no_home_location"}
