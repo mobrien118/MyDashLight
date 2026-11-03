@@ -22,9 +22,11 @@ from .google import (
     GoogleCalendarUnavailable,
     GoogleError,
 )
+from .lookups import RoutesLookups, Status
 from .payload import plan_week
 from .settings import HubSettings
-from .week import WeekInput, build_week, make_travel, window
+from .travel import DriveTimes
+from .week import WeekInput, build_week, window
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -41,6 +43,8 @@ class PlanData:
     unavailable: list[str] = field(default_factory=list)
     """Calendars that couldn't be read this time."""
     event_counts: dict[str, int] = field(default_factory=dict)
+    drive_times: dict[str, Any] = field(default_factory=dict)
+    """Where the drive times came from: see :data:`~.lookups.Status`."""
 
 
 class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
@@ -52,6 +56,7 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         entry: MyDashLightConfigEntry,
         api: GoogleCalendarApi,
         settings: HubSettings,
+        lookups: RoutesLookups,
     ) -> None:
         super().__init__(
             hass,
@@ -62,6 +67,7 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         )
         self.api = api
         self.settings = settings
+        self.lookups = lookups
         self._unavailable: set[str] = set()
 
     async def _async_update_data(self) -> PlanData:
@@ -95,9 +101,12 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         self._note_unavailable(unavailable)
 
         week = build_week(events, self.settings.roles, self.settings.directory, today, PLAN_DAYS, tz)
-        travel = make_travel(week.travel_overrides, self.settings.no_address_travel)
-        # Suggested fixes replan the day many times over, so keep that off the event loop.
-        days = await self.hass.async_add_executor_job(plan_week, week, travel, self.settings.planner, DRIVERS)
+        now = dt_util.now(tz)
+        days, drive = await self._async_plan(week, now)
+        # Planning showed which trips it needs. Look those up, then plan again with them.
+        if (await self.lookups.async_fill(drive, now)).added:
+            days, drive = await self._async_plan(week, now)
+        status: Status = self.lookups.status(now)
         return PlanData(
             updated=dt_util.utcnow(),
             time_zone=str(tz),
@@ -105,7 +114,21 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
             week=week,
             unavailable=unavailable,
             event_counts={cal_id: len(evs) for cal_id, evs in events.items()},
+            drive_times={
+                "source": status,
+                "looked_up": drive.used,
+                "estimated": len(drive.misses),
+                "lookups_today": self.lookups.cache.calls if self.lookups.cache.day == today.isoformat() else 0,
+                "daily_limit": self.lookups.daily_limit,
+            },
         )
+
+    async def _async_plan(self, week: WeekInput, now: datetime) -> tuple[list[dict[str, Any]], DriveTimes]:
+        cache = self.lookups.cache if self.lookups.status(now) not in ("off", "no_home") else None
+        drive = DriveTimes(week, cache, self.settings.no_address_travel, now.timestamp())
+        # Suggested fixes replan the day many times over, so keep that off the event loop.
+        days = await self.hass.async_add_executor_job(plan_week, week, drive.travel_for, self.settings.planner, DRIVERS)
+        return days, drive
 
     def _note_unavailable(self, unavailable: list[str]) -> None:
         now = set(unavailable)

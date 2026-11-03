@@ -90,7 +90,8 @@
         "title": "MyDashLight options",
         "menu_options": {
           "settings": "Names and planner timing",
-          "calendars": "Calendars"
+          "calendars": "Calendars",
+          "drive_times": "Drive times"
         }
       },
       "settings": {
@@ -152,6 +153,20 @@
         "data": {
           "name": "Name"
         }
+      },
+      "drive_times": {
+        "title": "Drive times from Google Routes",
+        "description": "With a Google Routes API key, MyDashLight looks up each trip's drive time with the usual traffic for that hour and weekday, and keeps it for 30 days. Without one, every drive counts as the Drive time with no address setting. A key is {key_state}.",
+        "data": {
+          "routes_api_key": "Routes API key",
+          "routes_daily_limit": "Lookups a day",
+          "remove_routes_key": "Stop using Google Routes"
+        },
+        "data_description": {
+          "routes_api_key": "Leave empty to keep the key you have. The key is checked with one lookup before it's saved.",
+          "routes_daily_limit": "Trips not looked up once this many are used for the day are estimated, then looked up the next day. 150 a day stays under 5,000 a month.",
+          "remove_routes_key": "Forget the key and estimate every drive."
+        }
       }
     },
     "error": {
@@ -160,7 +175,11 @@
       "kids_required": "Pick at least one kid's calendar.",
       "kid_calendar_as_busy": "A kid's calendar can't also be a parent's busy calendar.",
       "shared_busy_calendar": "Pick each busy calendar for one parent only. A calendar both parents use belongs to neither.",
-      "kid_names_match": "Two kids can't have the same name."
+      "kid_names_match": "Two kids can't have the same name.",
+      "no_home_location": "Set your home's location under Settings > System > General first. Drive times start from there.",
+      "routes_key_rejected": "Google turned down this key. Check that the Routes API is turned on for its project and that the key may use it.",
+      "routes_quota": "Google says this key's quota for today is used up. Try again tomorrow, or raise the quota in Google Cloud.",
+      "cannot_connect": "Couldn't reach Google. Try again in a few minutes."
     },
     "abort": {
       "api_disabled": "The Google Calendar API is turned off in your Google Cloud project. Turn it on, then try again.",

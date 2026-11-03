@@ -1,8 +1,8 @@
 """MyDashLight: the kitchen family planner's backend in Home Assistant.
 
 Signs in to Google, reads the kids' calendars and the parents' own calendars every minute,
-and plans the week's rides. ``mydashlight.get_plan`` returns the plan. Travel times from
-Google Routes, writing who drives back to the events, and the kitchen app come later.
+and plans the week's rides with drive times from Google Routes. ``mydashlight.get_plan``
+returns the plan. Writing who drives back to the events, and the kitchen app, come later.
 """
 
 from __future__ import annotations
@@ -22,9 +22,11 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 from homeassistant.helpers.typing import ConfigType
 
 from .api import OAuthTokens
-from .const import DOMAIN
+from .const import CONF_ROUTES_DAILY_LIMIT, CONF_ROUTES_KEY, DEFAULT_ROUTES_DAILY_LIMIT, DOMAIN
 from .coordinator import MyDashLightCoordinator
 from .google import GoogleAuthError, GoogleCalendarApi, GoogleError
+from .lookups import RoutesLookups
+from .routes import RoutesApi
 from .services import async_setup_services
 from .settings import HubSettings
 
@@ -69,8 +71,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
         ) from err
 
     settings = HubSettings.from_options(entry.options)
-    api = GoogleCalendarApi(async_get_clientsession(hass), tokens)
-    coordinator = MyDashLightCoordinator(hass, entry, api, settings)
+    websession = async_get_clientsession(hass)
+    api = GoogleCalendarApi(websession, tokens)
+    routes_key = entry.options.get(CONF_ROUTES_KEY)
+    lookups = RoutesLookups(
+        hass,
+        RoutesApi(websession, routes_key) if routes_key else None,
+        int(entry.options.get(CONF_ROUTES_DAILY_LIMIT, DEFAULT_ROUTES_DAILY_LIMIT)),
+    )
+    await lookups.async_load()
+    coordinator = MyDashLightCoordinator(hass, entry, api, settings, lookups)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = MyDashLightData(settings, api, coordinator)
     # A coordinator only polls while something listens. Nothing does yet (the plan is read
@@ -86,3 +96,8 @@ def _keep_polling() -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> bool:
     """Unload a config entry."""
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> None:
+    """Delete the saved drive times along with the entry."""
+    await RoutesLookups(hass, None, 0).async_remove()

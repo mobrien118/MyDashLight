@@ -55,5 +55,6 @@ async def _async_get_plan(call: ServiceCall) -> ServiceResponse:
         "updated": data.updated.isoformat(),
         "time_zone": data.time_zone,
         "unavailable_calendars": list(data.unavailable),
+        "drive_times": dict(data.drive_times),
         "days": days,
     }

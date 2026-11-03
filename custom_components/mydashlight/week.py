@@ -255,6 +255,23 @@ def make_travel(
     return travel
 
 
+def leg_hour(day: DayInput, origin: str, destination: str) -> int:
+    """The hour of the day a trip is most likely driven, for looking up its drive time.
+
+    A trip to an activity leaves about half an hour before the first one there starts. A trip
+    from an activity leaves when the first one there ends. Anything else counts as midday.
+    """
+    starts = [e.start for e in day.events if e.loc == destination]
+    ends = [e.end for e in day.events if e.loc == origin]
+    if destination != HOME and starts:
+        minute = min(starts) - 30
+    elif origin != HOME and ends:
+        minute = min(ends)
+    else:
+        minute = 12 * 60
+    return min(max(minute, 0), DAY - 1) // 60
+
+
 def addresses(week: WeekInput) -> list[str]:
     """Every place key with a real address, for computing drive times."""
     return sorted({e.loc for d in week.days for e in d.events if e.loc and not e.loc.startswith(NO_ADDRESS)})

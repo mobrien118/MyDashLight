@@ -256,7 +256,8 @@ def test_plan_payload() -> None:
         },
         days=2,
     )
-    days = plan_week(w, make_travel(w.travel_overrides, 15), PlannerSettings(), ("mom", "dad"))
+    travel = make_travel(w.travel_overrides, 15)
+    days = plan_week(w, lambda _day: travel, PlannerSettings(), ("mom", "dad"))
 
     assert [d["date"] for d in days] == ["2026-11-03", "2026-11-04"]
     tue = days[0]

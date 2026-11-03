@@ -60,3 +60,12 @@ PLAN_DAYS: Final = 7
 SERVICE_GET_PLAN: Final = "get_plan"
 ATTR_DATE: Final = "date"
 ATTR_DAYS: Final = "days"
+
+# Drive times from Google Routes, set on the options' Drive times page.
+CONF_ROUTES_KEY: Final = "routes_api_key"
+CONF_ROUTES_DAILY_LIMIT: Final = "routes_daily_limit"
+CONF_REMOVE_ROUTES_KEY: Final = "remove_routes_key"
+DEFAULT_ROUTES_DAILY_LIMIT: Final = 150
+"""Lookups a day. 150 a day stays under 5,000 a month."""
+ROUTES_PER_UPDATE: Final = 25
+ROUTES_AT_ONCE: Final = 4

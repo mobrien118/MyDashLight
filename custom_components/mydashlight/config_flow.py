@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import timedelta
 import logging
 import re
 from typing import TYPE_CHECKING, Any
@@ -19,6 +20,7 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import AbstractOAuth2FlowHandler
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -28,7 +30,9 @@ from homeassistant.helpers.selector import (
     SelectSelectorMode,
     TextSelector,
     TextSelectorConfig,
+    TextSelectorType,
 )
+from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
 from .const import (
@@ -46,16 +50,21 @@ from .const import (
     CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
     CONF_PLANNER,
+    CONF_REMOVE_ROUTES_KEY,
+    CONF_ROUTES_DAILY_LIMIT,
+    CONF_ROUTES_KEY,
     CONF_TAKE_ALONG_WINDOW,
     CONF_TIGHT_SLACK,
     CONF_TOO_EARLY,
     CONF_WAITING_AFTER,
     DEFAULT_PLANNER,
+    DEFAULT_ROUTES_DAILY_LIMIT,
     DOMAIN,
     SCOPES,
     TITLE,
 )
 from .google import CalendarInfo, GoogleApiDisabled, GoogleAuthError, GoogleCalendarApi, GoogleError, StaticToken
+from .routes import Place, RoutesApi, RoutesError, RoutesKeyError, RoutesNoRoute, RoutesQuotaError
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -317,7 +326,7 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
         self._kid_names: _KidNames | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=["settings", "calendars"])
+        return self.async_show_menu(step_id="init", menu_options=["settings", "calendars", "drive_times"])
 
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -397,3 +406,57 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
         return self.async_show_form(
             step_id="kid_name", data_schema=schema, errors=errors, description_placeholders=placeholders
         )
+
+    async def async_step_drive_times(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """The Google Routes key and how many lookups a day it may make."""
+        errors: dict[str, str] = {}
+        entry = self.config_entry
+        has_key = bool(entry.options.get(CONF_ROUTES_KEY))
+        if user_input is not None:
+            new_key = str(user_input.get(CONF_ROUTES_KEY) or "").strip()
+            remove = bool(user_input.get(CONF_REMOVE_ROUTES_KEY))
+            if new_key and not remove:
+                errors = await self._check_routes_key(new_key)
+            if not errors:
+                options = {**entry.options, CONF_ROUTES_DAILY_LIMIT: int(user_input[CONF_ROUTES_DAILY_LIMIT])}
+                if remove:
+                    options.pop(CONF_ROUTES_KEY, None)
+                elif new_key:
+                    options[CONF_ROUTES_KEY] = new_key
+                return self.async_create_entry(data=options)
+        limit = (user_input or entry.options).get(CONF_ROUTES_DAILY_LIMIT, DEFAULT_ROUTES_DAILY_LIMIT)
+        fields: dict[vol.Marker, Any] = {
+            vol.Optional(CONF_ROUTES_KEY): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+            vol.Required(CONF_ROUTES_DAILY_LIMIT, default=limit): NumberSelector(
+                NumberSelectorConfig(min=0, max=5000, step=1, mode=NumberSelectorMode.BOX)
+            ),
+        }
+        if has_key:
+            fields[vol.Optional(CONF_REMOVE_ROUTES_KEY, default=False)] = BooleanSelector()
+        return self.async_show_form(
+            step_id="drive_times",
+            data_schema=vol.Schema(fields),
+            errors=errors,
+            description_placeholders={"key_state": "set" if has_key else "not set"},
+        )
+
+    async def _check_routes_key(self, key: str) -> dict[str, str]:
+        """Try the key with one short lookup from home to home."""
+        lat, lon = self.hass.config.latitude, self.hass.config.longitude
+        if not lat and not lon:
+            return {"base": "no_home_location"}
+        home = Place(lat=lat, lon=lon)
+        api = RoutesApi(async_get_clientsession(self.hass), key)
+        try:
+            await api.async_drive_minutes(home, home, dt_util.now() + timedelta(hours=1))
+        except RoutesNoRoute:
+            pass  # Google took the key; it just had no route to give.
+        except RoutesKeyError as err:
+            _LOGGER.warning("Google turned down the Routes key: %s", err)
+            return {CONF_ROUTES_KEY: "routes_key_rejected"}
+        except RoutesQuotaError:
+            return {"base": "routes_quota"}
+        except RoutesError as err:
+            _LOGGER.warning("Couldn't check the Routes key: %s", err)
+            return {"base": "cannot_connect"}
+        return {}

@@ -6,7 +6,7 @@ no Home Assistant imports.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 import math
 from typing import Any
 
@@ -29,15 +29,18 @@ SUGGESTIONS_PER_ISSUE = 2
 
 def plan_week(
     week: WeekInput,
-    travel: TravelFn,
+    travel_for: Callable[[DayInput], TravelFn],
     settings: PlannerSettings,
     drivers: Sequence[str],
     along: Mapping[str, Mapping[str, bool]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Every day's plan. ``along`` gives each day's take-along choices, by ISO date."""
+    """Every day's plan, with each day's drive times from ``travel_for``.
+
+    ``along`` gives each day's take-along choices, by ISO date.
+    """
     along = along or {}
     return [
-        plan_day(day, week.labels, week.kids, travel, settings, drivers, along.get(day.day.isoformat(), {}))
+        plan_day(day, week.labels, week.kids, travel_for(day), settings, drivers, along.get(day.day.isoformat(), {}))
         for day in week.days
     ]
 
