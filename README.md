@@ -99,7 +99,7 @@ Travel: 25 min
 | Drop-off, Pick-up | A parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver) | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
 | Take along | Kids' names, such as Ben, Cleo | Nobody else rides along. Kids named here leave home in the same car on this drop-off, so the driver can go on to their own drop-offs without coming home for them |
-| Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive 5 minutes before the start |
+| Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive early by a margin that grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 
 Labels ignore case, spaces and hyphens, so `Drop off`, `Dropoff` and `Pickup` all work. Only lines
@@ -118,7 +118,7 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | --- | --- |
 | `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
-| `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to a few minutes before the start |
+| `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to the usual margin before the start |
 | `mydashlight.set_take_along` | Which kids ride along on this drop-off (`kids`, by name), so the driver can go on to their own drop-offs without coming home for them. No kids takes nobody along |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
 
@@ -181,7 +181,7 @@ each parent and each kid who should get reminders. A notifier is a `notify` acti
 the Home Assistant app adds for each phone. Anyone left on **No reminders** gets none.
 
 - **Before each drive.** Leave time is worked back from when the kid has to be there (Arrive by,
-  or a few minutes before the start) and the drive time. The reminder goes off 15 minutes before
+  or the usual margin before the start) and the drive time. The reminder goes off 15 minutes before
   that, or whatever **Remind before leaving** says. The driver's says where to go, stop by stop.
   Each kid in the car with a notifier gets one saying when they leave, or when they'll be picked up
   and where. If the plan changes so a drive leaves at least 5 minutes earlier than it was
@@ -194,7 +194,7 @@ the Home Assistant app adds for each phone. Anyone left on **No reminders** gets
   Google's: a reminder belongs to the account MyDashLight signs in with, so it pops up for that
   person only; and Google only reminds before an event starts, so pick-ups get the phone
   reminder only. Turn off **Also save drop-off reminders in Google Calendar** to skip this.
-- **Rides with no driver.** A drop-off or pick-up in the next two days with nobody driving yet is
+- **Rides with no driver.** A drop-off or pick-up in the next six hours with nobody driving yet is
   sent once to both parents' notifiers, several at a time when there are several.
 
 What has been sent is kept in Home Assistant, so a restart doesn't send it again.

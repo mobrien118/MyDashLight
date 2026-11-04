@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,16 @@ from typing import Any
 import pytest
 
 from custom_components.mydashlight.board import build_day
+from custom_components.mydashlight.planner import (
+    Issue,
+    Labels,
+    PlannerSettings,
+    RideEvent,
+    arrive_at,
+    arrive_early,
+    driving_text,
+    issue_text,
+)
 
 from .reference import KIDS, LABELS, busy_from_json, event_from_json, expected_json, travel
 
@@ -39,3 +50,37 @@ def test_scenarios_cover_the_tricky_cases() -> None:
     assert "drop-off" in names
     assert any("double_booked" in s["expected"] for s in SCENARIOS)
     assert len(SCENARIOS) == 10
+
+
+def test_arrive_early_grows_with_the_drive() -> None:
+    # Marty, 2026-11-04: 5 early when it's 5 minutes away, 10 for 30, 15 for an hour, 20 at most.
+    settings = PlannerSettings()
+    early = {d: arrive_early("x", settings, lambda _a, _b, d=d: d) for d in (0, 5, 12, 30, 59.9, 60, 90, 200)}
+    assert early == {0: 5, 5: 5, 12: 7, 30: 10, 59.9: 14, 60: 15, 90: 20, 200: 20}
+    assert arrive_early("x", PlannerSettings(arrive_early_per=0), lambda _a, _b: 60) == 5
+    assert arrive_early("x", PlannerSettings(arrive_early=10, arrive_early_max=8), lambda _a, _b: 60) == 10
+    # An Arrive by time still wins.
+    e = RideEvent("e", "ava", "Piano", "piano", 960, 1020, arrive_by=930)
+    assert arrive_at(e, settings, lambda _a, _b: 60) == 930
+    assert arrive_at(replace(e, arrive_by=None), settings, lambda _a, _b: 60) == 945
+
+
+def test_driving_text() -> None:
+    assert [driving_text(v) for v in (18.299999999999997, 37.900000000000006, 0.75, 0.1, 12, 45.5)] == [
+        "18¼ min",
+        "38 min",
+        "¾ min",
+        "0 min",
+        "12 min",
+        "45½ min",
+    ]
+    assert [driving_text(v) for v in (59.5, 75, 120.2)] == ["1 hr", "1 hr 15 min", "2 hr"]
+
+
+def test_no_address_events_dont_repeat_their_title() -> None:
+    e = RideEvent("party", "ava", "Mia's Birthday Party", "?party", 960, 1080)
+    labels = Labels(kids={"ava": "Ava"}, places={"?party": "Mia's Birthday Party"})
+    x = Issue(kind="unassigned", event=e, side="drop")
+    assert issue_text(x, labels).body == "Mia's Birthday Party starts at 4:00."
+    labels = Labels(kids={"ava": "Ava"}, places={"?party": "Mia's house"})
+    assert issue_text(x, labels).body == "Mia's Birthday Party starts at 4:00, Mia's house."

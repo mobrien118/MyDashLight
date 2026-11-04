@@ -69,7 +69,12 @@ class PlannerSettings:
     """Planner thresholds, in minutes. The defaults match the agreed design."""
 
     arrive_early: int = 5
-    """Aim to arrive this long before the start when an event has no Arrive by time."""
+    """With no Arrive by time, aim to arrive at least this long before the start."""
+    arrive_early_max: int = 20
+    """...and at most this long."""
+    arrive_early_per: int = 6
+    """One more minute early for every this many minutes of driving from home. 0 keeps it
+    at :attr:`arrive_early`."""
     go_home_margin: int = 15
     """Go home between stops when that frees at least this much more idle time."""
     take_along_window: int = 45
@@ -239,11 +244,23 @@ class IssueText:
     note: str | None = None
 
 
-def arrive_at(event: RideEvent, settings: PlannerSettings) -> int:
-    """When the driver aims to have the kid there."""
+def arrive_at(event: RideEvent, settings: PlannerSettings, travel: TravelFn) -> int:
+    """When the driver aims to have the kid there: the Arrive by time, or a margin before the
+    start that grows with the drive from home (5 minutes early when it's 5 minutes away, 10
+    when it's 30, 15 when it's an hour, never more than 20)."""
     if event.arrive_by is not None:
         return event.arrive_by
-    return event.start - settings.arrive_early
+    return event.start - arrive_early(event.loc, settings, travel)
+
+
+def arrive_early(loc: str, settings: PlannerSettings, travel: TravelFn) -> int:
+    """How long before the start to aim to be at ``loc``, with no Arrive by time."""
+    least = settings.arrive_early
+    if settings.arrive_early_per <= 0:
+        return least
+    # The tiny nudge keeps 30 / 6 from landing just under 5 after a float sum.
+    early = math.floor(least + travel(HOME, loc) / settings.arrive_early_per + 1e-9)
+    return min(max(early, least), max(settings.arrive_early_max, least))
 
 
 def fmt(minutes: float) -> str:
@@ -277,10 +294,10 @@ def plan_driver(
     tasks: list[_Task] = []
     for e in events:
         if e.stay and e.drop == driver and e.pick == driver:
-            tasks.append(_Task("stay", e, arrive_at(e, settings)))
+            tasks.append(_Task("stay", e, arrive_at(e, settings, travel)))
         else:
             if e.drop == driver:
-                tasks.append(_Task("drop", e, arrive_at(e, settings)))
+                tasks.append(_Task("drop", e, arrive_at(e, settings, travel)))
             if e.pick == driver:
                 tasks.append(_Task("pick", e, e.end))
     tasks.sort(key=lambda k: k.t)
@@ -546,11 +563,8 @@ def issue_text(issue: Issue, labels: Labels) -> IssueText:
             )
         case "unassigned" if e:
             if issue.side == "drop":
-                return IssueText(
-                    f"No drop-off for {kid}",
-                    f"{e.title} starts at {fmt(e.start)}, {labels.place(e.loc)}.",
-                )
-            return IssueText(f"No pick-up for {kid}", f"{e.title} ends at {fmt(e.end)}, {labels.place(e.loc)}.")
+                return IssueText(f"No drop-off for {kid}", f"{e.title} starts at {fmt(e.start)}{_at(e, labels)}.")
+            return IssueText(f"No pick-up for {kid}", f"{e.title} ends at {fmt(e.end)}{_at(e, labels)}.")
         case "early" if e and s and s.arrive is not None:
             mins = minutes_text(issue.minutes)
             return IssueText(
@@ -572,6 +586,27 @@ def issue_text(issue: Issue, labels: Labels) -> IssueText:
                 f"{who} leaves right as {b.title} ends",
             )
     return IssueText("", "")
+
+
+def _at(e: RideEvent, labels: Labels) -> str:
+    """ ", Piano studio", or nothing when the event has no address and the place is its title."""
+    place = labels.place(e.loc)
+    return "" if place == e.title else f", {place}"
+
+
+_QUARTERS: Final = ("", "¼", "½", "¾")
+
+
+def driving_text(v: float) -> str:
+    """Minutes of driving as people read them: under an hour to the quarter minute ("18¼ min",
+    "¾ min"), an hour or more in hours and whole minutes ("1 hr 15 min", "2 hr")."""
+    if v >= 59.5:
+        total = math.floor(v + 0.5)
+        h, m = divmod(total, 60)
+        return f"{h} hr {m} min" if m else f"{h} hr"
+    q = math.floor(v * 4 + 0.5)
+    whole, part = divmod(q, 4)
+    return f"{whole if whole or not part else ''}{_QUARTERS[part]} min"
 
 
 def minutes_text(v: float | None) -> str:
@@ -645,7 +680,7 @@ def suggestions_for(
             if e.drop != d:
                 continue
             for f in events:
-                gap = arrive_at(e, settings) - arrive_at(f, settings)
+                gap = arrive_at(e, settings, travel) - arrive_at(f, settings, travel)
                 if f is e or f.drop != d or f.kid == e.kid or not 0 <= gap <= settings.take_along_window:
                     continue
                 if e.kid in f.along:
@@ -672,9 +707,9 @@ def suggestions_for(
         if extra:
             note = issue_text(extra[0], labels).note or ""
         elif delta > 0:
-            note = f"+{minutes_text(delta)} min of driving for {labels.driver(who)}"
+            note = f"+{driving_text(delta)} of driving for {labels.driver(who)}"
         elif delta < 0:
-            note = f"{minutes_text(-delta)} min less driving for {labels.driver(who)}"
+            note = f"{driving_text(-delta)} less driving for {labels.driver(who)}"
         else:
             note = "No new problems"
         good.append(Suggestion(label, change, who, note, p.score))

@@ -41,8 +41,9 @@ async def setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
 @pytest.fixture
 def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     g = FakeGoogle(aioclient_mock)
-    # Robin takes Ava to piano at 4. With no drive times looked up, a drive is 15 minutes,
-    # so Robin leaves at 3:40 and the reminder goes off at 3:25. Nobody picks Ava up yet.
+    # Robin takes Ava to piano at 4. With no drive times looked up, a drive is 15 minutes, so
+    # Robin aims to be there 7 minutes early, leaves at 3:38 and the reminder goes off at 3:23.
+    # Nobody picks Ava up yet.
     g.add(
         AVA,
         **timed(
@@ -99,39 +100,47 @@ async def test_reminders(
 ) -> None:
     entry = await load(hass)
 
-    # The Google reminder goes on piano: 15 minutes before leaving at 3:40 is 35 minutes
+    # The Google reminder goes on piano: 15 minutes before leaving at 3:38 is 37 minutes
     # before piano starts.
     assert reminder_patches(google) == [
         (
             AVA,
             "piano",
             {
-                "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": 35}]},
-                "extendedProperties": {"private": {REMINDER_MARK: "35"}},
+                "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": 37}]},
+                "extendedProperties": {"private": {REMINDER_MARK: "37"}},
             },
         )
     ]
-    # Nobody picks Ava up yet: Robin hears about it straight away. Kids don't.
-    assert [c.data["title"] for c in phones["robin"]] == ["A ride needs a driver"]
-    assert phones["robin"][0].data["message"] == "Tue 5:00 PM  Ava home from Piano (Piano studio)"
-    assert phones["ava"] == []
+    # Nobody picks Ava up at 5 yet, but that's more than six hours off: no alert yet.
+    assert phones["robin"] == []
 
     # Reading the calendars again finds the reminder already there.
     await entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
     assert len(reminder_patches(google)) == 1
+
+    # 11 AM: the pick-up is six hours off, so Robin hears about it. Kids don't.
+    freezer.move_to("2026-11-03T17:00:00+00:00")
+    await entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert [c.data["title"] for c in phones["robin"]] == ["A ride needs a driver"]
+    assert phones["robin"][0].data["message"] == "Tue 5:00 PM  Ava home from Piano (Piano studio)"
+    assert phones["ava"] == []
+    await entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
     assert len(phones["robin"]) == 1
 
-    # 3:25: time to get ready.
+    # 3:25, just after the 3:23 reminder: time to get ready.
     freezer.move_to("2026-11-03T21:25:00+00:00")
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert phones["robin"][1].data == {
-        "title": "Leave at 3:40 PM: Drive Ava to Piano studio",
-        "message": "Leave 3:40\n3:55  Piano studio, drop off Ava\n4:10  Home",
+        "title": "Leave at 3:38 PM: Drive Ava to Piano studio",
+        "message": "Leave 3:38\n3:53  Piano studio, drop off Ava\n4:08  Home",
     }
     assert phones["ava"][0].data == {
-        "title": "Leave home at 3:40 PM with Robin",
+        "title": "Leave home at 3:38 PM with Robin",
         "message": "Drive Ava to Piano studio",
         "data": {"tag": "mydashlight-2026-11-03|mom|piano|0|" + AVA, "group": DOMAIN},
     }
@@ -153,7 +162,7 @@ async def test_a_reminder_missed_while_off_still_goes_before_leaving(
     freezer.move_to("2026-11-03T21:30:00+00:00")  # 3:30, after the reminder, before leaving
     await load(hass)
     assert [c.data["title"] for c in phones["robin"]] == [
-        "Leave at 3:40 PM: Drive Ava to Piano studio",
+        "Leave at 3:38 PM: Drive Ava to Piano studio",
         "A ride needs a driver",
     ]
 
@@ -164,15 +173,15 @@ async def test_a_drive_moved_earlier_is_reminded_again(
     freezer.move_to("2026-11-03T21:26:00+00:00")
     entry = await load(hass, {**REMINDERS, "no_driver_alerts": False})
     assert len(phones["robin"]) == 1
-    # Piano moves to 3:50, so Robin now leaves at 3:30.
+    # Piano moves to 3:50, so Robin now leaves at 3:28.
     piano = google.event(AVA, "piano")
     assert piano is not None
     piano["start"] = {"dateTime": "2026-11-03T15:50:00-06:00"}
     await entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
     assert [c.data["title"] for c in phones["robin"]] == [
-        "Leave at 3:40 PM: Drive Ava to Piano studio",
-        "Leave at 3:30 PM: Drive Ava to Piano studio",
+        "Leave at 3:38 PM: Drive Ava to Piano studio",
+        "Leave at 3:28 PM: Drive Ava to Piano studio",
     ]
 
 
@@ -220,8 +229,9 @@ async def test_a_failed_save_is_logged_once(
 
 
 async def test_missing_notify_service_is_logged_once(
-    hass: HomeAssistant, google: FakeGoogle, caplog: pytest.LogCaptureFixture
+    hass: HomeAssistant, google: FakeGoogle, caplog: pytest.LogCaptureFixture, freezer: FrozenDateTimeFactory
 ) -> None:
+    freezer.move_to("2026-11-03T19:00:00+00:00")  # 1 PM, so rides this afternoon need a driver
     entry = await load(hass, {**REMINDERS, "kid_notify": {}})
     google.add(
         BEN,

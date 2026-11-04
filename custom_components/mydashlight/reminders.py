@@ -5,7 +5,7 @@ Two kinds:
 * **Leave reminders.** A set time before each drive leaves (15 minutes unless the options say
   otherwise). Leave time is worked back from when the kid has to be there and the drive, so
   the reminder moves when the plan or the traffic does.
-* **No-driver alerts.** A ride in the next two days that nobody is driving yet.
+* **No-driver alerts.** A ride in the next six hours that nobody is driving yet.
 
 Pure module, no Home Assistant imports. Times in the plan are wall-clock minutes after
 midnight on their day, in the household's time zone.
@@ -23,7 +23,8 @@ from .google import REMINDER_MARK
 from .planner import UNASSIGNED, fmt, fmt12
 from .week import DayInput
 
-NO_DRIVER_AHEAD: Final = timedelta(hours=48)
+NO_DRIVER_AHEAD: Final = timedelta(hours=6)
+"""How far ahead a ride with no driver is worth an alert. Nobody plans much further out."""
 MAX_REMINDER: Final = 40320
 """Google's longest reminder: four weeks."""
 NO_DRIVER_LINES: Final = 8

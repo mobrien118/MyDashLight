@@ -62,9 +62,22 @@ var INITIAL = [
   { id: 'wed-football', day: 6, kid: 'ben', title: 'Football', loc: 'football', start: 1050, end: 1140, drop: 'dad', pick: 'dad', stay: false, arriveBy: null }
 ];
 var isDriver = function (v) { return v === 'mom' || v === 'dad'; };
-// When the driver aims to have the kid there: the Arrive by time if one is set, otherwise a few minutes before the start.
-var arriveAt = function (e) { return e.arriveBy != null ? e.arriveBy : e.start - 5; };
+// When the driver aims to have the kid there: the Arrive by time if one is set, otherwise a margin
+// before the start that grows with the drive from home: 5 + 1 minute per 6 minutes of driving, rounded
+// down, from 5 to 20. So 5 early for a 5-minute drive, 10 for 30, 15 for an hour (Marty, 2026-11-04).
+var arriveEarly = function (loc) { return Math.min(Math.max(Math.floor(5 + travel('home', loc) / 6 + 1e-9), 5), 20); };
+var arriveAt = function (e) { return e.arriveBy != null ? e.arriveBy : e.start - arriveEarly(e.loc); };
 
+// Minutes of driving as people read them (Marty, 2026-11-04): under an hour to the quarter minute
+// ("18¼ min"), an hour or more in hours and whole minutes ("1 hr 15 min").
+function drivingText(v) {
+  if (v >= 59.5) {
+    var t = Math.floor(v + 0.5), h = Math.floor(t / 60), m = t % 60;
+    return m ? h + ' hr ' + m + ' min' : h + ' hr';
+  }
+  var q = Math.floor(v * 4 + 0.5), whole = Math.floor(q / 4), part = ['', '¼', '½', '¾'][q % 4];
+  return (whole || !part ? whole : '') + part + ' min';
+}
 function travel(a, b) {
   if (a === b) return 0;
   var v = DRIVE[a + '|' + b];
@@ -232,7 +245,7 @@ function issueText(x) {
   if (x.kind === 'busy') return { title: who + ' is still at ' + x.b.title, body: 'Leaving at ' + fmt(x.seg.start) + (e ? ' for ' + kid + '’s ' + e.title.toLowerCase() : '') + ' overlaps ' + x.b.title + ' until ' + fmt(x.b.end) + '.' };
   if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + x.min + ' min after ' + (e.arriveBy != null ? 'the ' + fmt(e.arriveBy) + ' arrive-by time.' : 'the ' + fmt(x.s.deadline) + ' target.') };
   if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + x.min + ' min after it ends.' };
-  if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : ' ends at ' + fmt(e.end)) + ', ' + PLACES[e.loc] + '.' };
+  if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : ' ends at ' + fmt(e.end)) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
   if (x.kind === 'early') return { title: kid + ' waits ' + x.min + ' min', body: who + ' gets ' + kid + ' to ' + e.title + ' at ' + fmt(x.s.arr) + ', well before the ' + fmt(e.start) + ' start.', note: kid + ' waits ' + x.min + ' min at ' + e.title };
   if (x.kind === 'tight') return { title: 'No time to spare', body: who + ' has to leave ' + e.title + ' right at ' + fmt(x.at) + ' to make the next stop.', note: who + ' leaves ' + e.title + ' right at ' + fmt(x.at) };
   if (x.kind === 'tightBusy') return { title: 'No time to spare', body: who + ' has to leave right when ' + x.b.title + ' ends at ' + fmt(x.b.end) + '.', note: who + ' leaves right as ' + x.b.title + ' ends' };
@@ -292,7 +305,7 @@ function suggestionsFor(issue, events, base, busy) {
     }
     var extra = p.soft.filter(function (x) { return baseSoft.indexOf(issueKey(x)) < 0; });
     var delta = p[c.who].drive - base[c.who].drive;
-    c.note = extra.length ? issueText(extra[0]).note : (delta > 0 ? '+' + delta + ' min of driving for ' + PEOPLE[c.who] : delta < 0 ? (-delta) + ' min less driving for ' + PEOPLE[c.who] : 'No new problems');
+    c.note = extra.length ? issueText(extra[0]).note : (delta > 0 ? '+' + drivingText(delta) + ' of driving for ' + PEOPLE[c.who] : delta < 0 ? drivingText(-delta) + ' less driving for ' + PEOPLE[c.who] : 'No new problems');
     c.score = p.score;
     good.push(c);
   });
@@ -477,5 +490,5 @@ function buildDay(i, evs) {
 }
 
 
-module.exports = { K, PLACES, SHORT, DRIVE, PEOPLE, DAYS, BUSY_BY_DAY, NOW, INITIAL, travel, fmt, arriveAt, isDriver,
+module.exports = { K, PLACES, SHORT, DRIVE, PEOPLE, DAYS, BUSY_BY_DAY, NOW, INITIAL, travel, fmt, arriveAt, arriveEarly, isDriver,
   planDriver, planAll, issueKey, issueText, applyChange, suggestionsFor, pack, cloneEvents, buildDay };

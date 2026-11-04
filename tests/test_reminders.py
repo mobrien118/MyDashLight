@@ -29,7 +29,8 @@ PARK = "Park, 2 Oak St"
 
 def plan(w: WeekInput) -> list[dict[str, Any]]:
     travel = make_travel(w.travel_overrides, 15)
-    return plan_week(w, lambda _day: travel, PlannerSettings(), DRIVERS)
+    # A fixed 5 minutes early keeps the times here easy to follow.
+    return plan_week(w, lambda _day: travel, PlannerSettings(arrive_early_per=0), DRIVERS)
 
 
 def piano_and_soccer(**piano: Any) -> WeekInput:
@@ -192,20 +193,21 @@ def test_missing_rides() -> None:
         days=4,
     )
     days = plan(w)
-    now = datetime(2026, 11, 3, 9, tzinfo=TZ)
-    missing = missing_rides(days, now, TZ)
-    # Ben's drop-off is done and has a driver, his pick-up is at 9:30. Camp is too far off.
-    assert [m.key for m in missing] == [
-        "2026-11-03|soccer|pick",
-        "2026-11-03|piano|drop",
-        "2026-11-03|piano|pick",
-        "2026-11-04|art|drop",
-    ]
+    # At 9 AM only the next six hours count: Ben's drop-off has a driver, his pick-up at
+    # 9:30 doesn't. Piano is later today, art tomorrow and camp later in the week.
+    missing = missing_rides(days, datetime(2026, 11, 3, 9, tzinfo=TZ), TZ)
+    assert [m.key for m in missing] == ["2026-11-03|soccer|pick"]
     assert missing[0].text == "Tue 9:30 AM  Ben home from Soccer"
-    assert missing[1].text == "Tue 4:00 PM  Ava to Piano (Lincoln Elementary)"
+    # By 11 AM, Ben's pick-up has gone by and both piano rides are within six hours.
+    missing = missing_rides(days, datetime(2026, 11, 3, 11, tzinfo=TZ), TZ)
+    assert [m.key for m in missing] == ["2026-11-03|piano|drop", "2026-11-03|piano|pick"]
+    assert missing[0].text == "Tue 4:00 PM  Ava to Piano (Lincoln Elementary)"
+    # Art's drop-off is at 4 PM tomorrow.
+    later = missing_rides(days, datetime(2026, 11, 4, 10, tzinfo=TZ), TZ)
+    assert [m.key for m in later] == ["2026-11-04|art|drop"]
     title, message = missing_message(missing)
-    assert title == "4 rides need a driver"
-    assert message.splitlines()[0] == "Tue 9:30 AM  Ben home from Soccer"
+    assert title == "2 rides need a driver"
+    assert message.splitlines()[0] == "Tue 4:00 PM  Ava to Piano (Lincoln Elementary)"
     assert missing_message(missing[:1])[0] == "A ride needs a driver"
     many = [replace(missing[0], key=str(i)) for i in range(10)]
     assert missing_message(many)[1].splitlines()[-1] == "and 2 more"
