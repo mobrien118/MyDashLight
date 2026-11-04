@@ -883,7 +883,9 @@ export class MyDashLightBoard extends LitElement {
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px"
                 @click=${() => this.open(x.target)}
               >
-                <span class="l1">${x.l1}</span>${x.show2 ? html`<span class="l2">${x.l2}</span>` : nothing}
+                <span class="l1">${x.l1}</span>${x.show2
+                  ? html`<span class="l2" style="-webkit-line-clamp:${x.lines2}">${x.l2}</span>`
+                  : nothing}
               </button>`,
           )}
           ${repeat(
