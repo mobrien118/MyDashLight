@@ -217,8 +217,9 @@ the Home Assistant app adds for each phone. Anyone left on **No reminders** gets
   Google's: a reminder belongs to the account MyDashLight signs in with, so it pops up for that
   person only; and Google only reminds before an event starts, so pick-ups get the phone
   reminder only. Turn off **Also save drop-off reminders in Google Calendar** to skip this.
-- **Rides with no driver.** A drop-off or pick-up in the next six hours with nobody driving yet is
-  sent once to both parents' notifiers, several at a time when there are several.
+- **Rides with no driver.** A drop-off or pick-up coming up with nobody driving yet is sent once to
+  both parents' notifiers, several at a time when there are several. It goes six hours before the
+  ride, or whatever **Warn about rides with no driver this far ahead** says.
 
 What has been sent is kept in Home Assistant, so a restart doesn't send it again.
 

@@ -5,7 +5,8 @@ Two kinds:
 * **Leave reminders.** A set time before each drive leaves (15 minutes unless the options say
   otherwise). Leave time is worked back from when the kid has to be there and the drive, so
   the reminder moves when the plan or the traffic does.
-* **No-driver alerts.** A ride in the next six hours that nobody is driving yet.
+* **No-driver alerts.** A ride in the next few hours (six unless the options say otherwise)
+  that nobody is driving yet.
 
 Pure module, no Home Assistant imports. Times in the plan are wall-clock minutes after
 midnight on their day, in the household's time zone.
@@ -24,7 +25,8 @@ from .planner import UNASSIGNED, fmt, fmt12
 from .week import DayInput
 
 NO_DRIVER_AHEAD: Final = timedelta(hours=6)
-"""How far ahead a ride with no driver is worth an alert. Nobody plans much further out."""
+"""How far ahead a ride with no driver is worth an alert, unless the options say otherwise.
+Nobody plans much further out."""
 MAX_REMINDER: Final = 40320
 """Google's longest reminder: four weeks."""
 NO_DRIVER_LINES: Final = 8
@@ -137,10 +139,12 @@ def calendar_reminders(
     return out
 
 
-def missing_rides(days: Iterable[Mapping[str, Any]], now: datetime, tz: tzinfo) -> list[MissingRide]:
-    """Rides from now until :data:`NO_DRIVER_AHEAD` with nobody driving yet, soonest first."""
+def missing_rides(
+    days: Iterable[Mapping[str, Any]], now: datetime, tz: tzinfo, ahead: timedelta = NO_DRIVER_AHEAD
+) -> list[MissingRide]:
+    """Rides from now until ``ahead`` from now with nobody driving yet, soonest first."""
     out: list[MissingRide] = []
-    until = now + NO_DRIVER_AHEAD
+    until = now + ahead
     for day in days:
         d = date.fromisoformat(day["date"])
         kids = day.get("kids", {})

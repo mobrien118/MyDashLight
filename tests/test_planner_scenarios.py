@@ -19,6 +19,8 @@ from custom_components.mydashlight.planner import (
     arrive_early,
     driving_text,
     issue_text,
+    minutes_text,
+    plan_driver,
 )
 
 from .reference import KIDS, LABELS, busy_from_json, event_from_json, expected_json, travel
@@ -84,3 +86,42 @@ def test_no_address_events_dont_repeat_their_title() -> None:
     assert issue_text(x, labels).body == "Mia's Birthday Party starts at 4:00."
     labels = Labels(kids={"ava": "Ava"}, places={"?party": "Mia's house"})
     assert issue_text(x, labels).body == "Mia's Birthday Party starts at 4:00, Mia's house."
+
+
+def test_same_place_drop_off_and_pick_up_in_one_stop() -> None:
+    # Cleo's hip hop ends at 6:45, and Ava has to be at the same studio by 6:45 for tap.
+    # Robin brings Ava along to the pick-up instead of fetching her from home afterwards.
+    hiphop = RideEvent("hiphop", "cleo", "Hip Hop", "dance", 1080, 1125, drop="mom", pick="mom")
+    tap = RideEvent("tap", "ava", "Tap", "dance", 1155, 1200, drop="mom", pick="dad", arrive_by=1125)
+    plan = plan_driver("mom", [hiphop, tap], {}, travel)
+    assert plan.issues == []
+    assert [(s.kind, s.event.id if s.event else s.loc, s.car) for s in plan.stops] == [
+        ("start", "home", ["cleo"]),
+        ("drop", "hiphop", []),
+        ("fetch", "home", ["ava"]),
+        ("drop", "tap", []),
+        ("pick", "hiphop", ["cleo"]),
+        ("end", "home", []),
+    ]
+    # Not for the same kid: picked up from one class and dropped at the next, they're already there.
+    again = RideEvent("again", "cleo", "Ballet", "dance", 1135, 1200, drop="mom", pick="mom")
+    stops = plan_driver("mom", [hiphop, again], {}, travel).stops
+    assert [s.kind for s in stops] == ["start", "drop", "pick", "drop", "pick", "end"]
+
+
+def test_a_few_seconds_late_is_not_late() -> None:
+    # Ben goes straight from soccer (ends 4:00) to piano (be there by 4:12).
+    soccer = RideEvent("soccer", "ben", "Soccer", "soccer", 900, 960, drop="dad", pick="mom")
+    piano = RideEvent("piano", "ben", "Piano", "piano", 975, 1020, drop="mom", arrive_by=972)
+
+    def issues(drive: float) -> list[Issue]:
+        return plan_driver(
+            "mom", [soccer, piano], {}, lambda a, b: drive if {a, b} == {"soccer", "piano"} else 10
+        ).issues
+
+    # 12 seconds late shows as 4:12 either way, so it isn't late.
+    assert issues(12.2) == []
+    (late,) = issues(12.6)
+    assert late.kind == "late"
+    assert issue_text(late, LABELS).body == "Robin gets there at 4:13, 1 min after the 4:12 arrive-by time."
+    assert [minutes_text(v) for v in (15.200000000000045, 0.5, 2.0, None)] == ["15", "1", "2", "0"]

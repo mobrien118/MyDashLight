@@ -31,12 +31,14 @@ from .const import (
     CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
     CONF_NO_DRIVER_ALERTS,
+    CONF_NO_DRIVER_HOURS,
     CONF_PLANNER,
     CONF_REMIND_BEFORE,
     CONF_TAKE_ALONG_WINDOW,
     CONF_TIGHT_SLACK,
     CONF_TOO_EARLY,
     CONF_WAITING_AFTER,
+    DEFAULT_NO_DRIVER_HOURS,
     DEFAULT_PLANNER,
     DEFAULT_REMIND_BEFORE,
     NOTIFY_OFF,
@@ -53,6 +55,8 @@ class ReminderSettings:
     before: int = DEFAULT_REMIND_BEFORE
     """Minutes before leaving."""
     no_driver_alerts: bool = True
+    no_driver_hours: int = DEFAULT_NO_DRIVER_HOURS
+    """How far ahead a ride with no driver is worth an alert."""
     calendar: bool = True
     """Also save each drive's reminder on its first drop-off event in Google Calendar."""
 
@@ -112,6 +116,7 @@ class HubSettings:
                 notify=_notifiers(options, kids),
                 before=int(options.get(CONF_REMIND_BEFORE, DEFAULT_REMIND_BEFORE)),
                 no_driver_alerts=bool(options.get(CONF_NO_DRIVER_ALERTS, True)),
+                no_driver_hours=max(1, int(options.get(CONF_NO_DRIVER_HOURS, DEFAULT_NO_DRIVER_HOURS))),
                 calendar=bool(options.get(CONF_CALENDAR_REMINDERS, True)),
             ),
         )
