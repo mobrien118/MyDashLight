@@ -5,7 +5,7 @@
 //                                       one self-contained page with a fixed plan, nothing saved
 
 import { build } from "esbuild";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,10 +37,14 @@ if (args.includes("--preview")) {
     define: { PREVIEW_PLAN: JSON.stringify(JSON.parse(plan)) },
   });
   const js = res.outputFiles[0].text.replaceAll("</script", "<\\/script");
+  const favicon = await readFile(resolve(here, "public/favicon.svg"), "utf8");
   const page = (await readFile(resolve(here, "src/kiosk.html"), "utf8"))
     .replace("<title>MyDashLight rides</title>", "<title>Rides board preview</title>")
     .replace("<mydashlight-board kiosk>", "<mydashlight-board>")
-    .replace('<script type="module" src="%SCRIPT%"></script>', () => `<script type="module">${js}</script>`);
+    .replace('<script type="module" src="%SCRIPT%"></script>', () => `<script type="module">${js}</script>`)
+    // One self-contained page: the icon goes inline, and the PNG fallbacks aren't needed.
+    .replace(/^ *<link rel="(?:icon|apple-touch-icon)"[^>]*\.png"[^>]*>\n/gm, "")
+    .replace('href="%FILES%/favicon.svg"', () => `href="data:image/svg+xml,${encodeURIComponent(favicon)}"`);
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, page);
   console.log(`Wrote ${target}`);
@@ -51,6 +55,11 @@ if (args.includes("--preview")) {
     entryPoints: { panel: resolve(here, "src/panel.ts"), kiosk: resolve(here, "src/kiosk.ts") },
     outdir: out,
   });
-  // Home Assistant fills in the script's address, with a version so browsers fetch new builds.
+  // The icons the kitchen page links to, copied as they are.
+  for (const name of await readdir(resolve(here, "public"))) {
+    await copyFile(resolve(here, "public", name), resolve(out, name));
+  }
+  // Home Assistant fills in the script's and icons' addresses, with a version on the script so
+  // browsers fetch new builds.
   await writeFile(resolve(out, "index.html"), await readFile(resolve(here, "src/kiosk.html"), "utf8"));
 }

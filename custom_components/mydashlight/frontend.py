@@ -55,7 +55,8 @@ async def async_setup_frontend(hass: HomeAssistant) -> None:
     page = await hass.async_add_executor_job((FILES / "index.html").read_text, "utf-8")
     hass.data[f"{_SERVED}_versions"] = versions
     await hass.http.async_register_static_paths([StaticPathConfig(FILES_URL, str(FILES), cache_headers=True)])
-    hass.http.register_view(KitchenView(page.replace("%SCRIPT%", f"{FILES_URL}/kiosk.js?v={versions['kiosk.js']}")))
+    page = page.replace("%SCRIPT%", f"{FILES_URL}/kiosk.js?v={versions['kiosk.js']}").replace("%FILES%", FILES_URL)
+    hass.http.register_view(KitchenView(page))
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
