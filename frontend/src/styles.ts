@@ -61,6 +61,20 @@ export const styles = css`
   }
   .app.narrow {
     padding: 12px 12px 12px;
+  }
+  .app.wide {
+    flex-direction: row;
+    gap: 24px;
+  }
+  .col {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .narrow .col {
     gap: 10px;
   }
 

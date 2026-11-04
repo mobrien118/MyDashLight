@@ -538,21 +538,27 @@ export class MyDashLightBoard extends LitElement {
     const att: Attention = plan
       ? attention(plan, this.today())
       : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
-    const panelOpen = this.wide || this.sheet || !!this.sel;
+    const wide = this.wide;
+    const panel = html`<aside class="panel" aria-label=${this.sel ? "Change this ride" : "Needs attention"}>
+      ${this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att)}
+    </aside>`;
+    // Wide, the panel runs the full height on the right, beside everything else. Narrower, it
+    // slides over the board when opened.
     return html`
-      <div class="app ${this.wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
-        ${this.renderHeader(plan, att)} ${plan ? this.renderWeek(plan) : nothing} ${this.renderBanner(plan)}
-        <main>
-          <section class="board-area" aria-label="Everyone’s week">
-            ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
-          </section>
-          ${panelOpen
-            ? html`${this.wide ? nothing : html`<div class="backdrop" @click=${() => this.closePanel()}></div>`}
-                <aside class="panel" aria-label=${this.sel ? "Change this ride" : "Needs attention"}>
-                  ${this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att)}
-                </aside>`
-            : nothing}
-        </main>
+      <div class="app ${wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
+        <div class="col">
+          ${this.renderHeader(plan, att)} ${plan ? this.renderWeek(plan) : nothing} ${this.renderBanner(plan)}
+          <main>
+            <section class="board-area" aria-label="Everyone’s week">
+              ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
+            </section>
+            ${!wide && (this.sheet || this.sel)
+              ? html`<div class="backdrop" @click=${() => this.closePanel()}></div>
+                  ${panel}`
+              : nothing}
+          </main>
+        </div>
+        ${wide ? panel : nothing}
         ${this.toast ? html`<div class="toast" role="status">${this.toast}</div>` : nothing}
       </div>
     `;
