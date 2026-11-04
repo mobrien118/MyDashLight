@@ -10,6 +10,12 @@ test("the view can be set in the address", () => {
   assert.deepEqual(pageOptions("?view=%20compact%20"), { view: "compact" });
 });
 
+test("the page can be set in the address", () => {
+  assert.deepEqual(pageOptions("?page=chores"), { page: "chores" });
+  assert.deepEqual(pageOptions("?page=Rides&view=compact"), { page: "rides", view: "compact" });
+  assert.deepEqual(pageOptions("?page=lunch"), {});
+});
+
 test("unknown or missing settings leave the defaults", () => {
   assert.deepEqual(pageOptions(""), {});
   assert.deepEqual(pageOptions("?view=week"), {});
