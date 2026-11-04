@@ -7,7 +7,10 @@ import {
   dayTag,
   layout,
   minWidth,
+  nextUp,
   pack,
+  shortTitle,
+  tidyMinutes,
   routeOf,
   placeNames,
   tAt,
@@ -40,7 +43,7 @@ test("a column per kid, then one per driver, in the order set up in Home Assista
   // The kitchen screen's widths: as in the design.
   assert.equal(columns[0]!.w, 179);
   assert.equal(columns[3]!.w, 251);
-  assert.equal(columns[0]!.sub, "7 this week · needs a ride");
+  assert.equal(columns[0]!.sub, "Needs a ride · 7 this week");
   assert.equal(columns[0]!.subWarn, true);
   assert.match(columns[3]!.sub, /^\d+ trips this week · .* driving$/);
   for (let i = 1; i < columns.length; i++) assert.ok(columns[i]!.x >= columns[i - 1]!.x + columns[i - 1]!.w);
@@ -162,4 +165,57 @@ test("wrapped text in Compact gets room for every line", () => {
   assert.equal(wrapRows("Supercalifragilistic", 70, 7), 2);
   const e = plan.days[0]!.events[0]!;
   assert.ok(compactCardHeight(e, 150) > compactCardHeight(e, 300));
+});
+
+test("the next trip: leaving soon, under way, or tomorrow", () => {
+  const soon = nextUp(plan, { date: FIRST, minutes: 16 * 60 })!;
+  assert.equal(soon.ongoing, false);
+  assert.equal(soon.name, "Sam");
+  assert.equal(soon.lead, "Leave 4:25");
+  assert.equal(soon.inMinutes, 25);
+  assert.equal(soon.warn, "Still at Work until 4:40");
+  assert.equal(soon.stop, "4:40 Soccer fields, drop off Cleo");
+  assert.ok(soon.target);
+
+  // Someone is out, but the next one to leave matters more.
+  const later = nextUp(plan, { date: FIRST, minutes: 17 * 60 })!;
+  assert.equal(later.lead, "Leave 6:15");
+  assert.equal(later.inMinutes, 75);
+
+  const out = nextUp(plan, { date: FIRST, minutes: 19 * 60 + 10 })!;
+  assert.equal(out.ongoing, true);
+  assert.equal(out.lead, "Leave 6:40");
+
+  const tomorrow = nextUp(plan, { date: FIRST, minutes: 23 * 60 })!;
+  assert.equal(tomorrow.ahead, 1);
+  assert.equal(tomorrow.lead, "Leave 4:40");
+
+  const last = plan.days[plan.days.length - 1]!.date;
+  assert.equal(nextUp(plan, { date: last, minutes: 23 * 60 + 59 }), null);
+});
+
+test("a kid's name in front of the title is left off in their own column", () => {
+  assert.equal(shortTitle("Ava Tap", "Ava"), "Tap");
+  assert.equal(shortTitle("Ava's piano", "Ava"), "Piano");
+  assert.equal(shortTitle("Ava - Soccer (Open Play)", "Ava"), "Soccer (Open Play)");
+  assert.equal(shortTitle("ava hip hop", "Ava"), "Hip hop");
+  assert.equal(shortTitle("Avalanche drills", "Ava"), "Avalanche drills");
+  assert.equal(shortTitle("Ava", "Ava"), "Ava");
+  assert.equal(shortTitle("Mia's birthday party", "Ava"), "Mia's birthday party");
+});
+
+test("driving minutes in a fix's note are rounded to the quarter minute", () => {
+  assert.equal(tidyMinutes("+18.299999999999997 min of driving for Sam"), "+18¼ min of driving for Sam");
+  assert.equal(tidyMinutes("+37.900000000000006 min of driving"), "+38 min of driving");
+  assert.equal(tidyMinutes("+15.2 min"), "+15¼ min");
+  assert.equal(tidyMinutes("+17.7 min"), "+17¾ min");
+  assert.equal(tidyMinutes("+32.5 min"), "+32½ min");
+  assert.equal(tidyMinutes("+0.4 min"), "+½ min");
+  assert.equal(tidyMinutes("+0.1 min"), "+0 min");
+  assert.equal(tidyMinutes("+30 min of driving"), "+30 min of driving");
+  assert.equal(tidyMinutes("Leaves at 4.5 miles"), "Leaves at 4.5 miles");
+  assert.equal(tidyMinutes("+59.6 min"), "+1 hr");
+  assert.equal(tidyMinutes("+75.3 min of driving"), "+1 hr 15 min of driving");
+  assert.equal(tidyMinutes("+120 min"), "+2 hr");
+  assert.equal(tidyMinutes("+59.4 min"), "+59½ min");
 });

@@ -7,21 +7,26 @@ import { LitElement, html, nothing, svg, type PropertyValues, type TemplateResul
 import { repeat } from "lit/directives/repeat.js";
 import { BackendError, type Backend } from "./backend.ts";
 import { kidColor } from "./colors.ts";
-import { ago, clock, clockAmPm, nowIn, rangeLabel, shortDay } from "./format.ts";
+import { ago, clock, clockAmPm, dayLabel, duration, nowIn, shortDay } from "./format.ts";
 import {
   DAY_HEAD,
   attention,
   driverIds,
+  driverName,
   kidColors,
   kidIds,
   kidName,
   layout,
+  minWidth,
+  nextUp,
+  problemCount,
   tAt,
   whoName,
   yAt,
   type AttentionItem,
   type Board,
   type Mode,
+  type NextUp,
   type Target,
   type Today,
 } from "./layout.ts";
@@ -31,12 +36,34 @@ import type { Plan, PlanDay, PlanEvent, Scope, Side } from "./types.ts";
 const MODE_KEY = "mydashlight.rides.mode";
 /** Below this width the side panel becomes a sheet over the board. */
 const WIDE = 1100;
+/** What the side panel takes from the board: its width, the gap and the page's padding. */
+const PANEL_SPACE = 360 + 24 + 56;
 /** Below this width the panel slides up from the bottom instead of in from the side. */
 const PHONE = 700;
 /** On the kitchen screen, go back to now after this long without a touch. */
 const IDLE_MS = 3 * 60_000;
 /** Arrive-by taps are saved together once they stop. */
 const ARRIVE_SAVE_MS = 1200;
+
+function localZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+/** "S" for Sam: the first letter of a name, for its round badge. */
+function initial(name: string): string {
+  const m = /\p{L}|\p{N}/u.exec(name);
+  return m ? m[0].toUpperCase() : "?";
+}
+
+/** "Ava’s, Ben’s or Cleo’s". */
+function possessives(names: string[]): string {
+  const p = names.map((n) => `${n}’s`);
+  return p.length < 2 ? (p[0] ?? "") : `${p.slice(0, -1).join(", ")} or ${p[p.length - 1]}`;
+}
 
 function readMode(): Mode {
   try {
@@ -58,6 +85,11 @@ function saveMode(m: Mode): void {
 interface Pending {
   key: string;
   value: unknown;
+}
+
+/** Nothing on any kid's calendar all week. */
+function quietWeek(plan: Plan): boolean {
+  return plan.days.every((d) => !d.events.length);
 }
 
 export class MyDashLightBoard extends LitElement {
@@ -109,6 +141,7 @@ export class MyDashLightBoard extends LitElement {
   private drag: { el: HTMLElement; x: number; y: number; top: number; left: number; moved: boolean; id: number } | null = null;
   private eatClick = false;
   private board: Board | null = null;
+  private minuteKey = "";
   private boardPlan: Plan | null = null;
   private boardKey = "";
   /** Where to scroll after the next render: a moment on the board. */
@@ -136,9 +169,15 @@ export class MyDashLightBoard extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+    // The clock on screen changes on the minute; check often, draw only then.
     this.clockTimer = setInterval(() => {
-      this.tick++;
-    }, 30_000);
+      const t = this.today();
+      const key = `${t.date}|${t.minutes}`;
+      if (key !== this.minuteKey) {
+        this.minuteKey = key;
+        this.tick++;
+      }
+    }, 5_000);
     this.addEventListener("pointerdown", this.onActivity, { capture: true });
     this.addEventListener("keydown", this.onKey);
     this.watchBackend();
@@ -208,12 +247,15 @@ export class MyDashLightBoard extends LitElement {
     return this.renderRoot.querySelector<HTMLElement>(".scroller");
   }
 
+  /** Room for the side panel without squeezing the board until it scrolls sideways. */
   private get wide(): boolean {
-    return this.width >= WIDE;
+    if (this.width < WIDE) return false;
+    const p = this.plan;
+    return !p || this.width - PANEL_SPACE >= minWidth(kidIds(p).length, driverIds(p).length);
   }
 
   private today(): Today {
-    return nowIn(this.plan?.time_zone ?? "UTC");
+    return nowIn(this.plan?.time_zone ?? localZone());
   }
 
   private currentBoard(): Board | null {
@@ -249,17 +291,44 @@ export class MyDashLightBoard extends LitElement {
     this.scrollToTime(i * 1440 + (this.mode === "timeline" && i === this.dayIndexOf(today.date) ? today.minutes - 45 : 0));
   }
 
+  /** Jumps to a day: to now if it's today, else to its first activity or trip. */
+  private goToDay(date: string): void {
+    const plan = this.plan;
+    if (!plan) return;
+    const today = this.today();
+    if (date === today.date) {
+      this.scrollToNow();
+      return;
+    }
+    const i = this.dayIndexOf(date);
+    const day = plan.days[i];
+    if (!day) return;
+    let first = Infinity;
+    if (this.mode === "timeline") {
+      for (const e of day.events) first = Math.min(first, e.arrive_by ?? e.start);
+      for (const d of Object.values(day.drivers)) for (const o of d.outings) if (o.start != null) first = Math.min(first, o.start);
+    }
+    this.scrollToTime(i * 1440 + (Number.isFinite(first) ? Math.max(0, first - 30) : 0));
+  }
+
   private syncDay(): void {
     const el = this.scroller;
     if (!el || !this.board || !this.board.dayHeads.length) return;
     const top = el.scrollTop;
     let cur = this.board.dayHeads[0]!;
     for (const h of this.board.dayHeads) if (h.y <= top + 1) cur = h;
-    const label = this.renderRoot.querySelector(".pinned .label");
-    const sub = this.renderRoot.querySelector(".pinned .sub");
+    const root = this.renderRoot;
+    const label = root.querySelector(".pinned .label");
+    const tag = root.querySelector<HTMLElement>(".pinned .tag");
+    const sub = root.querySelector(".pinned .sub");
     if (label && label.textContent !== cur.label) label.textContent = cur.label;
+    if (tag) {
+      if (tag.textContent !== cur.tag) tag.textContent = cur.tag;
+      tag.hidden = !cur.tag;
+    }
     if (sub && sub.textContent !== cur.sub) sub.textContent = cur.sub;
     sub?.classList.toggle("warn", cur.warn);
+    for (const t of root.querySelectorAll<HTMLElement>(".day-tile")) t.classList.toggle("in-view", t.dataset["date"] === cur.date);
   }
 
   private setMode(m: Mode): void {
@@ -444,9 +513,11 @@ export class MyDashLightBoard extends LitElement {
     const panelOpen = this.wide || this.sheet || !!this.sel;
     return html`
       <div class="app ${this.wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
-        ${this.renderHeader(plan, att.problems)} ${this.renderBanner(plan)}
+        ${this.renderHeader(plan, att.problems)} ${plan ? this.renderWeek(plan) : nothing} ${this.renderBanner(plan)}
         <main>
-          <section class="board-area" aria-label="Everyone’s week">${board ? this.renderBoard(board) : this.renderEmpty()}</section>
+          <section class="board-area" aria-label="Everyone’s week">
+            ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
+          </section>
           ${panelOpen
             ? html`${this.wide ? nothing : html`<div class="backdrop" @click=${() => this.closePanel()}></div>`}
                 <aside class="panel" aria-label=${this.sel ? "Change this ride" : "Needs attention"}>
@@ -465,8 +536,8 @@ export class MyDashLightBoard extends LitElement {
   }
 
   private renderHeader(plan: Plan | null, problems: number): TemplateResult {
-    const range = plan?.days.length ? rangeLabel(plan.days[0]!.date, plan.days[plan.days.length - 1]!.date) : "";
     void this.tick;
+    const now = this.today();
     let status: TemplateResult | string = "";
     if (plan) {
       const tz = plan.time_zone;
@@ -480,11 +551,13 @@ export class MyDashLightBoard extends LitElement {
         status = `Updated ${ago(updated, new Date(), tz)}`;
       }
     }
-    const seg = (m: Mode, label: string, icon: TemplateResult): TemplateResult => html`
-      <button type="button" class="seg-btn" aria-pressed=${this.mode === m ? "true" : "false"} @click=${() => this.setMode(m)}>
-        ${icon}${label}
+    const seg = (m: Mode, label: string, icon: TemplateResult, hint: string): TemplateResult => html`
+      <button type="button" class="seg-btn" title=${hint} aria-pressed=${this.mode === m ? "true" : "false"} @click=${() => this.setMode(m)}>
+        ${icon}<span class="seg-label">${label}</span>
       </button>
     `;
+    const time = clockAmPm(now.minutes);
+    const quiet = !!plan && quietWeek(plan);
     return html`
       <header>
         ${this.showMenu
@@ -493,32 +566,174 @@ export class MyDashLightBoard extends LitElement {
             </button>`
           : nothing}
         <div class="titles">
-          <h1>Everyone’s week</h1>
-          <p>${range}${range && status ? " · " : ""}${status}</p>
+          <h1 class="clock" aria-label=${`${dayLabel(now.date)}, ${time}`}>
+            <span class="hm">${time.slice(0, -3)}</span><span class="ampm">${time.slice(-2)}</span>
+          </h1>
+          <p class="today-line">${dayLabel(now.date)}</p>
+          ${status ? html`<p class="status">${status}</p>` : nothing}
         </div>
+        ${plan && !quiet ? this.renderNext(plan, nextUp(plan, now)) : nothing}
         <div class="controls">
-          ${this.wide
-            ? html`<span class="hint">${this.mode === "compact" ? "Everything in order, no time scale" : "Spacing matches the clock"}</span>`
+          ${this.wide || quiet
+            ? nothing
             : html`<button type="button" class="attn-btn ${problems ? "has" : ""}" @click=${() => {
                 this.sheet = true;
               }}>
-                Needs attention <span class="count">${problems}</span>
+                <span class="attn-label">Needs attention</span> <span class="count">${problems}</span>
               </button>`}
           <div role="group" aria-label="View" class="seg">
             ${seg(
               "timeline",
               "Timeline",
               svg`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="1" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="8" width="14" height="3" rx="1.5" fill="currentColor" opacity="0.55"/><rect x="2" y="14" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,
+              "Spacing matches the clock",
             )}
             ${seg(
               "compact",
               "Compact",
               svg`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="7.5" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="12" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,
+              "Everything in order, no time scale",
             )}
           </div>
         </div>
       </header>
     `;
+  }
+
+  /** The next trip out of the house, big enough to read across the kitchen. */
+  private renderNext(plan: Plan, next: NextUp | null): TemplateResult {
+    if (!next) {
+      const today = this.today().date;
+      const open = plan.days
+        .filter((d) => d.date >= today)
+        .reduce((sum, d) => sum + d.issues.filter((i) => i.level === "problem" && i.kind === "unassigned").length, 0);
+      if (open) {
+        const body = html`<span class="next-eyebrow">No trips planned yet</span>
+          <span class="next-lead">${open} ${open === 1 ? "ride needs" : "rides need"} a driver</span>
+          <span class="next-stop">${this.wide ? "Pick who drives under Needs attention." : "Tap to pick who drives."}</span>`;
+        return this.wide
+          ? html`<div class="next idle needs">${body}</div>`
+          : html`<button type="button" class="next idle needs" @click=${() => (this.sheet = true)}>${body}</button>`;
+      }
+      const any = plan.days.some((d) => d.date >= today && d.events.length);
+      return html`<div class="next idle">
+        <span class="next-eyebrow">All set</span>
+        <span class="next-lead">${any ? "No more trips this week" : "No trips this week"}</span>
+        <span class="next-stop">${any ? "Nobody else needs driving anywhere." : "Nobody needs a ride yet."}</span>
+      </div>`;
+    }
+    let when: string;
+    if (next.ongoing) when = "On the road now";
+    else if (next.ahead === 0) when = next.inMinutes < 180 ? `Next trip · in ${duration(next.inMinutes)}` : "Next trip · later today";
+    else if (next.ahead === 1) when = "Next trip · tomorrow";
+    else when = `Next trip · ${shortDay(next.date)}`;
+    const soon = !next.ongoing && next.ahead === 0 && next.inMinutes <= 30;
+    const body = html`
+      <span class="next-eyebrow">${when}</span>
+      <span class="next-main">
+        <span class="avatar driver" aria-hidden="true">${initial(next.name)}</span>
+        <span class="next-lead">${next.name} · ${next.lead}</span>
+        <span class="next-kids">${next.kids.map((c) => html`<span class="kid-dot" style="background:${c.color}"></span>`)}</span>
+      </span>
+      ${next.warn
+        ? html`<span class="next-stop warn">${next.warn}</span>`
+        : next.stop
+          ? html`<span class="next-stop">${next.stop}</span>`
+          : nothing}
+    `;
+    const cls = `next ${next.ongoing ? "ongoing" : soon ? "soon" : ""}`;
+    return next.target
+      ? html`<button type="button" class=${cls} @click=${() => this.open(next.target)}>${body}</button>`
+      : html`<div class=${cls}>${body}</div>`;
+  }
+
+  /** A tile per day: what's on, and what needs sorting out. Tapping one goes to it. */
+  private renderWeek(plan: Plan): TemplateResult {
+    const today = this.today().date;
+    const colors = kidColors(plan);
+    return html`<nav class="week" aria-label="Days">
+      ${plan.days.map((d) => {
+        const problems = problemCount(d);
+        const n = d.events.length;
+        const dots = d.events.slice(0, 6).map((e) => colors.get(e.kid)?.color ?? kidColor(0).color);
+        const label = `${dayLabel(d.date)}: ${n ? `${n} ${n === 1 ? "activity" : "activities"}` : "nothing planned"}${problems ? `, ${problems} to sort out` : ""}`;
+        return html`<button
+          type="button"
+          class="day-tile ${d.date === today ? "today" : ""}"
+          data-date=${d.date}
+          aria-label=${label}
+          @click=${() => this.goToDay(d.date)}
+        >
+          <span class="dt-wd">${d.date === today ? "Today" : shortDay(d.date)}</span>
+          <span class="dt-num">${Number(d.date.slice(8))}</span>
+          <span class="dt-dots" aria-hidden="true">
+            ${dots.length
+              ? dots.map((c) => html`<span class="dt-dot" style="background:${c}"></span>`)
+              : html`<span class="dt-free">free</span>`}
+            ${n > 6 ? html`<span class="dt-more">+${n - 6}</span>` : nothing}
+          </span>
+          ${problems ? html`<span class="dt-badge" aria-hidden="true">${problems}</span>` : nothing}
+        </button>`;
+      })}
+    </nav>`;
+  }
+
+  /** Nothing on any kid's calendar all week: say so, and how things get here. */
+  private renderQuiet(plan: Plan): TemplateResult {
+    const kids = kidIds(plan);
+    const drivers = driverIds(plan);
+    const colors = kidColors(plan);
+    const kidNames = kids.map((k) => kidName(plan, k));
+    return html`<div class="quiet-week">
+      <div class="qw-hero">
+        <svg class="qw-art" viewBox="0 0 160 120" aria-hidden="true">
+          <rect x="18" y="20" width="124" height="92" rx="16" fill="var(--surface)" stroke="var(--line)" stroke-width="2" />
+          <rect x="18" y="20" width="124" height="26" rx="16" fill="var(--ink)" />
+          <rect x="18" y="34" width="124" height="12" fill="var(--ink)" />
+          <rect x="46" y="10" width="8" height="20" rx="4" fill="var(--ink-2)" />
+          <rect x="106" y="10" width="8" height="20" rx="4" fill="var(--ink-2)" />
+          ${kids.slice(0, 3).map(
+            (k, i) => svg`<circle cx=${50 + i * 30} cy="80" r="11" fill=${colors.get(k)!.color} opacity="0.9" />`,
+          )}
+        </svg>
+        <h2>A quiet week, with nothing to drive</h2>
+        <p>
+          When something lands on ${possessives(kidNames)} Google calendar, it shows up here within a minute, with who’s driving and when
+          to leave.
+        </p>
+      </div>
+      <div class="qw-people">
+        ${kids.map((k) => {
+          const c = colors.get(k)!;
+          return html`<div class="qw-person" style="--c:${c.color};--rgb:${c.rgb}">
+            <span class="avatar" aria-hidden="true">${initial(kidName(plan, k))}</span>
+            <span class="qw-name">${kidName(plan, k)}</span>
+            <span class="qw-sub">Free all week</span>
+          </div>`;
+        })}
+        ${drivers.map(
+          (d) => html`<div class="qw-person driver">
+            <span class="avatar driver" aria-hidden="true">${initial(driverName(plan, d))}</span>
+            <span class="qw-name">${driverName(plan, d)}</span>
+            <span class="qw-sub">No trips</span>
+          </div>`,
+        )}
+      </div>
+      <ol class="qw-steps">
+        <li>
+          <span class="qw-num">1</span>
+          <span><strong>Add it to a kid’s calendar</strong>Put the address in the event’s location, so drive times come out right.</span>
+        </li>
+        <li>
+          <span class="qw-num">2</span>
+          <span><strong>MyDashLight plans the rides</strong>Leave times, clashes, and who’s free to drive, worked out for you.</span>
+        </li>
+        <li>
+          <span class="qw-num">3</span>
+          <span><strong>Tap a ride to change it</strong>Changes are saved in the event’s notes in Google Calendar.</span>
+        </li>
+      </ol>
+    </div>`;
   }
 
   private toggleMenu = (): void => {
@@ -546,7 +761,6 @@ export class MyDashLightBoard extends LitElement {
   }
 
   private renderBoard(b: Board): TemplateResult {
-    const plan = this.plan!;
     const sel = this.sel;
     const isSel = (t: Target | null): boolean => !!t && !!sel && t.day === sel.day && t.event === sel.event;
     const first = b.dayHeads[0];
@@ -563,24 +777,34 @@ export class MyDashLightBoard extends LitElement {
       >
         <div class="heads" style="width:${W}px">
           ${b.columns.map(
-            (c) => html`<div class="col-head" style="left:${c.x}px;width:${c.w}px">
-              <span class="name"><span class="dot" style="background:${c.dot}"></span>${c.name}</span>
-              <span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>
+            (c) => html`<div class="col-head ${c.kind}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
+              <span class="avatar ${c.kind}" aria-hidden="true">${initial(c.name)}</span>
+              <span class="ch-text">
+                <span class="name">${c.name}</span>
+                <span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>
+              </span>
             </div>`,
           )}
         </div>
         <div class="pinned" aria-hidden="true" style="width:${W}px">
-          <span class="label">${first?.label ?? ""}</span><span class="sub ${first?.warn ? "warn" : ""}">${first?.sub ?? ""}</span>
+          <span class="label">${first?.label ?? ""}</span><span class="tag" ?hidden=${!first?.tag}>${first?.tag ?? ""}</span
+          ><span class="sub ${first?.warn ? "warn" : ""}">${first?.sub ?? ""}</span>
         </div>
         <div class="canvas" style="width:${W}px;height:${Math.max(b.height + 400, 600)}px">
           ${b.columns.map(
             (c) =>
-              html`<div class="col-bg ${c.kind}" style="left:${c.x}px;width:${c.w}px;height:${Math.max(b.height + 392, 592)}px"></div>`,
+              html`<div
+                class="col-bg ${c.kind}"
+                style="left:${c.x}px;width:${c.w}px;height:${Math.max(b.height + 392, 592)}px;--rgb:${c.rgb}"
+              ></div>`,
           )}
           <span class="sep" style="left:${b.sepX}px;height:${Math.max(b.height + 392, 592)}px"></span>
           ${b.dayHeads.map(
             (d) => html`<div class="day-head" style="top:${d.y}px;width:${W}px">
-              <span class="label">${d.label}</span><span class="sub ${d.warn ? "warn" : ""}">${d.sub}</span>
+              <span class="label">${d.label}</span>${d.tag ? html`<span class="tag">${d.tag}</span>` : nothing}<span
+                class="sub ${d.warn ? "warn" : ""}"
+                >${d.sub}</span
+              >
             </div>`,
           )}
           ${b.empties.map((x) => html`<span class="empty" style="top:${x.y}px">${x.text}</span>`)}
@@ -622,17 +846,17 @@ export class MyDashLightBoard extends LitElement {
             (x) => {
               const k = x.color;
               const bg = x.stayed
-                ? `repeating-linear-gradient(135deg, rgba(${k.rgb},0.24) 0px, rgba(${k.rgb},0.24) 6px, rgba(${k.rgb},0.08) 6px, rgba(${k.rgb},0.08) 12px), #fff`
-                : `linear-gradient(rgba(${k.rgb},0.13), rgba(${k.rgb},0.13)), #fff`;
+                ? `repeating-linear-gradient(135deg, rgba(${k.rgb},0.24) 0px, rgba(${k.rgb},0.24) 6px, rgba(${k.rgb},0.08) 6px, rgba(${k.rgb},0.08) 12px), var(--surface)`
+                : `linear-gradient(rgba(${k.rgb},0.15), rgba(${k.rgb},0.15)), var(--surface)`;
               return html`<button
                 type="button"
-                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""}"
+                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""}"
                 aria-label=${x.aria}
-                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : k.color};--ring:${k.color}"
+                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : `rgba(${k.rgb},0.45)`};--c:${k.color};--ring:${k.color}"
                 @click=${() => this.open(x.target)}
               >
                 <span class="top">
-                  <span class="title" style="color:${k.ink}">${x.event.title}</span>
+                  <span class="title">${x.title}</span>
                   <span class="time">${x.time}</span>
                   ${x.showDrop && x.drop ? html`<span class="line tone-${x.drop.tone}">${x.drop.text}</span>` : nothing}
                 </span>
@@ -696,17 +920,11 @@ export class MyDashLightBoard extends LitElement {
               html`<span class="mark" style="left:${x.x}px;top:${x.y}px;${x.right ? "transform:translateX(-100%)" : ""}">${x.text}</span>`,
           )}
           ${b.now
-            ? html`<div class="now-line" aria-hidden="true" style="top:${b.now.y - 1}px;width:${W - 56}px"></div>
+            ? html`<div class="now-line" aria-hidden="true" style="top:${b.now.y - 1.5}px;width:${W - 56}px"></div>
                 <span class="now-label" aria-hidden="true" style="top:${b.now.y - 9}px">${b.now.label}</span>`
             : nothing}
         </div>
       </div>
-      ${plan.days.every((d) => !d.events.length)
-        ? html`<div class="quiet" role="status">
-            <p class="big">Nothing on the kids’ calendars this week</p>
-            <p>Activities on ${kidIds(plan).map((k) => kidName(plan, k)).join(", ")}’s calendars show up here within a minute.</p>
-          </div>`
-        : nothing}
     `;
   }
 
@@ -719,7 +937,12 @@ export class MyDashLightBoard extends LitElement {
         ${this.wide ? nothing : html`<button type="button" class="btn dark" @click=${() => (this.sheet = false)}>Done</button>`}
       </div>
       ${plan && !problems
-        ? html`<p class="all-clear">Every ride is covered and nobody is double-booked.</p>`
+        ? html`<div class="all-clear">
+            <span class="check" aria-hidden="true">${svg`<svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`}</span>
+            <span><strong>All clear</strong>${quietWeek(plan)
+              ? "Nothing needs you this week."
+              : "Every ride is covered and nobody is double-booked."}</span>
+          </div>`
         : nothing}
       ${items.map(
         (it) => html`<div class="issue ${it.tone}">
@@ -749,7 +972,7 @@ export class MyDashLightBoard extends LitElement {
             : nothing}
         </div>`,
       )}
-      ${this.wide ? this.renderLegend() : nothing}
+      ${this.wide && plan && !quietWeek(plan) ? this.renderLegend() : nothing}
     `;
   }
 
