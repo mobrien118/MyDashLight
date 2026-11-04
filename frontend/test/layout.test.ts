@@ -214,4 +214,8 @@ test("driving minutes in a fix's note are rounded to the quarter minute", () => 
   assert.equal(tidyMinutes("+0.1 min"), "+0 min");
   assert.equal(tidyMinutes("+30 min of driving"), "+30 min of driving");
   assert.equal(tidyMinutes("Leaves at 4.5 miles"), "Leaves at 4.5 miles");
+  assert.equal(tidyMinutes("+59.6 min"), "+1 hr");
+  assert.equal(tidyMinutes("+75.3 min of driving"), "+1 hr 15 min of driving");
+  assert.equal(tidyMinutes("+120 min"), "+2 hr");
+  assert.equal(tidyMinutes("+59.4 min"), "+59½ min");
 });

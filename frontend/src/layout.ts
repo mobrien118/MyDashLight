@@ -882,13 +882,18 @@ export interface AttentionItem {
 
 const QUARTERS = ["", "¼", "½", "¾"];
 
-/** "+18.299999999999997 min" reads as "+18¼ min": minutes in text, to the nearest quarter. */
+/**
+ * Driving minutes in the planner's text, the way the board writes them: under an hour to the
+ * nearest quarter ("+18¼ min"), an hour or more in hours and whole minutes ("+1 hr 15 min").
+ */
 export function tidyMinutes(text: string): string {
-  return text.replace(/(\d+\.\d+)(?=\s*min\b)/g, (m) => {
-    const q = Math.round(Number(m) * 4);
+  return text.replace(/(\d+(?:\.\d+)?)\s*min\b/g, (_m, num: string) => {
+    const v = Number(num);
+    if (v >= 59.5) return duration(v);
+    const q = Math.round(v * 4);
     const whole = Math.floor(q / 4);
     const part = QUARTERS[q % 4]!;
-    return whole || !part ? `${whole}${part}` : part;
+    return `${whole || !part ? whole : ""}${part} min`;
   });
 }
 
