@@ -30,7 +30,7 @@ _EVENT_FIELDS: Final = (
 )
 REMINDER_MARK: Final = "mydashlight_reminder"
 """Private event property holding the minutes of the reminder MyDashLight set, or empty."""
-_NOTES_FIELDS: Final = "id,etag,description,recurringEventId"
+_NOTES_FIELDS: Final = "id,etag,summary,description,recurringEventId"
 # Event types that never mean a kid's activity or a parent being busy.
 _IGNORED_EVENT_TYPES: Final = frozenset({"workingLocation", "birthday"})
 _DISABLED_REASONS: Final = frozenset({"accessNotConfigured", "SERVICE_DISABLED"})
@@ -126,6 +126,7 @@ class EventNotes:
     etag: str
     description: str
     recurring_id: str | None = None
+    title: str = ""
 
 
 class GoogleCalendarApi:
@@ -160,16 +161,22 @@ class GoogleCalendarApi:
         body = await self._request("GET", _event_path(calendar_id, event_id), {"fields": _NOTES_FIELDS})
         return _notes(body, event_id)
 
-    async def async_set_notes(self, calendar_id: str, event_id: str, etag: str, description: str) -> EventNotes:
-        """Save an event's notes, only if it hasn't changed since ``etag`` was read.
+    async def async_set_notes(
+        self, calendar_id: str, event_id: str, etag: str, description: str, title: str | None = None
+    ) -> EventNotes:
+        """Save an event's notes, and its title when given, only if it hasn't changed since
+        ``etag`` was read.
 
         Raises :class:`GoogleConflict` when it has. Nobody gets an update email.
         """
+        fields: dict[str, str] = {"description": description}
+        if title is not None:
+            fields["summary"] = title
         body = await self._request(
             "PATCH",
             _event_path(calendar_id, event_id),
             {"fields": _NOTES_FIELDS, "sendUpdates": "none"},
-            json={"description": description},
+            json=fields,
             headers={"If-Match": etag},
         )
         return _notes(body, event_id)
@@ -284,6 +291,7 @@ def _notes(body: Mapping[str, Any], event_id: str) -> EventNotes:
         etag=str(body.get("etag") or ""),
         description=str(body.get("description") or ""),
         recurring_id=recurring if isinstance(recurring, str) else None,
+        title=str(body.get("summary") or ""),
     )
 
 

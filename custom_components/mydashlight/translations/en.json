@@ -268,6 +268,24 @@
         }
       }
     },
+    "set_attending": {
+      "name": "Set attending",
+      "description": "Marks whether the kid is going to an event. One they're not going to stays on the board, but needs no rides and doesn't clash with anything.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
+        },
+        "attending": {
+          "name": "Attending",
+          "description": "Whether the kid is going. Going again also takes an old \"NO\" off the start of the title."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
+        }
+      }
+    },
     "set_arrive_by": {
       "name": "Set arrive by",
       "description": "Sets when the kid needs to be there. Leave the time empty to go back to the usual margin before the start.",

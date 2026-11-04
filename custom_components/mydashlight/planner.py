@@ -55,6 +55,9 @@ class RideEvent:
     along: tuple[str, ...] = ()
     """Kids taken along on this drop-off. They leave home in the same car, so the driver can go
     on to their own drop-offs without coming home for them."""
+    attending: bool = True
+    """False when the kid isn't going this time. Its rides are then not needed, so the
+    planner never routes it, and the board doesn't count it as a clash."""
 
 
 @dataclass(frozen=True, slots=True)

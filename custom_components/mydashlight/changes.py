@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from .google import GoogleCalendarApi, GoogleConflict
-from .notes import KEEP, DriverDirectory, Keep, write_notes
+from .notes import KEEP, DriverDirectory, Keep, skip_prefix, write_notes
 
 TRIES: Final = 3
 
@@ -34,11 +34,19 @@ class RideChange:
     """The kids taken along on the drop-off, by name or kid id. Empty takes nobody."""
     arrive_by: int | Keep | None = KEEP
     """Minutes after midnight, or None to go back to the default."""
+    attending: bool | Keep = KEEP
+    """False when the kid isn't going. True also takes the old "NO" prefix off the title."""
+
+    @property
+    def rides(self) -> bool:
+        """Whether this changes any ride line, as opposed to only whether the kid is going."""
+        return any(not isinstance(v, Keep) for v in (self.drop, self.pick, self.stay, self.along, self.arrive_by))
 
     def apply(self, description: str, directory: DriverDirectory, event_start: int | None) -> str:
         return write_notes(
             description,
             directory,
+            attending=self.attending,
             drop=self.drop,
             pick=self.pick,
             stay=self.stay,
@@ -89,10 +97,12 @@ async def _async_save_one(
     for attempt in range(TRIES):
         event = await api.async_get_notes(target.calendar_id, target.event_id)
         description = change.apply(event.description, directory, target.event_start)
-        if description == event.description:
+        title, prefixed = skip_prefix(event.title)
+        new_title = title if change.attending is True and prefixed else None
+        if description == event.description and new_title is None:
             return False
         try:
-            await api.async_set_notes(target.calendar_id, target.event_id, event.etag, description)
+            await api.async_set_notes(target.calendar_id, target.event_id, event.etag, description, new_title)
         except GoogleConflict:
             if attempt == TRIES - 1:
                 raise

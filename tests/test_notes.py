@@ -10,6 +10,7 @@ from custom_components.mydashlight.notes import (
     parse_clock,
     parse_duration,
     parse_notes,
+    skip_prefix,
     write_notes,
 )
 from custom_components.mydashlight.planner import NOT_NEEDED, UNASSIGNED
@@ -367,3 +368,47 @@ def test_html_loose_paragraph_next_to_bare_text_keeps_lines_apart() -> None:
     out = write(text, drop="mom")
     assert out == "intro<p></p>outro<br><br>--- Rides ---<br>Drop-off: Robin"
     assert parse(out).drop == "mom"
+
+
+# Not attending
+
+
+@pytest.mark.parametrize(
+    ("value", "attending"),
+    [("no", False), ("No", False), ("not going", False), ("skip", False), ("yes", True), ("", True)],
+)
+def test_attending(value: str, attending: bool) -> None:
+    notes = parse(f"--- Rides ---\nAttending: {value}\nDrop-off: Sam")
+    assert (notes.attending, notes.drop, notes.problems) == (attending, "dad", ())
+
+
+def test_attending_that_isnt_yes_or_no() -> None:
+    notes = parse("--- Rides ---\nAttending: maybe")
+    assert notes.attending is True
+    assert notes.problems == ("Attending: “maybe” isn’t yes or no",)
+
+
+def test_write_not_attending() -> None:
+    text = write_notes("Field 3.\n\n--- Rides ---\nDrop-off: Sam", DIRECTORY, attending=False)
+    assert text == "Field 3.\n\n--- Rides ---\nDrop-off: Sam\nAttending: no"
+    assert write_notes("Field 3.", DIRECTORY, attending=False) == "Field 3.\n\n--- Rides ---\nAttending: no"
+    # Going again takes the line away; going is the default.
+    assert write_notes(text, DIRECTORY, attending=True) == "Field 3.\n\n--- Rides ---\nDrop-off: Sam"
+    assert write_notes("Field 3.", DIRECTORY, attending=True) == "Field 3."
+
+
+@pytest.mark.parametrize(
+    ("title", "result"),
+    [
+        ("NO Soccer", ("Soccer", True)),
+        ("NO - Soccer", ("Soccer", True)),
+        ("NO: Hip Hop", ("Hip Hop", True)),
+        ("  NO—Tap", ("Tap", True)),
+        ("No-bake cookies", ("No-bake cookies", False)),
+        ("NORA's party", ("NORA's party", False)),
+        ("NO", ("NO", False)),
+        ("Soccer", ("Soccer", False)),
+    ],
+)
+def test_skip_prefix(title: str, result: tuple[str, bool]) -> None:
+    assert skip_prefix(title) == result

@@ -43,11 +43,13 @@ from .planner import NOT_NEEDED, UNASSIGNED, fmt12
 
 RIDES_HEADER: Final = "--- Rides ---"
 
-Field = Literal["drop", "pick", "stay", "along", "arrive_by", "travel"]
-FIELDS: Final[tuple[Field, ...]] = ("drop", "pick", "stay", "along", "arrive_by", "travel")
+Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "travel"]
+FIELDS: Final[tuple[Field, ...]] = ("attending", "drop", "pick", "stay", "along", "arrive_by", "travel")
 
 
 _LABELS: Final[dict[str, Field]] = {
+    "attending": "attending",
+    "attend": "attending",
     "dropoff": "drop",
     "pickup": "pick",
     "stay": "stay",
@@ -58,6 +60,7 @@ _LABELS: Final[dict[str, Field]] = {
     "traveltime": "travel",
 }
 _WRITE_LABELS: Final[dict[Field, str]] = {
+    "attending": "Attending",
     "drop": "Drop-off",
     "pick": "Pick-up",
     "stay": "Stay",
@@ -70,6 +73,8 @@ _YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying"})
 _NOBODY: Final = frozenset({"", "none", "no", "nobody", "no one", "n/a", "na"})
 _LIST_SPLIT_RE: Final = re.compile(r"\s*(?:,|&|\+|/|\band\b)\s*", re.IGNORECASE)
 _NO: Final = frozenset({"no", "n", "false", "off", ""})
+_ATTENDING_YES: Final = frozenset({"", "yes", "y", "true", "on", "going", "attending"})
+_ATTENDING_NO: Final = frozenset({"no", "n", "false", "off", "not going", "not attending", "skip", "skipping"})
 
 _HEADER_RE: Final = re.compile(r"^\s*-{2,}\s*rides\s*-{2,}\s*$", re.IGNORECASE)
 _LINE_RE: Final = re.compile(r"^\s*([A-Za-z][A-Za-z \-_]{0,20}?)\s*:\s*(.*?)\s*$")
@@ -152,6 +157,8 @@ class RideNotes:
 
     drop: str = UNASSIGNED
     pick: str = UNASSIGNED
+    attending: bool = True
+    """False when the kid isn't going this time, so the event needs no rides."""
     stay: bool = False
     along: tuple[str, ...] = ()
     """Kid ids taken along on this drop-off, so the driver can go on to their own drop-offs
@@ -187,6 +194,17 @@ class _Doc:
         return range(self.header + 1, len(self.lines))
 
 
+_SKIP_PREFIX_RE: Final = re.compile(r"^\s*NO(?:\s*[-:–—]\s*|\s+)(?=\S)")
+
+
+def skip_prefix(title: str) -> tuple[str, bool]:
+    """The title without the family's old "NO" prefix for a week they're not going, and
+    whether it had one. Only a capital NO followed by a space, dash or colon counts, so
+    "No-bake cookies" and "Nora's party" are left alone."""
+    m = _SKIP_PREFIX_RE.match(title)
+    return (title[m.end() :], True) if m else (title, False)
+
+
 def parse_notes(description: str | None, directory: DriverDirectory, event_start: int | None = None) -> RideNotes:
     """Read the ride settings from an event's description.
 
@@ -206,6 +224,7 @@ def write_notes(
     along: Iterable[str] | Keep = KEEP,
     arrive_by: int | Keep | None = KEEP,
     travel: int | Keep | None = KEEP,
+    attending: bool | Keep = KEEP,
     event_start: int | None = None,
 ) -> str:
     """Return the description with ride settings changed.
@@ -218,6 +237,7 @@ def write_notes(
     notes = _read(doc, directory, event_start)
     current: dict[Field, object] = {f: getattr(notes, f) for f in FIELDS}
     wanted: dict[Field, object] = {
+        "attending": attending,
         "drop": drop,
         "pick": pick,
         "stay": stay,
@@ -350,6 +370,7 @@ def _locate(doc: _Doc) -> dict[Field, list[int]]:
 
 def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> RideNotes:
     drivers = {"drop": UNASSIGNED, "pick": UNASSIGNED}
+    attending = True
     stay = False
     along: list[str] = []
     arrive_by: int | None = None
@@ -366,6 +387,12 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         label = _WRITE_LABELS[fld]
         if fld in ("drop", "pick"):
             drivers[fld] = directory.resolve(raw)
+        elif fld == "attending":
+            word = " ".join(raw.split()).casefold()
+            if word in _ATTENDING_NO:
+                attending = False
+            elif word not in _ATTENDING_YES:
+                problems.append(f"{label}: “{raw}” isn’t yes or no")
         elif fld == "along":
             if raw.casefold() not in _NOBODY:
                 for name in filter(None, _LIST_SPLIT_RE.split(raw)):
@@ -387,6 +414,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     return RideNotes(
         drop=drivers["drop"],
         pick=drivers["pick"],
+        attending=attending,
         stay=stay,
         along=tuple(along),
         arrive_by=arrive_by,
@@ -399,7 +427,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
 def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
     if fld in ("drop", "pick"):
         return directory.resolve(str(value or ""))
-    if fld == "stay":
+    if fld in ("stay", "attending"):
         return bool(value)
     if fld == "along":
         names = [value] if isinstance(value, str) else list(value) if isinstance(value, Iterable) else []
@@ -418,6 +446,8 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
         return None if v == UNASSIGNED else f"{label}: {directory.display(v)}"
     if fld == "stay":
         return f"{label}: yes" if value else None
+    if fld == "attending":
+        return None if value else f"{label}: no"
     if fld == "along":
         assert isinstance(value, tuple)
         return f"{label}: {', '.join(directory.kids[k] for k in value)}" if value else None
