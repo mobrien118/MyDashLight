@@ -21,6 +21,7 @@ import {
   nextUp,
   problemCount,
   tAt,
+  tidyPlan,
   whoName,
   yAt,
   type AttentionItem,
@@ -237,7 +238,7 @@ export class MyDashLightBoard extends LitElement {
     if (!this.backend) return;
     this.stopWatching = this.backend.watch(
       (plan) => {
-        this.plan = plan;
+        this.plan = tidyPlan(plan);
         this.error = null;
         // The selected event can disappear (moved or deleted in Google).
         if (this.sel && !this.findEvent(this.sel)) this.closeEditor();
