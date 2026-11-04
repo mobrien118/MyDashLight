@@ -86,6 +86,7 @@ Add these to the address you give the setup:
 | `?view=compact` or `?view=timeline` | Opens the board in that view. |
 | `?page=chores` | Opens on the chores board instead of rides. |
 | `?keyboard=off` | Hides the on-screen keyboard, for a screen with a real keyboard. |
+| `?cursor=show` | Keeps the mouse pointer on screen. Otherwise it hides after 3 seconds without movement. |
 
 Combine them with `&`, for example `.../mydashlight-kitchen?view=compact&keyboard=off`.
 
