@@ -181,12 +181,14 @@
         "data": {
           "remind_before": "Remind before leaving",
           "calendar_reminders": "Also save drop-off reminders in Google Calendar",
-          "no_driver_alerts": "Tell the parents about rides with no driver"
+          "no_driver_alerts": "Tell the parents about rides with no driver",
+          "no_driver_hours": "Warn about rides with no driver this far ahead"
         },
         "data_description": {
           "remind_before": "Leave time is worked back from when the kid has to be there and the drive time, so the reminder moves with the plan.",
           "calendar_reminders": "Puts the reminder on the kid's event for each drive's first drop-off, so Google Calendar reminds the account MyDashLight signs in with. Google can't remind before a pick-up, since it only reminds before an event starts.",
-          "no_driver_alerts": "Once for each ride in the next six hours that nobody is driving yet, sent to both parents' notifiers."
+          "no_driver_alerts": "Once for each ride that nobody is driving yet, sent to both parents' notifiers.",
+          "no_driver_hours": "Hours before the ride. 6 by default: nobody plans much further out."
         }
       }
     },

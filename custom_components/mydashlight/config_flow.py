@@ -58,6 +58,7 @@ from .const import (
     CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
     CONF_NO_DRIVER_ALERTS,
+    CONF_NO_DRIVER_HOURS,
     CONF_PLANNER,
     CONF_REMIND_BEFORE,
     CONF_REMOVE_ROUTES_KEY,
@@ -67,6 +68,7 @@ from .const import (
     CONF_TIGHT_SLACK,
     CONF_TOO_EARLY,
     CONF_WAITING_AFTER,
+    DEFAULT_NO_DRIVER_HOURS,
     DEFAULT_PLANNER,
     DEFAULT_REMIND_BEFORE,
     DEFAULT_ROUTES_DAILY_LIMIT,
@@ -487,6 +489,7 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
                     CONF_REMIND_BEFORE: int(user_input[CONF_REMIND_BEFORE]),
                     CONF_CALENDAR_REMINDERS: bool(user_input[CONF_CALENDAR_REMINDERS]),
                     CONF_NO_DRIVER_ALERTS: bool(user_input[CONF_NO_DRIVER_ALERTS]),
+                    CONF_NO_DRIVER_HOURS: int(user_input[CONF_NO_DRIVER_HOURS]),
                 }
             )
         current = {
@@ -516,6 +519,11 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
         )
         fields[vol.Required(CONF_NO_DRIVER_ALERTS, default=options.get(CONF_NO_DRIVER_ALERTS, True))] = (
             BooleanSelector()
+        )
+        fields[
+            vol.Required(CONF_NO_DRIVER_HOURS, default=options.get(CONF_NO_DRIVER_HOURS, DEFAULT_NO_DRIVER_HOURS))
+        ] = NumberSelector(
+            NumberSelectorConfig(min=1, max=168, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="h")
         )
         return self.async_show_form(step_id="reminders", data_schema=vol.Schema(fields))
 

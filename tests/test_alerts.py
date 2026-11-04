@@ -85,6 +85,8 @@ async def test_settings() -> None:
     assert reminders.before == 15
     assert reminders.calendar is True
     assert reminders.no_driver_alerts is True
+    assert reminders.no_driver_hours == 6
+    assert HubSettings.from_options({**REMINDERS, "no_driver_hours": 12}).reminders.no_driver_hours == 12
     defaults = HubSettings.from_options({**OPTIONS, "calendar_reminders": True}).reminders
     assert defaults.notify == {}
     # A kid who's no longer one of the kids gets nothing.
@@ -154,6 +156,14 @@ async def test_reminders(
     assert entry.state is ConfigEntryState.LOADED
     assert len(phones["robin"]) == 2
     assert len(phones["ava"]) == 1
+
+
+async def test_alert_window_is_a_setting(
+    hass: HomeAssistant, google: FakeGoogle, phones: dict[str, list[ServiceCall]]
+) -> None:
+    # At 9 AM the 5 PM pick-up is eight hours off: inside an 8-hour window, not the usual six.
+    await load(hass, {**REMINDERS, "no_driver_hours": 8})
+    assert [c.data["title"] for c in phones["robin"]] == ["A ride needs a driver"]
 
 
 async def test_a_reminder_missed_while_off_still_goes_before_leaving(
@@ -255,7 +265,16 @@ async def test_options(hass: HomeAssistant, google: FakeGoogle, phones: dict[str
     assert result["step_id"] == "reminders"
     schema = result["data_schema"].schema
     fields = [str(k) for k in schema]
-    assert fields == ["Robin", "Sam", "Ava", "Ben", "remind_before", "calendar_reminders", "no_driver_alerts"]
+    assert fields == [
+        "Robin",
+        "Sam",
+        "Ava",
+        "Ben",
+        "remind_before",
+        "calendar_reminders",
+        "no_driver_alerts",
+        "no_driver_hours",
+    ]
     sam = next(k for k in schema if str(k) == "Sam")
     choices = [o["value"] for o in schema[sam].config["options"]]
     # A notifier that's gone stays listed, so the form still opens.
@@ -271,6 +290,7 @@ async def test_options(hass: HomeAssistant, google: FakeGoogle, phones: dict[str
             "remind_before": 20,
             "calendar_reminders": False,
             "no_driver_alerts": True,
+            "no_driver_hours": 8.0,
         },
     )
     await hass.async_block_till_done()
@@ -281,3 +301,5 @@ async def test_options(hass: HomeAssistant, google: FakeGoogle, phones: dict[str
     assert entry.options["remind_before"] == 20
     assert entry.options["calendar_reminders"] is False
     assert entry.runtime_data.settings.reminders.before == 20
+    assert entry.options["no_driver_hours"] == 8
+    assert entry.runtime_data.settings.reminders.no_driver_hours == 8

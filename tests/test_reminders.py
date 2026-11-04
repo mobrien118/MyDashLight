@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from custom_components.mydashlight.google import REMINDER_MARK
@@ -205,6 +205,9 @@ def test_missing_rides() -> None:
     # Art's drop-off is at 4 PM tomorrow.
     later = missing_rides(days, datetime(2026, 11, 4, 10, tzinfo=TZ), TZ)
     assert [m.key for m in later] == ["2026-11-04|art|drop"]
+    # A longer window reaches further: at 9 AM, eight hours takes in both piano rides.
+    wide = missing_rides(days, datetime(2026, 11, 3, 9, tzinfo=TZ), TZ, timedelta(hours=8))
+    assert [m.key for m in wide] == ["2026-11-03|soccer|pick", "2026-11-03|piano|drop", "2026-11-03|piano|pick"]
     title, message = missing_message(missing)
     assert title == "2 rides need a driver"
     assert message.splitlines()[0] == "Tue 4:00 PM  Ava to Piano (Lincoln Elementary)"
