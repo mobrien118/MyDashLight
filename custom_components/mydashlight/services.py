@@ -19,6 +19,7 @@ import voluptuous as vol
 
 from .changes import RideChange, async_save
 from .const import (
+    ATTR_ATTENDING,
     ATTR_DATE,
     ATTR_DAYS,
     ATTR_DRIVER,
@@ -36,6 +37,7 @@ from .const import (
     SERVICE_APPLY_SUGGESTION,
     SERVICE_GET_PLAN,
     SERVICE_SET_ARRIVE_BY,
+    SERVICE_SET_ATTENDING,
     SERVICE_SET_RIDE,
     SERVICE_SET_STAY,
     SERVICE_SET_TAKE_ALONG,
@@ -66,6 +68,7 @@ SET_RIDE_SCHEMA = vol.Schema(
     }
 )
 SET_STAY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_STAY): cv.boolean})
+SET_ATTENDING_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_ATTENDING): cv.boolean})
 SET_ARRIVE_BY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Optional(ATTR_TIME): vol.Any(None, cv.time)})
 SET_TAKE_ALONG_SCHEMA = vol.Schema(
     {**_EVENT_FIELDS, vol.Optional(ATTR_KIDS, default=[]): vol.All(cv.ensure_list, [cv.string])}
@@ -81,6 +84,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
     changes: list[tuple[str, Callable[[ServiceCall], Coroutine[Any, Any, None]], vol.Schema]] = [
         (SERVICE_SET_RIDE, _async_set_ride, SET_RIDE_SCHEMA),
         (SERVICE_SET_STAY, _async_set_stay, SET_STAY_SCHEMA),
+        (SERVICE_SET_ATTENDING, _async_set_attending, SET_ATTENDING_SCHEMA),
         (SERVICE_SET_ARRIVE_BY, _async_set_arrive_by, SET_ARRIVE_BY_SCHEMA),
         (SERVICE_SET_TAKE_ALONG, _async_set_take_along, SET_TAKE_ALONG_SCHEMA),
         (SERVICE_APPLY_SUGGESTION, _async_apply_suggestion, APPLY_SUGGESTION_SCHEMA),
@@ -127,6 +131,10 @@ async def _async_set_stay(call: ServiceCall) -> None:
     await _async_change_event(call, RideChange(stay=call.data[ATTR_STAY]))
 
 
+async def _async_set_attending(call: ServiceCall) -> None:
+    await _async_change_event(call, RideChange(attending=call.data[ATTR_ATTENDING]))
+
+
 async def _async_set_arrive_by(call: ServiceCall) -> None:
     when: time | None = call.data.get(ATTR_TIME)
     await _async_change_event(call, RideChange(arrive_by=None if when is None else when.hour * 60 + when.minute))
@@ -169,7 +177,7 @@ async def _async_change_event(
             translation_domain=DOMAIN, translation_key="event_not_found", translation_placeholders={"event": ride_id}
         )
     _, ride, ref = found
-    if ride.loc == HOME:
+    if ride.loc == HOME and change.rides:
         raise ServiceValidationError(
             translation_domain=DOMAIN, translation_key="at_home", translation_placeholders={"title": ride.title}
         )

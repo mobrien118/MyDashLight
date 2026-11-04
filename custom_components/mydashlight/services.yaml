@@ -68,6 +68,28 @@ set_stay:
             - this
             - series
 
+set_attending:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    attending:
+      required: true
+      default: false
+      selector:
+        boolean:
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series
+
 set_arrive_by:
   fields:
     event:

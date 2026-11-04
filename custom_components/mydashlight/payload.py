@@ -130,6 +130,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "place_name": labels.place(e.loc),
         "short_place": labels.short_place(e.loc),
         "where": event_where(e),
+        "attending": e.attending,
         "start": e.start,
         "end": e.end,
         "drop": e.drop,

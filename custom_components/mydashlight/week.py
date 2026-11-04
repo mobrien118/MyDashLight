@@ -21,7 +21,7 @@ import re
 from typing import Any, Final, Literal
 
 from .google import CalendarEvent
-from .notes import DriverDirectory, RideNotes, parse_notes
+from .notes import DriverDirectory, RideNotes, parse_notes, skip_prefix
 from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, TravelFn
 
 DAY: Final = 1440
@@ -190,8 +190,10 @@ def build_week(
             first = ev.start.astimezone(tz).date()
             start = _minutes(ev.start, first, tz)
             end = max(_minutes(ev.end, first, tz), start)
-            title = ev.title or NO_TITLE
+            title, skipped = skip_prefix(ev.title or NO_TITLE)
             notes = parse_notes(ev.description, directory, start)
+            if skipped:
+                notes = replace(notes, attending=False)
             base_id = ev.id
             kind = where(ev.location or "", home_address)
             if kind == "home":
@@ -209,6 +211,9 @@ def build_week(
                 if notes.drop == UNASSIGNED and notes.pick == UNASSIGNED:
                     # It can happen anywhere. Naming a driver in the notes plans it after all.
                     notes = replace(notes, drop=NOT_NEEDED, pick=NOT_NEEDED)
+            if not notes.attending:
+                # Still shown, but nobody drives and nothing clashes with it.
+                notes = replace(notes, drop=NOT_NEEDED, pick=NOT_NEEDED, stay=False, arrive_by=None, along=())
             pieces: list[tuple[date, RideEvent, tuple[Side, ...]]] = []
             if end <= NEXT_MORNING:
                 pieces.append(
@@ -234,6 +239,7 @@ def build_week(
                             pick=NOT_NEEDED,
                             arrive_by=notes.arrive_by,
                             along=notes.along,
+                            attending=notes.attending,
                         ),
                         ("drop",),
                     )
@@ -250,6 +256,7 @@ def build_week(
                             _minutes(ev.end, last, tz),
                             drop=NOT_NEEDED,
                             pick=notes.pick,
+                            attending=notes.attending,
                         ),
                         ("pick",),
                     )
@@ -363,6 +370,7 @@ def _sides(notes: RideNotes) -> dict[str, Any]:
         "stay": notes.stay,
         "arrive_by": notes.arrive_by,
         "along": notes.along,
+        "attending": notes.attending,
     }
 
 

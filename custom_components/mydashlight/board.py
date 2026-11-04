@@ -203,6 +203,8 @@ def _clashes(kid_items: dict[str, list[KidItem]]) -> list[Clash]:
             for y in it[i + 1 :]:
                 if x.start < y.end and y.start < x.end and "act" in (x.type, y.type):
                     a, b = (x, y) if x.type == "act" else (y, x)
+                    if any(item.event is not None and not item.event.attending for item in (a, b)):
+                        continue  # Not going, so it can't clash.
                     if b.type == "ride" and a.event is not None and event_where(a.event) == "anywhere":
                         continue  # A call or an online class can happen in the car.
                     x.clash = y.clash = True
@@ -374,6 +376,9 @@ def _card_lines(
                 return CardLine(f"Home {fmt(r.end)} with {name}{extra}", tone)
             return CardLine(f"Picked up {fmt(r.start)} by {name}{extra}", tone)
 
+        if not e.attending:
+            out[e.id] = CardLines(CardLine("Not attending", "muted"), None)
+            continue
         if e.loc == HOME:
             out[e.id] = CardLines(CardLine("At home", "muted"), None)
             continue

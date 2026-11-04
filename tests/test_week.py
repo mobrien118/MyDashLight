@@ -397,3 +397,43 @@ def test_home_and_anywhere_on_the_board() -> None:
     assert events["soccer"]["where"] == "place"
     assert [(c["kid"], c["a"]["event"], c["b"]["type"]) for c in tue["clashes"]] == [(AVA, "tutor", "ride")]
     assert not any(x["kind"] == "unassigned" for x in tue["issues"])
+
+
+def test_events_not_attended() -> None:
+    w = week(
+        {
+            AVA: [
+                timed(
+                    "hiphop",
+                    "NO - Hip Hop",
+                    at(3, "18:00"),
+                    at(3, "18:45"),
+                    location="Dance studio",
+                    description="Drop-off: Robin\nPick-up: Robin",
+                ),
+                timed("tap", "Tap", at(3, "18:15"), at(3, "19:00"), location="Dance studio"),
+                timed(
+                    "piano",
+                    "Piano",
+                    at(3, "16:00"),
+                    at(3, "17:00"),
+                    location=SCHOOL,
+                    description="--- Rides ---\nAttending: no\nDrop-off: Sam",
+                ),
+            ]
+        },
+        days=1,
+    )
+    travel = make_travel(w.travel_overrides, 15)
+    (tue,) = plan_week(w, lambda _day: travel, PlannerSettings(), ("mom", "dad"))
+    events = {e["id"]: e for e in tue["events"]}
+    hiphop, piano = events["hiphop"], events["piano"]
+    assert (hiphop["title"], hiphop["attending"], hiphop["drop"], hiphop["pick"]) == ("Hip Hop", False, "none", "none")
+    assert hiphop["lines"] == {"drop": {"text": "Not attending", "tone": "muted"}, "pick": None}
+    assert (piano["attending"], piano["drop"]) == (False, "none")
+    assert events["tap"]["attending"] is True
+    # Hip hop and tap overlap, but Ava isn't going to hip hop: no clash, and only tap needs rides.
+    assert tue["clashes"] == []
+    assert {(x["kind"], x["event"]) for x in tue["issues"]} == {("unassigned", "tap")}
+    assert tue["drivers"]["mom"]["segments"] == []
+    assert tue["drivers"]["dad"]["segments"] == []
