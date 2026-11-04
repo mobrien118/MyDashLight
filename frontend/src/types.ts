@@ -16,6 +16,8 @@ export interface PlanEvent {
   place: string;
   place_name: string;
   short_place: string;
+  /** "home" (no ride), "anywhere" (no address or online, no ride unless one is named) or "place". */
+  where: "home" | "anywhere" | "place";
   start: number;
   end: number;
   /** "mom" or "dad" (the routed drivers), "none" (no ride needed), "" (nobody yet), or anyone else's name. */

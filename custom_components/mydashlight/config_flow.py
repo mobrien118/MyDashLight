@@ -48,6 +48,7 @@ from .const import (
     CONF_DAD_NAME,
     CONF_DAD_NOTIFY,
     CONF_GO_HOME_MARGIN,
+    CONF_HOME_ADDRESS,
     CONF_KID_NOTIFY,
     CONF_KIDS,
     CONF_MOM_ALIASES,
@@ -380,6 +381,7 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
                 vol.Optional(CONF_MOM_ALIASES, default=current.get(CONF_MOM_ALIASES, [])): _NAMES,
                 vol.Optional(CONF_DAD_ALIASES, default=current.get(CONF_DAD_ALIASES, [])): _NAMES,
                 vol.Optional(CONF_CARPOOLS, default=current.get(CONF_CARPOOLS, [])): _NAMES,
+                vol.Optional(CONF_HOME_ADDRESS, default=current.get(CONF_HOME_ADDRESS, "")): _NAME,
                 vol.Required(CONF_PLANNER): section(
                     vol.Schema(
                         {

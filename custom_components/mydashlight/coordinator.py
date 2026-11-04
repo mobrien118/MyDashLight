@@ -112,7 +112,9 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
             events[cal_id] = result
         self._note_unavailable(unavailable)
 
-        week = build_week(events, self.settings.roles, self.settings.directory, today, PLAN_DAYS, tz)
+        week = build_week(
+            events, self.settings.roles, self.settings.directory, today, PLAN_DAYS, tz, self.settings.home_address
+        )
         now = dt_util.now(tz)
         days, drive = await self._async_plan(week, now)
         # Planning showed which trips it needs. Look those up, then plan again with them.

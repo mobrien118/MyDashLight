@@ -3,6 +3,9 @@
 Kid calendars give the activities that need rides. Each parent's own calendars give the
 times they can't drive. Pure module, no Home Assistant imports.
 
+An event at home needs no ride. Nor does one with no address, or an online one, since it can
+happen anywhere, unless its notes name a driver.
+
 Times are wall-clock minutes after midnight in the household's time zone, as the planner
 expects. An evening event that ends after midnight stays on its start day (an end of 1450
 is 12:10 AM). An event that runs past :data:`NEXT_MORNING` the next day, such as a weekend
@@ -14,11 +17,12 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta, tzinfo
-from typing import Any, Final
+import re
+from typing import Any, Final, Literal
 
 from .google import CalendarEvent
 from .notes import DriverDirectory, RideNotes, parse_notes
-from .planner import HOME, NOT_NEEDED, BusyBlock, Labels, RideEvent, Side, TravelFn
+from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, TravelFn
 
 DAY: Final = 1440
 NEXT_MORNING: Final = DAY + 6 * 60
@@ -26,6 +30,35 @@ NEXT_MORNING: Final = DAY + 6 * 60
 NO_TITLE: Final = "Event"
 NO_ADDRESS: Final = "?"
 """Prefix of the place key for an event with no location."""
+
+Where = Literal["home", "anywhere", "place"]
+
+_HOME_WORDS: Final = frozenset({"home", "at home", "our house"})
+_ONLINE_WORDS: Final = frozenset(
+    {"online", "virtual", "remote", "zoom", "google meet", "teams", "facetime", "phone", "phone call", "call"}
+)
+_ONLINE_HOSTS: Final = ("zoom.us/", "meet.google.com", "teams.microsoft.com", "teams.live.com", "webex.com")
+_STREET_WORDS: Final = {
+    "street": "st",
+    "avenue": "ave",
+    "av": "ave",
+    "road": "rd",
+    "drive": "dr",
+    "lane": "ln",
+    "court": "ct",
+    "boulevard": "blvd",
+    "place": "pl",
+    "circle": "cir",
+    "terrace": "ter",
+    "parkway": "pkwy",
+    "highway": "hwy",
+    "trail": "trl",
+    "way": "wy",
+    "north": "n",
+    "south": "s",
+    "east": "e",
+    "west": "w",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +134,30 @@ def place_key(location: str) -> str:
     return " ".join(location.split()).casefold()
 
 
+def where(location: str, home_address: str = "") -> Where:
+    """Whether an event's location is home, anywhere (none, or online), or a place to drive to.
+
+    Home is the word "Home", or the same street address as ``home_address``. Only the part
+    before the first comma counts, so "12 Oak Street" matches "12 Oak St, Springfield, IL".
+    """
+    text = " ".join(location.split()).casefold()
+    if not text or text in _ONLINE_WORDS or text.startswith(("http://", "https://")):
+        return "anywhere"
+    if any(host in text for host in _ONLINE_HOSTS):
+        return "anywhere"
+    if text in _HOME_WORDS:
+        return "home"
+    street = _street(location)
+    if street and street == _street(home_address):
+        return "home"
+    return "place"
+
+
+def _street(address: str) -> str:
+    words = re.sub(r"[.#]", " ", address.split(",", 1)[0].casefold()).split()
+    return " ".join(_STREET_WORDS.get(w, w) for w in words)
+
+
 def short_place(location: str) -> str:
     """The first part of an address, such as the school's name."""
     return location.split(",", 1)[0].strip() or location
@@ -113,6 +170,7 @@ def build_week(
     today: date,
     days: int,
     tz: tzinfo,
+    home_address: str = "",
 ) -> WeekInput:
     """Sort the events read from each calendar into each day's planner input."""
     # Kids taken along are named in the notes, so the notes need the kids' names.
@@ -135,12 +193,22 @@ def build_week(
             title = ev.title or NO_TITLE
             notes = parse_notes(ev.description, directory, start)
             base_id = ev.id
-            if ev.location:
-                loc = place_key(ev.location)
-                places.setdefault(loc, ev.location)
-                short.setdefault(loc, short_place(ev.location))
+            kind = where(ev.location or "", home_address)
+            if kind == "home":
+                # Home needs no ride, whatever the notes say.
+                loc = HOME
+                notes = replace(
+                    notes, drop=NOT_NEEDED, pick=NOT_NEEDED, stay=False, arrive_by=None, along=(), travel=None
+                )
+            elif kind == "place":
+                loc = place_key(ev.location or "")
+                places.setdefault(loc, ev.location or "")
+                short.setdefault(loc, short_place(ev.location or ""))
             else:
                 loc = ""
+                if notes.drop == UNASSIGNED and notes.pick == UNASSIGNED:
+                    # It can happen anywhere. Naming a driver in the notes plans it after all.
+                    notes = replace(notes, drop=NOT_NEEDED, pick=NOT_NEEDED)
             pieces: list[tuple[date, RideEvent, tuple[Side, ...]]] = []
             if end <= NEXT_MORNING:
                 pieces.append(
@@ -283,7 +351,9 @@ def leg_hour(day: DayInput, origin: str, destination: str) -> int:
 
 def addresses(week: WeekInput) -> list[str]:
     """Every place key with a real address, for computing drive times."""
-    return sorted({e.loc for d in week.days for e in d.events if e.loc and not e.loc.startswith(NO_ADDRESS)})
+    return sorted(
+        {e.loc for d in week.days for e in d.events if e.loc and e.loc != HOME and not e.loc.startswith(NO_ADDRESS)}
+    )
 
 
 def _sides(notes: RideNotes) -> dict[str, Any]:

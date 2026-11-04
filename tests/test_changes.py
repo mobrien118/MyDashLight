@@ -188,6 +188,18 @@ async def test_unknown_event(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert err.value.translation_placeholders == {"event": "nope"}
 
 
+async def test_an_event_at_home_takes_no_ride(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        AVA, **timed("tutor", "Tutor", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00", location="Home")
+    )
+    await load(hass)
+    with pytest.raises(ServiceValidationError) as err:
+        await call(hass, "set_ride", event="tutor", side="drop", driver="mom")
+    assert err.value.translation_key == "at_home"
+    assert err.value.translation_placeholders == {"title": "Tutor"}
+    assert google.patches == []
+
+
 @pytest.mark.parametrize(
     ("status", "reason", "key"),
     [

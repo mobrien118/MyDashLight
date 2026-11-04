@@ -21,6 +21,7 @@ from .const import (
     CONF_DAD_NAME,
     CONF_DAD_NOTIFY,
     CONF_GO_HOME_MARGIN,
+    CONF_HOME_ADDRESS,
     CONF_KID_NOTIFY,
     CONF_KIDS,
     CONF_MOM_ALIASES,
@@ -61,6 +62,8 @@ class HubSettings:
     planner: PlannerSettings
     directory: DriverDirectory
     no_address_travel: int
+    home_address: str = ""
+    """Events here are at home and need no ride."""
     roles: CalendarRoles = field(default_factory=CalendarRoles)
     reminders: ReminderSettings = field(default_factory=ReminderSettings)
 
@@ -97,6 +100,7 @@ class HubSettings:
                 kids={k.calendar_id: k.name for k in kids},
             ),
             no_address_travel=int(planner[CONF_NO_ADDRESS_TRAVEL]),
+            home_address=" ".join(str(options.get(CONF_HOME_ADDRESS) or "").split()),
             roles=CalendarRoles(
                 kids=kids,
                 busy={

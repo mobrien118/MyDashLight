@@ -105,7 +105,9 @@ async def test_get_plan(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert [d["date"] for d in plan["days"]] == ["2026-11-04", "2026-11-05"]
     soccer = plan["days"][0]["events"][0]
     assert soccer["place"] == "?soccer"
-    assert {x["kind"] for x in plan["days"][0]["issues"]} == {"unassigned"}
+    # With no address it could be anywhere, so it needs no ride.
+    assert (soccer["where"], soccer["drop"], soccer["pick"]) == ("anywhere", "none", "none")
+    assert plan["days"][0]["issues"] == []
 
     with pytest.raises(ServiceValidationError) as err:
         await get_plan(hass, date="2026-11-09", days=2)

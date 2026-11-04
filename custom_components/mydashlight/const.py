@@ -16,6 +16,8 @@ CONF_MOM_ALIASES: Final = "mom_aliases"
 CONF_DAD_NAME: Final = "dad_name"
 CONF_DAD_ALIASES: Final = "dad_aliases"
 CONF_CARPOOLS: Final = "carpools"
+CONF_HOME_ADDRESS: Final = "home_address"
+"""The street address of home, so events there need no ride."""
 CONF_PLANNER: Final = "planner"
 
 CONF_ARRIVE_EARLY: Final = "arrive_early"

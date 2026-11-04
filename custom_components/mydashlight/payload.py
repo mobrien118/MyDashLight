@@ -10,7 +10,7 @@ from collections.abc import Callable, Sequence
 import math
 from typing import Any
 
-from .board import CardLine, DayBoard, KidItem, Outing, Ride, build_day
+from .board import CardLine, DayBoard, KidItem, Outing, Ride, build_day, event_where
 from .planner import (
     BusyBlock,
     Change,
@@ -129,6 +129,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "place": e.loc,
         "place_name": labels.place(e.loc),
         "short_place": labels.short_place(e.loc),
+        "where": event_where(e),
         "start": e.start,
         "end": e.end,
         "drop": e.drop,

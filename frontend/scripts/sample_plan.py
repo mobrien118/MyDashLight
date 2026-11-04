@@ -68,6 +68,7 @@ WEEK: list[tuple[int, int, str, str, str, str, str, str, str, bool, str | None, 
     (0, 2, "soccer", "Soccer", "soccer", "5:00 PM", "6:30 PM", "dad", "mom", False, None, (), True),
     (0, 1, "football", "Football", "football", "5:30 PM", "7:00 PM", "dad", "dad", False, "5:15 PM", (), True),
     (0, 0, "volley", "Volleyball", "gym", "6:15 PM", "8:00 PM", "Dustin", "", False, None, (), False),
+    (0, 1, "tutor", "Math tutor", "home", "4:00 PM", "4:45 PM", "none", "none", False, None, (), True),
     (1, 2, "fri-soccer", "Soccer practice", "soccer", "5:00 PM", "6:00 PM", "mom", "mom", False, None, (), False),
     (1, 1, "fri-party", "Birthday party", "party", "6:00 PM", "8:30 PM", "dad", "dad", False, None, (), False),
     (1, 0, "fri-sit", "Babysitting", "nextdoor", "6:30 PM", "9:30 PM", "none", "none", False, None, (), False),
@@ -128,6 +129,8 @@ def minutes(text: str) -> int:
 
 
 def key(place: str) -> str:
+    if place == "home":
+        return HOME
     return " ".join(PLACES[place][0].split()).casefold()
 
 

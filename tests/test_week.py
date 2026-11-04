@@ -18,6 +18,7 @@ from custom_components.mydashlight.week import (
     addresses,
     build_week,
     make_travel,
+    where,
     window,
 )
 
@@ -44,9 +45,18 @@ def at(day: int, clock: str) -> str:
     return datetime.fromisoformat(f"2026-11-{day:02d}T{clock}").replace(tzinfo=TZ).isoformat()
 
 
-def week(events: dict[str, list[dict[str, Any]]], days: int = 7) -> WeekInput:
+HOME_ADDRESS = "12 Oak Street, Springfield, IL 62701"
+
+
+def week(events: dict[str, list[dict[str, Any]]], days: int = 7, home_address: str = "") -> WeekInput:
     return build_week(
-        {cal: [ev(cal, item) for item in items] for cal, items in events.items()}, ROLES, DIRECTORY, TODAY, days, TZ
+        {cal: [ev(cal, item) for item in items] for cal, items in events.items()},
+        ROLES,
+        DIRECTORY,
+        TODAY,
+        days,
+        TZ,
+        home_address,
     )
 
 
@@ -284,3 +294,106 @@ def test_plan_payload() -> None:
     assert tue["kids"][AVA]["name"] == "Ava"
     assert days[1]["events"] == []
     assert days[1]["issues"] == []
+
+
+def test_where() -> None:
+    assert where("12 Oak St", HOME_ADDRESS) == "home"
+    assert where("12 oak st., Springfield", HOME_ADDRESS) == "home"
+    assert where("  Home ", HOME_ADDRESS) == "home"
+    assert where("Home", "") == "home"
+    assert where("12 Oak St", "") == "place"
+    assert where("14 Oak St", HOME_ADDRESS) == "place"
+    assert where("Noah's house", HOME_ADDRESS) == "place"
+    assert where("", HOME_ADDRESS) == "anywhere"
+    assert where("https://us02web.zoom.us/j/123", HOME_ADDRESS) == "anywhere"
+    assert where("Meeting at meet.google.com/abc-defg-hij", HOME_ADDRESS) == "anywhere"
+    assert where("Online", HOME_ADDRESS) == "anywhere"
+
+
+def test_events_at_home_need_no_ride() -> None:
+    w = week(
+        {
+            AVA: [
+                timed(
+                    "tutor",
+                    "Tutor",
+                    at(3, "16:00"),
+                    at(3, "17:00"),
+                    location="12 Oak St, Springfield",
+                    # Whatever the notes say, home needs no ride.
+                    description="Drop-off: Robin\nTravel: 30 min",
+                )
+            ],
+            BEN: [timed("lego", "Lego club", at(3, "18:00"), at(3, "19:00"), location="Home")],
+        },
+        days=1,
+        home_address=HOME_ADDRESS,
+    )
+    tutor, lego = w.days[0].events
+    assert (tutor.loc, tutor.drop, tutor.pick) == (HOME, NOT_NEEDED, NOT_NEEDED)
+    assert (lego.loc, lego.drop, lego.pick) == (HOME, NOT_NEEDED, NOT_NEEDED)
+    assert w.travel_overrides == {}
+    assert addresses(w) == []
+    assert w.labels.place(HOME) == "Home"
+
+
+def test_events_with_no_address_need_no_ride_unless_the_notes_name_a_driver() -> None:
+    w = week(
+        {
+            AVA: [
+                timed("call", "Call with Grandma", at(3, "16:00"), at(3, "16:30")),
+                timed("class", "Coding class", at(3, "17:00"), at(3, "18:00"), location="https://zoom.us/j/1"),
+                timed("party", "Party", at(3, "18:00"), at(3, "20:00"), description="Pick-up: Sam"),
+            ]
+        },
+        days=1,
+    )
+    call, coding, party = w.days[0].events
+    assert (call.drop, call.pick) == (NOT_NEEDED, NOT_NEEDED)
+    assert (coding.drop, coding.pick, coding.loc) == (NOT_NEEDED, NOT_NEEDED, "?class")
+    assert w.labels.place("?class") == "Coding class"
+    # Naming a driver plans the ride after all, so the drop-off still needs one.
+    assert (party.drop, party.pick) == (UNASSIGNED, "dad")
+
+
+def test_home_and_anywhere_on_the_board() -> None:
+    w = week(
+        {
+            AVA: [
+                timed(
+                    "soccer",
+                    "Soccer",
+                    at(3, "14:30"),
+                    at(3, "15:45"),
+                    location="Park",
+                    description="Drop-off: Robin\nPick-up: Robin",
+                ),
+                # Robin can't get Ava home from soccer before the tutor comes.
+                timed("tutor", "Tutor", at(3, "15:50"), at(3, "17:00"), location="Home"),
+            ],
+            BEN: [
+                timed(
+                    "swim",
+                    "Swim",
+                    at(3, "15:00"),
+                    at(3, "16:00"),
+                    location="Pool",
+                    description="Drop-off: Sam\nPick-up: Sam",
+                ),
+                # A call during the drive home is fine.
+                timed("call", "Call with Grandma", at(3, "16:00"), at(3, "16:30")),
+            ],
+        },
+        days=1,
+    )
+    travel = make_travel(w.travel_overrides, 15)
+    (tue,) = plan_week(w, lambda _day: travel, PlannerSettings(), ("mom", "dad"))
+    events = {e["id"]: e for e in tue["events"]}
+    assert events["tutor"]["where"] == "home"
+    assert events["tutor"]["short_place"] == "Home"
+    assert events["tutor"]["lines"] == {"drop": {"text": "At home", "tone": "muted"}, "pick": None}
+    assert events["call"]["where"] == "anywhere"
+    assert events["call"]["lines"]["drop"] == {"text": "No ride needed", "tone": "muted"}
+    assert events["soccer"]["where"] == "place"
+    assert [(c["kid"], c["a"]["event"], c["b"]["type"]) for c in tue["clashes"]] == [(AVA, "tutor", "ride")]
+    assert not any(x["kind"] == "unassigned" for x in tue["issues"])
