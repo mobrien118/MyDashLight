@@ -216,6 +216,9 @@ The kitchen page brings its own keyboard: it slides up when a text box is clicke
 same with a mouse or a touchscreen. For a screen with a real keyboard, add `?keyboard=off` to the
 address.
 
+The mouse pointer hides after 3 seconds without movement and comes back when the mouse moves.
+Add `?cursor=show` to keep it on screen.
+
 ### Screen settings
 
 Either address can pick the view it opens in, so each screen can have its own:
