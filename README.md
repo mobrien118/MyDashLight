@@ -178,7 +178,10 @@ waiting, a parent still at work, a kid double-booked) with the suggested fixes, 
 for today and tomorrow. Problems later in the week show as a red count on their day in the top
 bar. Tap any activity, car or trip to change who drives each way, whether the driver
 stays, who's taken along, and the arrive-by time. A repeating activity asks whether to change just
-that day or every time. Each change is saved in the event's notes on Google straight away.
+that day or every time. If a kid is skipping one, tap **Not attending**: it stays on the board,
+crossed out, with no rides planned, and it no longer counts as a clash. When a kid is
+double-booked, each event's name in the Needs attention card opens that event, so the one being
+skipped is a tap away. Each change is saved in the event's notes on Google straight away.
 
 There are two ways to open it, both signed in with your Home Assistant login:
 

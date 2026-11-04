@@ -436,12 +436,21 @@ export class MyDashLightBoard extends LitElement {
     return day && event ? { day, event } : null;
   }
 
-  private open(t: Target | null): void {
+  private open(t: Target | null, reveal = false): void {
     if (!t) return;
     this.flushArrive();
     this.sel = t;
     this.scope = "this";
     this.arriveDraft = undefined;
+    if (reveal) this.reveal(t);
+  }
+
+  /** Scrolls the board to an event opened from the panel, so it's in view beside its details. */
+  private reveal(t: Target): void {
+    const found = this.findEvent(t);
+    const i = this.dayIndexOf(t.day);
+    if (!found || i < 0) return;
+    this.scrollToTime(i * 1440 + Math.max(0, (found.event.arrive_by ?? found.event.start) - 30), t.day);
   }
 
   private closeEditor(): void {
@@ -475,6 +484,12 @@ export class MyDashLightBoard extends LitElement {
     if (!this.backend) return;
     const b = this.backend;
     void this.save(`${side}`, driver, () => b.setRide(e.id, side, driver, this.scope));
+  }
+
+  private setAttending(e: PlanEvent, attending: boolean): void {
+    if (!this.backend || (e.attending !== false) === attending) return;
+    const b = this.backend;
+    void this.save("attending", attending, () => b.setAttending(e.id, attending, this.scope));
   }
 
   private toggleStay(e: PlanEvent): void {
@@ -886,14 +901,16 @@ export class MyDashLightBoard extends LitElement {
             (x) => x.key,
             (x) => {
               const k = x.color;
-              const bg = x.stayed
+              const bg = x.skipped
+                ? `repeating-linear-gradient(135deg, rgba(${k.rgb},0.10) 0px, rgba(${k.rgb},0.10) 6px, transparent 6px, transparent 12px), var(--surface)`
+                : x.stayed
                 ? `repeating-linear-gradient(135deg, rgba(${k.rgb},0.24) 0px, rgba(${k.rgb},0.24) 6px, rgba(${k.rgb},0.08) 6px, rgba(${k.rgb},0.08) 12px), var(--surface)`
                 : `linear-gradient(rgba(${k.rgb},0.15), rgba(${k.rgb},0.15)), var(--surface)`;
               return html`<button
                 type="button"
-                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""}"
+                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""} ${x.skipped ? "skipped" : ""}"
                 aria-label=${x.aria}
-                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : `rgba(${k.rgb},0.45)`};--c:${k.color};--ring:${k.color}"
+                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : `rgba(${k.rgb},0.45)`};--c:${k.color};--rgb:${k.rgb};--ring:${k.color}"
                 @click=${() => this.open(x.target)}
               >
                 <span class="top">
@@ -996,9 +1013,17 @@ export class MyDashLightBoard extends LitElement {
             <span class="glyph" aria-hidden="true">${it.tone === "heads_up" ? "i" : "!"}</span>
             <div class="issue-text">
               ${it.target
-                ? html`<button type="button" class="issue-title" @click=${() => this.open(it.target)}>${it.title}</button>`
+                ? html`<button type="button" class="issue-title" @click=${() => this.open(it.target, true)}>${it.title}</button>`
                 : html`<strong class="issue-title">${it.title}</strong>`}
-              <span class="issue-body">${it.body}</span>
+              <span class="issue-body"
+                >${it.parts
+                  ? it.parts.map((part) =>
+                      typeof part === "string"
+                        ? part
+                        : html`<button type="button" class="issue-link" @click=${() => this.open(part.target, true)}>${part.text}</button>`,
+                    )
+                  : it.body}</span
+              >
             </div>
           </div>
           ${it.suggestions.length
@@ -1111,6 +1136,9 @@ export class MyDashLightBoard extends LitElement {
     if (e.stay) notes.push("Stay: yes");
     if (e.along.length) notes.push(`Take along: ${e.along.map((k) => kidName(plan, k)).join(", ")}`);
     if (e.arrive_by != null) notes.push(`Arrive by: ${clockAmPm(e.arrive_by)}`);
+    const attendPend = pendingValue("attending");
+    const attending = attendPend !== undefined ? Boolean(attendPend) : e.attending !== false;
+    if (e.attending === false) notes.splice(0, notes.length, "Attending: no");
 
     const ahead = day.date === this.today().date ? "" : `${shortDay(day.date)} · `;
     const head = html`<div class="ed-head">
@@ -1140,10 +1168,22 @@ export class MyDashLightBoard extends LitElement {
             </div>
           </div>`
         : nothing}
-      ${e.where === "anywhere"
-        ? html`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`
-        : nothing}
-      ${side("drop")} ${side("pick")}
+      <div class="field">
+        <span class="field-label">${kidName(plan, e.kid)} is</span>
+        <div role="group" aria-label="Going or not" class="choices" style="grid-template-columns:1fr 1fr">
+          <button type="button" class="choice" aria-pressed=${attending ? "true" : "false"} ?disabled=${busy} @click=${() => this.setAttending(e, true)}>
+            Going
+          </button>
+          <button type="button" class="choice" aria-pressed=${attending ? "false" : "true"} ?disabled=${busy} @click=${() => this.setAttending(e, false)}>
+            Not attending
+          </button>
+        </div>
+      </div>
+      ${attending
+        ? html`${e.where === "anywhere"
+              ? html`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`
+              : nothing}
+            ${side("drop")} ${side("pick")}
       <div class="field">
         <button type="button" class="choice wide" aria-pressed=${stay ? "true" : "false"} ?disabled=${!canStay || busy} @click=${() => this.toggleStay(e)}>
           ${canStay ? (stay ? "Driver stays the whole time" : "Driver leaves and comes back") : "Staying needs the same driver both ways"}
@@ -1175,6 +1215,11 @@ export class MyDashLightBoard extends LitElement {
       ${arrive != null
         ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => this.clearArrive()}>Clear arrive-by time</button>`
         : nothing}
+`
+        : html`<p class="field-hint">
+            Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.
+            Its other ride settings stay saved in the notes, so tapping Going brings them all back.
+          </p>`}
       <div class="notes">
         <span class="notes-label">${this.backend?.saves === false ? "Would be saved" : "Saved"} to this event’s notes in Google Calendar</span>
         <span class="notes-body">--- Rides ---\n${notes.length ? notes.join("\n") : "(no ride lines yet)"}</span>
@@ -1182,7 +1227,9 @@ export class MyDashLightBoard extends LitElement {
       ${e.problems.length
         ? html`<p class="field-hint bad">These lines in the notes couldn’t be read: ${e.problems.join("; ")}</p>`
         : nothing}
-      <p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>
+      ${attending
+        ? html`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`
+        : nothing}
     `;
   }
 }

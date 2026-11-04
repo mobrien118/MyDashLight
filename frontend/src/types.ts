@@ -34,6 +34,8 @@ export interface PlanEvent {
   /** Lines in the event's notes that couldn't be read. */
   problems: string[];
   lines: { drop: CardLine | null; pick: CardLine | null };
+  /** False when the kid is skipping this one: no rides, no issues, no clashes. Older plans leave it out. */
+  attending?: boolean;
 }
 
 export interface Segment {
