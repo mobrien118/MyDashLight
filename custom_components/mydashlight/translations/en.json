@@ -103,13 +103,15 @@
           "mom_aliases": "Other names for the first parent",
           "dad_aliases": "Other names for the second parent",
           "carpools": "Carpool drivers",
-          "home_address": "Home address"
+          "home_address": "Home address",
+          "chore_days_ahead": "Chore days ahead"
         },
         "data_description": {
           "mom_aliases": "Names that mean this parent in event notes, such as a nickname or Mom.",
           "dad_aliases": "Names that mean this parent in event notes, such as Dad.",
           "carpools": "Other people who drive, such as the Parkers. Rides with them are shown but not planned.",
-          "home_address": "Your street address, such as 12 Oak St. Events there, or with Home as the location, need no ride."
+          "home_address": "Your street address, such as 12 Oak St. Events there, or with Home as the location, need no ride.",
+          "chore_days_ahead": "How many days of chores, counting today, to keep on the kids' Google Tasks lists."
         },
         "sections": {
           "planner": {
@@ -311,6 +313,92 @@
           "description": "The suggestion's id from Get ride plan."
         }
       }
+    },
+    "get_chores": {
+      "name": "Get chores",
+      "description": "Returns the kids' chores the board shows, and the chore templates."
+    },
+    "set_chore_done": {
+      "name": "Check off a chore",
+      "description": "Checks a chore off in Google Tasks, or opens it again.",
+      "fields": {
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id (a chore's \"id\" in Get chores)."
+        },
+        "done": {
+          "name": "Done",
+          "description": "On to check it off, off to open it again."
+        }
+      }
+    },
+    "save_chore_template": {
+      "name": "Save chore template",
+      "description": "Adds a chore template, or changes one. MyDashLight then fills the kids' lists from it.",
+      "fields": {
+        "template": {
+          "name": "Template",
+          "description": "The template's id, to change one. Leave it out to add a new one."
+        },
+        "repeats": {
+          "name": "Repeats",
+          "description": "Daily, weekly or monthly. Use Every for every other week or quarterly."
+        },
+        "title": {
+          "name": "Title",
+          "description": "The chore, such as Vacuum the stairs."
+        },
+        "icon": {
+          "name": "Icon",
+          "description": "An emoji shown with the chore."
+        },
+        "details": {
+          "name": "Details",
+          "description": "Shown when the chore is tapped."
+        },
+        "who": {
+          "name": "Who",
+          "description": "The kids who do it, by name. Each gets their own, unless they take turns."
+        },
+        "take_turns": {
+          "name": "Take turns",
+          "description": "The kids in Who take turns, one each time, in order."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Daily: which days, such as Mon-Fri (empty for every day). Weekly: a day such as Thu, or Any for sometime that week. Monthly: a date such as 15, a day such as 1st Sat, or Any."
+        },
+        "every": {
+          "name": "Every",
+          "description": "Every this many days, weeks or months: 1 is every time, 2 every other, and 3 months is quarterly."
+        },
+        "starts": {
+          "name": "Starts",
+          "description": "The first day. Every and turns count from here. Today if left out."
+        },
+        "ends": {
+          "name": "Ends",
+          "description": "The last day, for a seasonal chore."
+        },
+        "points": {
+          "name": "Points",
+          "description": "Points for doing it, saved for later."
+        },
+        "paused": {
+          "name": "Paused",
+          "description": "Stop making this chore without removing it."
+        }
+      }
+    },
+    "remove_chore_template": {
+      "name": "Remove chore template",
+      "description": "Removes a chore template and the chores it made that aren't done or due yet. Done ones stay.",
+      "fields": {
+        "template": {
+          "name": "Template",
+          "description": "The template's id."
+        }
+      }
     }
   },
   "exceptions": {
@@ -352,6 +440,39 @@
     },
     "at_home": {
       "message": "{title} is at home, so it doesn't need a ride."
+    },
+    "tasks_error": {
+      "message": "Couldn't read Google Tasks: {error}"
+    },
+    "chores_sign_in": {
+      "message": "Chores need Google Tasks. Sign in to Google again in MyDashLight (Settings > Devices & services)."
+    },
+    "chores_tasks_api": {
+      "message": "The Google Tasks API is turned off in your Google Cloud project. Turn it on, then try again."
+    },
+    "chores_not_ready": {
+      "message": "MyDashLight hasn't read the chores from Google Tasks yet. Try again in a minute."
+    },
+    "chore_not_found": {
+      "message": "MyDashLight has no chore with the id {chore}. It may have been removed or closed out."
+    },
+    "chore_changed": {
+      "message": "That chore or template changed in Google Tasks while it was being saved. Try again."
+    },
+    "template_not_found": {
+      "message": "There's no chore template with the id {template}."
+    },
+    "template_incomplete": {
+      "message": "A chore template needs a title, how often it repeats and at least one kid."
+    },
+    "unknown_kid": {
+      "message": "{name} isn't one of the kids in MyDashLight."
+    },
+    "bad_days": {
+      "message": "MyDashLight can't read the days \"{days}\". Try Mon-Fri, Thu, 15, 1st Sat or Any."
+    },
+    "ends_before_starts": {
+      "message": "A chore can't end before it starts."
     }
   },
   "selector": {
@@ -366,6 +487,13 @@
       "options": {
         "this": "Just this one",
         "series": "Every one"
+      }
+    },
+    "repeats": {
+      "options": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly"
       }
     }
   }

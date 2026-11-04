@@ -43,6 +43,7 @@ from .const import (
     CONF_CALENDAR_ID,
     CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
+    CONF_CHORE_DAYS,
     CONF_DAD_ALIASES,
     CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
@@ -68,12 +69,14 @@ from .const import (
     CONF_TIGHT_SLACK,
     CONF_TOO_EARLY,
     CONF_WAITING_AFTER,
+    DEFAULT_CHORE_DAYS,
     DEFAULT_NO_DRIVER_HOURS,
     DEFAULT_PLANNER,
     DEFAULT_REMIND_BEFORE,
     DEFAULT_ROUTES_DAILY_LIMIT,
     DOMAIN,
     DRIVERS,
+    MAX_CHORE_DAYS,
     NOTIFY_OFF,
     SCOPES,
     TITLE,
@@ -373,6 +376,7 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
                         CONF_MOM_NAME: _clean_name(user_input[CONF_MOM_NAME]),
                         CONF_DAD_NAME: _clean_name(user_input[CONF_DAD_NAME]),
                         CONF_PLANNER: {k: int(v) for k, v in user_input[CONF_PLANNER].items()},
+                        CONF_CHORE_DAYS: int(user_input.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)),
                     }
                 )
             current = user_input
@@ -384,6 +388,11 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
                 vol.Optional(CONF_DAD_ALIASES, default=current.get(CONF_DAD_ALIASES, [])): _NAMES,
                 vol.Optional(CONF_CARPOOLS, default=current.get(CONF_CARPOOLS, [])): _NAMES,
                 vol.Optional(CONF_HOME_ADDRESS, default=current.get(CONF_HOME_ADDRESS, "")): _NAME,
+                vol.Required(CONF_CHORE_DAYS, default=current.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)): NumberSelector(
+                    NumberSelectorConfig(
+                        min=1, max=MAX_CHORE_DAYS, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="days"
+                    )
+                ),
                 vol.Required(CONF_PLANNER): section(
                     vol.Schema(
                         {

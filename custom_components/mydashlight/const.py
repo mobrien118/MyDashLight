@@ -43,13 +43,15 @@ DEFAULT_PLANNER: Final = {
 }
 
 # Google sign-in. calendarlist.readonly lists the calendars to pick from; events reads the
-# events and writes who drives into their notes.
+# events and writes who drives into their notes; tasks keeps the chores in Google Tasks.
 OAUTH_AUTHORIZE: Final = "https://accounts.google.com/o/oauth2/v2/auth"
 OAUTH_TOKEN: Final = "https://oauth2.googleapis.com/token"
 SCOPES: Final = (
     "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
     "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/tasks",
 )
+TASKS_SCOPE: Final = SCOPES[-1]
 
 # Which calendars to read. Kids: a list of {"calendar_id", "name"}. The parents' busy
 # calendars: lists of calendar ids.
@@ -112,3 +114,26 @@ DEFAULT_ROUTES_DAILY_LIMIT: Final = 150
 """Lookups a day. 150 a day stays under 5,000 a month."""
 ROUTES_PER_UPDATE: Final = 25
 ROUTES_AT_ONCE: Final = 4
+
+# Chores, kept in Google Tasks. Templates are tasks on the three base lists; each kid's chores
+# are tasks on that kid's list, made from the templates this many days ahead.
+CONF_CHORE_DAYS: Final = "chore_days_ahead"
+DEFAULT_CHORE_DAYS: Final = 7
+MAX_CHORE_DAYS: Final = 28
+TEMPLATE_LIST_TITLES: Final = {
+    "daily": "Chore templates: Daily",
+    "weekly": "Chore templates: Weekly",
+    "monthly": "Chore templates: Monthly",
+}
+KID_LIST_TITLE: Final = "Chores: {name}"
+CHORE_UPDATE_SECONDS: Final = 60
+SIGNAL_CHORES_UPDATED: Final = f"{DOMAIN}_chores_updated"
+"""Sent with the config entry when its chores change, and with None when it stops."""
+WS_CHORES_SUBSCRIBE: Final = f"{DOMAIN}/chores/subscribe"
+SERVICE_GET_CHORES: Final = "get_chores"
+SERVICE_SET_CHORE_DONE: Final = "set_chore_done"
+SERVICE_SAVE_CHORE_TEMPLATE: Final = "save_chore_template"
+SERVICE_REMOVE_CHORE_TEMPLATE: Final = "remove_chore_template"
+ATTR_CHORE: Final = "chore"
+ATTR_DONE: Final = "done"
+ATTR_TEMPLATE: Final = "template"

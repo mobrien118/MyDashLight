@@ -1,4 +1,5 @@
-"""The kitchen app's live plan: ``mydashlight/rides/subscribe``.
+"""The kitchen app's live plan, ``mydashlight/rides/subscribe``, and live chores,
+``mydashlight/chores/subscribe``.
 
 After subscribing, the app gets an event with the whole week's plan straight away, then
 another each time the plan changes. The plan is the same as ``get_plan`` returns for all
@@ -9,6 +10,10 @@ it's back.
 
 Calendars are read every minute, but an event is only sent when something in the plan
 actually changed, not just the time it was checked.
+
+Chores work the same way: an event with ``{"chores": ...}``, the same as ``get_chores``
+returns, straight away and after each change, and ``{"chores": null}`` while MyDashLight
+isn't running.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 import voluptuous as vol
 
-from .const import DOMAIN, SIGNAL_PLAN_UPDATED, WS_SUBSCRIBE
+from .const import DOMAIN, SIGNAL_CHORES_UPDATED, SIGNAL_PLAN_UPDATED, WS_CHORES_SUBSCRIBE, WS_SUBSCRIBE
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -32,6 +37,7 @@ if TYPE_CHECKING:
 @callback
 def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_subscribe)
+    websocket_api.async_register_command(hass, _ws_chores_subscribe)
 
 
 def _current(hass: HomeAssistant) -> MyDashLightConfigEntry | None:
@@ -60,5 +66,25 @@ def _ws_subscribe(hass: HomeAssistant, connection: ActiveConnection, msg: dict[s
         connection.send_message(event_message(msg_id, {"plan": plan}))
 
     connection.subscriptions[msg_id] = async_dispatcher_connect(hass, SIGNAL_PLAN_UPDATED, send)
+    connection.send_result(msg_id)
+    send(_current(hass))
+
+
+@websocket_command({vol.Required("type"): WS_CHORES_SUBSCRIBE})
+@callback
+def _ws_chores_subscribe(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
+    msg_id: int = msg["id"]
+    sent: dict[str, Any] = {}
+
+    @callback
+    def send(entry: MyDashLightConfigEntry | None) -> None:
+        chores = entry.runtime_data.chores.payload() if entry is not None else None
+        content = _content(chores)
+        if "content" in sent and sent["content"] == content:
+            return
+        sent["content"] = content
+        connection.send_message(event_message(msg_id, {"chores": chores}))
+
+    connection.subscriptions[msg_id] = async_dispatcher_connect(hass, SIGNAL_CHORES_UPDATED, send)
     connection.send_result(msg_id)
     send(_current(hass))
