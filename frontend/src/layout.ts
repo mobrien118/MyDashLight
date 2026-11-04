@@ -972,17 +972,46 @@ export function tidyPlan(plan: Plan): Plan {
 /** Heads-ups are only worth reading for today and tomorrow. */
 const HEADS_UP_DAYS = 2;
 
-export function attention(plan: Plan, today: string): { items: AttentionItem[]; problems: number } {
+/** How far ahead Needs attention looks. Later problems still show on the week's day tiles. */
+export const ATTENTION_HOURS = 48;
+
+export interface Attention {
+  items: AttentionItem[];
+  /** Problems within the window. */
+  problems: number;
+  /** Rides with no driver within the window. */
+  unassigned: number;
+  /** Problems later in the week, past the window. */
+  later: number;
+  /** Of those, rides with no driver. */
+  laterUnassigned: number;
+}
+
+/** What needs fixing from earlier today up to {@link ATTENTION_HOURS} from now. */
+export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Attention {
   const items: AttentionItem[] = [];
   let problems = 0;
+  let unassigned = 0;
+  let later = 0;
+  let laterUnassigned = 0;
+  const limit = now.minutes + hours * 60;
   for (const day of plan.days) {
-    const ahead = daysBetween(today, day.date);
+    const ahead = daysBetween(now.date, day.date);
     const pre = ahead === 0 ? "" : `${shortDay(day.date)} · `;
     const events = new Map(day.events.map((e) => [e.id, e]));
     const target = (id: string | null | undefined): Target | null => (id && events.has(id) ? { day: day.date, event: id } : null);
+    // Measured from midnight today, so the rest of today always counts.
+    const soon = (at: number | null | undefined, event?: string | null): boolean =>
+      ahead * 1440 + (at ?? events.get(event ?? "")?.start ?? 0) < limit;
     for (const x of day.issues) {
       if (x.level !== "problem") continue;
+      if (!soon(x.at, x.event)) {
+        later++;
+        if (x.kind === "unassigned") laterUnassigned++;
+        continue;
+      }
       problems++;
+      if (x.kind === "unassigned") unassigned++;
       items.push({
         key: `${day.date}|${x.key}`,
         tone: x.kind === "unassigned" ? "unassigned" : "problem",
@@ -993,6 +1022,10 @@ export function attention(plan: Plan, today: string): { items: AttentionItem[]; 
       });
     }
     day.clashes.forEach((c, i) => {
+      if (!soon(c.a.start, c.a.event)) {
+        later++;
+        return;
+      }
       problems++;
       const a = events.get(c.a.event ?? "");
       const name = kidName(plan, c.kid);
@@ -1018,7 +1051,7 @@ export function attention(plan: Plan, today: string): { items: AttentionItem[]; 
     });
     if (ahead >= 0 && ahead < HEADS_UP_DAYS) {
       for (const x of day.issues) {
-        if (x.level !== "heads_up") continue;
+        if (x.level !== "heads_up" || !soon(x.at, x.event)) continue;
         items.push({
           key: `${day.date}|${x.key}`,
           tone: "heads_up",
@@ -1030,7 +1063,7 @@ export function attention(plan: Plan, today: string): { items: AttentionItem[]; 
       }
     }
     for (const e of day.events) {
-      if (!e.problems.length) continue;
+      if (!e.problems.length || !soon(e.start)) continue;
       items.push({
         key: `${day.date}|notes|${e.id}`,
         tone: "heads_up",
@@ -1041,7 +1074,7 @@ export function attention(plan: Plan, today: string): { items: AttentionItem[]; 
       });
     }
   }
-  return { items, problems };
+  return { items, problems, unassigned, later, laterUnassigned };
 }
 
 // What's coming up next, for the top of the board.

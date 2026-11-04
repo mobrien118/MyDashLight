@@ -24,7 +24,7 @@ import {
   tidyPlan,
   whoName,
   yAt,
-  type AttentionItem,
+  type Attention,
   type Board,
   type Mode,
   type NextUp,
@@ -535,22 +535,30 @@ export class MyDashLightBoard extends LitElement {
   override render(): TemplateResult {
     const plan = this.plan;
     const board = this.currentBoard();
-    const att = plan ? attention(plan, this.today().date) : { items: [], problems: 0 };
-    const panelOpen = this.wide || this.sheet || !!this.sel;
+    const att: Attention = plan
+      ? attention(plan, this.today())
+      : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
+    const wide = this.wide;
+    const panel = html`<aside class="panel" aria-label=${this.sel ? "Change this ride" : "Needs attention"}>
+      ${this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att)}
+    </aside>`;
+    // Wide, the panel runs the full height on the right, beside everything else. Narrower, it
+    // slides over the board when opened.
     return html`
-      <div class="app ${this.wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
-        ${this.renderHeader(plan, att.problems)} ${plan ? this.renderWeek(plan) : nothing} ${this.renderBanner(plan)}
-        <main>
-          <section class="board-area" aria-label="Everyone’s week">
-            ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
-          </section>
-          ${panelOpen
-            ? html`${this.wide ? nothing : html`<div class="backdrop" @click=${() => this.closePanel()}></div>`}
-                <aside class="panel" aria-label=${this.sel ? "Change this ride" : "Needs attention"}>
-                  ${this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att.items, att.problems)}
-                </aside>`
-            : nothing}
-        </main>
+      <div class="app ${wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
+        <div class="col">
+          ${this.renderHeader(plan, att)} ${plan ? this.renderWeek(plan) : nothing} ${this.renderBanner(plan)}
+          <main>
+            <section class="board-area" aria-label="Everyone’s week">
+              ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
+            </section>
+            ${!wide && (this.sheet || this.sel)
+              ? html`<div class="backdrop" @click=${() => this.closePanel()}></div>
+                  ${panel}`
+              : nothing}
+          </main>
+        </div>
+        ${wide ? panel : nothing}
         ${this.toast ? html`<div class="toast" role="status">${this.toast}</div>` : nothing}
       </div>
     `;
@@ -561,7 +569,8 @@ export class MyDashLightBoard extends LitElement {
     this.sheet = false;
   }
 
-  private renderHeader(plan: Plan | null, problems: number): TemplateResult {
+  private renderHeader(plan: Plan | null, att: Attention): TemplateResult {
+    const problems = att.problems;
     void this.tick;
     const now = this.today();
     let status: TemplateResult | string = "";
@@ -598,7 +607,7 @@ export class MyDashLightBoard extends LitElement {
           <p class="today-line">${dayLabel(now.date)}</p>
           ${status ? html`<p class="status">${status}</p>` : nothing}
         </div>
-        ${plan && !quiet ? this.renderNext(plan, nextUp(plan, now)) : nothing}
+        ${plan && !quiet ? this.renderNext(plan, nextUp(plan, now), att) : nothing}
         <div class="controls">
           ${this.wide || quiet
             ? nothing
@@ -627,12 +636,11 @@ export class MyDashLightBoard extends LitElement {
   }
 
   /** The next trip out of the house, big enough to read across the kitchen. */
-  private renderNext(plan: Plan, next: NextUp | null): TemplateResult {
+  private renderNext(plan: Plan, next: NextUp | null, att: Attention): TemplateResult {
     if (!next) {
       const today = this.today().date;
-      const open = plan.days
-        .filter((d) => d.date >= today)
-        .reduce((sum, d) => sum + d.issues.filter((i) => i.level === "problem" && i.kind === "unassigned").length, 0);
+      const open = att.unassigned;
+      const later = att.laterUnassigned;
       if (open) {
         const body = html`<span class="next-eyebrow">No trips planned yet</span>
           <span class="next-lead">${open} ${open === 1 ? "ride needs" : "rides need"} a driver</span>
@@ -640,6 +648,13 @@ export class MyDashLightBoard extends LitElement {
         return this.wide
           ? html`<div class="next idle needs">${body}</div>`
           : html`<button type="button" class="next idle needs" @click=${() => (this.sheet = true)}>${body}</button>`;
+      }
+      if (later) {
+        return html`<div class="next idle">
+          <span class="next-eyebrow">No trips planned yet</span>
+          <span class="next-lead">All set for the next two days</span>
+          <span class="next-stop">${later} ${later === 1 ? "ride needs" : "rides need"} a driver later this week.</span>
+        </div>`;
       }
       const any = plan.days.some((d) => d.date >= today && d.events.length);
       return html`<div class="next idle">
@@ -956,11 +971,12 @@ export class MyDashLightBoard extends LitElement {
     `;
   }
 
-  private renderAttention(items: AttentionItem[], problems: number): TemplateResult {
+  private renderAttention(att: Attention): TemplateResult {
+    const { items, problems, later } = att;
     const plan = this.plan;
     return html`
       <div class="panel-head">
-        <h2>Needs attention</h2>
+        <h2>Needs attention <span class="panel-sub">Next two days</span></h2>
         <span class="count-pill ${problems ? "bad" : "ok"}">${problems}</span>
         ${this.wide ? nothing : html`<button type="button" class="btn dark" @click=${() => (this.sheet = false)}>Done</button>`}
       </div>
@@ -969,7 +985,9 @@ export class MyDashLightBoard extends LitElement {
             <span class="check" aria-hidden="true">${svg`<svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`}</span>
             <span><strong>All clear</strong>${quietWeek(plan)
               ? "Nothing needs you this week."
-              : "Every ride is covered and nobody is double-booked."}</span>
+              : later
+                ? `Nothing for the next two days. ${later} more later this week, marked on the days above.`
+                : "Every ride is covered and nobody is double-booked."}</span>
           </div>`
         : nothing}
       ${items.map(
