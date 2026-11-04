@@ -3,9 +3,13 @@
 
 import type { Mode } from "./layout.ts";
 
+export type Page = "rides" | "chores";
+
 export interface PageOptions {
   /** The view to open in. Unset means the one last picked in this browser. */
   view?: Mode;
+  /** The page to open on. Unset means rides. */
+  page?: Page;
 }
 
 const VIEWS: Record<string, Mode> = {
@@ -20,6 +24,8 @@ export function pageOptions(search: string): PageOptions {
   const opts: PageOptions = {};
   const view = VIEWS[(q.get("view") ?? "").trim().toLowerCase()];
   if (view) opts.view = view;
+  const page = (q.get("page") ?? "").trim().toLowerCase();
+  if (page === "rides" || page === "chores") opts.page = page;
   return opts;
 }
 

@@ -1,6 +1,6 @@
-var We=globalThis,Ve=We.ShadowRoot&&(We.ShadyCSS===void 0||We.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,ut=Symbol(),Ht=new WeakMap,ze=class{constructor(t,e,n){if(this._$cssResult$=!0,n!==ut)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=t,this.t=e}get styleSheet(){let t=this.o,e=this.t;if(Ve&&t===void 0){let n=e!==void 0&&e.length===1;n&&(t=Ht.get(e)),t===void 0&&((this.o=t=new CSSStyleSheet).replaceSync(this.cssText),n&&Ht.set(e,t))}return t}toString(){return this.cssText}},It=i=>new ze(typeof i=="string"?i:i+"",void 0,ut),De=(i,...t)=>{let e=i.length===1?i[0]:t.reduce((n,r,o)=>n+(a=>{if(a._$cssResult$===!0)return a.cssText;if(typeof a=="number")return a;throw Error("Value passed to 'css' function must be a 'css' function result: "+a+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(r)+i[o+1],i[0]);return new ze(e,i,ut)},Lt=(i,t)=>{if(Ve)i.adoptedStyleSheets=t.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(let e of t){let n=document.createElement("style"),r=We.litNonce;r!==void 0&&n.setAttribute("nonce",r),n.textContent=e.cssText,i.appendChild(n)}},gt=Ve?i=>i:i=>i instanceof CSSStyleSheet?(t=>{let e="";for(let n of t.cssRules)e+=n.cssText;return It(e)})(i):i;var{is:Pn,defineProperty:Sn,getOwnPropertyDescriptor:Mn,getOwnPropertyNames:Cn,getOwnPropertySymbols:zn,getPrototypeOf:Dn}=Object,Ke=globalThis,Ut=Ke.trustedTypes,Rn=Ut?Ut.emptyScript:"",Nn=Ke.reactiveElementPolyfillSupport,Re=(i,t)=>i,ft={toAttribute(i,t){switch(t){case Boolean:i=i?Rn:null;break;case Object:case Array:i=i==null?i:JSON.stringify(i)}return i},fromAttribute(i,t){let e=i;switch(t){case Boolean:e=i!==null;break;case Number:e=i===null?null:Number(i);break;case Object:case Array:try{e=JSON.parse(i)}catch{e=null}}return e}},jt=(i,t)=>!Pn(i,t),Ot={attribute:!0,type:String,converter:ft,reflect:!1,useDefault:!1,hasChanged:jt};Symbol.metadata??=Symbol("metadata"),Ke.litPropertyMetadata??=new WeakMap;var se=class extends HTMLElement{static addInitializer(t){this._$Ei(),(this.l??=[]).push(t)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(t,e=Ot){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(t)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(t,e),!e.noAccessor){let n=Symbol(),r=this.getPropertyDescriptor(t,n,e);r!==void 0&&Sn(this.prototype,t,r)}}static getPropertyDescriptor(t,e,n){let{get:r,set:o}=Mn(this.prototype,t)??{get(){return this[e]},set(a){this[e]=a}};return{get:r,set(a){let s=r?.call(this);o?.call(this,a),this.requestUpdate(t,s,n)},configurable:!0,enumerable:!0}}static getPropertyOptions(t){return this.elementProperties.get(t)??Ot}static _$Ei(){if(this.hasOwnProperty(Re("elementProperties")))return;let t=Dn(this);t.finalize(),t.l!==void 0&&(this.l=[...t.l]),this.elementProperties=new Map(t.elementProperties)}static finalize(){if(this.hasOwnProperty(Re("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(Re("properties"))){let e=this.properties,n=[...Cn(e),...zn(e)];for(let r of n)this.createProperty(r,e[r])}let t=this[Symbol.metadata];if(t!==null){let e=litPropertyMetadata.get(t);if(e!==void 0)for(let[n,r]of e)this.elementProperties.set(n,r)}this._$Eh=new Map;for(let[e,n]of this.elementProperties){let r=this._$Eu(e,n);r!==void 0&&this._$Eh.set(r,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(t){let e=[];if(Array.isArray(t)){let n=new Set(t.flat(1/0).reverse());for(let r of n)e.unshift(gt(r))}else t!==void 0&&e.push(gt(t));return e}static _$Eu(t,e){let n=e.attribute;return n===!1?void 0:typeof n=="string"?n:typeof t=="string"?t.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(t=>this.enableUpdating=t),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(t=>t(this))}addController(t){(this._$EO??=new Set).add(t),this.renderRoot!==void 0&&this.isConnected&&t.hostConnected?.()}removeController(t){this._$EO?.delete(t)}_$E_(){let t=new Map,e=this.constructor.elementProperties;for(let n of e.keys())this.hasOwnProperty(n)&&(t.set(n,this[n]),delete this[n]);t.size>0&&(this._$Ep=t)}createRenderRoot(){let t=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return Lt(t,this.constructor.elementStyles),t}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(t=>t.hostConnected?.())}enableUpdating(t){}disconnectedCallback(){this._$EO?.forEach(t=>t.hostDisconnected?.())}attributeChangedCallback(t,e,n){this._$AK(t,n)}_$ET(t,e){let n=this.constructor.elementProperties.get(t),r=this.constructor._$Eu(t,n);if(r!==void 0&&n.reflect===!0){let o=(n.converter?.toAttribute!==void 0?n.converter:ft).toAttribute(e,n.type);this._$Em=t,o==null?this.removeAttribute(r):this.setAttribute(r,o),this._$Em=null}}_$AK(t,e){let n=this.constructor,r=n._$Eh.get(t);if(r!==void 0&&this._$Em!==r){let o=n.getPropertyOptions(r),a=typeof o.converter=="function"?{fromAttribute:o.converter}:o.converter?.fromAttribute!==void 0?o.converter:ft;this._$Em=r;let s=a.fromAttribute(e,o.type);this[r]=s??this._$Ej?.get(r)??s,this._$Em=null}}requestUpdate(t,e,n,r=!1,o){if(t!==void 0){let a=this.constructor;if(r===!1&&(o=this[t]),n??=a.getPropertyOptions(t),!((n.hasChanged??jt)(o,e)||n.useDefault&&n.reflect&&o===this._$Ej?.get(t)&&!this.hasAttribute(a._$Eu(t,n))))return;this.C(t,e,n)}this.isUpdatePending===!1&&(this._$ES=this._$EP())}C(t,e,{useDefault:n,reflect:r,wrapped:o},a){n&&!(this._$Ej??=new Map).has(t)&&(this._$Ej.set(t,a??e??this[t]),o!==!0||a!==void 0)||(this._$AL.has(t)||(this.hasUpdated||n||(e=void 0),this._$AL.set(t,e)),r===!0&&this._$Em!==t&&(this._$Eq??=new Set).add(t))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}let t=this.scheduleUpdate();return t!=null&&await t,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(let[r,o]of this._$Ep)this[r]=o;this._$Ep=void 0}let n=this.constructor.elementProperties;if(n.size>0)for(let[r,o]of n){let{wrapped:a}=o,s=this[r];a!==!0||this._$AL.has(r)||s===void 0||this.C(r,void 0,o,s)}}let t=!1,e=this._$AL;try{t=this.shouldUpdate(e),t?(this.willUpdate(e),this._$EO?.forEach(n=>n.hostUpdate?.()),this.update(e)):this._$EM()}catch(n){throw t=!1,this._$EM(),n}t&&this._$AE(e)}willUpdate(t){}_$AE(t){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(t)),this.updated(t)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(t){return!0}update(t){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(t){}firstUpdated(t){}};se.elementStyles=[],se.shadowRootOptions={mode:"open"},se[Re("elementProperties")]=new Map,se[Re("finalized")]=new Map,Nn?.({ReactiveElement:se}),(Ke.reactiveElementVersions??=[]).push("2.1.2");var mt=globalThis,qt=i=>i,Fe=mt.trustedTypes,Wt=Fe?Fe.createPolicy("lit-html",{createHTML:i=>i}):void 0,xt="$lit$",re=`lit$${Math.random().toFixed(9).slice(2)}$`,vt="?"+re,Bn=`<${vt}>`,xe=document,Be=()=>xe.createComment(""),He=i=>i===null||typeof i!="object"&&typeof i!="function",yt=Array.isArray,Xt=i=>yt(i)||typeof i?.[Symbol.iterator]=="function",bt=`[ 	
-\f\r]`,Ne=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,Vt=/-->/g,Kt=/>/g,be=RegExp(`>|${bt}(?:([^\\s"'>=/]+)(${bt}*=${bt}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`,"g"),Ft=/'/g,Yt=/"/g,Zt=/^(?:script|style|textarea|title)$/i,$t=i=>(t,...e)=>({_$litType$:i,strings:t,values:e}),d=$t(1),Ee=$t(2),wi=$t(3),oe=Symbol.for("lit-noChange"),x=Symbol.for("lit-nothing"),Gt=new WeakMap,me=xe.createTreeWalker(xe,129);function Qt(i,t){if(!yt(i)||!i.hasOwnProperty("raw"))throw Error("invalid template strings array");return Wt!==void 0?Wt.createHTML(t):t}var Jt=(i,t)=>{let e=i.length-1,n=[],r,o=t===2?"<svg>":t===3?"<math>":"",a=Ne;for(let s=0;s<e;s++){let l=i[s],c,m,h=-1,f=0;for(;f<l.length&&(a.lastIndex=f,m=a.exec(l),m!==null);)f=a.lastIndex,a===Ne?m[1]==="!--"?a=Vt:m[1]!==void 0?a=Kt:m[2]!==void 0?(Zt.test(m[2])&&(r=RegExp("</"+m[2],"g")),a=be):m[3]!==void 0&&(a=be):a===be?m[0]===">"?(a=r??Ne,h=-1):m[1]===void 0?h=-2:(h=a.lastIndex-m[2].length,c=m[1],a=m[3]===void 0?be:m[3]==='"'?Yt:Ft):a===Yt||a===Ft?a=be:a===Vt||a===Kt?a=Ne:(a=be,r=void 0);let b=a===be&&i[s+1].startsWith("/>")?" ":"";o+=a===Ne?l+Bn:h>=0?(n.push(c),l.slice(0,h)+xt+l.slice(h)+re+b):l+re+(h===-2?s:b)}return[Qt(i,o+(i[e]||"<?>")+(t===2?"</svg>":t===3?"</math>":"")),n]},Ie=class i{constructor({strings:t,_$litType$:e},n){let r;this.parts=[];let o=0,a=0,s=t.length-1,l=this.parts,[c,m]=Jt(t,e);if(this.el=i.createElement(c,n),me.currentNode=this.el.content,e===2||e===3){let h=this.el.content.firstChild;h.replaceWith(...h.childNodes)}for(;(r=me.nextNode())!==null&&l.length<s;){if(r.nodeType===1){if(r.hasAttributes())for(let h of r.getAttributeNames())if(h.endsWith(xt)){let f=m[a++],b=r.getAttribute(h).split(re),$=/([.?@])?(.*)/.exec(f);l.push({type:1,index:o,name:$[2],strings:b,ctor:$[1]==="."?Ge:$[1]==="?"?Xe:$[1]==="@"?Ze:ye}),r.removeAttribute(h)}else h.startsWith(re)&&(l.push({type:6,index:o}),r.removeAttribute(h));if(Zt.test(r.tagName)){let h=r.textContent.split(re),f=h.length-1;if(f>0){r.textContent=Fe?Fe.emptyScript:"";for(let b=0;b<f;b++)r.append(h[b],Be()),me.nextNode(),l.push({type:2,index:++o});r.append(h[f],Be())}}}else if(r.nodeType===8)if(r.data===vt)l.push({type:2,index:o});else{let h=-1;for(;(h=r.data.indexOf(re,h+1))!==-1;)l.push({type:7,index:o}),h+=re.length-1}o++}}static createElement(t,e){let n=xe.createElement("template");return n.innerHTML=t,n}};function ve(i,t,e=i,n){if(t===oe)return t;let r=n!==void 0?e._$Co?.[n]:e._$Cl,o=He(t)?void 0:t._$litDirective$;return r?.constructor!==o&&(r?._$AO?.(!1),o===void 0?r=void 0:(r=new o(i),r._$AT(i,e,n)),n!==void 0?(e._$Co??=[])[n]=r:e._$Cl=r),r!==void 0&&(t=ve(i,r._$AS(i,t.values),r,n)),t}var Ye=class{constructor(t,e){this._$AV=[],this._$AN=void 0,this._$AD=t,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(t){let{el:{content:e},parts:n}=this._$AD,r=(t?.creationScope??xe).importNode(e,!0);me.currentNode=r;let o=me.nextNode(),a=0,s=0,l=n[0];for(;l!==void 0;){if(a===l.index){let c;l.type===2?c=new Te(o,o.nextSibling,this,t):l.type===1?c=new l.ctor(o,l.name,l.strings,this,t):l.type===6&&(c=new Qe(o,this,t)),this._$AV.push(c),l=n[++s]}a!==l?.index&&(o=me.nextNode(),a++)}return me.currentNode=xe,r}p(t){let e=0;for(let n of this._$AV)n!==void 0&&(n.strings!==void 0?(n._$AI(t,n,e),e+=n.strings.length-2):n._$AI(t[e])),e++}},Te=class i{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(t,e,n,r){this.type=2,this._$AH=x,this._$AN=void 0,this._$AA=t,this._$AB=e,this._$AM=n,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let t=this._$AA.parentNode,e=this._$AM;return e!==void 0&&t?.nodeType===11&&(t=e.parentNode),t}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(t,e=this){t=ve(this,t,e),He(t)?t===x||t==null||t===""?(this._$AH!==x&&this._$AR(),this._$AH=x):t!==this._$AH&&t!==oe&&this._(t):t._$litType$!==void 0?this.$(t):t.nodeType!==void 0?this.T(t):Xt(t)?this.k(t):this._(t)}O(t){return this._$AA.parentNode.insertBefore(t,this._$AB)}T(t){this._$AH!==t&&(this._$AR(),this._$AH=this.O(t))}_(t){this._$AH!==x&&He(this._$AH)?this._$AA.nextSibling.data=t:this.T(xe.createTextNode(t)),this._$AH=t}$(t){let{values:e,_$litType$:n}=t,r=typeof n=="number"?this._$AC(t):(n.el===void 0&&(n.el=Ie.createElement(Qt(n.h,n.h[0]),this.options)),n);if(this._$AH?._$AD===r)this._$AH.p(e);else{let o=new Ye(r,this),a=o.u(this.options);o.p(e),this.T(a),this._$AH=o}}_$AC(t){let e=Gt.get(t.strings);return e===void 0&&Gt.set(t.strings,e=new Ie(t)),e}k(t){yt(this._$AH)||(this._$AH=[],this._$AR());let e=this._$AH,n,r=0;for(let o of t)r===e.length?e.push(n=new i(this.O(Be()),this.O(Be()),this,this.options)):n=e[r],n._$AI(o),r++;r<e.length&&(this._$AR(n&&n._$AB.nextSibling,r),e.length=r)}_$AR(t=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);t!==this._$AB;){let n=qt(t).nextSibling;qt(t).remove(),t=n}}setConnected(t){this._$AM===void 0&&(this._$Cv=t,this._$AP?.(t))}},ye=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(t,e,n,r,o){this.type=1,this._$AH=x,this._$AN=void 0,this.element=t,this.name=e,this._$AM=r,this.options=o,n.length>2||n[0]!==""||n[1]!==""?(this._$AH=Array(n.length-1).fill(new String),this.strings=n):this._$AH=x}_$AI(t,e=this,n,r){let o=this.strings,a=!1;if(o===void 0)t=ve(this,t,e,0),a=!He(t)||t!==this._$AH&&t!==oe,a&&(this._$AH=t);else{let s=t,l,c;for(t=o[0],l=0;l<o.length-1;l++)c=ve(this,s[n+l],e,l),c===oe&&(c=this._$AH[l]),a||=!He(c)||c!==this._$AH[l],c===x?t=x:t!==x&&(t+=(c??"")+o[l+1]),this._$AH[l]=c}a&&!r&&this.j(t)}j(t){t===x?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,t??"")}},Ge=class extends ye{constructor(){super(...arguments),this.type=3}j(t){this.element[this.name]=t===x?void 0:t}},Xe=class extends ye{constructor(){super(...arguments),this.type=4}j(t){this.element.toggleAttribute(this.name,!!t&&t!==x)}},Ze=class extends ye{constructor(t,e,n,r,o){super(t,e,n,r,o),this.type=5}_$AI(t,e=this){if((t=ve(this,t,e,0)??x)===oe)return;let n=this._$AH,r=t===x&&n!==x||t.capture!==n.capture||t.once!==n.once||t.passive!==n.passive,o=t!==x&&(n===x||r);r&&this.element.removeEventListener(this.name,this,n),o&&this.element.addEventListener(this.name,this,t),this._$AH=t}handleEvent(t){typeof this._$AH=="function"?this._$AH.call(this.options?.host??this.element,t):this._$AH.handleEvent(t)}},Qe=class{constructor(t,e,n){this.element=t,this.type=6,this._$AN=void 0,this._$AM=e,this.options=n}get _$AU(){return this._$AM._$AU}_$AI(t){ve(this,t)}},en={M:xt,P:re,A:vt,C:1,L:Jt,R:Ye,D:Xt,V:ve,I:Te,H:ye,N:Xe,U:Ze,B:Ge,F:Qe},Hn=mt.litHtmlPolyfillSupport;Hn?.(Ie,Te),(mt.litHtmlVersions??=[]).push("3.3.3");var tn=(i,t,e)=>{let n=e?.renderBefore??t,r=n._$litPart$;if(r===void 0){let o=e?.renderBefore??null;n._$litPart$=r=new Te(t.insertBefore(Be(),o),o,void 0,e??{})}return r._$AI(i),r};var wt=globalThis,Z=class extends se{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){let e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=tn(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return oe}};Z._$litElement$=!0,Z.finalized=!0,wt.litElementHydrateSupport?.({LitElement:Z});var In=wt.litElementPolyfillSupport;In?.({LitElement:Z});(wt.litElementVersions??=[]).push("4.2.2");function k(i){let t=Math.round(i),e=Math.floor(t/60),n=(t%60+60)%60;return`${((e+11)%12+12)%12+1}:${n<10?"0":""}${n}`}function Le(i){let t=Math.floor(Math.round(i)/60)%24;return`${k(i)} ${t<12?"AM":"PM"}`}function nn(i){let t=Math.floor(i/60)%24;return`${(t+11)%12+1} ${t<12?"AM":"PM"}`}function Oe(i){let t=Math.max(0,Math.round(i)),e=Math.floor(t/60),n=t%60;return e?n?`${e} hr ${n} min`:`${e} hr`:`${n} min`}function sn(i){let t=Math.floor(i/60)%24,e=i%60;return`${String(t).padStart(2,"0")}:${String(e).padStart(2,"0")}:00`}var Ln=new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}),Un=new Intl.DateTimeFormat("en-US",{weekday:"short",timeZone:"UTC"}),On=new Intl.DateTimeFormat("en-US",{month:"long",day:"numeric",timeZone:"UTC"});function Je(i){return new Date(`${i}T12:00:00Z`)}function Pe(i){let t=Je(i);return`${Ln.format(t)}, ${On.format(t)}`}function de(i){return Un.format(Je(i))}function et(i,t){return Math.round((Je(t).getTime()-Je(i).getTime())/864e5)}function Ue(i,t=new Date){let e;try{e=new Intl.DateTimeFormat("en-CA",{timeZone:i,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(t)}catch{return Ue("UTC",t)}let n=r=>e.find(o=>o.type===r)?.value??"0";return{date:`${n("year")}-${n("month")}-${n("day")}`,minutes:Number(n("hour"))*60+Number(n("minute"))}}function tt(i,t,e){let n=Math.floor((t.getTime()-i.getTime())/6e4);if(n<1)return"just now";if(n<60)return`${n} min ago`;let r=Ue(e,i),o=Ue(e,t).date;return r.date===o?`at ${Le(r.minutes)}`:`on ${de(r.date)} at ${Le(r.minutes)}`}var Y=class extends Error{constructor(t,e){super(e),this.code=t,this.name="BackendError"}},kt="mydashlight",jn=7,qn=3e4;function rn(i){if(i instanceof Y)return i;if(i&&typeof i=="object"){let t=i;if(typeof t.message=="string")return new Y(String(t.code??"error"),t.message)}return typeof i=="number"?new Y("connection_lost","Lost the connection to Home Assistant."):new Y("error",String(i))}var nt=class{constructor(t){this.saves=!0;this.listeners=new Set;this.timer=null;this.unsubscribe=null;this.pushing=!1;this.reading=null;this.onVisible=()=>{(typeof document>"u"||document.visibilityState==="visible")&&this.refresh()};this.onReady=()=>void this.refresh();this.onDisconnected=()=>this.fail(new Y("connection_lost","Lost the connection to Home Assistant."));this.conn=t}get live(){return this.pushing}watch(t,e){let n={onPlan:t,onError:e};return this.listeners.add(n),this.listeners.size===1?this.start():this.refresh(),()=>{this.listeners.delete(n),this.listeners.size||this.stop()}}start(){this.refresh(),this.trySubscribe(),this.timer=setInterval(()=>{this.pushing||this.refresh()},qn),typeof document<"u"&&document.addEventListener("visibilitychange",this.onVisible),this.conn.addEventListener?.("ready",this.onReady),this.conn.addEventListener?.("disconnected",this.onDisconnected)}stop(){this.timer&&clearInterval(this.timer),this.timer=null,typeof document<"u"&&document.removeEventListener("visibilitychange",this.onVisible),this.conn.removeEventListener?.("ready",this.onReady),this.conn.removeEventListener?.("disconnected",this.onDisconnected);let t=this.unsubscribe;this.unsubscribe=null,this.pushing=!1,t&&t().catch(()=>{})}async trySubscribe(){try{this.unsubscribe=await this.conn.subscribeMessage(t=>{this.pushing=!0,t.plan?this.emit(t.plan):this.fail(new Y("not_running","MyDashLight isn’t running right now."))},{type:`${kt}/rides/subscribe`},{resubscribe:!0})}catch{this.pushing=!1}}fail(t){for(let e of this.listeners)e.onError(t)}emit(t){for(let e of this.listeners)e.onPlan(t)}refresh(){return this.reading?this.reading:(this.reading=this.read().finally(()=>{this.reading=null}),this.reading)}async read(){try{let t=await this.conn.sendMessagePromise({type:"call_service",domain:kt,service:"get_plan",service_data:{days:jn},return_response:!0});this.emit(t.response)}catch(t){this.fail(rn(t))}}async call(t,e){try{await this.conn.sendMessagePromise({type:"call_service",domain:kt,service:t,service_data:e})}catch(n){throw rn(n)}this.pushing||await this.refresh()}setRide(t,e,n,r){return this.call("set_ride",{event:t,side:e,driver:n,scope:r})}setStay(t,e,n){return this.call("set_stay",{event:t,stay:e,scope:n})}setAttending(t,e,n){return this.call("set_attending",{event:t,attending:e,scope:n})}setArriveBy(t,e,n){return this.call("set_arrive_by",e==null?{event:t,scope:n}:{event:t,time:sn(e),scope:n})}setTakeAlong(t,e,n){return this.call("set_take_along",{event:t,kids:e,scope:n})}applySuggestion(t){return this.call("apply_suggestion",{suggestion:t})}};var on={ATTRIBUTE:1,CHILD:2,PROPERTY:3,BOOLEAN_ATTRIBUTE:4,EVENT:5,ELEMENT:6},an=i=>(...t)=>({_$litDirective$:i,values:t}),it=class{constructor(t){}get _$AU(){return this._$AM._$AU}_$AT(t,e,n){this._$Ct=t,this._$AM=e,this._$Ci=n}_$AS(t,e){return this.update(t,e)}update(t,e){return this.render(...e)}};var{I:Wn}=en,ln=i=>i;var dn=()=>document.createComment(""),Se=(i,t,e)=>{let n=i._$AA.parentNode,r=t===void 0?i._$AB:t._$AA;if(e===void 0){let o=n.insertBefore(dn(),r),a=n.insertBefore(dn(),r);e=new Wn(o,a,i,i.options)}else{let o=e._$AB.nextSibling,a=e._$AM,s=a!==i;if(s){let l;e._$AQ?.(i),e._$AM=i,e._$AP!==void 0&&(l=i._$AU)!==a._$AU&&e._$AP(l)}if(o!==r||s){let l=e._$AA;for(;l!==o;){let c=ln(l).nextSibling;ln(n).insertBefore(l,r),l=c}}}return e},pe=(i,t,e=i)=>(i._$AI(t,e),i),Vn={},pn=(i,t=Vn)=>i._$AH=t,cn=i=>i._$AH,st=i=>{i._$AR(),i._$AA.remove()};var hn=(i,t,e)=>{let n=new Map;for(let r=t;r<=e;r++)n.set(i[r],r);return n},Q=an(class extends it{constructor(i){if(super(i),i.type!==on.CHILD)throw Error("repeat() can only be used in text expressions")}dt(i,t,e){let n;e===void 0?e=t:t!==void 0&&(n=t);let r=[],o=[],a=0;for(let s of i)r[a]=n?n(s,a):a,o[a]=e(s,a),a++;return{values:o,keys:r}}render(i,t,e){return this.dt(i,t,e).values}update(i,[t,e,n]){let r=cn(i),{values:o,keys:a}=this.dt(t,e,n);if(!Array.isArray(r))return this.ut=a,o;let s=this.ut??=[],l=[],c,m,h=0,f=r.length-1,b=0,$=o.length-1;for(;h<=f&&b<=$;)if(r[h]===null)h++;else if(r[f]===null)f--;else if(s[h]===a[b])l[b]=pe(r[h],o[b]),h++,b++;else if(s[f]===a[$])l[$]=pe(r[f],o[$]),f--,$--;else if(s[h]===a[$])l[$]=pe(r[h],o[$]),Se(i,l[$+1],r[h]),h++,$--;else if(s[f]===a[b])l[b]=pe(r[f],o[b]),Se(i,r[h],r[f]),f--,b++;else if(c===void 0&&(c=hn(a,b,$),m=hn(s,h,f)),c.has(s[h]))if(c.has(s[f])){let u=m.get(a[b]),v=u!==void 0?r[u]:null;if(v===null){let E=Se(i,r[h]);pe(E,o[b]),l[b]=E}else l[b]=pe(v,o[b]),Se(i,r[h],v),r[u]=null;b++}else st(r[f]),f--;else st(r[h]),h++;for(;b<=$;){let u=Se(i,l[$+1]);pe(u,o[b]),l[b++]=u}for(;h<=f;){let u=r[h++];u!==null&&st(u)}return this.ut=a,pn(i,l),oe}});var rt=[{color:"#12877A",rgb:"18,135,122",ink:"#0B5E55"},{color:"#2D5FC4",rgb:"45,95,196",ink:"#1E4594"},{color:"#B83E8A",rgb:"184,62,138",ink:"#8A2A66"},{color:"#B35C00",rgb:"179,92,0",ink:"#7F4100"},{color:"#6B4FBB",rgb:"107,79,187",ink:"#4C3590"},{color:"#3F7D20",rgb:"63,125,32",ink:"#2C5916"}];function G(i){return rt[(i%rt.length+rt.length)%rt.length]}var un="#23272E",gn="35,39,46";var Kn=3,pt=36,_t=12,Fn=8,At=60,Tt=10,at=30,Et=10,Yn=150,Gn=200,dt=1.4;function St(i,t){let e=Math.max(Yn,Gn/dt);return Math.ceil(At+Math.max(0,i-1)*Tt+at+Math.max(0,t-1)*Et+e*(i+dt*t))}function we(i){return i.people?i.people.kids.map(t=>t.id):i.days.length?Object.keys(i.days[0].kids):[]}function ce(i){return i.people?i.people.drivers.map(t=>t.id):i.days.length?Object.keys(i.days[0].drivers):[]}function ke(i){return new Map(we(i).map((t,e)=>[t,G(e)]))}function F(i,t){let e=i.people?.kids.find(n=>n.id===t);if(e)return e.name;for(let n of i.days)if(n.kids[t])return n.kids[t].name;return t}function he(i,t){let e=i.people?.drivers.find(n=>n.id===t);if(e)return e.name;for(let n of i.days)if(n.drivers[t])return n.drivers[t].name;return t}function Mt(i,t){return t==="none"?"Not needed":ce(i).includes(t)?he(i,t):t}function Xn(i){let t=new Map([["home","Home"]]);for(let e of i.days)for(let n of e.events)t.set(n.place,n.short_place||n.place_name||n.place);return t}function lt(i,t){return t?i.get(t)??(t.split(",")[0]?.trim()||t):""}function ot(i,t){let e=[];for(let n of i)n.type==="drive"?(e.length||e.push(lt(t,n.from)),e.push(lt(t,n.to))):(n.type==="wait"||n.type==="stay")&&(e.length||e.push(lt(t,n.place)),n.type==="wait"&&!e[e.length-1].endsWith("(wait)")&&(e[e.length-1]+=" (wait)"));return e}function Zn(i){let t=i.map(a=>({...a,col:0,cols:1})).sort((a,s)=>a.s-s.s||s.en-a.en),e=[],n=[],r=-1/0,o=()=>{for(let a of e)a.cols=n.length;e=[],n=[]};for(let a of t){a.s>=r&&(o(),r=-1/0);let s=n.findIndex(l=>l<=a.s);s<0?(s=n.length,n.push(a.en)):n[s]=a.en,a.col=s,e.push(a),r=Math.max(r,a.en)}return o(),t}function Qn(i,t){if(!i.length)return 0;if(t<=i[0].t)return i[0].y;for(let e=0;e<i.length-1;e++){let n=i[e],r=i[e+1];if(t<=r.t)return r.t===n.t?n.y:Math.round(n.y+(t-n.t)/(r.t-n.t)*(r.y-n.y))}return i[i.length-1].y}function Jn(i,t){if(!i.length)return 0;if(t<=i[0].y)return i[0].t;for(let e=0;e<i.length-1;e++){let n=i[e],r=i[e+1];if(t<=r.y)return r.y===n.y?n.t:n.t+(t-n.y)/(r.y-n.y)*(r.t-n.t)}return i[i.length-1].t}function mn(i,t){return Qn(i.anchors,t)}function xn(i,t){return Jn(i.anchors,t)}function ei(i,t){let e=we(i),n=ce(i),r=Math.max(t,St(e.length,n.length)),a=(r-At-Math.max(0,e.length-1)*Tt-at-Math.max(0,n.length-1)*Et)/(e.length+dt*n.length||1),s=Math.floor(a),l=Math.floor(a*dt),c=new Map;for(let $ of i.days)for(let u of $.events){let v=c.get(u.kid)??[];v.some(E=>E.event_id===u.event_id&&E.calendar_id===u.calendar_id)||v.push(u),c.set(u.kid,v)}let m=ke(i),h=[],f=At;e.forEach(($,u)=>{let v=c.get($)??[],E=i.days.some(g=>g.events.some(R=>R.kid===$&&(R.sides.includes("drop")&&R.drop===""||R.sides.includes("pick")&&R.pick==="")));h.push({id:$,kind:"kid",x:f,w:s,name:F(i,$),dot:m.get($).color,rgb:m.get($).rgb,sub:`${E?"Needs a ride · ":""}${v.length} this week`,subWarn:E}),f+=s+(u<e.length-1?Tt:0)});let b=f+at/2;return f+=at,n.forEach(($,u)=>{let v=0,E=0;for(let g of i.days){let R=g.drivers[$];R&&(v+=R.outings.length,E+=R.drive??0)}h.push({id:$,kind:"driver",x:f,w:l,name:he(i,$),dot:un,rgb:gn,sub:`${v} ${v===1?"trip":"trips"} this week · ${Oe(E)} driving`,subWarn:!1}),f+=l+(u<n.length-1?Et:0)}),{columns:h,sepX:b,width:r}}function ti(i,t){let e=i.trim();if(!t||e.length<=t.length||e.slice(0,t.length).localeCompare(t,void 0,{sensitivity:"accent"})!==0)return e;let r=e.slice(t.length),o=/^(?:’s|'s)?\s*[-–—:·]?\s+/u.exec(r);if(!o)return e;let a=r.slice(o[0].length);return a?a[0].toUpperCase()+a.slice(1):e}function fn(i,t){let e=i.start<=0,n=i.end>=1440;return e&&n?`${i.title} · all day`:n?`${i.title} from ${k(i.start)}`:e||!t?`${i.title} until ${k(i.end)}`:`${i.title} ${k(i.start)}–${k(i.end)}`}function Ct(i){return i.issues.filter(t=>t.level==="problem").length+i.clashes.length}function ni(i,t){let e=et(t,i);return e===0?"Today":e===1?"Tomorrow":""}function W(i,t=0){return i==null||!Number.isFinite(i)?t:i}function Pt(i,t,e=7){let n=Math.max(8,Math.floor(t/e)),r=1,o=0;for(let a of i.split(/\s+/).filter(Boolean)){let s=a.length;for(o===0?o=s:o+1+s<=n?o+=1+s:(r++,o=s);o>n;)r++,o-=n}return r}var vn=25,yn=15,zt=3;function bn(i){return Math.max(0,Math.min(zt,Math.floor((i-vn)/yn)))}function ii(i,t){let e=Math.min(zt,Pt(i,t-19,6.6));return vn+e*yn+2}function si(i,t){let e=t-23,n=`${k(i.start)}–${k(i.end)}`+(i.arrive_by!=null?` · arrive ${k(i.arrive_by)}`:""),r=33+Pt(n,e,6.6)*16;for(let o of[i.lines.drop,i.lines.pick])o&&(r+=2+Pt(o.text,e,7)*16);return r+4}function $n(i,t,e,n){let r=t==="compact",{columns:o,sepX:a,width:s}=ei(i,e),l=new Map(o.map(g=>[g.id,g])),c=we(i),m=ce(i),h=[...c,...m],f=ke(i),b=Xn(i),$=g=>F(i,g),u=g=>he(i,g),v={mode:t,width:s,height:0,columns:o,sepX:a,dayHeads:[],empties:[],grid:[],hours:[],cards:[],rides:[],bands:[],trips:[],stays:[],busy:[],preps:[],overlaps:[],marks:[],now:null,anchors:[]},E=0;return i.days.forEach((g,R)=>{let K=R*1440,P=new Map(g.events.map(p=>[p.id,p])),L=p=>p&&P.has(p)?{day:g.date,event:p}:null,J=Ct(g),ue=g.events.length,_e=ni(g.date,n.date);v.dayHeads.push({date:g.date,y:E,label:Pe(g.date),tag:_e,sub:(ue?`${ue} ${ue===1?"activity":"activities"}`:"Nothing scheduled")+(J?` · ${J} to sort out`:""),warn:J>0}),v.anchors.push({t:K,y:E});let ae=E+pt+_t,Me=m.flatMap(p=>g.drivers[p]?.outings??[]);if(!ue&&!Me.length){v.empties.push({key:g.date,y:ae,text:"Nothing planned"}),E=ae+40,v.anchors.push({t:K+1439,y:E});return}let M=(p,T,_,S,A,C,w)=>{let U=f.get(p.kid)??G(0),O=p.lines;return{key:`${g.date}|card|${p.id}`,x:T,y:_,w:S,h:A,target:{day:g.date,event:p.id},event:p,color:U,kidName:$(p.kid),clash:C,stayed:p.stay&&m.includes(p.drop),skipped:p.attending===!1,title:ti(p.title,$(p.kid)),time:`${k(p.start)}–${k(p.end)}`+(p.arrive_by!=null?` · arrive ${k(p.arrive_by)}`:""),drop:O.drop,pick:O.pick,showDrop:!!O.drop&&(w||A>=56),showPick:!!O.pick&&(w||A>=74),wrap:w,aria:`${$(p.kid)}, ${p.title} ${k(p.start)} to ${k(p.end)}. `+(p.attending===!1&&!O.drop?"Not attending. ":"")+[O.drop,O.pick].filter(ie=>!!ie).map(ie=>ie.text).join(". ")}},ee=p=>{let T=g.rides[p];return T?(g.drivers[T.driver]?.segments??[]).filter(S=>S.type!=="home"&&S.kids.includes(T.kid)&&W(S.start)>=W(T.start)&&W(S.end)<=W(T.end)):[]},N=p=>{let T=g.rides[p];if(!T)return null;let _=T.serves.find(S=>P.get(S)?.kid===T.kid);return L(_??T.serves[0])},X=new Map;for(let p of g.issues)p.level!=="problem"||!p.event||(p.kind==="late"&&X.set(p.event,`${Math.round(W(p.minutes))} min late`),p.kind==="waiting"&&X.set(`${p.event}|pick`,`Waits ${Math.round(W(p.minutes))} min`));if(!r){let p=1/0,T=-1/0;for(let w of g.events)p=Math.min(p,w.start-20,w.arrive_by!=null?w.arrive_by-10:1/0),T=Math.max(T,w.end+20);for(let w of Me)w.start!=null&&(p=Math.min(p,w.start)),w.end!=null&&(T=Math.max(T,w.end));g.date===n.date&&Number.isFinite(p)&&n.minutes>p-60&&n.minutes<T&&(p=Math.min(p,n.minutes-15));let _=Number.isFinite(p)?Math.floor((p-5)/30)*30:900,S=Number.isFinite(T)?Math.ceil((T+5)/30)*30:960,A=w=>Math.round(ae+(Math.max(_,Math.min(S,w))-_)*Kn);v.anchors.push({t:K+_,y:A(_)},{t:K+S,y:A(S)});for(let w of c){let U=l.get(w),O=f.get(w),ie=(g.kids[w]?.items??[]).filter(z=>z.start!=null&&z.end!=null).map(z=>({item:z,s:W(z.start),en:W(z.end)}));for(let z of Zn(ie)){let y=U.w/z.cols,H=Math.round(U.x+z.col*y),B=Math.round(y-(z.cols>1?4:0)),j=A(z.s),le=z.item;if(le.type==="act"){let V=P.get(le.event??"");if(!V)continue;let Dt=Math.max(30,A(z.en)-j);if(v.cards.push(M(V,H,j,B,Dt,le.clash,!1)),V.arrive_by!=null&&V.start-V.arrive_by>=5){let Bt=A(V.arrive_by);v.preps.push({key:`${g.date}|prep|${V.id}`,x:H,y:Bt,w:B,h:j-Bt+6,color:O,label:`Arrive by ${k(V.arrive_by)}`})}let Rt=X.get(V.id);Rt&&v.marks.push({key:`${g.date}|late|${V.id}`,x:H+B-4,y:j+4,text:Rt,right:!0});let Nt=X.get(`${V.id}|pick`);Nt&&v.marks.push({key:`${g.date}|wait|${V.id}`,x:H+4,y:j+Dt+2,text:Nt,right:!1});continue}let q=g.rides[le.ride??-1];if(!q)continue;let ge=Math.max(22,A(z.en)-j),Ce=ot(ee(q.index),b),I=u(q.driver);v.rides.push({key:`${g.date}|ride|${q.index}`,x:H,y:j,w:B,h:ge,target:N(q.index),l1:`${q.own?"In":"Along in"} ${I}’s car`,l2:Ce.join(" → "),show2:bn(ge)>0,lines2:bn(ge),dashed:!q.own,clash:le.clash,aria:`${$(w)} ${q.own?"in":"riding along in"} ${I}’s car, ${k(W(q.start))} to ${k(W(q.end))}: ${Ce.join(" to ")}`});let fe=l.get(q.driver);fe&&v.bands.push({key:`${g.date}|band|${q.index}`,x:H+B,y:j,w:Math.max(0,fe.x+8-(H+B)),h:ge,color:O})}}for(let w of m){let U=l.get(w),O=g.drivers[w];if(!O)continue;let ie=[],z=null;for(let y of O.segments)if(!(y.start==null||y.end==null)){if(y.type==="home"){z=null;continue}if(y.type==="stay"){z=null,ie.push({type:"stay",g:y,s:y.start,en:y.end});continue}z&&z.en===y.start?(z.en=y.end,z.legs.push(y)):(z={type:"trip",s:y.start,en:y.end,legs:[y]},ie.push(z))}for(let y of ie){let H=A(y.s),B=Math.max(24,A(y.en)-H);if(y.type==="stay"){let I=P.get(y.g.event??y.g.serves??""),fe=I?f.get(I.kid)??G(0):G(0),V=y.g.kids.map($);v.stays.push({key:`${g.date}|stay|${w}|${y.s}`,x:U.x+8,y:H,w:U.w-16,h:B,target:L(I?.id),color:fe,l1:I?`At ${I.title} with ${$(I.kid)}`:"Staying",l2:`until ${k(y.en)}`+(V.length?` · ${V.join(" and ")} too`:"")});continue}let j=y.legs[0],le=y.legs[y.legs.length-1],q=[];for(let I of y.legs)for(let fe of I.kids)q.includes(fe)||q.push(fe);let ge=le.type==="drive"&&le.to==="home",Ce=ot(y.legs,b);v.trips.push({key:`${g.date}|trip|${w}|${y.s}`,x:U.x+8,y:H,w:U.w-16,h:B,target:L(y.legs.find(I=>I.serves)?.serves),l1:j.type==="drive"&&j.from==="home"?`Leave ${k(y.s)}`:`From ${lt(b,j.from??j.place)} ${k(y.s)}`,l2:Ce.join(" → "),show2:B>=36,l3:ge?`Home ${k(y.en)}`:"",show3:ge&&B>=62,stops:null,kids:q.map(I=>(f.get(I)??G(0)).color),bad:y.legs.some(I=>I.overlaps_busy),aria:`${u(w)} drives ${Ce.join(" to ")}, ${k(y.s)} to ${k(y.en)}`})}for(let y of O.segments)if(!(!y.overlaps_busy||y.start==null||y.end==null))for(let H of O.busy){let B=Math.max(y.start,H.start),j=Math.min(y.end,H.end);j<=B||v.overlaps.push({key:`${g.date}|overlap|${w}|${B}`,x:U.x+6,y:A(B)-2,w:U.w-12,h:Math.max(8,A(j)-A(B)+4)})}for(let y of O.busy){if(y.end<=_||y.start>=S)continue;let H=A(y.start),B=A(y.end);v.busy.push({key:`${g.date}|busy|${w}|${y.start}`,x:U.x+1,y:H,w:U.w-2,h:B-H,labelY:8,label:fn(y,!1)})}}let C=-1/0;for(let w=_;w<=S;w+=30)v.grid.push({key:`${g.date}|grid|${w}`,y:A(w),strong:w%60===0}),w%60===0&&A(w)-C>=22&&(v.hours.push({key:`${g.date}|hour|${w}`,y:A(w)-8,label:nn(w)}),C=A(w));g.date===n.date&&n.minutes>_&&n.minutes<S&&(v.now={y:A(n.minutes),label:`Now ${k(n.minutes)}`}),E=A(S)+_t;return}let te=[];for(let p of c){let T=l.get(p);for(let _ of g.kids[p]?.items??[])if(_.start!=null){if(_.type==="act"){let S=P.get(_.event??"");if(!S)continue;te.push({col:p,s:_.start,h:si(S,T.w),kind:"act",item:_})}else if(!g.rides[_.ride??-1]?.own){let S=g.rides[_.ride??-1],A=S?ot(ee(S.index),b).join(" → "):"";te.push({col:p,s:_.start,h:ii(A,T.w),kind:"along",item:_})}}}for(let p of m){let T=g.drivers[p];if(T){for(let _ of T.busy)te.push({col:p,s:_.start,h:32,kind:"busy",busy:_});for(let _ of T.outings)_.start!=null&&te.push({col:p,s:_.start,h:30+_.lines.length*16+(_.warn?16:0),kind:"out",out:_})}}te.sort((p,T)=>p.s-T.s||h.indexOf(p.col)-h.indexOf(T.col));let Ae=new Map,D=ae;te.forEach((p,T)=>{let _=Ae.get(p.col),S=Math.max(_!=null?_+Fn:ae,D);Ae.set(p.col,S+p.h),D=S,v.anchors.push({t:K+p.s,y:S});let A=l.get(p.col);if(p.kind==="busy")v.busy.push({key:`${g.date}|busy|${p.col}|${T}`,x:A.x+1,y:S,w:A.w-2,h:p.h,labelY:8,label:fn(p.busy,!0)});else if(p.kind==="out"){let C=p.out;v.trips.push({key:`${g.date}|trip|${p.col}|${T}`,x:A.x+8,y:S,w:A.w-16,h:p.h,target:L(C.target),l1:C.lead,l2:"",show2:!1,l3:"",show3:!1,stops:[...C.lines.map(w=>({text:w,warn:!1})),...C.warn?[{text:C.warn,warn:!0}]:[]],kids:C.kids.map(w=>(f.get(w)??G(0)).color),bad:!!C.warn,aria:`${u(p.col)}: ${C.lead}. ${C.lines.join(". ")}${C.warn?`. ${C.warn}`:""}`})}else if(p.kind==="act"){let C=P.get(p.item.event??"");v.cards.push(M(C,A.x,S,A.w,p.h,p.item.clash,!0))}else{let C=g.rides[p.item.ride??-1],w=ot(ee(C.index),b),U=u(C.driver);v.rides.push({key:`${g.date}|ride|${C.index}`,x:A.x,y:S,w:A.w,h:p.h,target:N(C.index),l1:`Along with ${U} ${k(W(C.start))}`,l2:w.join(" → "),show2:!0,lines2:zt,dashed:!0,clash:p.item.clash,aria:`${$(p.col)} riding along with ${U}, ${k(W(C.start))} to ${k(W(C.end))}: ${w.join(" to ")}`})}});let ne=ae;for(let p of Ae.values())ne=Math.max(ne,p);E=ne+_t+6,v.anchors.push({t:K+1439,y:E})}),v.height=E,v}var ri=["","¼","½","¾"];function $e(i){return i.replace(/(\d+(?:\.\d+)?)\s*min\b/g,(t,e)=>{let n=Number(e);if(n>=59.5)return Oe(n);let r=Math.round(n*4),o=Math.floor(r/4),a=ri[r%4];return`${o||!a?o:""}${a} min`})}function wn(i){let t=e=>e?{...e,text:$e(e.text)}:null;return{...i,days:i.days.map(e=>({...e,events:e.events.map(n=>({...n,lines:{drop:t(n.lines.drop),pick:t(n.lines.pick)}})),drivers:Object.fromEntries(Object.entries(e.drivers).map(([n,r])=>[n,{...r,outings:r.outings.map(o=>({...o,lines:o.lines.map($e),warn:o.warn==null?o.warn:$e(o.warn)}))}])),issues:e.issues.map(n=>({...n,title:$e(n.title),body:$e(n.body),note:n.note==null?n.note:$e(n.note),...n.suggestions?{suggestions:n.suggestions.map(r=>({...r,note:$e(r.note)}))}:{}}))}))}}var oi=2,ai=48;function kn(i,t,e=ai){let n=[],r=0,o=0,a=0,s=0,l=t.minutes+e*60;for(let c of i.days){let m=et(t.date,c.date),h=m===0?"":`${de(c.date)} · `,f=new Map(c.events.map(u=>[u.id,u])),b=u=>u&&f.has(u)?{day:c.date,event:u}:null,$=(u,v)=>m*1440+(u??f.get(v??"")?.start??0)<l;for(let u of c.issues)if(u.level==="problem"){if(!$(u.at,u.event)){a++,u.kind==="unassigned"&&s++;continue}r++,u.kind==="unassigned"&&o++,n.push({key:`${c.date}|${u.key}`,tone:u.kind==="unassigned"?"unassigned":"problem",title:h+u.title,body:u.body,target:b(u.event),suggestions:(u.suggestions??[]).map(v=>({id:v.id,label:v.label,note:v.note}))})}if(c.clashes.forEach((u,v)=>{if(!$(u.a.start,u.a.event)){a++;return}r++;let E=f.get(u.a.event??""),g=F(i,u.kid),R=(P,L)=>{let J=b(L);return J?{text:P,target:J}:P},K=[];if(u.b.type==="act"){let P=f.get(u.b.event??"");E&&P&&(K=[R(E.title,E.id),` ${k(E.start)}–${k(E.end)} and `,R(P.title,P.id),` ${k(P.start)}–${k(P.end)} overlap.`])}else{let P=c.rides[u.b.ride??-1];E&&P&&(K=[`${g} is in `,R(`${he(i,P.driver)}’s car`,P.serves[0]),` ${k(W(u.b.start))}–${k(W(u.b.end))}, during `,R(E.title,E.id),"."])}n.push({key:`${c.date}|clash|${v}`,tone:"problem",title:`${h}${g} is double-booked`,body:K.map(P=>typeof P=="string"?P:P.text).join(""),parts:K,target:null,suggestions:[]})}),m>=0&&m<oi)for(let u of c.issues)u.level!=="heads_up"||!$(u.at,u.event)||n.push({key:`${c.date}|${u.key}`,tone:"heads_up",title:h+u.title,body:u.body,target:b(u.event),suggestions:[]});for(let u of c.events)!u.problems.length||!$(u.start)||n.push({key:`${c.date}|notes|${u.id}`,tone:"heads_up",title:`${h}Check the notes on ${F(i,u.kid)}’s ${u.title}`,body:`These lines couldn’t be read: ${u.problems.join("; ")}`,target:b(u.id),suggestions:[]})}return{items:n,problems:r,unassigned:o,later:a,laterUnassigned:s}}function _n(i,t){let e=ke(i),n=null,r=o=>o.ahead>0?2:o.ongoing?1:0;for(let o of i.days){let a=et(t.date,o.date);if(!(a<0))for(let s of ce(i))for(let l of o.drivers[s]?.outings??[]){if(l.start==null)continue;let c=a*1440+l.start;if(a*1440+W(l.end,l.start)<=t.minutes)continue;let h=c-t.minutes,f={driver:s,name:he(i,s),date:o.date,ahead:a,start:l.start,inMinutes:h,ongoing:h<=0,lead:l.lead,stop:(l.lines[0]??"").replace(/\s+/g," ").trim(),kids:l.kids.map(b=>e.get(b)??G(0)),warn:l.warn,target:l.target&&o.events.some(b=>b.id===l.target)?{day:o.date,event:l.target}:null};(!n||r(f)<r(n)||r(f)===r(n)&&f.inMinutes<n.inMinutes)&&(n=f)}}return n}var li={timeline:"timeline",full:"timeline",compact:"compact"};function An(i){let t=new URLSearchParams(i),e={},n=li[(t.get("view")??"").trim().toLowerCase()];return n&&(e.view=n),e}var Tn=De`
+var Ge=globalThis,Ye=Ge.ShadowRoot&&(Ge.ShadyCSS===void 0||Ge.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,ft=Symbol(),qt=new WeakMap,Ne=class{constructor(t,e,n){if(this._$cssResult$=!0,n!==ft)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=t,this.t=e}get styleSheet(){let t=this.o,e=this.t;if(Ye&&t===void 0){let n=e!==void 0&&e.length===1;n&&(t=qt.get(e)),t===void 0&&((this.o=t=new CSSStyleSheet).replaceSync(this.cssText),n&&qt.set(e,t))}return t}toString(){return this.cssText}},Wt=s=>new Ne(typeof s=="string"?s:s+"",void 0,ft),Be=(s,...t)=>{let e=s.length===1?s[0]:t.reduce((n,i,o)=>n+(a=>{if(a._$cssResult$===!0)return a.cssText;if(typeof a=="number")return a;throw Error("Value passed to 'css' function must be a 'css' function result: "+a+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+s[o+1],s[0]);return new Ne(e,s,ft)},Vt=(s,t)=>{if(Ye)s.adoptedStyleSheets=t.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(let e of t){let n=document.createElement("style"),i=Ge.litNonce;i!==void 0&&n.setAttribute("nonce",i),n.textContent=e.cssText,s.appendChild(n)}},mt=Ye?s=>s:s=>s instanceof CSSStyleSheet?(t=>{let e="";for(let n of t.cssRules)e+=n.cssText;return Wt(e)})(s):s;var{is:In,defineProperty:Ln,getOwnPropertyDescriptor:Hn,getOwnPropertyNames:Un,getOwnPropertySymbols:On,getPrototypeOf:jn}=Object,Xe=globalThis,Kt=Xe.trustedTypes,qn=Kt?Kt.emptyScript:"",Wn=Xe.reactiveElementPolyfillSupport,Ie=(s,t)=>s,bt={toAttribute(s,t){switch(t){case Boolean:s=s?qn:null;break;case Object:case Array:s=s==null?s:JSON.stringify(s)}return s},fromAttribute(s,t){let e=s;switch(t){case Boolean:e=s!==null;break;case Number:e=s===null?null:Number(s);break;case Object:case Array:try{e=JSON.parse(s)}catch{e=null}}return e}},Gt=(s,t)=>!In(s,t),Ft={attribute:!0,type:String,converter:bt,reflect:!1,useDefault:!1,hasChanged:Gt};Symbol.metadata??=Symbol("metadata"),Xe.litPropertyMetadata??=new WeakMap;var re=class extends HTMLElement{static addInitializer(t){this._$Ei(),(this.l??=[]).push(t)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(t,e=Ft){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(t)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(t,e),!e.noAccessor){let n=Symbol(),i=this.getPropertyDescriptor(t,n,e);i!==void 0&&Ln(this.prototype,t,i)}}static getPropertyDescriptor(t,e,n){let{get:i,set:o}=Hn(this.prototype,t)??{get(){return this[e]},set(a){this[e]=a}};return{get:i,set(a){let r=i?.call(this);o?.call(this,a),this.requestUpdate(t,r,n)},configurable:!0,enumerable:!0}}static getPropertyOptions(t){return this.elementProperties.get(t)??Ft}static _$Ei(){if(this.hasOwnProperty(Ie("elementProperties")))return;let t=jn(this);t.finalize(),t.l!==void 0&&(this.l=[...t.l]),this.elementProperties=new Map(t.elementProperties)}static finalize(){if(this.hasOwnProperty(Ie("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(Ie("properties"))){let e=this.properties,n=[...Un(e),...On(e)];for(let i of n)this.createProperty(i,e[i])}let t=this[Symbol.metadata];if(t!==null){let e=litPropertyMetadata.get(t);if(e!==void 0)for(let[n,i]of e)this.elementProperties.set(n,i)}this._$Eh=new Map;for(let[e,n]of this.elementProperties){let i=this._$Eu(e,n);i!==void 0&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(t){let e=[];if(Array.isArray(t)){let n=new Set(t.flat(1/0).reverse());for(let i of n)e.unshift(mt(i))}else t!==void 0&&e.push(mt(t));return e}static _$Eu(t,e){let n=e.attribute;return n===!1?void 0:typeof n=="string"?n:typeof t=="string"?t.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(t=>this.enableUpdating=t),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(t=>t(this))}addController(t){(this._$EO??=new Set).add(t),this.renderRoot!==void 0&&this.isConnected&&t.hostConnected?.()}removeController(t){this._$EO?.delete(t)}_$E_(){let t=new Map,e=this.constructor.elementProperties;for(let n of e.keys())this.hasOwnProperty(n)&&(t.set(n,this[n]),delete this[n]);t.size>0&&(this._$Ep=t)}createRenderRoot(){let t=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return Vt(t,this.constructor.elementStyles),t}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(t=>t.hostConnected?.())}enableUpdating(t){}disconnectedCallback(){this._$EO?.forEach(t=>t.hostDisconnected?.())}attributeChangedCallback(t,e,n){this._$AK(t,n)}_$ET(t,e){let n=this.constructor.elementProperties.get(t),i=this.constructor._$Eu(t,n);if(i!==void 0&&n.reflect===!0){let o=(n.converter?.toAttribute!==void 0?n.converter:bt).toAttribute(e,n.type);this._$Em=t,o==null?this.removeAttribute(i):this.setAttribute(i,o),this._$Em=null}}_$AK(t,e){let n=this.constructor,i=n._$Eh.get(t);if(i!==void 0&&this._$Em!==i){let o=n.getPropertyOptions(i),a=typeof o.converter=="function"?{fromAttribute:o.converter}:o.converter?.fromAttribute!==void 0?o.converter:bt;this._$Em=i;let r=a.fromAttribute(e,o.type);this[i]=r??this._$Ej?.get(i)??r,this._$Em=null}}requestUpdate(t,e,n,i=!1,o){if(t!==void 0){let a=this.constructor;if(i===!1&&(o=this[t]),n??=a.getPropertyOptions(t),!((n.hasChanged??Gt)(o,e)||n.useDefault&&n.reflect&&o===this._$Ej?.get(t)&&!this.hasAttribute(a._$Eu(t,n))))return;this.C(t,e,n)}this.isUpdatePending===!1&&(this._$ES=this._$EP())}C(t,e,{useDefault:n,reflect:i,wrapped:o},a){n&&!(this._$Ej??=new Map).has(t)&&(this._$Ej.set(t,a??e??this[t]),o!==!0||a!==void 0)||(this._$AL.has(t)||(this.hasUpdated||n||(e=void 0),this._$AL.set(t,e)),i===!0&&this._$Em!==t&&(this._$Eq??=new Set).add(t))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}let t=this.scheduleUpdate();return t!=null&&await t,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(let[i,o]of this._$Ep)this[i]=o;this._$Ep=void 0}let n=this.constructor.elementProperties;if(n.size>0)for(let[i,o]of n){let{wrapped:a}=o,r=this[i];a!==!0||this._$AL.has(i)||r===void 0||this.C(i,void 0,o,r)}}let t=!1,e=this._$AL;try{t=this.shouldUpdate(e),t?(this.willUpdate(e),this._$EO?.forEach(n=>n.hostUpdate?.()),this.update(e)):this._$EM()}catch(n){throw t=!1,this._$EM(),n}t&&this._$AE(e)}willUpdate(t){}_$AE(t){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(t)),this.updated(t)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(t){return!0}update(t){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(t){}firstUpdated(t){}};re.elementStyles=[],re.shadowRootOptions={mode:"open"},re[Ie("elementProperties")]=new Map,re[Ie("finalized")]=new Map,Wn?.({ReactiveElement:re}),(Xe.reactiveElementVersions??=[]).push("2.1.2");var vt=globalThis,Yt=s=>s,Ze=vt.trustedTypes,Xt=Ze?Ze.createPolicy("lit-html",{createHTML:s=>s}):void 0,yt="$lit$",oe=`lit$${Math.random().toFixed(9).slice(2)}$`,$t="?"+oe,Vn=`<${$t}>`,$e=document,He=()=>$e.createComment(""),Ue=s=>s===null||typeof s!="object"&&typeof s!="function",wt=Array.isArray,nn=s=>wt(s)||typeof s?.[Symbol.iterator]=="function",xt=`[ 	
+\f\r]`,Le=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,Zt=/-->/g,Qt=/>/g,ve=RegExp(`>|${xt}(?:([^\\s"'>=/]+)(${xt}*=${xt}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`,"g"),Jt=/'/g,en=/"/g,sn=/^(?:script|style|textarea|title)$/i,kt=s=>(t,...e)=>({_$litType$:s,strings:t,values:e}),d=kt(1),le=kt(2),Ds=kt(3),ae=Symbol.for("lit-noChange"),b=Symbol.for("lit-nothing"),tn=new WeakMap,ye=$e.createTreeWalker($e,129);function rn(s,t){if(!wt(s)||!s.hasOwnProperty("raw"))throw Error("invalid template strings array");return Xt!==void 0?Xt.createHTML(t):t}var on=(s,t)=>{let e=s.length-1,n=[],i,o=t===2?"<svg>":t===3?"<math>":"",a=Le;for(let r=0;r<e;r++){let l=s[r],p,f,h=-1,g=0;for(;g<l.length&&(a.lastIndex=g,f=a.exec(l),f!==null);)g=a.lastIndex,a===Le?f[1]==="!--"?a=Zt:f[1]!==void 0?a=Qt:f[2]!==void 0?(sn.test(f[2])&&(i=RegExp("</"+f[2],"g")),a=ve):f[3]!==void 0&&(a=ve):a===ve?f[0]===">"?(a=i??Le,h=-1):f[1]===void 0?h=-2:(h=a.lastIndex-f[2].length,p=f[1],a=f[3]===void 0?ve:f[3]==='"'?en:Jt):a===en||a===Jt?a=ve:a===Zt||a===Qt?a=Le:(a=ve,i=void 0);let m=a===ve&&s[r+1].startsWith("/>")?" ":"";o+=a===Le?l+Vn:h>=0?(n.push(p),l.slice(0,h)+yt+l.slice(h)+oe+m):l+oe+(h===-2?r:m)}return[rn(s,o+(s[e]||"<?>")+(t===2?"</svg>":t===3?"</math>":"")),n]},Oe=class s{constructor({strings:t,_$litType$:e},n){let i;this.parts=[];let o=0,a=0,r=t.length-1,l=this.parts,[p,f]=on(t,e);if(this.el=s.createElement(p,n),ye.currentNode=this.el.content,e===2||e===3){let h=this.el.content.firstChild;h.replaceWith(...h.childNodes)}for(;(i=ye.nextNode())!==null&&l.length<r;){if(i.nodeType===1){if(i.hasAttributes())for(let h of i.getAttributeNames())if(h.endsWith(yt)){let g=f[a++],m=i.getAttribute(h).split(oe),v=/([.?@])?(.*)/.exec(g);l.push({type:1,index:o,name:v[2],strings:m,ctor:v[1]==="."?Je:v[1]==="?"?et:v[1]==="@"?tt:ke}),i.removeAttribute(h)}else h.startsWith(oe)&&(l.push({type:6,index:o}),i.removeAttribute(h));if(sn.test(i.tagName)){let h=i.textContent.split(oe),g=h.length-1;if(g>0){i.textContent=Ze?Ze.emptyScript:"";for(let m=0;m<g;m++)i.append(h[m],He()),ye.nextNode(),l.push({type:2,index:++o});i.append(h[g],He())}}}else if(i.nodeType===8)if(i.data===$t)l.push({type:2,index:o});else{let h=-1;for(;(h=i.data.indexOf(oe,h+1))!==-1;)l.push({type:7,index:o}),h+=oe.length-1}o++}}static createElement(t,e){let n=$e.createElement("template");return n.innerHTML=t,n}};function we(s,t,e=s,n){if(t===ae)return t;let i=n!==void 0?e._$Co?.[n]:e._$Cl,o=Ue(t)?void 0:t._$litDirective$;return i?.constructor!==o&&(i?._$AO?.(!1),o===void 0?i=void 0:(i=new o(s),i._$AT(s,e,n)),n!==void 0?(e._$Co??=[])[n]=i:e._$Cl=i),i!==void 0&&(t=we(s,i._$AS(s,t.values),i,n)),t}var Qe=class{constructor(t,e){this._$AV=[],this._$AN=void 0,this._$AD=t,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(t){let{el:{content:e},parts:n}=this._$AD,i=(t?.creationScope??$e).importNode(e,!0);ye.currentNode=i;let o=ye.nextNode(),a=0,r=0,l=n[0];for(;l!==void 0;){if(a===l.index){let p;l.type===2?p=new Ee(o,o.nextSibling,this,t):l.type===1?p=new l.ctor(o,l.name,l.strings,this,t):l.type===6&&(p=new nt(o,this,t)),this._$AV.push(p),l=n[++r]}a!==l?.index&&(o=ye.nextNode(),a++)}return ye.currentNode=$e,i}p(t){let e=0;for(let n of this._$AV)n!==void 0&&(n.strings!==void 0?(n._$AI(t,n,e),e+=n.strings.length-2):n._$AI(t[e])),e++}},Ee=class s{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(t,e,n,i){this.type=2,this._$AH=b,this._$AN=void 0,this._$AA=t,this._$AB=e,this._$AM=n,this.options=i,this._$Cv=i?.isConnected??!0}get parentNode(){let t=this._$AA.parentNode,e=this._$AM;return e!==void 0&&t?.nodeType===11&&(t=e.parentNode),t}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(t,e=this){t=we(this,t,e),Ue(t)?t===b||t==null||t===""?(this._$AH!==b&&this._$AR(),this._$AH=b):t!==this._$AH&&t!==ae&&this._(t):t._$litType$!==void 0?this.$(t):t.nodeType!==void 0?this.T(t):nn(t)?this.k(t):this._(t)}O(t){return this._$AA.parentNode.insertBefore(t,this._$AB)}T(t){this._$AH!==t&&(this._$AR(),this._$AH=this.O(t))}_(t){this._$AH!==b&&Ue(this._$AH)?this._$AA.nextSibling.data=t:this.T($e.createTextNode(t)),this._$AH=t}$(t){let{values:e,_$litType$:n}=t,i=typeof n=="number"?this._$AC(t):(n.el===void 0&&(n.el=Oe.createElement(rn(n.h,n.h[0]),this.options)),n);if(this._$AH?._$AD===i)this._$AH.p(e);else{let o=new Qe(i,this),a=o.u(this.options);o.p(e),this.T(a),this._$AH=o}}_$AC(t){let e=tn.get(t.strings);return e===void 0&&tn.set(t.strings,e=new Oe(t)),e}k(t){wt(this._$AH)||(this._$AH=[],this._$AR());let e=this._$AH,n,i=0;for(let o of t)i===e.length?e.push(n=new s(this.O(He()),this.O(He()),this,this.options)):n=e[i],n._$AI(o),i++;i<e.length&&(this._$AR(n&&n._$AB.nextSibling,i),e.length=i)}_$AR(t=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);t!==this._$AB;){let n=Yt(t).nextSibling;Yt(t).remove(),t=n}}setConnected(t){this._$AM===void 0&&(this._$Cv=t,this._$AP?.(t))}},ke=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(t,e,n,i,o){this.type=1,this._$AH=b,this._$AN=void 0,this.element=t,this.name=e,this._$AM=i,this.options=o,n.length>2||n[0]!==""||n[1]!==""?(this._$AH=Array(n.length-1).fill(new String),this.strings=n):this._$AH=b}_$AI(t,e=this,n,i){let o=this.strings,a=!1;if(o===void 0)t=we(this,t,e,0),a=!Ue(t)||t!==this._$AH&&t!==ae,a&&(this._$AH=t);else{let r=t,l,p;for(t=o[0],l=0;l<o.length-1;l++)p=we(this,r[n+l],e,l),p===ae&&(p=this._$AH[l]),a||=!Ue(p)||p!==this._$AH[l],p===b?t=b:t!==b&&(t+=(p??"")+o[l+1]),this._$AH[l]=p}a&&!i&&this.j(t)}j(t){t===b?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,t??"")}},Je=class extends ke{constructor(){super(...arguments),this.type=3}j(t){this.element[this.name]=t===b?void 0:t}},et=class extends ke{constructor(){super(...arguments),this.type=4}j(t){this.element.toggleAttribute(this.name,!!t&&t!==b)}},tt=class extends ke{constructor(t,e,n,i,o){super(t,e,n,i,o),this.type=5}_$AI(t,e=this){if((t=we(this,t,e,0)??b)===ae)return;let n=this._$AH,i=t===b&&n!==b||t.capture!==n.capture||t.once!==n.once||t.passive!==n.passive,o=t!==b&&(n===b||i);i&&this.element.removeEventListener(this.name,this,n),o&&this.element.addEventListener(this.name,this,t),this._$AH=t}handleEvent(t){typeof this._$AH=="function"?this._$AH.call(this.options?.host??this.element,t):this._$AH.handleEvent(t)}},nt=class{constructor(t,e,n){this.element=t,this.type=6,this._$AN=void 0,this._$AM=e,this.options=n}get _$AU(){return this._$AM._$AU}_$AI(t){we(this,t)}},an={M:yt,P:oe,A:$t,C:1,L:on,R:Qe,D:nn,V:we,I:Ee,H:ke,N:et,U:tt,B:Je,F:nt},Kn=vt.litHtmlPolyfillSupport;Kn?.(Oe,Ee),(vt.litHtmlVersions??=[]).push("3.3.3");var ln=(s,t,e)=>{let n=e?.renderBefore??t,i=n._$litPart$;if(i===void 0){let o=e?.renderBefore??null;n._$litPart$=i=new Ee(t.insertBefore(He(),o),o,void 0,e??{})}return i._$AI(s),i};var _t=globalThis,Q=class extends re{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){let e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=ln(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return ae}};Q._$litElement$=!0,Q.finalized=!0,_t.litElementHydrateSupport?.({LitElement:Q});var Fn=_t.litElementPolyfillSupport;Fn?.({LitElement:Q});(_t.litElementVersions??=[]).push("4.2.2");function k(s){let t=Math.round(s),e=Math.floor(t/60),n=(t%60+60)%60;return`${((e+11)%12+12)%12+1}:${n<10?"0":""}${n}`}function je(s){let t=Math.floor(Math.round(s)/60)%24;return`${k(s)} ${t<12?"AM":"PM"}`}function dn(s){let t=Math.floor(s/60)%24;return`${(t+11)%12+1} ${t<12?"AM":"PM"}`}function We(s){let t=Math.max(0,Math.round(s)),e=Math.floor(t/60),n=t%60;return e?n?`${e} hr ${n} min`:`${e} hr`:`${n} min`}function pn(s){let t=Math.floor(s/60)%24,e=s%60;return`${String(t).padStart(2,"0")}:${String(e).padStart(2,"0")}:00`}var Gn=new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}),Yn=new Intl.DateTimeFormat("en-US",{weekday:"short",timeZone:"UTC"}),Xn=new Intl.DateTimeFormat("en-US",{month:"long",day:"numeric",timeZone:"UTC"});function st(s){return new Date(`${s}T12:00:00Z`)}function _e(s){let t=st(s);return`${Gn.format(t)}, ${Xn.format(t)}`}function G(s){return Yn.format(st(s))}function he(s,t){return Math.round((st(t).getTime()-st(s).getTime())/864e5)}function qe(s,t=new Date){let e;try{e=new Intl.DateTimeFormat("en-CA",{timeZone:s,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(t)}catch{return qe("UTC",t)}let n=i=>e.find(o=>o.type===i)?.value??"0";return{date:`${n("year")}-${n("month")}-${n("day")}`,minutes:Number(n("hour"))*60+Number(n("minute"))}}function it(s,t,e){let n=Math.floor((t.getTime()-s.getTime())/6e4);if(n<1)return"just now";if(n<60)return`${n} min ago`;let i=qe(e,s),o=qe(e,t).date;return i.date===o?`at ${je(i.minutes)}`:`on ${G(i.date)} at ${je(i.minutes)}`}var Y=class extends Error{constructor(t,e){super(e),this.code=t,this.name="BackendError"}},Me="mydashlight",Zn=7,cn=3e4;function At(s){if(s instanceof Y)return s;if(s&&typeof s=="object"){let t=s;if(typeof t.message=="string")return new Y(String(t.code??"error"),t.message)}return typeof s=="number"?new Y("connection_lost","Lost the connection to Home Assistant."):new Y("error",String(s))}var rt=class{constructor(t){this.saves=!0;this.listeners=new Set;this.timer=null;this.unsubscribe=null;this.pushing=!1;this.reading=null;this.onVisible=()=>{(typeof document>"u"||document.visibilityState==="visible")&&this.refresh()};this.onReady=()=>void this.refresh();this.onDisconnected=()=>this.fail(new Y("connection_lost","Lost the connection to Home Assistant."));this.conn=t}get live(){return this.pushing}watch(t,e){let n={onPlan:t,onError:e};return this.listeners.add(n),this.listeners.size===1?this.start():this.refresh(),()=>{this.listeners.delete(n),this.listeners.size||this.stop()}}start(){this.refresh(),this.trySubscribe(),this.timer=setInterval(()=>{this.pushing||this.refresh()},cn),typeof document<"u"&&document.addEventListener("visibilitychange",this.onVisible),this.conn.addEventListener?.("ready",this.onReady),this.conn.addEventListener?.("disconnected",this.onDisconnected)}stop(){this.timer&&clearInterval(this.timer),this.timer=null,typeof document<"u"&&document.removeEventListener("visibilitychange",this.onVisible),this.conn.removeEventListener?.("ready",this.onReady),this.conn.removeEventListener?.("disconnected",this.onDisconnected);let t=this.unsubscribe;this.unsubscribe=null,this.pushing=!1,t&&t().catch(()=>{})}async trySubscribe(){try{this.unsubscribe=await this.conn.subscribeMessage(t=>{this.pushing=!0,t.plan?this.emit(t.plan):this.fail(new Y("not_running","MyDashLight isn’t running right now."))},{type:`${Me}/rides/subscribe`},{resubscribe:!0})}catch{this.pushing=!1}}fail(t){for(let e of this.listeners)e.onError(t)}emit(t){for(let e of this.listeners)e.onPlan(t)}refresh(){return this.reading?this.reading:(this.reading=this.read().finally(()=>{this.reading=null}),this.reading)}async read(){try{let t=await this.conn.sendMessagePromise({type:"call_service",domain:Me,service:"get_plan",service_data:{days:Zn},return_response:!0});this.emit(t.response)}catch(t){this.fail(At(t))}}async call(t,e){try{await this.conn.sendMessagePromise({type:"call_service",domain:Me,service:t,service_data:e})}catch(n){throw At(n)}this.pushing||await this.refresh()}setRide(t,e,n,i){return this.call("set_ride",{event:t,side:e,driver:n,scope:i})}setStay(t,e,n){return this.call("set_stay",{event:t,stay:e,scope:n})}setAttending(t,e,n){return this.call("set_attending",{event:t,attending:e,scope:n})}setArriveBy(t,e,n){return this.call("set_arrive_by",e==null?{event:t,scope:n}:{event:t,time:pn(e),scope:n})}setTakeAlong(t,e,n){return this.call("set_take_along",{event:t,kids:e,scope:n})}applySuggestion(t){return this.call("apply_suggestion",{suggestion:t})}watchChores(t){let e=!1,n=null,i=null,o=async()=>{try{let a=await this.conn.sendMessagePromise({type:"call_service",domain:Me,service:"get_chores",service_data:{},return_response:!0});e||t(a.response??null)}catch{e||t(null)}};return(async()=>{try{let a=await this.conn.subscribeMessage(r=>{e||t(r.chores)},{type:`${Me}/chores/subscribe`},{resubscribe:!0});e?a().catch(()=>{}):n=a}catch{if(e)return;o(),i=setInterval(()=>void o(),cn)}})(),()=>{e=!0,i&&clearInterval(i),n&&n().catch(()=>{})}}async setChoreDone(t,e){try{await this.conn.sendMessagePromise({type:"call_service",domain:Me,service:"set_chore_done",service_data:{chore:t,done:e}})}catch(n){throw At(n)}}};var hn={ATTRIBUTE:1,CHILD:2,PROPERTY:3,BOOLEAN_ATTRIBUTE:4,EVENT:5,ELEMENT:6},un=s=>(...t)=>({_$litDirective$:s,values:t}),ot=class{constructor(t){}get _$AU(){return this._$AM._$AU}_$AT(t,e,n){this._$Ct=t,this._$AM=e,this._$Ci=n}_$AS(t,e){return this.update(t,e)}update(t,e){return this.render(...e)}};var{I:Qn}=an,gn=s=>s;var fn=()=>document.createComment(""),Se=(s,t,e)=>{let n=s._$AA.parentNode,i=t===void 0?s._$AB:t._$AA;if(e===void 0){let o=n.insertBefore(fn(),i),a=n.insertBefore(fn(),i);e=new Qn(o,a,s,s.options)}else{let o=e._$AB.nextSibling,a=e._$AM,r=a!==s;if(r){let l;e._$AQ?.(s),e._$AM=s,e._$AP!==void 0&&(l=s._$AU)!==a._$AU&&e._$AP(l)}if(o!==i||r){let l=e._$AA;for(;l!==o;){let p=gn(l).nextSibling;gn(n).insertBefore(l,i),l=p}}}return e},ue=(s,t,e=s)=>(s._$AI(t,e),s),Jn={},mn=(s,t=Jn)=>s._$AH=t,bn=s=>s._$AH,at=s=>{s._$AR(),s._$AA.remove()};var xn=(s,t,e)=>{let n=new Map;for(let i=t;i<=e;i++)n.set(s[i],i);return n},J=un(class extends ot{constructor(s){if(super(s),s.type!==hn.CHILD)throw Error("repeat() can only be used in text expressions")}dt(s,t,e){let n;e===void 0?e=t:t!==void 0&&(n=t);let i=[],o=[],a=0;for(let r of s)i[a]=n?n(r,a):a,o[a]=e(r,a),a++;return{values:o,keys:i}}render(s,t,e){return this.dt(s,t,e).values}update(s,[t,e,n]){let i=bn(s),{values:o,keys:a}=this.dt(t,e,n);if(!Array.isArray(i))return this.ut=a,o;let r=this.ut??=[],l=[],p,f,h=0,g=i.length-1,m=0,v=o.length-1;for(;h<=g&&m<=v;)if(i[h]===null)h++;else if(i[g]===null)g--;else if(r[h]===a[m])l[m]=ue(i[h],o[m]),h++,m++;else if(r[g]===a[v])l[v]=ue(i[g],o[v]),g--,v--;else if(r[h]===a[v])l[v]=ue(i[h],o[v]),Se(s,l[v+1],i[h]),h++,v--;else if(r[g]===a[m])l[m]=ue(i[g],o[m]),Se(s,i[h],i[g]),g--,m++;else if(p===void 0&&(p=xn(a,m,v),f=xn(r,h,g)),p.has(r[h]))if(p.has(r[g])){let u=f.get(a[m]),y=u!==void 0?i[u]:null;if(y===null){let T=Se(s,i[h]);ue(T,o[m]),l[m]=T}else l[m]=ue(y,o[m]),Se(s,i[h],y),i[u]=null;m++}else at(i[g]),g--;else at(i[h]),h++;for(;m<=v;){let u=Se(s,l[v+1]);ue(u,o[m]),l[m++]=u}for(;h<=g;){let u=i[h++];u!==null&&at(u)}return this.ut=a,mn(s,l),ae}});var lt=[{color:"#12877A",rgb:"18,135,122",ink:"#0B5E55"},{color:"#2D5FC4",rgb:"45,95,196",ink:"#1E4594"},{color:"#B83E8A",rgb:"184,62,138",ink:"#8A2A66"},{color:"#B35C00",rgb:"179,92,0",ink:"#7F4100"},{color:"#6B4FBB",rgb:"107,79,187",ink:"#4C3590"},{color:"#3F7D20",rgb:"63,125,32",ink:"#2C5916"}];function F(s){return lt[(s%lt.length+lt.length)%lt.length]}var vn="#23272E",yn="35,39,46";var es=3,ut=36,Ct=12,ts=8,Tt=60,Pt=10,pt=30,Et=10,ns=150,ss=200,ht=1.4;function St(s,t){let e=Math.max(ns,ss/ht);return Math.ceil(Tt+Math.max(0,s-1)*Pt+pt+Math.max(0,t-1)*Et+e*(s+ht*t))}function Ce(s){return s.people?s.people.kids.map(t=>t.id):s.days.length?Object.keys(s.days[0].kids):[]}function ge(s){return s.people?s.people.drivers.map(t=>t.id):s.days.length?Object.keys(s.days[0].drivers):[]}function de(s){return new Map(Ce(s).map((t,e)=>[t,F(e)]))}function X(s,t){let e=s.people?.kids.find(n=>n.id===t);if(e)return e.name;for(let n of s.days)if(n.kids[t])return n.kids[t].name;return t}function fe(s,t){let e=s.people?.drivers.find(n=>n.id===t);if(e)return e.name;for(let n of s.days)if(n.drivers[t])return n.drivers[t].name;return t}function Dt(s,t){return t==="none"?"Not needed":ge(s).includes(t)?fe(s,t):t}function is(s){let t=new Map([["home","Home"]]);for(let e of s.days)for(let n of e.events)t.set(n.place,n.short_place||n.place_name||n.place);return t}function ct(s,t){return t?s.get(t)??(t.split(",")[0]?.trim()||t):""}function dt(s,t){let e=[];for(let n of s)n.type==="drive"?(e.length||e.push(ct(t,n.from)),e.push(ct(t,n.to))):(n.type==="wait"||n.type==="stay")&&(e.length||e.push(ct(t,n.place)),n.type==="wait"&&!e[e.length-1].endsWith("(wait)")&&(e[e.length-1]+=" (wait)"));return e}function rs(s){let t=s.map(a=>({...a,col:0,cols:1})).sort((a,r)=>a.s-r.s||r.en-a.en),e=[],n=[],i=-1/0,o=()=>{for(let a of e)a.cols=n.length;e=[],n=[]};for(let a of t){a.s>=i&&(o(),i=-1/0);let r=n.findIndex(l=>l<=a.s);r<0?(r=n.length,n.push(a.en)):n[r]=a.en,a.col=r,e.push(a),i=Math.max(i,a.en)}return o(),t}function os(s,t){if(!s.length)return 0;if(t<=s[0].t)return s[0].y;for(let e=0;e<s.length-1;e++){let n=s[e],i=s[e+1];if(t<=i.t)return i.t===n.t?n.y:Math.round(n.y+(t-n.t)/(i.t-n.t)*(i.y-n.y))}return s[s.length-1].y}function as(s,t){if(!s.length)return 0;if(t<=s[0].y)return s[0].t;for(let e=0;e<s.length-1;e++){let n=s[e],i=s[e+1];if(t<=i.y)return i.y===n.y?n.t:n.t+(t-n.y)/(i.y-n.y)*(i.t-n.t)}return s[s.length-1].t}function kn(s,t){return os(s.anchors,t)}function _n(s,t){return as(s.anchors,t)}function ls(s,t){let e=Ce(s),n=ge(s),i=Math.max(t,St(e.length,n.length)),a=(i-Tt-Math.max(0,e.length-1)*Pt-pt-Math.max(0,n.length-1)*Et)/(e.length+ht*n.length||1),r=Math.floor(a),l=Math.floor(a*ht),p=new Map;for(let v of s.days)for(let u of v.events){let y=p.get(u.kid)??[];y.some(T=>T.event_id===u.event_id&&T.calendar_id===u.calendar_id)||y.push(u),p.set(u.kid,y)}let f=de(s),h=[],g=Tt;e.forEach((v,u)=>{let y=p.get(v)??[],T=s.days.some(x=>x.events.some(R=>R.kid===v&&(R.sides.includes("drop")&&R.drop===""||R.sides.includes("pick")&&R.pick==="")));h.push({id:v,kind:"kid",x:g,w:r,name:X(s,v),dot:f.get(v).color,rgb:f.get(v).rgb,sub:`${T?"Needs a ride · ":""}${y.length} this week`,subWarn:T}),g+=r+(u<e.length-1?Pt:0)});let m=g+pt/2;return g+=pt,n.forEach((v,u)=>{let y=0,T=0;for(let x of s.days){let R=x.drivers[v];R&&(y+=R.outings.length,T+=R.drive??0)}h.push({id:v,kind:"driver",x:g,w:l,name:fe(s,v),dot:vn,rgb:yn,sub:`${y} ${y===1?"trip":"trips"} this week · ${We(T)} driving`,subWarn:!1}),g+=l+(u<n.length-1?Et:0)}),{columns:h,sepX:m,width:i}}function ds(s,t){let e=s.trim();if(!t||e.length<=t.length||e.slice(0,t.length).localeCompare(t,void 0,{sensitivity:"accent"})!==0)return e;let i=e.slice(t.length),o=/^(?:’s|'s)?\s*[-–—:·]?\s+/u.exec(i);if(!o)return e;let a=i.slice(o[0].length);return a?a[0].toUpperCase()+a.slice(1):e}function $n(s,t){let e=s.start<=0,n=s.end>=1440;return e&&n?`${s.title} · all day`:n?`${s.title} from ${k(s.start)}`:e||!t?`${s.title} until ${k(s.end)}`:`${s.title} ${k(s.start)}–${k(s.end)}`}function zt(s){return s.issues.filter(t=>t.level==="problem").length+s.clashes.length}function Rt(s,t){let e=he(t,s);return e===0?"Today":e===1?"Tomorrow":""}function W(s,t=0){return s==null||!Number.isFinite(s)?t:s}function Mt(s,t,e=7){let n=Math.max(8,Math.floor(t/e)),i=1,o=0;for(let a of s.split(/\s+/).filter(Boolean)){let r=a.length;for(o===0?o=r:o+1+r<=n?o+=1+r:(i++,o=r);o>n;)i++,o-=n}return i}var An=25,Cn=15,Nt=3;function wn(s){return Math.max(0,Math.min(Nt,Math.floor((s-An)/Cn)))}function ps(s,t){let e=Math.min(Nt,Mt(s,t-19,6.6));return An+e*Cn+2}function cs(s,t){let e=t-23,n=`${k(s.start)}–${k(s.end)}`+(s.arrive_by!=null?` · arrive ${k(s.arrive_by)}`:""),i=33+Mt(n,e,6.6)*16;for(let o of[s.lines.drop,s.lines.pick])o&&(i+=2+Mt(o.text,e,7)*16);return i+4}function Tn(s,t,e,n){let i=t==="compact",{columns:o,sepX:a,width:r}=ls(s,e),l=new Map(o.map(x=>[x.id,x])),p=Ce(s),f=ge(s),h=[...p,...f],g=de(s),m=is(s),v=x=>X(s,x),u=x=>fe(s,x),y={mode:t,width:r,height:0,columns:o,sepX:a,dayHeads:[],empties:[],grid:[],hours:[],cards:[],rides:[],bands:[],trips:[],stays:[],busy:[],preps:[],overlaps:[],marks:[],now:null,anchors:[]},T=0;return s.days.forEach((x,R)=>{let K=R*1440,P=new Map(x.events.map(c=>[c.id,c])),H=c=>c&&P.has(c)?{day:x.date,event:c}:null,ee=zt(x),me=x.events.length,Te=Rt(x.date,n.date);y.dayHeads.push({date:x.date,y:T,label:_e(x.date),tag:Te,sub:(me?`${me} ${me===1?"activity":"activities"}`:"Nothing scheduled")+(ee?` · ${ee} to sort out`:""),warn:ee>0}),y.anchors.push({t:K,y:T});let pe=T+ut+Ct,ze=f.flatMap(c=>x.drivers[c]?.outings??[]);if(!me&&!ze.length){y.empties.push({key:x.date,y:pe,text:"Nothing planned"}),T=pe+40,y.anchors.push({t:K+1439,y:T});return}let M=(c,C,_,E,A,S,w)=>{let U=g.get(c.kid)??F(0),O=c.lines;return{key:`${x.date}|card|${c.id}`,x:C,y:_,w:E,h:A,target:{day:x.date,event:c.id},event:c,color:U,kidName:v(c.kid),clash:S,stayed:c.stay&&f.includes(c.drop),skipped:c.attending===!1,title:ds(c.title,v(c.kid)),time:`${k(c.start)}–${k(c.end)}`+(c.arrive_by!=null?` · arrive ${k(c.arrive_by)}`:""),drop:O.drop,pick:O.pick,showDrop:!!O.drop&&(w||A>=56),showPick:!!O.pick&&(w||A>=74),wrap:w,aria:`${v(c.kid)}, ${c.title} ${k(c.start)} to ${k(c.end)}. `+(c.attending===!1&&!O.drop?"Not attending. ":"")+[O.drop,O.pick].filter(ie=>!!ie).map(ie=>ie.text).join(". ")}},te=c=>{let C=x.rides[c];return C?(x.drivers[C.driver]?.segments??[]).filter(E=>E.type!=="home"&&E.kids.includes(C.kid)&&W(E.start)>=W(C.start)&&W(E.end)<=W(C.end)):[]},N=c=>{let C=x.rides[c];if(!C)return null;let _=C.serves.find(E=>P.get(E)?.kid===C.kid);return H(_??C.serves[0])},Z=new Map;for(let c of x.issues)c.level!=="problem"||!c.event||(c.kind==="late"&&Z.set(c.event,`${Math.round(W(c.minutes))} min late`),c.kind==="waiting"&&Z.set(`${c.event}|pick`,`Waits ${Math.round(W(c.minutes))} min`));if(!i){let c=1/0,C=-1/0;for(let w of x.events)c=Math.min(c,w.start-20,w.arrive_by!=null?w.arrive_by-10:1/0),C=Math.max(C,w.end+20);for(let w of ze)w.start!=null&&(c=Math.min(c,w.start)),w.end!=null&&(C=Math.max(C,w.end));x.date===n.date&&Number.isFinite(c)&&n.minutes>c-60&&n.minutes<C&&(c=Math.min(c,n.minutes-15));let _=Number.isFinite(c)?Math.floor((c-5)/30)*30:900,E=Number.isFinite(C)?Math.ceil((C+5)/30)*30:960,A=w=>Math.round(pe+(Math.max(_,Math.min(E,w))-_)*es);y.anchors.push({t:K+_,y:A(_)},{t:K+E,y:A(E)});for(let w of p){let U=l.get(w),O=g.get(w),ie=(x.kids[w]?.items??[]).filter(D=>D.start!=null&&D.end!=null).map(D=>({item:D,s:W(D.start),en:W(D.end)}));for(let D of rs(ie)){let $=U.w/D.cols,I=Math.round(U.x+D.col*$),B=Math.round($-(D.cols>1?4:0)),j=A(D.s),ce=D.item;if(ce.type==="act"){let V=P.get(ce.event??"");if(!V)continue;let Ht=Math.max(30,A(D.en)-j);if(y.cards.push(M(V,I,j,B,Ht,ce.clash,!1)),V.arrive_by!=null&&V.start-V.arrive_by>=5){let jt=A(V.arrive_by);y.preps.push({key:`${x.date}|prep|${V.id}`,x:I,y:jt,w:B,h:j-jt+6,color:O,label:`Arrive by ${k(V.arrive_by)}`})}let Ut=Z.get(V.id);Ut&&y.marks.push({key:`${x.date}|late|${V.id}`,x:I+B-4,y:j+4,text:Ut,right:!0});let Ot=Z.get(`${V.id}|pick`);Ot&&y.marks.push({key:`${x.date}|wait|${V.id}`,x:I+4,y:j+Ht+2,text:Ot,right:!1});continue}let q=x.rides[ce.ride??-1];if(!q)continue;let be=Math.max(22,A(D.en)-j),Re=dt(te(q.index),m),L=u(q.driver);y.rides.push({key:`${x.date}|ride|${q.index}`,x:I,y:j,w:B,h:be,target:N(q.index),l1:`${q.own?"In":"Along in"} ${L}’s car`,l2:Re.join(" → "),show2:wn(be)>0,lines2:wn(be),dashed:!q.own,clash:ce.clash,aria:`${v(w)} ${q.own?"in":"riding along in"} ${L}’s car, ${k(W(q.start))} to ${k(W(q.end))}: ${Re.join(" to ")}`});let xe=l.get(q.driver);xe&&y.bands.push({key:`${x.date}|band|${q.index}`,x:I+B,y:j,w:Math.max(0,xe.x+8-(I+B)),h:be,color:O})}}for(let w of f){let U=l.get(w),O=x.drivers[w];if(!O)continue;let ie=[],D=null;for(let $ of O.segments)if(!($.start==null||$.end==null)){if($.type==="home"){D=null;continue}if($.type==="stay"){D=null,ie.push({type:"stay",g:$,s:$.start,en:$.end});continue}D&&D.en===$.start?(D.en=$.end,D.legs.push($)):(D={type:"trip",s:$.start,en:$.end,legs:[$]},ie.push(D))}for(let $ of ie){let I=A($.s),B=Math.max(24,A($.en)-I);if($.type==="stay"){let L=P.get($.g.event??$.g.serves??""),xe=L?g.get(L.kid)??F(0):F(0),V=$.g.kids.map(v);y.stays.push({key:`${x.date}|stay|${w}|${$.s}`,x:U.x+8,y:I,w:U.w-16,h:B,target:H(L?.id),color:xe,l1:L?`At ${L.title} with ${v(L.kid)}`:"Staying",l2:`until ${k($.en)}`+(V.length?` · ${V.join(" and ")} too`:"")});continue}let j=$.legs[0],ce=$.legs[$.legs.length-1],q=[];for(let L of $.legs)for(let xe of L.kids)q.includes(xe)||q.push(xe);let be=ce.type==="drive"&&ce.to==="home",Re=dt($.legs,m);y.trips.push({key:`${x.date}|trip|${w}|${$.s}`,x:U.x+8,y:I,w:U.w-16,h:B,target:H($.legs.find(L=>L.serves)?.serves),l1:j.type==="drive"&&j.from==="home"?`Leave ${k($.s)}`:`From ${ct(m,j.from??j.place)} ${k($.s)}`,l2:Re.join(" → "),show2:B>=36,l3:be?`Home ${k($.en)}`:"",show3:be&&B>=62,stops:null,kids:q.map(L=>(g.get(L)??F(0)).color),bad:$.legs.some(L=>L.overlaps_busy),aria:`${u(w)} drives ${Re.join(" to ")}, ${k($.s)} to ${k($.en)}`})}for(let $ of O.segments)if(!(!$.overlaps_busy||$.start==null||$.end==null))for(let I of O.busy){let B=Math.max($.start,I.start),j=Math.min($.end,I.end);j<=B||y.overlaps.push({key:`${x.date}|overlap|${w}|${B}`,x:U.x+6,y:A(B)-2,w:U.w-12,h:Math.max(8,A(j)-A(B)+4)})}for(let $ of O.busy){if($.end<=_||$.start>=E)continue;let I=A($.start),B=A($.end);y.busy.push({key:`${x.date}|busy|${w}|${$.start}`,x:U.x+1,y:I,w:U.w-2,h:B-I,labelY:8,label:$n($,!1)})}}let S=-1/0;for(let w=_;w<=E;w+=30)y.grid.push({key:`${x.date}|grid|${w}`,y:A(w),strong:w%60===0}),w%60===0&&A(w)-S>=22&&(y.hours.push({key:`${x.date}|hour|${w}`,y:A(w)-8,label:dn(w)}),S=A(w));x.date===n.date&&n.minutes>_&&n.minutes<E&&(y.now={y:A(n.minutes),label:`Now ${k(n.minutes)}`}),T=A(E)+Ct;return}let ne=[];for(let c of p){let C=l.get(c);for(let _ of x.kids[c]?.items??[])if(_.start!=null){if(_.type==="act"){let E=P.get(_.event??"");if(!E)continue;ne.push({col:c,s:_.start,h:cs(E,C.w),kind:"act",item:_})}else if(!x.rides[_.ride??-1]?.own){let E=x.rides[_.ride??-1],A=E?dt(te(E.index),m).join(" → "):"";ne.push({col:c,s:_.start,h:ps(A,C.w),kind:"along",item:_})}}}for(let c of f){let C=x.drivers[c];if(C){for(let _ of C.busy)ne.push({col:c,s:_.start,h:32,kind:"busy",busy:_});for(let _ of C.outings)_.start!=null&&ne.push({col:c,s:_.start,h:30+_.lines.length*16+(_.warn?16:0),kind:"out",out:_})}}ne.sort((c,C)=>c.s-C.s||h.indexOf(c.col)-h.indexOf(C.col));let Pe=new Map,z=pe;ne.forEach((c,C)=>{let _=Pe.get(c.col),E=Math.max(_!=null?_+ts:pe,z);Pe.set(c.col,E+c.h),z=E,y.anchors.push({t:K+c.s,y:E});let A=l.get(c.col);if(c.kind==="busy")y.busy.push({key:`${x.date}|busy|${c.col}|${C}`,x:A.x+1,y:E,w:A.w-2,h:c.h,labelY:8,label:$n(c.busy,!0)});else if(c.kind==="out"){let S=c.out;y.trips.push({key:`${x.date}|trip|${c.col}|${C}`,x:A.x+8,y:E,w:A.w-16,h:c.h,target:H(S.target),l1:S.lead,l2:"",show2:!1,l3:"",show3:!1,stops:[...S.lines.map(w=>({text:w,warn:!1})),...S.warn?[{text:S.warn,warn:!0}]:[]],kids:S.kids.map(w=>(g.get(w)??F(0)).color),bad:!!S.warn,aria:`${u(c.col)}: ${S.lead}. ${S.lines.join(". ")}${S.warn?`. ${S.warn}`:""}`})}else if(c.kind==="act"){let S=P.get(c.item.event??"");y.cards.push(M(S,A.x,E,A.w,c.h,c.item.clash,!0))}else{let S=x.rides[c.item.ride??-1],w=dt(te(S.index),m),U=u(S.driver);y.rides.push({key:`${x.date}|ride|${S.index}`,x:A.x,y:E,w:A.w,h:c.h,target:N(S.index),l1:`Along with ${U} ${k(W(S.start))}`,l2:w.join(" → "),show2:!0,lines2:Nt,dashed:!0,clash:c.item.clash,aria:`${v(c.col)} riding along with ${U}, ${k(W(S.start))} to ${k(W(S.end))}: ${w.join(" to ")}`})}});let se=pe;for(let c of Pe.values())se=Math.max(se,c);T=se+Ct+6,y.anchors.push({t:K+1439,y:T})}),y.height=T,y}var hs=["","¼","½","¾"];function Ae(s){return s.replace(/(\d+(?:\.\d+)?)\s*min\b/g,(t,e)=>{let n=Number(e);if(n>=59.5)return We(n);let i=Math.round(n*4),o=Math.floor(i/4),a=hs[i%4];return`${o||!a?o:""}${a} min`})}function Pn(s){let t=e=>e?{...e,text:Ae(e.text)}:null;return{...s,days:s.days.map(e=>({...e,events:e.events.map(n=>({...n,lines:{drop:t(n.lines.drop),pick:t(n.lines.pick)}})),drivers:Object.fromEntries(Object.entries(e.drivers).map(([n,i])=>[n,{...i,outings:i.outings.map(o=>({...o,lines:o.lines.map(Ae),warn:o.warn==null?o.warn:Ae(o.warn)}))}])),issues:e.issues.map(n=>({...n,title:Ae(n.title),body:Ae(n.body),note:n.note==null?n.note:Ae(n.note),...n.suggestions?{suggestions:n.suggestions.map(i=>({...i,note:Ae(i.note)}))}:{}}))}))}}var us=2,gs=48;function En(s,t,e=gs){let n=[],i=0,o=0,a=0,r=0,l=t.minutes+e*60;for(let p of s.days){let f=he(t.date,p.date),h=f===0?"":`${G(p.date)} · `,g=new Map(p.events.map(u=>[u.id,u])),m=u=>u&&g.has(u)?{day:p.date,event:u}:null,v=(u,y)=>f*1440+(u??g.get(y??"")?.start??0)<l;for(let u of p.issues)if(u.level==="problem"){if(!v(u.at,u.event)){a++,u.kind==="unassigned"&&r++;continue}i++,u.kind==="unassigned"&&o++,n.push({key:`${p.date}|${u.key}`,tone:u.kind==="unassigned"?"unassigned":"problem",title:h+u.title,body:u.body,target:m(u.event),suggestions:(u.suggestions??[]).map(y=>({id:y.id,label:y.label,note:y.note}))})}if(p.clashes.forEach((u,y)=>{if(!v(u.a.start,u.a.event)){a++;return}i++;let T=g.get(u.a.event??""),x=X(s,u.kid),R=(P,H)=>{let ee=m(H);return ee?{text:P,target:ee}:P},K=[];if(u.b.type==="act"){let P=g.get(u.b.event??"");T&&P&&(K=[R(T.title,T.id),` ${k(T.start)}–${k(T.end)} and `,R(P.title,P.id),` ${k(P.start)}–${k(P.end)} overlap.`])}else{let P=p.rides[u.b.ride??-1];T&&P&&(K=[`${x} is in `,R(`${fe(s,P.driver)}’s car`,P.serves[0]),` ${k(W(u.b.start))}–${k(W(u.b.end))}, during `,R(T.title,T.id),"."])}n.push({key:`${p.date}|clash|${y}`,tone:"problem",title:`${h}${x} is double-booked`,body:K.map(P=>typeof P=="string"?P:P.text).join(""),parts:K,target:null,suggestions:[]})}),f>=0&&f<us)for(let u of p.issues)u.level!=="heads_up"||!v(u.at,u.event)||n.push({key:`${p.date}|${u.key}`,tone:"heads_up",title:h+u.title,body:u.body,target:m(u.event),suggestions:[]});for(let u of p.events)!u.problems.length||!v(u.start)||n.push({key:`${p.date}|notes|${u.id}`,tone:"heads_up",title:`${h}Check the notes on ${X(s,u.kid)}’s ${u.title}`,body:`These lines couldn’t be read: ${u.problems.join("; ")}`,target:m(u.id),suggestions:[]})}return{items:n,problems:i,unassigned:o,later:a,laterUnassigned:r}}function Mn(s,t){let e=de(s),n=null,i=o=>o.ahead>0?2:o.ongoing?1:0;for(let o of s.days){let a=he(t.date,o.date);if(!(a<0))for(let r of ge(s))for(let l of o.drivers[r]?.outings??[]){if(l.start==null)continue;let p=a*1440+l.start;if(a*1440+W(l.end,l.start)<=t.minutes)continue;let h=p-t.minutes,g={driver:r,name:fe(s,r),date:o.date,ahead:a,start:l.start,inMinutes:h,ongoing:h<=0,lead:l.lead,stop:(l.lines[0]??"").replace(/\s+/g," ").trim(),kids:l.kids.map(m=>e.get(m)??F(0)),warn:l.warn,target:l.target&&o.events.some(m=>m.id===l.target)?{day:o.date,event:l.target}:null};(!n||i(g)<i(n)||i(g)===i(n)&&g.inMinutes<n.inMinutes)&&(n=g)}}return n}function De(s){return s.state==="done"||s.state==="late"}function Sn(s){return s.state==="open"||s.state==="overdue"}function Dn(s,t,e){if(De(s)){let n=s.done_at?ms(s.done_at,t,e):"";return s.state==="late"?`Done late${n?` · ${n}`:""}`:`Done${n?` ${n}`:""}`}if(s.state==="overdue")return s.missed>1?`Missed ${s.missed} times`:s.due?`Missed ${fs(s.due,t)}`:"Missed";if(s.state==="upcoming"){let n=s.shows_from??s.due;if(!s.due||!n||s.due<=n)return"";let i=he(t,s.due);return`By ${i===1?"tomorrow":i<7?G(s.due):Bt(s.due)}`}if(s.due&&s.due>t){let n=he(t,s.due);return n===1?"By tomorrow":`By ${n<7?G(s.due):Bt(s.due)}`}return s.missed?`Today · missed ${s.missed===1?"once":`${s.missed} times`} before`:"Today"}function fs(s,t){let e=he(t,s);return e===0?"today":e===-1?"yesterday":Math.abs(e)<7?G(s):Bt(s)}function Bt(s){let[t,e,n]=s.split("-").map(Number);return new Date(Date.UTC(t,e-1,n)).toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"})}function ms(s,t,e){let n=new Date(s);if(Number.isNaN(n.getTime()))return"";let i=e;try{new Intl.DateTimeFormat("en-US",{timeZone:i})}catch{i=void 0}let o=n.toLocaleDateString("en-CA",{timeZone:i}),a=n.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:i});return o===t?a:`${G(o)} ${a}`}function zn(s,t){let e=[...s.chores].sort((n,i)=>n.order-i.order);return s.kids.map((n,i)=>{let o=e.filter(p=>p.kid===n.id),a=new Map;for(let p of o){if(p.state!=="upcoming")continue;let f=p.shows_from??p.due??s.today;a.set(f,[...a.get(f)??[],p])}let r=o.filter(p=>p.state==="overdue"),l=o.filter(p=>p.state==="open");return{kid:n.id,name:n.name,color:t?.get(n.id)??F(i),overdue:r,now:l,done:o.filter(De),later:[...a.entries()].sort(([p],[f])=>p.localeCompare(f)).map(([p,f])=>({date:p,chores:f})),left:r.length+l.length}})}function Rn(s){return[...s.chores].filter(t=>t.state==="overdue"||t.state==="open"&&(t.due==null||t.due<=s.today)).sort((t,e)=>t.state===e.state?t.order-e.order:t.state==="overdue"?-1:1)}function It(s){return!s.chores.length&&!s.templates.length}var bs={timeline:"timeline",full:"timeline",compact:"compact"};function Lt(s){let t=new URLSearchParams(s),e={},n=bs[(t.get("view")??"").trim().toLowerCase()];n&&(e.view=n);let i=(t.get("page")??"").trim().toLowerCase();return(i==="rides"||i==="chores")&&(e.page=i),e}var Nn=Be`
   :host {
     --bg: #f4f3ef;
     --surface: #ffffff;
@@ -1639,85 +1639,336 @@ var We=globalThis,Ve=We.ShadowRoot&&(We.ShadyCSS===void 0||We.ShadyCSS.nativeSha
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     z-index: 30;
   }
-`;var En="mydashlight.rides.mode",di=1100,pi=440,ci=700,hi=3*6e4,ui=1200;function gi(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}catch{return"UTC"}}function ct(i){let t=/\p{L}|\p{N}/u.exec(i);return t?t[0].toUpperCase():"?"}function fi(i){let t=i.map(e=>`${e}’s`);return t.length<2?t[0]??"":`${t.slice(0,-1).join(", ")} or ${t[t.length-1]}`}function bi(){try{return localStorage.getItem(En)==="compact"?"compact":"timeline"}catch{return"timeline"}}function mi(i){try{localStorage.setItem(En,i)}catch{}}function ht(i){return i.days.every(t=>!t.events.length)}var je=class extends Z{constructor(){super();this.stopWatching=null;this.resize=null;this.clockTimer=null;this.idleTimer=null;this.toastTimer=null;this.arriveTimer=null;this.drag=null;this.eatClick=!1;this.board=null;this.minuteKey="";this.watchedScroller=null;this.boardPlan=null;this.boardKey="";this.keepAt=null;this.urlView=An(location.search).view;this.scrolledOnce=!1;this.onDown=e=>{if(e.pointerType==="touch"||e.button!==0)return;let n=e.currentTarget;this.drag={el:n,x:e.clientX,y:e.clientY,top:n.scrollTop,left:n.scrollLeft,moved:!1,id:e.pointerId}};this.onMove=e=>{let n=this.drag;if(!n)return;let r=e.clientX-n.x,o=e.clientY-n.y;if(!n.moved){if(Math.abs(r)+Math.abs(o)<6)return;n.moved=!0;try{n.el.setPointerCapture(n.id)}catch{}n.el.classList.add("dragging")}n.el.scrollTop=n.top-o,n.el.scrollLeft=n.left-r};this.onUp=()=>{let e=this.drag;this.drag=null,e&&(e.el.classList.remove("dragging"),e.moved&&(this.eatClick=!0,setTimeout(()=>{this.eatClick=!1},0)))};this.onClickCapture=e=>{this.eatClick&&(e.stopPropagation(),e.preventDefault(),this.eatClick=!1)};this.onActivity=()=>{this.kiosk&&(this.idleTimer&&clearTimeout(this.idleTimer),this.idleTimer=setTimeout(()=>{this.closeEditor(),this.sheet=!1,this.urlView&&this.mode!==this.urlView?(this.mode=this.urlView,this.scrolledOnce=!1):this.scrollToNow()},hi))};this.onKey=e=>{e.key==="Escape"&&(this.sel?this.closeEditor():this.sheet=!1)};this.toggleMenu=()=>{this.dispatchEvent(new CustomEvent("hass-toggle-menu",{bubbles:!0,composed:!0}))};this.backend=null,this.kiosk=!1,this.showMenu=!1,this.plan=null,this.error=null,this.mode=this.urlView??bi(),this.sel=null,this.sheet=!1,this.width=1600,this.boardWidth=1160,this.pending=null,this.toast=null,this.scope="this",this.arriveDraft=void 0,this.tick=0}connectedCallback(){super.connectedCallback(),this.clockTimer=setInterval(()=>{let e=this.today(),n=`${e.date}|${e.minutes}`;n!==this.minuteKey&&(this.minuteKey=n,this.tick++)},5e3),this.addEventListener("pointerdown",this.onActivity,{capture:!0}),this.addEventListener("keydown",this.onKey),this.watchBackend()}disconnectedCallback(){super.disconnectedCallback(),this.stopWatching?.(),this.stopWatching=null,this.resize?.disconnect(),this.resize=null;for(let e of[this.idleTimer,this.toastTimer,this.arriveTimer])e&&clearTimeout(e);this.clockTimer&&clearInterval(this.clockTimer),this.removeEventListener("pointerdown",this.onActivity,{capture:!0}),this.removeEventListener("keydown",this.onKey)}willUpdate(e){e.has("backend")&&this.isConnected&&this.watchBackend()}firstUpdated(){this.resize=new ResizeObserver(()=>this.measure()),this.resize.observe(this),this.measure()}updated(){let e=this.scroller;if(e!==this.watchedScroller&&this.resize&&(this.watchedScroller&&this.resize.unobserve(this.watchedScroller),e&&this.resize.observe(e),this.watchedScroller=e),!(!e||!this.board)){if(!this.scrolledOnce&&this.plan){this.scrolledOnce=!0,this.scrollToNow();return}if(this.keepAt!=null){let n=this.keepAt;this.keepAt=null,this.scrollToTime(n)}else this.syncDay()}}watchBackend(){this.stopWatching?.(),this.stopWatching=null,this.backend&&(this.stopWatching=this.backend.watch(e=>{this.plan=wn(e),this.error=null,this.sel&&!this.findEvent(this.sel)&&this.closeEditor()},e=>{this.error=e}))}measure(){this.width=this.clientWidth||window.innerWidth;let e=this.scroller;e&&(this.boardWidth=e.clientWidth)}get scroller(){return this.renderRoot.querySelector(".scroller")}get wide(){if(this.width<di)return!1;let e=this.plan;return!e||this.width-pi>=St(we(e).length,ce(e).length)}today(){return Ue(this.plan?.time_zone??gi())}currentBoard(){let e=this.plan;if(!e)return null;let n=this.today(),r=`${this.mode}|${this.boardWidth}|${n.date}|${n.minutes}`;return(this.board==null||e!==this.boardPlan||r!==this.boardKey)&&(this.board=$n(e,this.mode,this.boardWidth,n),this.boardPlan=e,this.boardKey=r),this.board}dayIndexOf(e){return this.plan?this.plan.days.findIndex(n=>n.date===e):-1}scrollToTime(e,n){let r=this.scroller;if(!r||!this.board)return;let o=this.board.dayHeads.find(a=>a.date===n)?.y??0;r.scrollTop=Math.max(o,mn(this.board,e)-pt-4),this.syncDay()}scrollToNow(){if(!this.plan)return;let e=this.today(),n=Math.max(0,this.dayIndexOf(e.date));this.scrollToTime(n*1440+(this.mode==="timeline"&&n===this.dayIndexOf(e.date)?e.minutes-45:0),this.plan.days[n]?.date)}goToDay(e){let n=this.plan;if(!n)return;let r=this.today();if(e===r.date){this.scrollToNow();return}let o=this.dayIndexOf(e),a=n.days[o];if(!a)return;let s=1/0;if(this.mode==="timeline"){for(let l of a.events)s=Math.min(s,l.arrive_by??l.start);for(let l of Object.values(a.drivers))for(let c of l.outings)c.start!=null&&(s=Math.min(s,c.start))}this.scrollToTime(o*1440+(Number.isFinite(s)?Math.max(0,s-30):0),e)}syncDay(){let e=this.scroller;if(!e||!this.board||!this.board.dayHeads.length)return;let n=e.scrollTop,r=this.board.dayHeads[0];for(let c of this.board.dayHeads)c.y<=n+1&&(r=c);let o=this.renderRoot,a=o.querySelector(".pinned .label"),s=o.querySelector(".pinned .tag"),l=o.querySelector(".pinned .sub");a&&a.textContent!==r.label&&(a.textContent=r.label),s&&(s.textContent!==r.tag&&(s.textContent=r.tag),s.hidden=!r.tag),l&&l.textContent!==r.sub&&(l.textContent=r.sub),l?.classList.toggle("warn",r.warn);for(let c of o.querySelectorAll(".day-tile"))c.classList.toggle("in-view",c.dataset.date===r.date)}setMode(e){if(e===this.mode)return;let n=this.scroller;this.keepAt=n&&this.board?xn(this.board,n.scrollTop+pt+4):null,this.mode=e,this.urlView||mi(e)}findEvent(e){let n=this.plan?.days.find(o=>o.date===e.day),r=n?.events.find(o=>o.id===e.event);return n&&r?{day:n,event:r}:null}open(e,n=!1){e&&(this.flushArrive(),this.sel=e,this.scope="this",this.arriveDraft=void 0,n&&this.reveal(e))}reveal(e){let n=this.findEvent(e),r=this.dayIndexOf(e.day);!n||r<0||this.scrollToTime(r*1440+Math.max(0,(n.event.arrive_by??n.event.start)-30),e.day)}closeEditor(){this.flushArrive(),this.sel=null,this.arriveDraft=void 0}showToast(e){this.toast=e,this.toastTimer&&clearTimeout(this.toastTimer),this.toastTimer=setTimeout(()=>{this.toast=null},7e3)}async save(e,n,r){if(!this.pending){this.pending={key:e,value:n};try{await r()}catch(o){let a=o instanceof Y?o:new Y("error",String(o));this.showToast(a.code==="preview"?a.message:`Couldn’t save that. ${a.message}`)}finally{this.pending=null}}}setRide(e,n,r){if(!this.backend)return;let o=this.backend;this.save(`${n}`,r,()=>o.setRide(e.id,n,r,this.scope))}setAttending(e,n){if(!this.backend||e.attending!==!1===n)return;let r=this.backend;this.save("attending",n,()=>r.setAttending(e.id,n,this.scope))}toggleStay(e){if(!this.backend)return;let n=this.backend;this.save("stay",!e.stay,()=>n.setStay(e.id,!e.stay,this.scope))}toggleAlong(e,n){if(!this.backend)return;let r=this.backend,o=e.along.includes(n)?e.along.filter(a=>a!==n):[...e.along,n];this.save("along",o,()=>r.setTakeAlong(e.id,o,this.scope))}nudgeArrive(e,n){let r=this.arriveDraft!==void 0?this.arriveDraft:e.arrive_by,o;n<0?o=(r??e.start)-5:o=r==null||r+5>=e.start?null:r+5,this.arriveDraft=o,this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=setTimeout(()=>this.flushArrive(),ui)}clearArrive(){this.arriveDraft=null,this.flushArrive()}flushArrive(){this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=null;let e=this.arriveDraft,n=this.sel;if(e===void 0||!n||!this.backend)return;let r=this.findEvent(n);if(!r||r.event.arrive_by===e){this.arriveDraft=void 0;return}let o=this.backend,a=r.event.id,s=this.scope;this.save("arrive",e,()=>o.setArriveBy(a,e,s)).then(()=>{this.arriveDraft=void 0})}apply(e){if(!this.backend)return;let n=this.backend;this.save(`fix|${e}`,e,()=>n.applySuggestion(e))}render(){let e=this.plan,n=this.currentBoard(),r=e?kn(e,this.today()):{items:[],problems:0,unassigned:0,later:0,laterUnassigned:0},o=this.wide,a=d`<aside class="panel" aria-label=${this.sel?"Change this ride":"Needs attention"}>
-      ${this.sel&&e?this.renderEditor(e):this.renderAttention(r)}
-    </aside>`;return d`
-      <div class="app ${o?"wide":this.width<ci?"narrow phone":"narrow"}">
+  /* Chores */
+  .chores-area {
+    flex-direction: column;
+  }
+  .chores-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 8px;
+  }
+  .chore-cols {
+    display: grid;
+    grid-template-columns: repeat(var(--n, 3), minmax(220px, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+  .phone .chore-cols {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .chore-col {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 5px solid var(--c);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 14px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  .chore-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px 4px;
+  }
+  .chore-head .name {
+    font-size: 20px;
+    line-height: 25px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chore-head .sub {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted);
+  }
+  .chore-group {
+    margin: 8px 4px 0;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .chore-group.overdue {
+    color: var(--bad-ink);
+  }
+  .chore {
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(var(--rgb), 0.07);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    color: var(--ink);
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+  button.chore:active {
+    background: rgba(var(--rgb), 0.16);
+  }
+  .chore.overdue {
+    border-color: #f0c2be;
+    background: #fdf1f0;
+  }
+  .chore.done {
+    background: var(--surface-2);
+    border-color: var(--line-2);
+  }
+  .chore.later {
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--border);
+    min-height: 52px;
+  }
+  .box {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    flex: none;
+    border: 2.5px solid var(--c);
+    background: var(--surface);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chore.done .box {
+    background: var(--c);
+  }
+  .chore.later .box {
+    border-color: var(--border);
+    border-style: dashed;
+  }
+  .chore-icon {
+    font-size: 24px;
+    line-height: 1;
+    flex: none;
+  }
+  .chore.done .chore-icon,
+  .chore.later .chore-icon {
+    opacity: 0.55;
+  }
+  .chore-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .chore-title {
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+  .chore.done .chore-title {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: rgba(28, 30, 34, 0.35);
+  }
+  .chore.later .chore-title {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  .chore-kid {
+    font-weight: 800;
+    color: var(--k, var(--ink));
+  }
+  .chore-note {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted);
+  }
+  .chore.overdue .chore-note {
+    color: var(--bad-ink);
+    font-weight: 600;
+  }
+  .chore.done .chore-note {
+    color: var(--ok);
+  }
+  .chore-none {
+    margin: 4px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .chores-message {
+    margin: auto;
+    max-width: 560px;
+    padding: 28px 28px 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--ink-2);
+  }
+  .chores-message h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+  .chores-message p {
+    margin: 0 0 12px;
+  }
+  .chores-message p:last-child {
+    margin-bottom: 0;
+  }
+  .chores-message ol {
+    margin: 0 0 14px;
+    padding-left: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .chores-message code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--control);
+    color: var(--ink);
+  }
+  .phone .chores-message {
+    padding: 20px 18px;
+  }
+  .panel-section {
+    margin: 4px 0 0;
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 800;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .panel-section .panel-sub {
+    display: inline;
+  }
+  .attn-chores {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .attn-chores .chore {
+    min-height: 54px;
+  }
+  .attn-chores .chore-title {
+    font-size: 15px;
+    line-height: 20px;
+  }
+  .section-clear {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ok);
+    font-weight: 600;
+  }
+`;var Bn="mydashlight.rides.mode",xs=1100,vs=440,ys=700,$s=3*6e4,ws=1200;function ks(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}catch{return"UTC"}}function Ve(s){let t=/\p{L}|\p{N}/u.exec(s);return t?t[0].toUpperCase():"?"}function _s(s,t){return Rt(s,t)||_e(s).split(",")[0]}function As(s){let t=s.map(e=>`${e}’s`);return t.length<2?t[0]??"":`${t.slice(0,-1).join(", ")} or ${t[t.length-1]}`}function Cs(){try{return localStorage.getItem(Bn)==="compact"?"compact":"timeline"}catch{return"timeline"}}function Ts(s){try{localStorage.setItem(Bn,s)}catch{}}function gt(s){return s.days.every(t=>!t.events.length)}var Ke=class extends Q{constructor(){super();this.stopWatching=null;this.resize=null;this.clockTimer=null;this.idleTimer=null;this.toastTimer=null;this.arriveTimer=null;this.drag=null;this.eatClick=!1;this.board=null;this.minuteKey="";this.watchedScroller=null;this.boardPlan=null;this.boardKey="";this.keepAt=null;this.urlView=Lt(location.search).view;this.urlPage=Lt(location.search).page;this.stopChores=null;this.scrolledOnce=!1;this.onDown=e=>{if(e.pointerType==="touch"||e.button!==0)return;let n=e.currentTarget;this.drag={el:n,x:e.clientX,y:e.clientY,top:n.scrollTop,left:n.scrollLeft,moved:!1,id:e.pointerId}};this.onMove=e=>{let n=this.drag;if(!n)return;let i=e.clientX-n.x,o=e.clientY-n.y;if(!n.moved){if(Math.abs(i)+Math.abs(o)<6)return;n.moved=!0;try{n.el.setPointerCapture(n.id)}catch{}n.el.classList.add("dragging")}n.el.scrollTop=n.top-o,n.el.scrollLeft=n.left-i};this.onUp=()=>{let e=this.drag;this.drag=null,e&&(e.el.classList.remove("dragging"),e.moved&&(this.eatClick=!0,setTimeout(()=>{this.eatClick=!1},0)))};this.onClickCapture=e=>{this.eatClick&&(e.stopPropagation(),e.preventDefault(),this.eatClick=!1)};this.onActivity=()=>{this.kiosk&&(this.idleTimer&&clearTimeout(this.idleTimer),this.idleTimer=setTimeout(()=>{this.closeEditor(),this.sheet=!1,this.page!==(this.urlPage??"rides")&&this.setPage(this.urlPage??"rides"),this.urlView&&this.mode!==this.urlView?(this.mode=this.urlView,this.scrolledOnce=!1):this.scrollToNow()},$s))};this.onKey=e=>{e.key==="Escape"&&(this.sel?this.closeEditor():this.sheet=!1)};this.toggleMenu=()=>{this.dispatchEvent(new CustomEvent("hass-toggle-menu",{bubbles:!0,composed:!0}))};this.backend=null,this.kiosk=!1,this.showMenu=!1,this.plan=null,this.error=null,this.mode=this.urlView??Cs(),this.sel=null,this.sheet=!1,this.width=1600,this.boardWidth=1160,this.pending=null,this.toast=null,this.scope="this",this.arriveDraft=void 0,this.tick=0,this.page=this.urlPage??"rides",this.chores=void 0,this.choreDraft=new Map}connectedCallback(){super.connectedCallback(),this.clockTimer=setInterval(()=>{let e=this.today(),n=`${e.date}|${e.minutes}`;n!==this.minuteKey&&(this.minuteKey=n,this.tick++)},5e3),this.addEventListener("pointerdown",this.onActivity,{capture:!0}),this.addEventListener("keydown",this.onKey),this.watchBackend()}disconnectedCallback(){super.disconnectedCallback(),this.stopWatching?.(),this.stopWatching=null,this.stopChores?.(),this.stopChores=null,this.resize?.disconnect(),this.resize=null;for(let e of[this.idleTimer,this.toastTimer,this.arriveTimer])e&&clearTimeout(e);this.clockTimer&&clearInterval(this.clockTimer),this.removeEventListener("pointerdown",this.onActivity,{capture:!0}),this.removeEventListener("keydown",this.onKey)}willUpdate(e){e.has("backend")&&this.isConnected&&this.watchBackend()}firstUpdated(){this.resize=new ResizeObserver(()=>this.measure()),this.resize.observe(this),this.measure()}updated(){let e=this.scroller;if(e!==this.watchedScroller&&this.resize&&(this.watchedScroller&&this.resize.unobserve(this.watchedScroller),e&&this.resize.observe(e),this.watchedScroller=e),!(!e||!this.board)){if(!this.scrolledOnce&&this.plan){this.scrolledOnce=!0,this.scrollToNow();return}if(this.keepAt!=null){let n=this.keepAt;this.keepAt=null,this.scrollToTime(n)}else this.syncDay()}}watchBackend(){this.stopWatching?.(),this.stopWatching=null,this.stopChores?.(),this.stopChores=null,this.backend&&(this.stopChores=this.backend.watchChores(e=>{if(this.chores=e,e&&this.choreDraft.size){let n=new Map(this.choreDraft);for(let i of e.chores)n.has(i.id)&&De(i)===n.get(i.id)&&n.delete(i.id);for(let i of n.keys())e.chores.some(o=>o.id===i)||n.delete(i);this.choreDraft=n}}),this.stopWatching=this.backend.watch(e=>{this.plan=Pn(e),this.error=null,this.sel&&!this.findEvent(this.sel)&&this.closeEditor()},e=>{this.error=e}))}measure(){this.width=this.clientWidth||window.innerWidth;let e=this.scroller;e&&(this.boardWidth=e.clientWidth)}get scroller(){return this.renderRoot.querySelector(".scroller")}get wide(){if(this.width<xs)return!1;let e=this.plan;return!e||this.width-vs>=St(Ce(e).length,ge(e).length)}today(){return qe(this.plan?.time_zone??ks())}currentBoard(){let e=this.plan;if(!e)return null;let n=this.today(),i=`${this.mode}|${this.boardWidth}|${n.date}|${n.minutes}`;return(this.board==null||e!==this.boardPlan||i!==this.boardKey)&&(this.board=Tn(e,this.mode,this.boardWidth,n),this.boardPlan=e,this.boardKey=i),this.board}dayIndexOf(e){return this.plan?this.plan.days.findIndex(n=>n.date===e):-1}scrollToTime(e,n){let i=this.scroller;if(!i||!this.board)return;let o=this.board.dayHeads.find(a=>a.date===n)?.y??0;i.scrollTop=Math.max(o,kn(this.board,e)-ut-4),this.syncDay()}scrollToNow(){if(!this.plan)return;let e=this.today(),n=Math.max(0,this.dayIndexOf(e.date));this.scrollToTime(n*1440+(this.mode==="timeline"&&n===this.dayIndexOf(e.date)?e.minutes-45:0),this.plan.days[n]?.date)}goToDay(e){let n=this.plan;if(!n)return;let i=this.today();if(e===i.date){this.scrollToNow();return}let o=this.dayIndexOf(e),a=n.days[o];if(!a)return;let r=1/0;if(this.mode==="timeline"){for(let l of a.events)r=Math.min(r,l.arrive_by??l.start);for(let l of Object.values(a.drivers))for(let p of l.outings)p.start!=null&&(r=Math.min(r,p.start))}this.scrollToTime(o*1440+(Number.isFinite(r)?Math.max(0,r-30):0),e)}syncDay(){let e=this.scroller;if(!e||!this.board||!this.board.dayHeads.length)return;let n=e.scrollTop,i=this.board.dayHeads[0];for(let p of this.board.dayHeads)p.y<=n+1&&(i=p);let o=this.renderRoot,a=o.querySelector(".pinned .label"),r=o.querySelector(".pinned .tag"),l=o.querySelector(".pinned .sub");a&&a.textContent!==i.label&&(a.textContent=i.label),r&&(r.textContent!==i.tag&&(r.textContent=i.tag),r.hidden=!i.tag),l&&l.textContent!==i.sub&&(l.textContent=i.sub),l?.classList.toggle("warn",i.warn);for(let p of o.querySelectorAll(".day-tile"))p.classList.toggle("in-view",p.dataset.date===i.date)}setPage(e){e!==this.page&&(this.closeEditor(),this.page=e,e==="rides"&&(this.scrolledOnce=!1))}async toggleChore(e){if(!this.backend)return;let n=!this.choreDone(e),i=new Map(this.choreDraft);i.set(e.id,n),this.choreDraft=i;try{await this.backend.setChoreDone(e.id,n)}catch(o){let a=new Map(this.choreDraft);a.delete(e.id),this.choreDraft=a;let r=o instanceof Y?o:new Y("error",String(o));this.showToast(r.code==="preview"?r.message:`Couldn’t save that. ${r.message}`)}}choreDone(e){return this.choreDraft.get(e.id)??De(e)}setMode(e){if(e===this.mode)return;let n=this.scroller;this.keepAt=n&&this.board?_n(this.board,n.scrollTop+ut+4):null,this.mode=e,this.urlView||Ts(e)}findEvent(e){let n=this.plan?.days.find(o=>o.date===e.day),i=n?.events.find(o=>o.id===e.event);return n&&i?{day:n,event:i}:null}open(e,n=!1){e&&(this.flushArrive(),this.sel=e,this.scope="this",this.arriveDraft=void 0,n&&this.reveal(e))}reveal(e){let n=this.findEvent(e),i=this.dayIndexOf(e.day);!n||i<0||this.scrollToTime(i*1440+Math.max(0,(n.event.arrive_by??n.event.start)-30),e.day)}closeEditor(){this.flushArrive(),this.sel=null,this.arriveDraft=void 0}showToast(e){this.toast=e,this.toastTimer&&clearTimeout(this.toastTimer),this.toastTimer=setTimeout(()=>{this.toast=null},7e3)}async save(e,n,i){if(!this.pending){this.pending={key:e,value:n};try{await i()}catch(o){let a=o instanceof Y?o:new Y("error",String(o));this.showToast(a.code==="preview"?a.message:`Couldn’t save that. ${a.message}`)}finally{this.pending=null}}}setRide(e,n,i){if(!this.backend)return;let o=this.backend;this.save(`${n}`,i,()=>o.setRide(e.id,n,i,this.scope))}setAttending(e,n){if(!this.backend||e.attending!==!1===n)return;let i=this.backend;this.save("attending",n,()=>i.setAttending(e.id,n,this.scope))}toggleStay(e){if(!this.backend)return;let n=this.backend;this.save("stay",!e.stay,()=>n.setStay(e.id,!e.stay,this.scope))}toggleAlong(e,n){if(!this.backend)return;let i=this.backend,o=e.along.includes(n)?e.along.filter(a=>a!==n):[...e.along,n];this.save("along",o,()=>i.setTakeAlong(e.id,o,this.scope))}nudgeArrive(e,n){let i=this.arriveDraft!==void 0?this.arriveDraft:e.arrive_by,o;n<0?o=(i??e.start)-5:o=i==null||i+5>=e.start?null:i+5,this.arriveDraft=o,this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=setTimeout(()=>this.flushArrive(),ws)}clearArrive(){this.arriveDraft=null,this.flushArrive()}flushArrive(){this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=null;let e=this.arriveDraft,n=this.sel;if(e===void 0||!n||!this.backend)return;let i=this.findEvent(n);if(!i||i.event.arrive_by===e){this.arriveDraft=void 0;return}let o=this.backend,a=i.event.id,r=this.scope;this.save("arrive",e,()=>o.setArriveBy(a,e,r)).then(()=>{this.arriveDraft=void 0})}apply(e){if(!this.backend)return;let n=this.backend;this.save(`fix|${e}`,e,()=>n.applySuggestion(e))}render(){let e=this.plan,n=this.currentBoard(),i=e?En(e,this.today()):{items:[],problems:0,unassigned:0,later:0,laterUnassigned:0},o=this.wide,a=this.chores?Rn(this.chores).filter(p=>!this.choreDone(p)):[],r=d`<aside class="panel" aria-label=${this.sel?"Change this ride":"Needs attention"}>
+      ${this.sel&&e?this.renderEditor(e):this.renderAttention(i,a)}
+    </aside>`,l=this.page==="rides";return d`
+      <div class="app ${o?"wide":this.width<ys?"narrow phone":"narrow"}">
         <div class="col">
-          ${this.renderHeader(e,r)} ${e?this.renderWeek(e):x} ${this.renderBanner(e)}
+          ${this.renderHeader(e,i,a.length)} ${l&&e?this.renderWeek(e):b}
+          ${l?this.renderBanner(e):b}
           <main>
-            <section class="board-area" aria-label="Everyone’s week">
-              ${n&&e?ht(e)?this.renderQuiet(e):this.renderBoard(n):this.renderEmpty()}
-            </section>
+            ${l?d`<section class="board-area" aria-label="Everyone’s week">
+                  ${n&&e?gt(e)?this.renderQuiet(e):this.renderBoard(n):this.renderEmpty()}
+                </section>`:d`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
             ${!o&&(this.sheet||this.sel)?d`<div class="backdrop" @click=${()=>this.closePanel()}></div>
-                  ${a}`:x}
+                  ${r}`:b}
           </main>
         </div>
-        ${o?a:x}
-        ${this.toast?d`<div class="toast" role="status">${this.toast}</div>`:x}
+        ${o?r:b}
+        ${this.toast?d`<div class="toast" role="status">${this.toast}</div>`:b}
       </div>
-    `}closePanel(){this.closeEditor(),this.sheet=!1}renderHeader(e,n){let r=n.problems;this.tick;let o=this.today(),a="";if(e){let m=e.time_zone,h=new Date(e.updated);this.error?a=d`<span class="bad">Can’t reach Home Assistant · showing the plan from ${tt(h,new Date,m)}</span>`:e.status&&!e.status.ok?a=d`<span class="bad">Couldn’t read Google Calendar${e.status.error?`: ${e.status.error}`:""} · plan from ${tt(h,new Date,m)}</span>`:this.backend?.live||(a=`Updated ${tt(h,new Date,m)}`)}let s=(m,h,f,b)=>d`
-      <button type="button" class="seg-btn" title=${b} aria-pressed=${this.mode===m?"true":"false"} @click=${()=>this.setMode(m)}>
-        ${f}<span class="seg-label">${h}</span>
+    `}closePanel(){this.closeEditor(),this.sheet=!1}renderHeader(e,n,i){let o=n.problems+i;this.tick;let a=this.today(),r="";if(e){let g=e.time_zone,m=new Date(e.updated);this.error?r=d`<span class="bad">Can’t reach Home Assistant · showing the plan from ${it(m,new Date,g)}</span>`:e.status&&!e.status.ok?r=d`<span class="bad">Couldn’t read Google Calendar${e.status.error?`: ${e.status.error}`:""} · plan from ${it(m,new Date,g)}</span>`:this.backend?.live||(r=`Updated ${it(m,new Date,g)}`)}let l=(g,m,v,u)=>d`
+      <button type="button" class="seg-btn" title=${u} aria-pressed=${this.mode===g?"true":"false"} @click=${()=>this.setMode(g)}>
+        ${v}<span class="seg-label">${m}</span>
       </button>
-    `,l=Le(o.minutes),c=!!e&&ht(e);return d`
+    `,p=(g,m,v)=>d`
+      <button type="button" class="seg-btn" aria-pressed=${this.page===g?"true":"false"} @click=${()=>this.setPage(g)}>
+        ${v}<span class="seg-label">${m}</span>
+      </button>
+    `,f=je(a.minutes),h=!!e&&gt(e);return d`
       <header>
         ${this.showMenu?d`<button type="button" class="icon-btn" aria-label="Open the Home Assistant menu" @click=${this.toggleMenu}>
-              ${Ee`<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>`}
-            </button>`:x}
+              ${le`<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>`}
+            </button>`:b}
         <div class="titles">
-          <h1 class="clock" aria-label=${`${Pe(o.date)}, ${l}`}>
-            <span class="hm">${l.slice(0,-3)}</span><span class="ampm">${l.slice(-2)}</span>
+          <h1 class="clock" aria-label=${`${_e(a.date)}, ${f}`}>
+            <span class="hm">${f.slice(0,-3)}</span><span class="ampm">${f.slice(-2)}</span>
           </h1>
-          <p class="today-line">${Pe(o.date)}</p>
-          ${a?d`<p class="status">${a}</p>`:x}
+          <p class="today-line">${_e(a.date)}</p>
+          ${r?d`<p class="status">${r}</p>`:b}
         </div>
-        ${e&&!c?this.renderNext(e,_n(e,o),n):x}
+        ${e&&!h?this.renderNext(e,Mn(e,a),n):b}
         <div class="controls">
-          ${this.wide||c?x:d`<button type="button" class="attn-btn ${r?"has":""}" @click=${()=>{this.sheet=!0}}>
-                <span class="attn-label">Needs attention</span> <span class="count">${r}</span>
+          ${this.wide||h&&!i?b:d`<button type="button" class="attn-btn ${o?"has":""}" @click=${()=>{this.sheet=!0}}>
+                <span class="attn-label">Needs attention</span> <span class="count">${o}</span>
               </button>`}
-          <div role="group" aria-label="View" class="seg">
-            ${s("timeline","Timeline",Ee`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="1" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="8" width="14" height="3" rx="1.5" fill="currentColor" opacity="0.55"/><rect x="2" y="14" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Spacing matches the clock")}
-            ${s("compact","Compact",Ee`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="7.5" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="12" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Everything in order, no time scale")}
+          <div role="group" aria-label="Page" class="seg pages">
+            ${p("rides","Rides",le`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2zm2.2 0h9.6l-1.1-3H8.3zM7 15.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`)}
+            ${p("chores","Chores",le`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 6.5l2 2 3.5-3.5M4 15.5l2 2 3.5-3.5M13 7h7M13 16h7"/></svg>`)}
           </div>
+          ${this.page!=="rides"?b:d`<div role="group" aria-label="View" class="seg">
+            ${l("timeline","Timeline",le`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="1" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="8" width="14" height="3" rx="1.5" fill="currentColor" opacity="0.55"/><rect x="2" y="14" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Spacing matches the clock")}
+            ${l("compact","Compact",le`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="7.5" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="12" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Everything in order, no time scale")}
+          </div>`}
         </div>
       </header>
-    `}renderNext(e,n,r){if(!n){let c=this.today().date,m=r.unassigned,h=r.laterUnassigned;if(m){let b=d`<span class="next-eyebrow">No trips planned yet</span>
-          <span class="next-lead">${m} ${m===1?"ride needs":"rides need"} a driver</span>
-          <span class="next-stop">${this.wide?"Pick who drives under Needs attention.":"Tap to pick who drives."}</span>`;return this.wide?d`<div class="next idle needs">${b}</div>`:d`<button type="button" class="next idle needs" @click=${()=>this.sheet=!0}>${b}</button>`}if(h)return d`<div class="next idle">
+    `}renderNext(e,n,i){if(!n){let p=this.today().date,f=i.unassigned,h=i.laterUnassigned;if(f){let m=d`<span class="next-eyebrow">No trips planned yet</span>
+          <span class="next-lead">${f} ${f===1?"ride needs":"rides need"} a driver</span>
+          <span class="next-stop">${this.wide?"Pick who drives under Needs attention.":"Tap to pick who drives."}</span>`;return this.wide?d`<div class="next idle needs">${m}</div>`:d`<button type="button" class="next idle needs" @click=${()=>this.sheet=!0}>${m}</button>`}if(h)return d`<div class="next idle">
           <span class="next-eyebrow">No trips planned yet</span>
           <span class="next-lead">All set for the next two days</span>
           <span class="next-stop">${h} ${h===1?"ride needs":"rides need"} a driver later this week.</span>
-        </div>`;let f=e.days.some(b=>b.date>=c&&b.events.length);return d`<div class="next idle">
+        </div>`;let g=e.days.some(m=>m.date>=p&&m.events.length);return d`<div class="next idle">
         <span class="next-eyebrow">All set</span>
-        <span class="next-lead">${f?"No more trips this week":"No trips this week"}</span>
-        <span class="next-stop">${f?"Nobody else needs driving anywhere.":"Nobody needs a ride yet."}</span>
-      </div>`}let o;n.ongoing?o="On the road now":n.ahead===0?o=n.inMinutes<180?`Next trip · in ${Oe(n.inMinutes)}`:"Next trip · later today":n.ahead===1?o="Next trip · tomorrow":o=`Next trip · ${de(n.date)}`;let a=!n.ongoing&&n.ahead===0&&n.inMinutes<=30,s=d`
+        <span class="next-lead">${g?"No more trips this week":"No trips this week"}</span>
+        <span class="next-stop">${g?"Nobody else needs driving anywhere.":"Nobody needs a ride yet."}</span>
+      </div>`}let o;n.ongoing?o="On the road now":n.ahead===0?o=n.inMinutes<180?`Next trip · in ${We(n.inMinutes)}`:"Next trip · later today":n.ahead===1?o="Next trip · tomorrow":o=`Next trip · ${G(n.date)}`;let a=!n.ongoing&&n.ahead===0&&n.inMinutes<=30,r=d`
       <span class="next-eyebrow">${o}</span>
       <span class="next-main">
-        <span class="avatar driver" aria-hidden="true">${ct(n.name)}</span>
+        <span class="avatar driver" aria-hidden="true">${Ve(n.name)}</span>
         <span class="next-lead">${n.name} · ${n.lead}</span>
-        <span class="next-kids">${n.kids.map(c=>d`<span class="kid-dot" style="background:${c.color}"></span>`)}</span>
+        <span class="next-kids">${n.kids.map(p=>d`<span class="kid-dot" style="background:${p.color}"></span>`)}</span>
       </span>
-      ${n.warn?d`<span class="next-stop warn">${n.warn}</span>`:n.stop?d`<span class="next-stop">${n.stop}</span>`:x}
-    `,l=`next ${n.ongoing?"ongoing":a?"soon":""}`;return n.target?d`<button type="button" class=${l} @click=${()=>this.open(n.target)}>${s}</button>`:d`<div class=${l}>${s}</div>`}renderWeek(e){let n=this.today().date,r=ke(e);return d`<nav class="week" aria-label="Days">
-      ${e.days.map(o=>{let a=Ct(o),s=o.events.length,l=o.events.slice(0,6).map(m=>r.get(m.kid)?.color??G(0).color),c=`${Pe(o.date)}: ${s?`${s} ${s===1?"activity":"activities"}`:"nothing planned"}${a?`, ${a} to sort out`:""}`;return d`<button
+      ${n.warn?d`<span class="next-stop warn">${n.warn}</span>`:n.stop?d`<span class="next-stop">${n.stop}</span>`:b}
+    `,l=`next ${n.ongoing?"ongoing":a?"soon":""}`;return n.target?d`<button type="button" class=${l} @click=${()=>this.open(n.target)}>${r}</button>`:d`<div class=${l}>${r}</div>`}renderWeek(e){let n=this.today().date,i=de(e);return d`<nav class="week" aria-label="Days">
+      ${e.days.map(o=>{let a=zt(o),r=o.events.length,l=o.events.slice(0,6).map(f=>i.get(f.kid)?.color??F(0).color),p=`${_e(o.date)}: ${r?`${r} ${r===1?"activity":"activities"}`:"nothing planned"}${a?`, ${a} to sort out`:""}`;return d`<button
           type="button"
           class="day-tile ${o.date===n?"today":""}"
           data-date=${o.date}
-          aria-label=${c}
+          aria-label=${p}
           @click=${()=>this.goToDay(o.date)}
         >
-          <span class="dt-wd">${o.date===n?"Today":de(o.date)}</span>
+          <span class="dt-wd">${o.date===n?"Today":G(o.date)}</span>
           <span class="dt-num">${Number(o.date.slice(8))}</span>
           <span class="dt-dots" aria-hidden="true">
-            ${l.length?l.map(m=>d`<span class="dt-dot" style="background:${m}"></span>`):d`<span class="dt-free">free</span>`}
-            ${s>6?d`<span class="dt-more">+${s-6}</span>`:x}
+            ${l.length?l.map(f=>d`<span class="dt-dot" style="background:${f}"></span>`):d`<span class="dt-free">free</span>`}
+            ${r>6?d`<span class="dt-more">+${r-6}</span>`:b}
           </span>
-          ${a?d`<span class="dt-badge" aria-hidden="true">${a}</span>`:x}
+          ${a?d`<span class="dt-badge" aria-hidden="true">${a}</span>`:b}
         </button>`})}
-    </nav>`}renderQuiet(e){let n=we(e),r=ce(e),o=ke(e),a=n.map(s=>F(e,s));return d`<div class="quiet-week">
+    </nav>`}renderQuiet(e){let n=Ce(e),i=ge(e),o=de(e),a=n.map(r=>X(e,r));return d`<div class="quiet-week">
       <div class="qw-hero">
         <svg class="qw-art" viewBox="0 0 160 120" aria-hidden="true">
           <rect x="18" y="20" width="124" height="92" rx="16" fill="var(--surface)" stroke="var(--line)" stroke-width="2" />
@@ -1725,23 +1976,23 @@ var We=globalThis,Ve=We.ShadowRoot&&(We.ShadyCSS===void 0||We.ShadyCSS.nativeSha
           <rect x="18" y="34" width="124" height="12" fill="var(--ink)" />
           <rect x="46" y="10" width="8" height="20" rx="4" fill="var(--ink-2)" />
           <rect x="106" y="10" width="8" height="20" rx="4" fill="var(--ink-2)" />
-          ${n.slice(0,3).map((s,l)=>Ee`<circle cx=${50+l*30} cy="80" r="11" fill=${o.get(s).color} opacity="0.9" />`)}
+          ${n.slice(0,3).map((r,l)=>le`<circle cx=${50+l*30} cy="80" r="11" fill=${o.get(r).color} opacity="0.9" />`)}
         </svg>
         <h2>A quiet week, with nothing to drive</h2>
         <p>
-          When something lands on ${fi(a)} Google calendar, it shows up here within a minute, with who’s driving and when
+          When something lands on ${As(a)} Google calendar, it shows up here within a minute, with who’s driving and when
           to leave.
         </p>
       </div>
       <div class="qw-people">
-        ${n.map(s=>{let l=o.get(s);return d`<div class="qw-person" style="--c:${l.color};--rgb:${l.rgb}">
-            <span class="avatar" aria-hidden="true">${ct(F(e,s))}</span>
-            <span class="qw-name">${F(e,s)}</span>
+        ${n.map(r=>{let l=o.get(r);return d`<div class="qw-person" style="--c:${l.color};--rgb:${l.rgb}">
+            <span class="avatar" aria-hidden="true">${Ve(X(e,r))}</span>
+            <span class="qw-name">${X(e,r)}</span>
             <span class="qw-sub">Free all week</span>
           </div>`})}
-        ${r.map(s=>d`<div class="qw-person driver">
-            <span class="avatar driver" aria-hidden="true">${ct(he(e,s))}</span>
-            <span class="qw-name">${he(e,s)}</span>
+        ${i.map(r=>d`<div class="qw-person driver">
+            <span class="avatar driver" aria-hidden="true">${Ve(fe(e,r))}</span>
+            <span class="qw-name">${fe(e,r)}</span>
             <span class="qw-sub">No trips</span>
           </div>`)}
       </div>
@@ -1762,11 +2013,11 @@ var We=globalThis,Ve=We.ShadowRoot&&(We.ShadyCSS===void 0||We.ShadyCSS.nativeSha
     </div>`}renderBanner(e){let n=e?.unavailable_calendars.length??0;return n?d`<div class="banner" role="status">
       Couldn’t read ${n===1?"one calendar":`${n} calendars`} just now, so some activities may be missing. MyDashLight tries again every
       minute.
-    </div>`:x}renderEmpty(){return this.error?d`<div class="empty-state">
+    </div>`:b}renderEmpty(){return this.error?d`<div class="empty-state">
         <p class="big">Can’t load the rides</p>
         <p>${this.error.message}</p>
         <button type="button" class="btn dark" @click=${()=>void this.backend?.refresh()}>Try again</button>
-      </div>`:d`<div class="empty-state"><p class="big">Loading the week…</p></div>`}renderBoard(e){let n=this.sel,r=s=>!!s&&!!n&&s.day===n.day&&s.event===n.event,o=e.dayHeads[0],a=e.width;return d`
+      </div>`:d`<div class="empty-state"><p class="big">Loading the week…</p></div>`}renderBoard(e){let n=this.sel,i=r=>!!r&&!!n&&r.day===n.day&&r.event===n.event,o=e.dayHeads[0],a=e.width;return d`
       <div
         class="scroller"
         @pointerdown=${this.onDown}
@@ -1777,11 +2028,11 @@ var We=globalThis,Ve=We.ShadowRoot&&(We.ShadyCSS===void 0||We.ShadyCSS.nativeSha
         @scroll=${()=>this.syncDay()}
       >
         <div class="heads" style="width:${a}px">
-          ${e.columns.map(s=>d`<div class="col-head ${s.kind}" style="left:${s.x}px;width:${s.w}px;--c:${s.dot};--rgb:${s.rgb}">
-              <span class="avatar ${s.kind}" aria-hidden="true">${ct(s.name)}</span>
+          ${e.columns.map(r=>d`<div class="col-head ${r.kind}" style="left:${r.x}px;width:${r.w}px;--c:${r.dot};--rgb:${r.rgb}">
+              <span class="avatar ${r.kind}" aria-hidden="true">${Ve(r.name)}</span>
               <span class="ch-text">
-                <span class="name">${s.name}</span>
-                <span class="sub ${s.subWarn?"warn":""}">${s.sub}</span>
+                <span class="name">${r.name}</span>
+                <span class="sub ${r.subWarn?"warn":""}">${r.sub}</span>
               </span>
             </div>`)}
         </div>
@@ -1790,217 +2041,271 @@ var We=globalThis,Ve=We.ShadowRoot&&(We.ShadyCSS===void 0||We.ShadyCSS.nativeSha
           ><span class="sub ${o?.warn?"warn":""}">${o?.sub??""}</span>
         </div>
         <div class="canvas" style="width:${a}px;height:${Math.max(e.height+400,600)}px">
-          ${e.columns.map(s=>d`<div
-                class="col-bg ${s.kind}"
-                style="left:${s.x}px;width:${s.w}px;height:${Math.max(e.height+392,592)}px;--rgb:${s.rgb}"
+          ${e.columns.map(r=>d`<div
+                class="col-bg ${r.kind}"
+                style="left:${r.x}px;width:${r.w}px;height:${Math.max(e.height+392,592)}px;--rgb:${r.rgb}"
               ></div>`)}
           <span class="sep" style="left:${e.sepX}px;height:${Math.max(e.height+392,592)}px"></span>
-          ${e.dayHeads.map(s=>d`<div class="day-head" style="top:${s.y}px;width:${a}px">
-              <span class="label">${s.label}</span>${s.tag?d`<span class="tag">${s.tag}</span>`:x}<span
-                class="sub ${s.warn?"warn":""}"
-                >${s.sub}</span
+          ${e.dayHeads.map(r=>d`<div class="day-head" style="top:${r.y}px;width:${a}px">
+              <span class="label">${r.label}</span>${r.tag?d`<span class="tag">${r.tag}</span>`:b}<span
+                class="sub ${r.warn?"warn":""}"
+                >${r.sub}</span
               >
             </div>`)}
-          ${e.empties.map(s=>d`<span class="empty" style="top:${s.y}px">${s.text}</span>`)}
-          ${e.grid.map(s=>d`<div class="grid ${s.strong?"strong":""}" style="top:${s.y}px;width:${a-60}px"></div>`)}
-          ${e.hours.map(s=>d`<span class="hour" style="top:${s.y}px">${s.label}</span>`)}
-          ${Q(e.bands,s=>s.key,s=>d`<div
+          ${e.empties.map(r=>d`<span class="empty" style="top:${r.y}px">${r.text}</span>`)}
+          ${e.grid.map(r=>d`<div class="grid ${r.strong?"strong":""}" style="top:${r.y}px;width:${a-60}px"></div>`)}
+          ${e.hours.map(r=>d`<span class="hour" style="top:${r.y}px">${r.label}</span>`)}
+          ${J(e.bands,r=>r.key,r=>d`<div
                 class="band"
                 aria-hidden="true"
-                style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;background:rgba(${s.color.rgb},0.10);border-color:rgba(${s.color.rgb},0.45)"
+                style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:rgba(${r.color.rgb},0.10);border-color:rgba(${r.color.rgb},0.45)"
               ></div>`)}
-          ${Q(e.busy,s=>s.key,s=>d`<div class="busy" style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px">
-                <span style="top:${s.labelY}px">${s.label}</span>
+          ${J(e.busy,r=>r.key,r=>d`<div class="busy" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px">
+                <span style="top:${r.labelY}px">${r.label}</span>
               </div>`)}
-          ${Q(e.preps,s=>s.key,s=>d`<div
+          ${J(e.preps,r=>r.key,r=>d`<div
                 class="prep"
                 aria-hidden="true"
-                style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;border-color:${s.color.color};background:rgba(${s.color.rgb},0.07);color:${s.color.ink}"
+                style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;border-color:${r.color.color};background:rgba(${r.color.rgb},0.07);color:${r.color.ink}"
               >
-                ${s.label}
+                ${r.label}
               </div>`)}
-          ${Q(e.cards,s=>s.key,s=>{let l=s.color,c=s.skipped?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.10) 0px, rgba(${l.rgb},0.10) 6px, transparent 6px, transparent 12px), var(--surface)`:s.stayed?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.24) 0px, rgba(${l.rgb},0.24) 6px, rgba(${l.rgb},0.08) 6px, rgba(${l.rgb},0.08) 12px), var(--surface)`:`linear-gradient(rgba(${l.rgb},0.15), rgba(${l.rgb},0.15)), var(--surface)`;return d`<button
+          ${J(e.cards,r=>r.key,r=>{let l=r.color,p=r.skipped?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.10) 0px, rgba(${l.rgb},0.10) 6px, transparent 6px, transparent 12px), var(--surface)`:r.stayed?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.24) 0px, rgba(${l.rgb},0.24) 6px, rgba(${l.rgb},0.08) 6px, rgba(${l.rgb},0.08) 12px), var(--surface)`:`linear-gradient(rgba(${l.rgb},0.15), rgba(${l.rgb},0.15)), var(--surface)`;return d`<button
                 type="button"
-                class="card ${s.wrap?"wrap":""} ${r(s.target)?"sel":""} ${s.clash?"clash":""} ${s.skipped?"skipped":""}"
-                aria-label=${s.aria}
-                style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;background:${c};border-color:${s.clash?"var(--bad)":`rgba(${l.rgb},0.45)`};--c:${l.color};--rgb:${l.rgb};--ring:${l.color}"
-                @click=${()=>this.open(s.target)}
+                class="card ${r.wrap?"wrap":""} ${i(r.target)?"sel":""} ${r.clash?"clash":""} ${r.skipped?"skipped":""}"
+                aria-label=${r.aria}
+                style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${p};border-color:${r.clash?"var(--bad)":`rgba(${l.rgb},0.45)`};--c:${l.color};--rgb:${l.rgb};--ring:${l.color}"
+                @click=${()=>this.open(r.target)}
               >
                 <span class="top">
-                  <span class="title">${s.title}</span>
-                  <span class="time">${s.time}</span>
-                  ${s.showDrop&&s.drop?d`<span class="line tone-${s.drop.tone}">${s.drop.text}</span>`:x}
+                  <span class="title">${r.title}</span>
+                  <span class="time">${r.time}</span>
+                  ${r.showDrop&&r.drop?d`<span class="line tone-${r.drop.tone}">${r.drop.text}</span>`:b}
                 </span>
-                ${s.showPick&&s.pick?d`<span class="line tone-${s.pick.tone}">${s.pick.text}</span>`:x}
+                ${r.showPick&&r.pick?d`<span class="line tone-${r.pick.tone}">${r.pick.text}</span>`:b}
               </button>`})}
-          ${Q(e.rides,s=>s.key,s=>d`<button
+          ${J(e.rides,r=>r.key,r=>d`<button
                 type="button"
-                class="ride ${s.dashed?"dashed":""} ${s.clash?"clash":""}"
-                aria-label=${s.aria}
-                style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px"
-                @click=${()=>this.open(s.target)}
+                class="ride ${r.dashed?"dashed":""} ${r.clash?"clash":""}"
+                aria-label=${r.aria}
+                style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"
+                @click=${()=>this.open(r.target)}
               >
-                <span class="l1">${s.l1}</span>${s.show2?d`<span class="l2" style="-webkit-line-clamp:${s.lines2}">${s.l2}</span>`:x}
+                <span class="l1">${r.l1}</span>${r.show2?d`<span class="l2" style="-webkit-line-clamp:${r.lines2}">${r.l2}</span>`:b}
               </button>`)}
-          ${Q(e.stays,s=>s.key,s=>d`<button
+          ${J(e.stays,r=>r.key,r=>d`<button
                 type="button"
                 class="stay"
-                style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;border-color:${s.color.color};background:repeating-linear-gradient(135deg, rgba(${s.color.rgb},0.28) 0px, rgba(${s.color.rgb},0.28) 5px, #fff 5px, #fff 10px)"
-                @click=${()=>this.open(s.target)}
+                style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;border-color:${r.color.color};background:repeating-linear-gradient(135deg, rgba(${r.color.rgb},0.28) 0px, rgba(${r.color.rgb},0.28) 5px, #fff 5px, #fff 10px)"
+                @click=${()=>this.open(r.target)}
               >
-                <span class="l1" style="color:${s.color.ink}">${s.l1}</span><span class="l2">${s.l2}</span>
+                <span class="l1" style="color:${r.color.ink}">${r.l1}</span><span class="l2">${r.l2}</span>
               </button>`)}
-          ${Q(e.trips,s=>s.key,s=>d`<button
+          ${J(e.trips,r=>r.key,r=>d`<button
                 type="button"
-                class="trip ${s.bad?"bad":""} ${s.stops?"list":""}"
-                aria-label=${s.aria}
-                style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px"
-                @click=${()=>this.open(s.target)}
+                class="trip ${r.bad?"bad":""} ${r.stops?"list":""}"
+                aria-label=${r.aria}
+                style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"
+                @click=${()=>this.open(r.target)}
               >
-                <span class="l1">${s.l1}${s.kids.map(l=>d`<span class="kid-dot" style="background:${l}"></span>`)}</span>
-                ${s.show2?d`<span class="l2">${s.l2}</span>`:x}
-                ${s.stops?s.stops.map(l=>d`<span class="stop ${l.warn?"warn":""}">${l.text}</span>`):x}
-                ${s.show3?d`<span class="l3">${s.l3}</span>`:x}
+                <span class="l1">${r.l1}${r.kids.map(l=>d`<span class="kid-dot" style="background:${l}"></span>`)}</span>
+                ${r.show2?d`<span class="l2">${r.l2}</span>`:b}
+                ${r.stops?r.stops.map(l=>d`<span class="stop ${l.warn?"warn":""}">${l.text}</span>`):b}
+                ${r.show3?d`<span class="l3">${r.l3}</span>`:b}
               </button>`)}
-          ${Q(e.overlaps,s=>s.key,s=>d`<div class="overlap" aria-hidden="true" style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px"></div>`)}
-          ${Q(e.marks,s=>s.key,s=>d`<span class="mark" style="left:${s.x}px;top:${s.y}px;${s.right?"transform:translateX(-100%)":""}">${s.text}</span>`)}
+          ${J(e.overlaps,r=>r.key,r=>d`<div class="overlap" aria-hidden="true" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"></div>`)}
+          ${J(e.marks,r=>r.key,r=>d`<span class="mark" style="left:${r.x}px;top:${r.y}px;${r.right?"transform:translateX(-100%)":""}">${r.text}</span>`)}
           ${e.now?d`<div class="now-line" aria-hidden="true" style="top:${e.now.y-1.5}px;width:${a-56}px"></div>
-                <span class="now-label" aria-hidden="true" style="top:${e.now.y-9}px">${e.now.label}</span>`:x}
+                <span class="now-label" aria-hidden="true" style="top:${e.now.y-9}px">${e.now.label}</span>`:b}
         </div>
       </div>
-    `}renderAttention(e){let{items:n,problems:r,later:o}=e,a=this.plan;return d`
+    `}renderAttention(e,n){let{items:i,problems:o,later:a}=e,r=this.plan,l=o+n.length,p=this.chores,f=!!p&&!It(p);return d`
       <div class="panel-head">
-        <h2>Needs attention <span class="panel-sub">Next two days</span></h2>
-        <span class="count-pill ${r?"bad":"ok"}">${r}</span>
-        ${this.wide?x:d`<button type="button" class="btn dark" @click=${()=>this.sheet=!1}>Done</button>`}
+        <h2>Needs attention</h2>
+        <span class="count-pill ${l?"bad":"ok"}">${l}</span>
+        ${this.wide?b:d`<button type="button" class="btn dark" @click=${()=>this.sheet=!1}>Done</button>`}
       </div>
-      ${a&&!r?d`<div class="all-clear">
-            <span class="check" aria-hidden="true">${Ee`<svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`}</span>
-            <span><strong>All clear</strong>${ht(a)?"Nothing needs you this week.":o?`Nothing for the next two days. ${o} more later this week, marked on the days above.`:"Every ride is covered and nobody is double-booked."}</span>
-          </div>`:x}
-      ${n.map(s=>d`<div class="issue ${s.tone}">
+      ${f?d`<h3 class="panel-section">Chores <span class="panel-sub">Overdue and due today</span></h3>
+            ${n.length?d`<div class="attn-chores">${n.map(h=>this.renderChoreRow(h,!0))}</div>`:d`<p class="section-clear">All of today’s chores are done.</p>`}
+            <h3 class="panel-section">Rides <span class="panel-sub">Next two days</span></h3>`:d`<p class="panel-sub">Rides in the next two days</p>`}
+      ${r&&!o?d`<div class="all-clear">
+            <span class="check" aria-hidden="true">${le`<svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`}</span>
+            <span><strong>All clear</strong>${gt(r)?"Nothing needs you this week.":a?`Nothing for the next two days. ${a} more later this week, marked on the days above.`:"Every ride is covered and nobody is double-booked."}</span>
+          </div>`:b}
+      ${i.map(h=>d`<div class="issue ${h.tone}">
           <div class="issue-main">
-            <span class="glyph" aria-hidden="true">${s.tone==="heads_up"?"i":"!"}</span>
+            <span class="glyph" aria-hidden="true">${h.tone==="heads_up"?"i":"!"}</span>
             <div class="issue-text">
-              ${s.target?d`<button type="button" class="issue-title" @click=${()=>this.open(s.target,!0)}>${s.title}</button>`:d`<strong class="issue-title">${s.title}</strong>`}
+              ${h.target?d`<button type="button" class="issue-title" @click=${()=>this.open(h.target,!0)}>${h.title}</button>`:d`<strong class="issue-title">${h.title}</strong>`}
               <span class="issue-body"
-                >${s.parts?s.parts.map(l=>typeof l=="string"?l:d`<button type="button" class="issue-link" @click=${()=>this.open(l.target,!0)}>${l.text}</button>`):s.body}</span
+                >${h.parts?h.parts.map(g=>typeof g=="string"?g:d`<button type="button" class="issue-link" @click=${()=>this.open(g.target,!0)}>${g.text}</button>`):h.body}</span
               >
             </div>
           </div>
-          ${s.suggestions.length?d`<div class="fixes">
-                ${s.suggestions.map(l=>d`<button
+          ${h.suggestions.length?d`<div class="fixes">
+                ${h.suggestions.map(g=>d`<button
                     type="button"
                     class="fix"
                     ?disabled=${!!this.pending}
-                    @click=${()=>this.apply(l.id)}
+                    @click=${()=>this.apply(g.id)}
                   >
-                    <span class="fix-label">${this.pending?.key===`fix|${l.id}`?"Saving…":l.label}</span>
-                    <span class="fix-note">${l.note}</span>
+                    <span class="fix-label">${this.pending?.key===`fix|${g.id}`?"Saving…":g.label}</span>
+                    <span class="fix-note">${g.note}</span>
                   </button>`)}
-              </div>`:x}
+              </div>`:b}
         </div>`)}
-      ${this.wide&&a&&!ht(a)?this.renderLegend():x}
-    `}renderLegend(){return d`<div class="legend">
+      ${this.wide&&r&&!gt(r)&&this.page==="rides"?this.renderLegend():b}
+    `}renderChoreRow(e,n=!1){let i=this.chores,o=this.choreDone(e),a=i.kids.findIndex(y=>y.id===e.kid),r=(this.plan?de(this.plan).get(e.kid):void 0)??F(Math.max(0,a)),l=i.kids[a]?.name??"",p=o===De(e)?e:{...e,state:o?"done":"open",done_at:o?new Date().toISOString():null},f=Dn(p,i.today,i.time_zone),h=o||Sn(e),g=`${n?`${l}: `:""}${e.title}. ${f?`${f}. `:""}${o?"Done. Tap to undo.":"Tap when it’s done."}`,m=d`<span class="box" aria-hidden="true"
+        >${o?le`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`:b}</span
+      >
+      ${e.icon?d`<span class="chore-icon" aria-hidden="true">${e.icon}</span>`:b}
+      <span class="chore-text">
+        <span class="chore-title">${n?d`<span class="chore-kid">${l}</span> · `:b}${e.title}</span>
+        ${f?d`<span class="chore-note">${f}</span>`:b}
+      </span>`,v=`chore ${o?"done":""} ${e.state==="overdue"&&!o?"overdue":""} ${h?"":"later"}`,u=`--c:${r.color};--rgb:${r.rgb};--k:${r.ink}`;return h?d`<button type="button" class=${v} style=${u} aria-pressed=${o?"true":"false"} aria-label=${g} @click=${()=>void this.toggleChore(e)}>
+          ${m}
+        </button>`:d`<div class=${v} style=${u}>${m}</div>`}renderChores(){let e=this.chores;if(e===void 0)return d`<div class="chores-message"><p>Loading chores…</p></div>`;if(e===null)return d`<div class="chores-message">
+        <h2>Chores aren’t available right now</h2>
+        <p>MyDashLight may be restarting. If this stays, check that MyDashLight is up to date in HACS.</p>
+      </div>`;if(e.status.needs==="sign_in")return d`<div class="chores-message">
+        <h2>Sign in to Google again to turn on chores</h2>
+        <p>Chores use Google Tasks, which needs one more permission. In Home Assistant, open <strong>Settings › Devices &amp; services</strong> and follow the MyDashLight sign-in prompt.</p>
+      </div>`;if(e.status.needs==="tasks_api")return d`<div class="chores-message">
+        <h2>Turn on the Google Tasks API</h2>
+        <p>In Google Cloud, open the MyDashLight project, go to <strong>APIs &amp; Services › Library</strong>, find <strong>Google Tasks API</strong> and choose <strong>Enable</strong>. Chores show up a minute later.</p>
+      </div>`;let n=e.templates.filter(a=>a.problems.length),i=n.length?d`<div class="banner">
+          ${n.map(a=>d`<div><strong>${a.title}</strong>: ${a.problems.join("; ")}</div>`)}
+        </div>`:b;if(It(e)){let a=e.kids[0]?.name??"Ava";return d`<div class="chores-message">
+        <h2>No chores yet</h2>
+        <p>Chores come from Google Tasks, in the Google account MyDashLight signs in with.</p>
+        <ol>
+          <li>Open Google Tasks and pick the list <strong>Chore templates: Daily</strong> (or Weekly or Monthly).</li>
+          <li>Add a task named for the chore, such as <strong>🛏️ Make bed</strong>.</li>
+          <li>In its details, add a line <code>Who: ${a}</code>. Add <code>Days: Mon-Fri</code> for weekdays only.</li>
+        </ol>
+        <p>Within a minute it shows here, and on ${a}’s own list in Google Tasks.</p>
+      </div>`}let o=zn(e,this.plan?de(this.plan):void 0);return d`<div class="chores-scroll">
+      ${i}
+      <div class="chore-cols" style="--n:${o.length}">
+        ${o.map(a=>{let r=a.overdue.filter(l=>!this.choreDone(l)).length+a.now.filter(l=>!this.choreDone(l)).length;return d`<section class="chore-col" style="--c:${a.color.color};--rgb:${a.color.rgb}" aria-label=${`${a.name}’s chores`}>
+            <div class="chore-head">
+              <span class="avatar" aria-hidden="true">${Ve(a.name)}</span>
+              <span class="ch-text">
+                <span class="name">${a.name}</span>
+                <span class="sub">${r?`${r} to do`:a.done.length?"All done for now":"Nothing to do now"}</span>
+              </span>
+            </div>
+            ${a.overdue.length?d`<h3 class="chore-group overdue">Missed</h3>
+                  ${a.overdue.map(l=>this.renderChoreRow(l))}`:b}
+            ${a.now.length?d`<h3 class="chore-group">To do</h3>
+                  ${a.now.map(l=>this.renderChoreRow(l))}`:b}
+            ${a.done.length?d`<h3 class="chore-group">Done</h3>
+                  ${a.done.map(l=>this.renderChoreRow(l))}`:b}
+            ${a.later.map(l=>d`<h3 class="chore-group">${_s(l.date,e.today)}</h3>
+                ${l.chores.map(p=>this.renderChoreRow(p))}`)}
+            ${!a.overdue.length&&!a.now.length&&!a.done.length&&!a.later.length?d`<p class="chore-none">No chores this week.</p>`:b}
+          </section>`})}
+      </div>
+    </div>`}renderLegend(){return d`<div class="legend">
       <span><span class="sw trip-sw"></span>A driver’s trip out of the house; dots show who’s in the car</span>
       <span><span class="sw ride-sw"></span>A kid in a car (dashed: along for someone else’s stop)</span>
       <span><span class="sw band-sw"></span>Link from the kid to whoever is driving</span>
       <span><span class="sw stay-sw"></span>Staying through the activity</span>
       <span><span class="sw busy-sw"></span>Busy on their own calendar</span>
       <span><span class="sw overlap-sw"></span>Overlap: can’t do both</span>
-    </div>`}renderEditor(e){let n=this.findEvent(this.sel);if(!n)return d``;let{day:r,event:o}=n,a=ce(e),l=ke(e).get(o.kid)??G(0),c=!!this.pending,m=M=>this.pending?.key===M?this.pending.value:void 0,h=[...e.people?.carpools??[]];for(let M of e.days)for(let ee of M.events)for(let N of[ee.drop,ee.pick])N&&N!=="none"&&!a.includes(N)&&!h.some(X=>X.toLowerCase()===N.toLowerCase())&&h.push(N);let f=M=>{if(!o.sides.includes(M))return x;let ee=m(M),N=ee!==void 0?String(ee):M==="drop"?o.drop:o.pick,X=N&&N!=="none"&&!a.includes(N)?N:"",te=D=>this.setRide(o,M,N===D?"":D),Ae=[...a.map(D=>[D,Mt(e,D)]),["none","Not needed"]];return d`<div class="field">
-        <span class="field-label">${M==="drop"?"Drop-off":"Pick-up"} ${N===""?d`<span class="nobody">· nobody yet</span>`:x}</span>
-        <div role="group" aria-label=${M==="drop"?"Drop-off driver":"Pick-up driver"} class="choices" style="grid-template-columns:repeat(${Ae.length}, minmax(0, 1fr))">
-          ${Ae.map(([D,ne])=>d`<button type="button" class="choice" aria-pressed=${N===D?"true":"false"} ?disabled=${c} @click=${()=>te(D)}>
-                ${ne}
+    </div>`}renderEditor(e){let n=this.findEvent(this.sel);if(!n)return d``;let{day:i,event:o}=n,a=ge(e),l=de(e).get(o.kid)??F(0),p=!!this.pending,f=M=>this.pending?.key===M?this.pending.value:void 0,h=[...e.people?.carpools??[]];for(let M of e.days)for(let te of M.events)for(let N of[te.drop,te.pick])N&&N!=="none"&&!a.includes(N)&&!h.some(Z=>Z.toLowerCase()===N.toLowerCase())&&h.push(N);let g=M=>{if(!o.sides.includes(M))return b;let te=f(M),N=te!==void 0?String(te):M==="drop"?o.drop:o.pick,Z=N&&N!=="none"&&!a.includes(N)?N:"",ne=z=>this.setRide(o,M,N===z?"":z),Pe=[...a.map(z=>[z,Dt(e,z)]),["none","Not needed"]];return d`<div class="field">
+        <span class="field-label">${M==="drop"?"Drop-off":"Pick-up"} ${N===""?d`<span class="nobody">· nobody yet</span>`:b}</span>
+        <div role="group" aria-label=${M==="drop"?"Drop-off driver":"Pick-up driver"} class="choices" style="grid-template-columns:repeat(${Pe.length}, minmax(0, 1fr))">
+          ${Pe.map(([z,se])=>d`<button type="button" class="choice" aria-pressed=${N===z?"true":"false"} ?disabled=${p} @click=${()=>ne(z)}>
+                ${se}
               </button>`)}
         </div>
         ${h.length?d`<div role="group" aria-label=${M==="drop"?"Drop-off: someone else":"Pick-up: someone else"} class="chips">
-              ${h.map(D=>d`<button type="button" class="chip" aria-pressed=${N.toLowerCase()===D.toLowerCase()?"true":"false"} ?disabled=${c} @click=${()=>te(D)}>
-                    ${D}
+              ${h.map(z=>d`<button type="button" class="chip" aria-pressed=${N.toLowerCase()===z.toLowerCase()?"true":"false"} ?disabled=${p} @click=${()=>ne(z)}>
+                    ${z}
                   </button>`)}
-            </div>`:x}
+            </div>`:b}
         <input
           type="text"
-          .value=${X&&!h.some(D=>D.toLowerCase()===X.toLowerCase())?X:""}
-          ?disabled=${c}
+          .value=${Z&&!h.some(z=>z.toLowerCase()===Z.toLowerCase())?Z:""}
+          ?disabled=${p}
           aria-label=${M==="drop"?"Drop-off by someone else":"Pick-up by someone else"}
           placeholder="Someone else, e.g. Grandma"
           enterkeyhint="done"
-          @change=${D=>{let ne=D.target.value.trim();ne&&ne!==N&&this.setRide(o,M,ne)}}
-          @keydown=${D=>{D.key==="Enter"&&D.target.blur()}}
+          @change=${z=>{let se=z.target.value.trim();se&&se!==N&&this.setRide(o,M,se)}}
+          @keydown=${z=>{z.key==="Enter"&&z.target.blur()}}
         />
-      </div>`},b=m("stay"),$=b!==void 0?!!b:o.stay,u=o.drop===o.pick&&a.includes(o.drop),v=m("along"),E=v!==void 0?v:o.along,g=we(e).filter(M=>M!==o.kid),R=a.includes(o.drop)&&o.sides.includes("drop"),K=m("arrive"),P=this.arriveDraft!==void 0?this.arriveDraft:K!==void 0?K:o.arrive_by,L=[],J=M=>M==="none"?"Not needed":Mt(e,M);o.drop!==""&&L.push(`Drop-off: ${J(o.drop)}`),o.pick!==""&&L.push(`Pick-up: ${J(o.pick)}`),o.stay&&L.push("Stay: yes"),o.along.length&&L.push(`Take along: ${o.along.map(M=>F(e,M)).join(", ")}`),o.arrive_by!=null&&L.push(`Arrive by: ${Le(o.arrive_by)}`);let ue=m("attending"),_e=ue!==void 0?!!ue:o.attending!==!1;o.attending===!1&&L.splice(0,L.length,"Attending: no");let ae=r.date===this.today().date?"":`${de(r.date)} · `,Me=d`<div class="ed-head">
+      </div>`},m=f("stay"),v=m!==void 0?!!m:o.stay,u=o.drop===o.pick&&a.includes(o.drop),y=f("along"),T=y!==void 0?y:o.along,x=Ce(e).filter(M=>M!==o.kid),R=a.includes(o.drop)&&o.sides.includes("drop"),K=f("arrive"),P=this.arriveDraft!==void 0?this.arriveDraft:K!==void 0?K:o.arrive_by,H=[],ee=M=>M==="none"?"Not needed":Dt(e,M);o.drop!==""&&H.push(`Drop-off: ${ee(o.drop)}`),o.pick!==""&&H.push(`Pick-up: ${ee(o.pick)}`),o.stay&&H.push("Stay: yes"),o.along.length&&H.push(`Take along: ${o.along.map(M=>X(e,M)).join(", ")}`),o.arrive_by!=null&&H.push(`Arrive by: ${je(o.arrive_by)}`);let me=f("attending"),Te=me!==void 0?!!me:o.attending!==!1;o.attending===!1&&H.splice(0,H.length,"Attending: no");let pe=i.date===this.today().date?"":`${G(i.date)} · `,ze=d`<div class="ed-head">
         <div class="ed-titles">
-          <span class="ed-title"><span class="dot" style="background:${l.color}"></span>${F(e,o.kid)} · ${o.title}</span>
-          <span class="ed-meta">${ae}${k(o.start)}–${k(o.end)}${o.place_name&&!o.place.startsWith("?")?` · ${o.place_name}`:""}</span>
+          <span class="ed-title"><span class="dot" style="background:${l.color}"></span>${X(e,o.kid)} · ${o.title}</span>
+          <span class="ed-meta">${pe}${k(o.start)}–${k(o.end)}${o.place_name&&!o.place.startsWith("?")?` · ${o.place_name}`:""}</span>
         </div>
         <button type="button" class="btn dark" @click=${()=>this.closeEditor()}>Done</button>
-      </div>`;return o.where==="home"?d`${Me}
-        <p class="field-hint">It’s at home, so it doesn’t need a ride. If ${F(e,o.kid)} can’t get home in time, the board shows it as a clash.</p>`:d`
-      ${Me}
-      ${this.pending?d`<p class="saving" role="status">Saving to Google Calendar…</p>`:x}
+      </div>`;return o.where==="home"?d`${ze}
+        <p class="field-hint">It’s at home, so it doesn’t need a ride. If ${X(e,o.kid)} can’t get home in time, the board shows it as a clash.</p>`:d`
+      ${ze}
+      ${this.pending?d`<p class="saving" role="status">Saving to Google Calendar…</p>`:b}
       ${o.recurring?d`<div class="field">
             <span class="field-label">Change</span>
             <div role="group" aria-label="Which ones to change" class="choices" style="grid-template-columns:1fr 1fr">
               <button type="button" class="choice" aria-pressed=${this.scope==="this"?"true":"false"} @click=${()=>this.scope="this"}>
-                Just ${de(r.date)}’s
+                Just ${G(i.date)}’s
               </button>
               <button type="button" class="choice" aria-pressed=${this.scope==="series"?"true":"false"} @click=${()=>this.scope="series"}>
                 Every time
               </button>
             </div>
-          </div>`:x}
+          </div>`:b}
       <div class="field">
-        <span class="field-label">${F(e,o.kid)} is</span>
+        <span class="field-label">${X(e,o.kid)} is</span>
         <div role="group" aria-label="Going or not" class="choices" style="grid-template-columns:1fr 1fr">
-          <button type="button" class="choice" aria-pressed=${_e?"true":"false"} ?disabled=${c} @click=${()=>this.setAttending(o,!0)}>
+          <button type="button" class="choice" aria-pressed=${Te?"true":"false"} ?disabled=${p} @click=${()=>this.setAttending(o,!0)}>
             Going
           </button>
-          <button type="button" class="choice" aria-pressed=${_e?"false":"true"} ?disabled=${c} @click=${()=>this.setAttending(o,!1)}>
+          <button type="button" class="choice" aria-pressed=${Te?"false":"true"} ?disabled=${p} @click=${()=>this.setAttending(o,!1)}>
             Not attending
           </button>
         </div>
       </div>
-      ${_e?d`${o.where==="anywhere"?d`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`:x}
-            ${f("drop")} ${f("pick")}
+      ${Te?d`${o.where==="anywhere"?d`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`:b}
+            ${g("drop")} ${g("pick")}
       <div class="field">
-        <button type="button" class="choice wide" aria-pressed=${$?"true":"false"} ?disabled=${!u||c} @click=${()=>this.toggleStay(o)}>
-          ${u?$?"Driver stays the whole time":"Driver leaves and comes back":"Staying needs the same driver both ways"}
+        <button type="button" class="choice wide" aria-pressed=${v?"true":"false"} ?disabled=${!u||p} @click=${()=>this.toggleStay(o)}>
+          ${u?v?"Driver stays the whole time":"Driver leaves and comes back":"Staying needs the same driver both ways"}
         </button>
       </div>
-      ${R&&g.length?d`<div class="field">
+      ${R&&x.length?d`<div class="field">
             <span class="field-label">Take along <span class="field-hint">They leave home in the same car</span></span>
             <div role="group" aria-label="Kids taken along" class="chips">
-              ${g.map(M=>d`<button type="button" class="chip" aria-pressed=${E.includes(M)?"true":"false"} ?disabled=${c} @click=${()=>this.toggleAlong(o,M)}>
-                  ${F(e,M)}
+              ${x.map(M=>d`<button type="button" class="chip" aria-pressed=${T.includes(M)?"true":"false"} ?disabled=${p} @click=${()=>this.toggleAlong(o,M)}>
+                  ${X(e,M)}
                 </button>`)}
             </div>
-          </div>`:x}
+          </div>`:b}
       <div class="field arrive">
         <span class="arrive-text">
           <span class="field-label">Arrive by</span>
           <span class="field-hint">${P!=null?`${o.start-P} min before it starts`:`Aims for a few minutes before ${k(o.start)}`}</span>
         </span>
         <span class="stepper">
-          <button type="button" class="step" aria-label="Five minutes earlier" ?disabled=${c} @click=${()=>this.nudgeArrive(o,-5)}>−</button>
+          <button type="button" class="step" aria-label="Five minutes earlier" ?disabled=${p} @click=${()=>this.nudgeArrive(o,-5)}>−</button>
           <span class="arrive-value">${P!=null?k(P):"Not set"}</span>
-          <button type="button" class="step" aria-label="Five minutes later" ?disabled=${c||P==null} @click=${()=>this.nudgeArrive(o,5)}>+</button>
+          <button type="button" class="step" aria-label="Five minutes later" ?disabled=${p||P==null} @click=${()=>this.nudgeArrive(o,5)}>+</button>
         </span>
       </div>
-      ${P!=null?d`<button type="button" class="chip clear" ?disabled=${c} @click=${()=>this.clearArrive()}>Clear arrive-by time</button>`:x}
+      ${P!=null?d`<button type="button" class="chip clear" ?disabled=${p} @click=${()=>this.clearArrive()}>Clear arrive-by time</button>`:b}
 `:d`<p class="field-hint">
             Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.
             Its other ride settings stay saved in the notes, so tapping Going brings them all back.
           </p>`}
       <div class="notes">
         <span class="notes-label">${this.backend?.saves===!1?"Would be saved":"Saved"} to this event’s notes in Google Calendar</span>
-        <span class="notes-body">--- Rides ---\n${L.length?L.join(`
+        <span class="notes-body">--- Rides ---\n${H.length?H.join(`
 `):"(no ride lines yet)"}</span>
       </div>
-      ${o.problems.length?d`<p class="field-hint bad">These lines in the notes couldn’t be read: ${o.problems.join("; ")}</p>`:x}
-      ${_e?d`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`:x}
-    `}};je.styles=Tn,je.properties={backend:{attribute:!1},kiosk:{type:Boolean},showMenu:{type:Boolean,attribute:"show-menu"},plan:{state:!0},error:{state:!0},mode:{state:!0},sel:{state:!0},sheet:{state:!0},width:{state:!0},boardWidth:{state:!0},pending:{state:!0},toast:{state:!0},scope:{state:!0},arriveDraft:{state:!0},tick:{state:!0}};customElements.get("mydashlight-board")||customElements.define("mydashlight-board",je);var qe=class extends Z{constructor(){super();this.conn=null;this.hass=void 0,this.narrow=!1,this.backend=null}willUpdate(e){e.has("hass")&&this.hass&&this.hass.connection!==this.conn&&(this.conn=this.hass.connection,this.backend=new nt(this.conn))}render(){let e=this.narrow||this.hass?.dockedSidebar==="always_hidden";return d`<mydashlight-board .backend=${this.backend} ?show-menu=${e}></mydashlight-board>`}};qe.styles=De`
+      ${o.problems.length?d`<p class="field-hint bad">These lines in the notes couldn’t be read: ${o.problems.join("; ")}</p>`:b}
+      ${Te?d`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`:b}
+    `}};Ke.styles=Nn,Ke.properties={backend:{attribute:!1},kiosk:{type:Boolean},showMenu:{type:Boolean,attribute:"show-menu"},plan:{state:!0},error:{state:!0},mode:{state:!0},sel:{state:!0},sheet:{state:!0},width:{state:!0},boardWidth:{state:!0},pending:{state:!0},toast:{state:!0},scope:{state:!0},arriveDraft:{state:!0},tick:{state:!0},page:{state:!0},chores:{state:!0},choreDraft:{state:!0}};customElements.get("mydashlight-board")||customElements.define("mydashlight-board",Ke);var Fe=class extends Q{constructor(){super();this.conn=null;this.hass=void 0,this.narrow=!1,this.backend=null}willUpdate(e){e.has("hass")&&this.hass&&this.hass.connection!==this.conn&&(this.conn=this.hass.connection,this.backend=new rt(this.conn))}render(){let e=this.narrow||this.hass?.dockedSidebar==="always_hidden";return d`<mydashlight-board .backend=${this.backend} ?show-menu=${e}></mydashlight-board>`}};Fe.styles=Be`
     /* Home Assistant's panel container has no height of its own, so 100% would let the board grow
        as tall as its content and the whole page would scroll. Fill the screen instead, less the
        safe-area padding HA puts around the panel on phones. Then the board scrolls on its own,
@@ -2014,7 +2319,7 @@ var We=globalThis,Ve=We.ShadowRoot&&(We.ShadyCSS===void 0||We.ShadyCSS.nativeSha
     mydashlight-board {
       height: 100%;
     }
-  `,qe.properties={hass:{attribute:!1},narrow:{type:Boolean},backend:{state:!0}};customElements.get("mydashlight-panel")||customElements.define("mydashlight-panel",qe);
+  `,Fe.properties={hass:{attribute:!1},narrow:{type:Boolean},backend:{state:!0}};customElements.get("mydashlight-panel")||customElements.define("mydashlight-panel",Fe);
 /*! Bundled license information:
 
 @lit/reactive-element/css-tag.js:

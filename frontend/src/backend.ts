@@ -5,6 +5,7 @@
 
 import { timeField } from "./format.ts";
 import type { Plan, Scope, Side } from "./types.ts";
+import type { ChoresPayload } from "./chores.ts";
 
 export interface Backend {
   /** Calls `onPlan` with the plan now and whenever it changes. Returns a function that stops it. */
@@ -19,6 +20,13 @@ export interface Backend {
   /** Going (true) or skipping this one (false). */
   setAttending(event: string, attending: boolean, scope: Scope): Promise<void>;
   applySuggestion(id: string): Promise<void>;
+  /**
+   * Calls `onChores` with the chores now and whenever they change; null while they can't be
+   * read (MyDashLight not running, or a version without chores). Returns a function that stops it.
+   */
+  watchChores(onChores: (chores: ChoresPayload | null) => void): () => void;
+  /** Checks a chore off, or opens it again. */
+  setChoreDone(chore: string, done: boolean): Promise<void>;
   /** Changes are saved for real (false in the offline preview). */
   readonly saves: boolean;
   /** Home Assistant pushes each new plan, so the plan on screen is current. */
@@ -205,6 +213,62 @@ export class HassBackend implements Backend {
   applySuggestion(id: string): Promise<void> {
     return this.call("apply_suggestion", { suggestion: id });
   }
+
+  watchChores(onChores: (chores: ChoresPayload | null) => void): () => void {
+    let stopped = false;
+    let unsub: (() => Promise<void>) | null = null;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const read = async (): Promise<void> => {
+      try {
+        const res = await this.conn.sendMessagePromise<{ response: ChoresPayload }>({
+          type: "call_service",
+          domain: DOMAIN,
+          service: "get_chores",
+          service_data: {},
+          return_response: true,
+        });
+        if (!stopped) onChores(res.response ?? null);
+      } catch {
+        if (!stopped) onChores(null);
+      }
+    };
+    void (async () => {
+      try {
+        const u = await this.conn.subscribeMessage<{ chores: ChoresPayload | null }>(
+          (msg) => {
+            if (!stopped) onChores(msg.chores);
+          },
+          { type: `${DOMAIN}/chores/subscribe` },
+          { resubscribe: true },
+        );
+        if (stopped) void u().catch(() => undefined);
+        else unsub = u;
+      } catch {
+        // A version that can't push chores: read them now and then.
+        if (stopped) return;
+        void read();
+        timer = setInterval(() => void read(), POLL_MS);
+      }
+    })();
+    return () => {
+      stopped = true;
+      if (timer) clearInterval(timer);
+      if (unsub) void unsub().catch(() => undefined);
+    };
+  }
+
+  async setChoreDone(chore: string, done: boolean): Promise<void> {
+    try {
+      await this.conn.sendMessagePromise({
+        type: "call_service",
+        domain: DOMAIN,
+        service: "set_chore_done",
+        service_data: { chore, done },
+      });
+    } catch (err) {
+      throw toError(err);
+    }
+  }
 }
 
 /** The offline preview: a fixed week. Changes show a note instead of saving. */
@@ -212,9 +276,34 @@ export class PreviewBackend implements Backend {
   readonly saves = false;
   readonly live = false;
   private readonly plan: Plan;
+  private chores: ChoresPayload | null;
+  private onChores: ((chores: ChoresPayload | null) => void) | null = null;
 
-  constructor(plan: Plan) {
+  constructor(plan: Plan, chores: ChoresPayload | null = null) {
     this.plan = plan;
+    this.chores = chores;
+  }
+
+  watchChores(onChores: (chores: ChoresPayload | null) => void): () => void {
+    this.onChores = onChores;
+    queueMicrotask(() => onChores(this.chores));
+    return () => {
+      this.onChores = null;
+    };
+  }
+
+  /** Check-offs stay in this page only, so the preview can be tried out. */
+  async setChoreDone(chore: string, done: boolean): Promise<void> {
+    const data = this.chores;
+    if (!data) return this.nope();
+    const chores = data.chores.map((c) => {
+      if (c.id !== chore) return c;
+      if (!done) return { ...c, state: c.due && c.due < data.today ? ("overdue" as const) : ("open" as const), done_at: null };
+      return { ...c, state: c.state === "overdue" ? ("late" as const) : ("done" as const), done_at: new Date().toISOString() };
+    });
+    this.chores = { ...data, chores };
+    const emit = this.onChores;
+    if (emit) queueMicrotask(() => emit(this.chores));
   }
 
   watch(onPlan: (plan: Plan) => void): () => void {
