@@ -97,6 +97,9 @@ CONF_REMIND_BEFORE: Final = "remind_before"
 CONF_CALENDAR_REMINDERS: Final = "calendar_reminders"
 """Save each drive's reminder on its first drop-off event in Google Calendar too."""
 CONF_NO_DRIVER_ALERTS: Final = "no_driver_alerts"
+CONF_NO_DRIVER_HOURS: Final = "no_driver_hours"
+"""How many hours ahead a ride with no driver is worth an alert."""
+DEFAULT_NO_DRIVER_HOURS: Final = 6
 DEFAULT_REMIND_BEFORE: Final = 15
 """Minutes before leaving."""
 NOTIFY_OFF: Final = "off"

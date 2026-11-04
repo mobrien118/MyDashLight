@@ -2,7 +2,7 @@
 
 A leave reminder goes to the driver a set time before each drive leaves, and to each kid in
 the car who has a phone set up, saying when they leave or get picked up. An alert about rides
-nobody is driving yet, in the next six hours, goes to both parents. What has been sent is
+nobody is driving yet, in the next few hours (six by default), goes to both parents. What has been sent is
 kept, so a restart doesn't send it again. A reminder that came due while Home Assistant was
 off is still sent if the drive hasn't left yet.
 """
@@ -79,7 +79,8 @@ class Notifier:
             return
         tz = dt_util.get_default_time_zone()
         self._reminders = leave_reminders(days, DRIVERS, self.settings.notify, self.settings.before, tz)
-        self._missing = missing_rides(days, dt_util.now(tz), tz) if self.settings.no_driver_alerts else []
+        ahead = timedelta(hours=self.settings.no_driver_hours)
+        self._missing = missing_rides(days, dt_util.now(tz), tz, ahead) if self.settings.no_driver_alerts else []
         self._check()
 
     @callback
