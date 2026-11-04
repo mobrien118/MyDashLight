@@ -10,6 +10,8 @@ export interface PageOptions {
   view?: Mode;
   /** `keyboard=off` hides the kitchen screen's on-screen keyboard, for a screen with a real one. */
   keyboard?: false;
+  /** `cursor=show` keeps the mouse pointer on screen; otherwise the kitchen screen hides it when idle. */
+  cursor?: "show";
   /** The page to open on. Unset means rides. */
   page?: Page;
 }
@@ -27,6 +29,7 @@ export function pageOptions(search: string): PageOptions {
   const view = VIEWS[(q.get("view") ?? "").trim().toLowerCase()];
   if (view) opts.view = view;
   if (["off", "no", "false", "0"].includes((q.get("keyboard") ?? "").trim().toLowerCase())) opts.keyboard = false;
+  if ((q.get("cursor") ?? "").trim().toLowerCase() === "show") opts.cursor = "show";
   const page = (q.get("page") ?? "").trim().toLowerCase();
   if (page === "rides" || page === "chores") opts.page = page;
   return opts;

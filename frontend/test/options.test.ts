@@ -16,6 +16,12 @@ test("the on-screen keyboard can be turned off in the address", () => {
   assert.deepEqual(pageOptions("?keyboard=on"), {});
 });
 
+test("the mouse pointer can be kept on screen in the address", () => {
+  assert.deepEqual(pageOptions("?cursor=show"), { cursor: "show" });
+  assert.deepEqual(pageOptions("?cursor=Show&keyboard=off"), { cursor: "show", keyboard: false });
+  assert.deepEqual(pageOptions("?cursor=hide"), {});
+});
+
 test("the page can be set in the address", () => {
   assert.deepEqual(pageOptions("?page=chores"), { page: "chores" });
   assert.deepEqual(pageOptions("?page=Rides&view=compact"), { page: "rides", view: "compact" });

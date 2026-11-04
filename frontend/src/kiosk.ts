@@ -12,6 +12,7 @@ import {
 } from "home-assistant-js-websocket";
 import { HassBackend } from "./backend.ts";
 import "./board.ts";
+import { autoHideCursor } from "./cursor.ts";
 import { useKeyboard } from "./keyboard.ts";
 import { pageOptions, withoutAuthParams } from "./options.ts";
 import "./pairing.ts";
@@ -100,7 +101,9 @@ function signedOut(): void {
   location.replace(location.pathname + withoutAuthParams(location.search));
 }
 
+const options = pageOptions(location.search);
 const keyboard = document.querySelector("mydashlight-keyboard");
-if (keyboard && pageOptions(location.search).keyboard !== false) useKeyboard(keyboard);
+if (keyboard && options.keyboard !== false) useKeyboard(keyboard);
+if (options.cursor !== "show") autoHideCursor();
 
 void connect();
