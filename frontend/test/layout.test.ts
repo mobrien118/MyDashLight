@@ -117,20 +117,27 @@ test("moving between modes keeps the same moment on screen", () => {
 });
 
 test("the needs-attention list", () => {
-  const { items, problems } = attention(plan, FIRST);
-  assert.equal(problems, 4);
+  // The whole week, seen from early on the first day with a window that takes it all in.
+  const all = attention(plan, { date: FIRST, minutes: 0 }, 24 * 8);
+  assert.equal(all.problems, 4);
   assert.deepEqual(
-    items.filter((i) => i.tone !== "heads_up").map((i) => i.title),
+    all.items.filter((i) => i.tone !== "heads_up").map((i) => i.title),
     ["Sam is still at Work", "No pick-up for Ava", `Sun · No pick-up for Ava`, "Tue · Cleo is double-booked"],
   );
+  // Normally only the next two days: later problems are counted, not listed.
+  const { items, problems, later, laterUnassigned } = attention(plan, today);
+  assert.equal(problems, 2);
+  assert.equal(later, 2);
+  assert.equal(laterUnassigned, 1);
   const busy = items[0]!;
   assert.equal(busy.suggestions.length, 2);
   assert.equal(busy.suggestions[0]!.label, "Take Ben along");
   assert.equal(busy.target?.event, "soccer");
-  const clash = items.find((i) => i.title.endsWith("double-booked"))!;
+  assert.ok(!items.some((i) => i.title.startsWith("Sun ·")));
+  const clash = all.items.find((i) => i.title.endsWith("double-booked"))!;
   assert.equal(clash.body, "Soccer 5:00–6:30 and Art class 6:00–7:00 overlap.");
   // Seen from later in the week, other days are named.
-  assert.equal(attention(plan, plan.days[3]!.date).items.find((i) => i.title.includes("pick-up"))?.title, "Thu · No pick-up for Ava");
+  assert.equal(attention(plan, { date: plan.days[3]!.date, minutes: 0 }).items.find((i) => i.title.includes("pick-up"))?.title, "Thu · No pick-up for Ava");
 });
 
 test("day tags", () => {

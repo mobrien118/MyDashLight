@@ -166,9 +166,10 @@ the top:
 - **Timeline** spaces everything by the clock, so overlaps and tight handoffs are easy to see.
 - **Compact** drops the time scale: everything sits in start order, with each trip's stops listed.
 
-The **Needs attention** list shows problems across the week (no driver, late, a kid waiting, a
-parent still at work, a kid double-booked) with the suggested fixes, plus heads-ups for today
-and tomorrow. Tap any activity, car or trip to change who drives each way, whether the driver
+The **Needs attention** list shows problems in the next 48 hours (no driver, late, a kid
+waiting, a parent still at work, a kid double-booked) with the suggested fixes, plus heads-ups
+for today and tomorrow. Problems later in the week show as a red count on their day in the top
+bar. Tap any activity, car or trip to change who drives each way, whether the driver
 stays, who's taken along, and the arrive-by time. A repeating activity asks whether to change just
 that day or every time. Each change is saved in the event's notes on Google straight away.
 
