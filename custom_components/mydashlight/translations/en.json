@@ -114,7 +114,9 @@
             "name": "Planner timing",
             "description": "How the ride planner judges a plan. The defaults suit most families.",
             "data": {
-              "arrive_early": "Arrive before the start",
+              "arrive_early": "Arrive early, at least",
+              "arrive_early_max": "Arrive early, at most",
+              "arrive_early_per": "A minute earlier for every",
               "go_home_margin": "Go home between stops after",
               "take_along_window": "Take-along window",
               "waiting_after": "Kid waiting after",
@@ -123,7 +125,9 @@
               "no_address_travel": "Drive time with no address"
             },
             "data_description": {
-              "arrive_early": "When an event has no Arrive by time, aim to get there this long before it starts.",
+              "arrive_early": "When an event has no Arrive by time, aim to get there at least this long before it starts.",
+              "arrive_early_max": "The most a far-away event's margin grows to.",
+              "arrive_early_per": "Minutes of driving from home that add one more minute of margin. With 6: 5 early when it's 5 minutes away, 10 when it's 30, 15 when it's an hour. 0 keeps every event at the least.",
               "go_home_margin": "Drive home between stops when that frees at least this much more time than waiting.",
               "take_along_window": "Suggest taking a kid along on an earlier drop-off only when it is at most this long before theirs.",
               "waiting_after": "Reaching a pick-up later than this after it ends counts as the kid waiting.",
@@ -180,7 +184,7 @@
         "data_description": {
           "remind_before": "Leave time is worked back from when the kid has to be there and the drive time, so the reminder moves with the plan.",
           "calendar_reminders": "Puts the reminder on the kid's event for each drive's first drop-off, so Google Calendar reminds the account MyDashLight signs in with. Google can't remind before a pick-up, since it only reminds before an event starts.",
-          "no_driver_alerts": "Once for each ride in the next two days that nobody is driving yet, sent to both parents' notifiers."
+          "no_driver_alerts": "Once for each ride in the next six hours that nobody is driving yet, sent to both parents' notifiers."
         }
       }
     },
@@ -260,7 +264,7 @@
     },
     "set_arrive_by": {
       "name": "Set arrive by",
-      "description": "Sets when the kid needs to be there. Leave the time empty to go back to a few minutes before the start.",
+      "description": "Sets when the kid needs to be there. Leave the time empty to go back to the usual margin before the start.",
       "fields": {
         "event": {
           "name": "Event",

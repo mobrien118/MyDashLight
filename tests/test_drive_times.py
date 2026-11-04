@@ -136,8 +136,9 @@ async def test_daily_limit(hass: HomeAssistant, google: FakeGoogle, routes: Fake
     drive_times = entry.runtime_data.coordinator.data.drive_times
     assert drive_times["source"] == "daily_limit"
     assert drive_times["estimated"] == 1
-    # One trip was looked up; the other is estimated until tomorrow.
-    assert sorted(g["end"] - g["start"] for g in segments(entry)) == [14, 14, 15, 15]
+    # One trip was looked up (home to piano, which also sets how early to get there); the
+    # other is estimated until tomorrow.
+    assert sorted(g["end"] - g["start"] for g in segments(entry)) == [12, 12, 15, 15]
 
 
 async def test_without_a_key(hass: HomeAssistant, google: FakeGoogle, routes: FakeRoutes) -> None:

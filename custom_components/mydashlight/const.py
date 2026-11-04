@@ -19,6 +19,8 @@ CONF_CARPOOLS: Final = "carpools"
 CONF_PLANNER: Final = "planner"
 
 CONF_ARRIVE_EARLY: Final = "arrive_early"
+CONF_ARRIVE_EARLY_MAX: Final = "arrive_early_max"
+CONF_ARRIVE_EARLY_PER: Final = "arrive_early_per"
 CONF_GO_HOME_MARGIN: Final = "go_home_margin"
 CONF_TAKE_ALONG_WINDOW: Final = "take_along_window"
 CONF_WAITING_AFTER: Final = "waiting_after"
@@ -28,6 +30,8 @@ CONF_NO_ADDRESS_TRAVEL: Final = "no_address_travel"
 
 DEFAULT_PLANNER: Final = {
     CONF_ARRIVE_EARLY: 5,
+    CONF_ARRIVE_EARLY_MAX: 20,
+    CONF_ARRIVE_EARLY_PER: 6,
     CONF_GO_HOME_MARGIN: 15,
     CONF_TAKE_ALONG_WINDOW: 45,
     CONF_WAITING_AFTER: 5,

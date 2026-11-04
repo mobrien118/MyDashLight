@@ -2,7 +2,7 @@
 
 A leave reminder goes to the driver a set time before each drive leaves, and to each kid in
 the car who has a phone set up, saying when they leave or get picked up. An alert about rides
-nobody is driving yet, in the next two days, goes to both parents. What has been sent is
+nobody is driving yet, in the next six hours, goes to both parents. What has been sent is
 kept, so a restart doesn't send it again. A reminder that came due while Home Assistant was
 off is still sent if the drive hasn't left yet.
 """
