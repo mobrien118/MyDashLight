@@ -434,6 +434,8 @@ export const styles = css`
     align-items: center;
     gap: 16px;
     flex: none;
+    /* Right-aligned, on its own line too, so the page switch keeps its place. */
+    margin-left: auto;
   }
   .narrow .controls {
     gap: 8px;
