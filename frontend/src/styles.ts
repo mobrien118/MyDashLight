@@ -872,8 +872,9 @@ export const styles = css`
     line-height: 15px;
     color: #4a5059;
     overflow: hidden;
+    flex: none;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
   }
   .stay {

@@ -76,6 +76,8 @@ export interface RideBox extends Box {
   l1: string;
   l2: string;
   show2: boolean;
+  /** How many lines of l2 fit in the box. */
+  lines2: number;
   dashed: boolean;
   clash: boolean;
   aria: string;
@@ -445,6 +447,22 @@ export function wrapRows(text: string, width: number, charW = 7): number {
   return rows;
 }
 
+/** A car box: 3px padding and 1.5px border top and bottom, a 15px first line, 1px gap, 15px lines. */
+const RIDE_CHROME = 9 + 15 + 1;
+const RIDE_LINE = 15;
+const RIDE_MAX_LINES = 3;
+
+/** Lines of route that fit in a car box this tall, so none is cut in half. */
+export function rideLines(h: number): number {
+  return Math.max(0, Math.min(RIDE_MAX_LINES, Math.floor((h - RIDE_CHROME) / RIDE_LINE)));
+}
+
+/** A Compact "along with" box tall enough for its route, wrapped, up to three lines. */
+export function alongHeight(route: string, colW: number): number {
+  const rows = Math.min(RIDE_MAX_LINES, wrapRows(route, colW - 19, 6.6));
+  return RIDE_CHROME + rows * RIDE_LINE + 2;
+}
+
 /** A Compact card's height: everything on it shows, wrapped. */
 export function compactCardHeight(e: PlanEvent, colW: number): number {
   const inner = colW - 23; // padding, the color stripe and the border
@@ -640,7 +658,8 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             target: rideTarget(ride.index),
             l1: `${ride.own ? "In" : "Along in"} ${who}’s car`,
             l2: route.join(" → "),
-            show2: rh >= 36,
+            show2: rideLines(rh) > 0,
+            lines2: rideLines(rh),
             dashed: !ride.own,
             clash: it.clash,
             aria: `${nameOfKid(kid)} ${ride.own ? "in" : "riding along in"} ${who}’s car, ${clock(n(ride.start))} to ${clock(n(ride.end))}: ${route.join(" to ")}`,
@@ -796,7 +815,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           if (!e) continue;
           items.push({ col: kid, s: it.start, h: compactCardHeight(e, c.w), kind: "act", item: it });
         } else if (!day.rides[it.ride ?? -1]?.own) {
-          items.push({ col: kid, s: it.start, h: 44, kind: "along", item: it });
+          const along = day.rides[it.ride ?? -1];
+          const route = along ? routeOf(legsOf(along.index), names).join(" → ") : "";
+          items.push({ col: kid, s: it.start, h: alongHeight(route, c.w), kind: "along", item: it });
         }
       }
     }
@@ -865,6 +886,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           l1: `Along with ${who} ${clock(n(ride.start))}`,
           l2: route.join(" → "),
           show2: true,
+          lines2: RIDE_MAX_LINES,
           dashed: true,
           clash: m.item.clash,
           aria: `${nameOfKid(m.col)} riding along with ${who}, ${clock(n(ride.start))} to ${clock(n(ride.end))}: ${route.join(" to ")}`,

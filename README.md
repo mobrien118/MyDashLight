@@ -155,6 +155,17 @@ There are two ways to open it, both signed in with your Home Assistant login:
   uses the sign-in Home Assistant already keeps in that browser, or asks once. After three minutes
   without a touch it closes anything open and scrolls back to now.
 
+Either address can pick the view it opens in, so each screen can have its own:
+
+| Add to the address | Opens in |
+| --- | --- |
+| `?view=timeline` (or `?view=full`) | Timeline |
+| `?view=compact` | Compact |
+
+For example, `<your Home Assistant URL>/mydashlight-kitchen?view=compact`. You can still switch
+views by tapping; the kitchen screen goes back to its view after three minutes without a touch.
+Without a `view`, the board opens in whichever view was last picked in that browser.
+
 The app is built from `frontend/` into `custom_components/mydashlight/frontend`, so a HACS update
 brings it along.
 

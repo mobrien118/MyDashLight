@@ -30,6 +30,7 @@ import {
   type Target,
   type Today,
 } from "./layout.ts";
+import { pageOptions } from "./options.ts";
 import { styles } from "./styles.ts";
 import type { Plan, PlanDay, PlanEvent, Scope, Side } from "./types.ts";
 
@@ -148,6 +149,8 @@ export class MyDashLightBoard extends LitElement {
   private boardKey = "";
   /** Where to scroll after the next render: a moment on the board. */
   private keepAt: number | null = null;
+  /** The view this screen's address asks for, if any. */
+  private readonly urlView = pageOptions(location.search).view;
   private scrolledOnce = false;
 
   constructor() {
@@ -157,7 +160,7 @@ export class MyDashLightBoard extends LitElement {
     this.showMenu = false;
     this.plan = null;
     this.error = null;
-    this.mode = readMode();
+    this.mode = this.urlView ?? readMode();
     this.sel = null;
     this.sheet = false;
     this.width = 1600;
@@ -344,7 +347,8 @@ export class MyDashLightBoard extends LitElement {
     const el = this.scroller;
     this.keepAt = el && this.board ? tAt(this.board, el.scrollTop + DAY_HEAD + 4) : null;
     this.mode = m;
-    saveMode(m);
+    // A screen whose address picks the view keeps it, and leaves this browser's choice alone.
+    if (!this.urlView) saveMode(m);
   }
 
   // Fingers scroll natively; a mouse or pen drags the board the same way.
@@ -400,7 +404,11 @@ export class MyDashLightBoard extends LitElement {
     this.idleTimer = setTimeout(() => {
       this.closeEditor();
       this.sheet = false;
-      this.scrollToNow();
+      if (this.urlView && this.mode !== this.urlView) {
+        // Back to the view the address asks for, then to now once it's drawn.
+        this.mode = this.urlView;
+        this.scrolledOnce = false;
+      } else this.scrollToNow();
     }, IDLE_MS);
   };
 
@@ -883,7 +891,9 @@ export class MyDashLightBoard extends LitElement {
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px"
                 @click=${() => this.open(x.target)}
               >
-                <span class="l1">${x.l1}</span>${x.show2 ? html`<span class="l2">${x.l2}</span>` : nothing}
+                <span class="l1">${x.l1}</span>${x.show2
+                  ? html`<span class="l2" style="-webkit-line-clamp:${x.lines2}">${x.l2}</span>`
+                  : nothing}
               </button>`,
           )}
           ${repeat(

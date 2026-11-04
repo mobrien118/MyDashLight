@@ -10,6 +10,7 @@ import {
 } from "home-assistant-js-websocket";
 import { HassBackend } from "./backend.ts";
 import "./board.ts";
+import { withoutAuthParams } from "./options.ts";
 
 /** Where Home Assistant's own pages keep their sign-in, on this same address. */
 const TOKENS = "hassTokens";
@@ -45,14 +46,16 @@ async function connect(): Promise<void> {
   board.kiosk = true;
   try {
     const auth = await getAuth({ hassUrl: location.origin, loadTokens: async () => loadTokens(), saveTokens });
-    if (location.search.includes("auth_callback")) history.replaceState(null, "", location.pathname);
+    if (location.search.includes("auth_callback")) {
+      history.replaceState(null, "", location.pathname + withoutAuthParams(location.search));
+    }
     const conn = await createConnection({ auth });
     board.backend = new HassBackend(conn);
   } catch (err) {
     if (err === ERR_INVALID_AUTH) {
       // The saved sign-in was revoked: sign in again.
       saveTokens(null);
-      location.replace(location.pathname);
+      location.replace(location.pathname + withoutAuthParams(location.search));
       return;
     }
     showProblem(
