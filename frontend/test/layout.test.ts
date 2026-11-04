@@ -238,7 +238,7 @@ test("a car box shows only whole lines of its route", () => {
   assert.equal(rideLines(40), 1);
   assert.equal(rideLines(55), 2);
   assert.equal(rideLines(200), 3);
-  const long = "RJ's Dance Studio - Chesterfield (wait) → Home";
+  const long = "Main Street Dance Studio - West (wait) → Home";
   assert.ok(alongHeight(long, 190) >= 25 + 2 * 15);
   assert.ok(alongHeight("Home → Piano", 190) < alongHeight(long, 190));
   for (const b of layout(plan, "compact", 1160, today).rides) if (b.dashed) assert.ok(b.h >= 25 + 15);
