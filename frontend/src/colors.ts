@@ -23,3 +23,4 @@ export function kidColor(index: number): KidColor {
 }
 
 export const DRIVER_DOT = "#23272E";
+export const DRIVER_RGB = "35,39,46";

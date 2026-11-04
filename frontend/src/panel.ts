@@ -12,9 +12,15 @@ interface Hass {
 
 class MyDashLightPanel extends LitElement {
   static override styles = css`
+    /* Home Assistant's panel container has no height of its own, so 100% would let the board grow
+       as tall as its content and the whole page would scroll. Fill the screen instead, less the
+       safe-area padding HA puts around the panel on phones. Then the board scrolls on its own,
+       by finger, mouse drag and wheel, and the side panel scrolls separately. */
     :host {
       display: block;
-      height: 100%;
+      height: calc(100vh - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px));
+      height: calc(100dvh - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px));
+      overflow: hidden;
     }
     mydashlight-board {
       height: 100%;

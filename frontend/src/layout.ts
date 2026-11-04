@@ -5,7 +5,7 @@
 // others. Pure module: plain data in, boxes with positions and text out. The board element
 // only draws them.
 
-import { DRIVER_DOT, kidColor, type KidColor } from "./colors.ts";
+import { DRIVER_DOT, DRIVER_RGB, kidColor, type KidColor } from "./colors.ts";
 import { clock, dayLabel, daysBetween, duration, hourLabel, shortDay } from "./format.ts";
 import type { CardLine, KidItem, Plan, PlanDay, PlanEvent, Segment } from "./types.ts";
 
@@ -37,6 +37,8 @@ export interface Column {
   w: number;
   name: string;
   dot: string;
+  /** "18,135,122", for tinting the column. */
+  rgb: string;
   sub: string;
   subWarn: boolean;
 }
@@ -54,6 +56,8 @@ export interface CardBox extends Box {
   event: PlanEvent;
   color: KidColor;
   kidName: string;
+  /** The title without the kid's name in front: "Tap", not "Ava Tap", in Ava's column. */
+  title: string;
   clash: boolean;
   /** The driver stays: the card is striped. */
   stayed: boolean;
@@ -128,7 +132,10 @@ export interface Mark {
 export interface DayHead {
   date: string;
   y: number;
+  /** "Tuesday, November 3". */
   label: string;
+  /** "Today", "Tomorrow" or "". */
+  tag: string;
   sub: string;
   warn: boolean;
 }
@@ -341,7 +348,8 @@ export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX
       w: kidW,
       name: kidName(plan, k),
       dot: colors.get(k)!.color,
-      sub: `${evs.length} this week${missing ? " · needs a ride" : ""}`,
+      rgb: colors.get(k)!.rgb,
+      sub: `${missing ? "Needs a ride · " : ""}${evs.length} this week`,
       subWarn: missing,
     });
     x += kidW + (i < kids.length - 1 ? KID_GAP : 0);
@@ -364,12 +372,26 @@ export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX
       w: driverW,
       name: driverName(plan, d),
       dot: DRIVER_DOT,
+      rgb: DRIVER_RGB,
       sub: `${trips} ${trips === 1 ? "trip" : "trips"} this week · ${duration(mins)} driving`,
       subWarn: false,
     });
     x += driverW + (i < drivers.length - 1 ? DRIVER_GAP : 0);
   });
   return { columns, sepX, width: w };
+}
+
+/** "Ava Tap" in Ava's column is just "Tap". Leaves the title alone when that's all there is. */
+export function shortTitle(title: string, kid: string): string {
+  const t = title.trim();
+  if (!kid || t.length <= kid.length) return t;
+  const head = t.slice(0, kid.length);
+  if (head.localeCompare(kid, undefined, { sensitivity: "accent" }) !== 0) return t;
+  const rest = t.slice(kid.length);
+  const m = /^(?:’s|'s)?\s*[-–—:·]?\s+/u.exec(rest);
+  if (!m) return t;
+  const out = rest.slice(m[0].length);
+  return out ? out[0]!.toUpperCase() + out.slice(1) : t;
 }
 
 /** How many problems a day has: issues to fix plus double-bookings. */
@@ -411,7 +433,7 @@ export function wrapRows(text: string, width: number, charW = 7): number {
 
 /** A Compact card's height: everything on it shows, wrapped. */
 export function compactCardHeight(e: PlanEvent, colW: number): number {
-  const inner = colW - 21; // padding and border
+  const inner = colW - 23; // padding, the color stripe and the border
   const time = `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "");
   let h = 15 + 18 + wrapRows(time, inner, 6.6) * 16;
   for (const l of [e.lines.drop, e.lines.pick]) if (l) h += 2 + wrapRows(l.text, inner, 7) * 16;
@@ -464,7 +486,8 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     board.dayHeads.push({
       date: day.date,
       y,
-      label: dayLabel(day.date) + (tag ? ` · ${tag}` : ""),
+      label: dayLabel(day.date),
+      tag,
       sub:
         (count ? `${count} ${count === 1 ? "activity" : "activities"}` : "Nothing scheduled") +
         (problems ? ` · ${problems} to sort out` : ""),
@@ -475,7 +498,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
 
     const outings = drivers.flatMap((d) => day.drivers[d]?.outings ?? []);
     if (!count && !outings.length) {
-      board.empties.push({ key: day.date, y: top, text: "No activities or rides" });
+      board.empties.push({ key: day.date, y: top, text: "Nothing planned" });
       y = top + 40;
       board.anchors.push({ t: base + 1439, y });
       return;
@@ -496,6 +519,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         kidName: nameOfKid(e.kid),
         clash,
         stayed: e.stay && drivers.includes(e.drop),
+        title: shortTitle(e.title, nameOfKid(e.kid)),
         time: `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : ""),
         drop: ln.drop,
         pick: ln.pick,
@@ -929,4 +953,66 @@ export function attention(plan: Plan, today: string): { items: AttentionItem[]; 
     }
   }
   return { items, problems };
+}
+
+// What's coming up next, for the top of the board.
+
+export interface NextUp {
+  driver: string;
+  name: string;
+  date: string;
+  /** Days from today: 0 is today. */
+  ahead: number;
+  start: number;
+  /** Minutes from now until it starts; 0 or less once it has. */
+  inMinutes: number;
+  /** The driver is out on it right now. */
+  ongoing: boolean;
+  /** "Leave 4:35" or "From Soccer 4:50". */
+  lead: string;
+  /** The first stop: "4:50 Soccer fields, drop off Cleo". */
+  stop: string;
+  kids: KidColor[];
+  warn: string | null;
+  target: Target | null;
+}
+
+/**
+ * The trip to show at the top: the next one to leave today, else one under way now, else the first
+ * on a later day. Null when there are none left this week.
+ */
+export function nextUp(plan: Plan, today: Today): NextUp | null {
+  const colors = kidColors(plan);
+  let best: NextUp | null = null;
+  // Leaving later today beats under way now, which beats a later day.
+  const rank = (x: NextUp): number => (x.ahead > 0 ? 2 : x.ongoing ? 1 : 0);
+  for (const day of plan.days) {
+    const ahead = daysBetween(today.date, day.date);
+    if (ahead < 0) continue;
+    for (const d of driverIds(plan)) {
+      for (const o of day.drivers[d]?.outings ?? []) {
+        if (o.start == null) continue;
+        const start = ahead * 1440 + o.start;
+        const end = ahead * 1440 + n(o.end, o.start);
+        if (end <= today.minutes) continue;
+        const inMinutes = start - today.minutes;
+        const x: NextUp = {
+          driver: d,
+          name: driverName(plan, d),
+          date: day.date,
+          ahead,
+          start: o.start,
+          inMinutes,
+          ongoing: inMinutes <= 0,
+          lead: o.lead,
+          stop: (o.lines[0] ?? "").replace(/\s+/g, " ").trim(),
+          kids: o.kids.map((k) => colors.get(k) ?? kidColor(0)),
+          warn: o.warn,
+          target: o.target && day.events.some((e) => e.id === o.target) ? { day: day.date, event: o.target } : null,
+        };
+        if (!best || rank(x) < rank(best) || (rank(x) === rank(best) && x.inMinutes < best.inMinutes)) best = x;
+      }
+    }
+  }
+  return best;
 }
