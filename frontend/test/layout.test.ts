@@ -10,6 +10,8 @@ import {
   nextUp,
   pack,
   shortTitle,
+  rideLines,
+  alongHeight,
   busyLabel,
   tidyMinutes,
   routeOf,
@@ -228,4 +230,16 @@ test("a trip away over several days reads sensibly each day", () => {
   assert.equal(busyLabel({ start: 0, end: 1145, title: trip }, true), "Trip to the lake until 7:05");
   assert.equal(busyLabel({ start: 780, end: 1000, title: "Work" }, false), "Work until 4:40");
   assert.equal(busyLabel({ start: 780, end: 1000, title: "Work" }, true), "Work 1:00–4:40");
+});
+
+test("a car box shows only whole lines of its route", () => {
+  assert.equal(rideLines(22), 0);
+  assert.equal(rideLines(36), 0);
+  assert.equal(rideLines(40), 1);
+  assert.equal(rideLines(55), 2);
+  assert.equal(rideLines(200), 3);
+  const long = "Main Street Dance Studio - West (wait) → Home";
+  assert.ok(alongHeight(long, 190) >= 25 + 2 * 15);
+  assert.ok(alongHeight("Home → Piano", 190) < alongHeight(long, 190));
+  for (const b of layout(plan, "compact", 1160, today).rides) if (b.dashed) assert.ok(b.h >= 25 + 15);
 });
