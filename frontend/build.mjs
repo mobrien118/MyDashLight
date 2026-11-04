@@ -41,6 +41,8 @@ if (args.includes("--preview")) {
   const page = (await readFile(resolve(here, "src/kiosk.html"), "utf8"))
     .replace("<title>MyDashLight rides</title>", "<title>Rides board preview</title>")
     .replace("<mydashlight-board kiosk>", "<mydashlight-board>")
+    // The preview never signs in or types, so it has no pairing page or keyboard.
+    .replace(/^ *<mydashlight-(?:pairing|keyboard) hidden><\/mydashlight-(?:pairing|keyboard)>\n/gm, "")
     .replace('<script type="module" src="%SCRIPT%"></script>', () => `<script type="module">${js}</script>`)
     // One self-contained page: the icon goes inline, and the PNG fallbacks aren't needed.
     .replace(/^ *<link rel="(?:icon|apple-touch-icon)"[^>]*\.png"[^>]*>\n/gm, "")

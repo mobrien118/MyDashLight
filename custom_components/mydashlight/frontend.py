@@ -4,8 +4,8 @@ The app is built from ``frontend/`` in the repository into the ``frontend`` fold
 HACS update brings the app along with the backend. It shows up two ways:
 
 - a **Rides** item in the sidebar, which also works in the Home Assistant app on a phone, and
-- a full-screen page at ``/mydashlight-kitchen`` for the kitchen screen, which signs in with the
-  same Home Assistant login.
+- a full-screen page at ``/mydashlight-kitchen`` for the kitchen screen. With no keyboard on the
+  screen, it signs in by pairing: it shows a code that an admin approves (see ``pairing.py``).
 
 Both read the plan and change rides through the ``mydashlight`` actions, so the app keeps no data.
 """
@@ -23,6 +23,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.http import HomeAssistantView
 
 from .const import DOMAIN
+from .pairing import async_setup_pairing
 
 FILES_URL: Final = "/mydashlight_app"
 """Where the app's scripts are served from."""
@@ -57,6 +58,7 @@ async def async_setup_frontend(hass: HomeAssistant) -> None:
     await hass.http.async_register_static_paths([StaticPathConfig(FILES_URL, str(FILES), cache_headers=True)])
     page = page.replace("%SCRIPT%", f"{FILES_URL}/kiosk.js?v={versions['kiosk.js']}").replace("%FILES%", FILES_URL)
     hass.http.register_view(KitchenView(page))
+    async_setup_pairing(hass, KITCHEN_URL)
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:

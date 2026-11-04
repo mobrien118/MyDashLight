@@ -45,6 +45,7 @@ the chore templates. See [Chores](#chores).
 | `reminders.py` | Works out the reminders from the plan: when each drive's reminder goes off, the Google Calendar reminder for each drop-off, and the rides with no driver. |
 | `alerts.py` | Sends the reminders through each person's notifier, and saves the Google Calendar reminders. |
 | `frontend.py` | Serves the kitchen app: the Rides sidebar item and the kitchen page. |
+| `pairing.py` | Pairs a kitchen screen: the code it shows, an admin's approval, and the sign-in it collects. |
 | `chore_rules.py` | Reads and writes chore templates and chores in Google Tasks notes, and works out the days each template makes a chore for. |
 | `chores.py` | The chore engine: what to make, fix, remove, mark missed or close out on the kids' lists, and what the board shows. |
 | `tasks_api.py` | A small Google Tasks client: task lists and the tasks on them. |
@@ -186,12 +187,36 @@ crossed out, with no rides planned, and it no longer counts as a clash. When a k
 double-booked, each event's name in the Needs attention card opens that event, so the one being
 skipped is a tap away. Each change is saved in the event's notes on Google straight away.
 
-There are two ways to open it, both signed in with your Home Assistant login:
+There are two ways to open it, both signed in to Home Assistant:
 
 - **Rides** in Home Assistant's sidebar. This works in the Home Assistant app on a phone too.
-- `<your Home Assistant URL>/mydashlight-kitchen`, a full-screen page for the kitchen screen. It
-  uses the sign-in Home Assistant already keeps in that browser, or asks once. After three minutes
-  without a touch it closes anything open and scrolls back to now.
+- `<your Home Assistant URL>/mydashlight-kitchen`, a full-screen page for the kitchen screen. After
+  three minutes without a touch it closes anything open and scrolls back to now. To set up a
+  Raspberry Pi as the kitchen screen, see [kiosk/README.md](kiosk/README.md).
+
+### Pairing the kitchen screen
+
+A kitchen screen has no keyboard, so instead of a password it pairs:
+
+1. The kitchen page shows a code, like `KQ7M-4TXP`, and a QR code.
+2. On your phone, scan the QR code (or open `<your Home Assistant URL>/mydashlight?pair` and type
+   the code), check the code matches, and press **Allow**. You need to be a Home Assistant admin.
+3. The screen is signed in to Home Assistant as you, and opens the board.
+
+Home Assistant keeps the screen signed in as long as it's used, and drops the sign-in after 90 days
+unused. To sign the screen out, open your Home Assistant profile, go to **Security**, and delete
+the refresh token for `<your Home Assistant URL>/mydashlight-kitchen`; the screen shows a new code.
+Only the screen that showed the code can collect the sign-in, so seeing the code isn't enough. A
+browser already signed in to Home Assistant at the same address skips pairing, and the pairing page
+also offers **Sign in with a password instead**.
+
+### On-screen keyboard
+
+The kitchen page brings its own keyboard: it slides up when a text box is clicked or tapped, the
+same with a mouse or a touchscreen. For a screen with a real keyboard, add `?keyboard=off` to the
+address.
+
+### Screen settings
 
 Either address can pick the view it opens in, so each screen can have its own:
 

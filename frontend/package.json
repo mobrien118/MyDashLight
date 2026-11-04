@@ -1,7 +1,7 @@
 {
   "name": "mydashlight-frontend",
   "private": true,
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "The MyDashLight kitchen app: the rides board, served by the Home Assistant integration",
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "home-assistant-js-websocket": "9.6.0",
-    "lit": "3.3.1"
+    "lit": "3.3.1",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@types/node": "22.19.1",

@@ -10,6 +10,12 @@ test("the view can be set in the address", () => {
   assert.deepEqual(pageOptions("?view=%20compact%20"), { view: "compact" });
 });
 
+test("the on-screen keyboard can be turned off in the address", () => {
+  assert.deepEqual(pageOptions("?keyboard=off"), { keyboard: false });
+  assert.deepEqual(pageOptions("?view=compact&keyboard=No"), { view: "compact", keyboard: false });
+  assert.deepEqual(pageOptions("?keyboard=on"), {});
+});
+
 test("the page can be set in the address", () => {
   assert.deepEqual(pageOptions("?page=chores"), { page: "chores" });
   assert.deepEqual(pageOptions("?page=Rides&view=compact"), { page: "rides", view: "compact" });

@@ -8,6 +8,8 @@ export type Page = "rides" | "chores";
 export interface PageOptions {
   /** The view to open in. Unset means the one last picked in this browser. */
   view?: Mode;
+  /** `keyboard=off` hides the kitchen screen's on-screen keyboard, for a screen with a real one. */
+  keyboard?: false;
   /** The page to open on. Unset means rides. */
   page?: Page;
 }
@@ -24,6 +26,7 @@ export function pageOptions(search: string): PageOptions {
   const opts: PageOptions = {};
   const view = VIEWS[(q.get("view") ?? "").trim().toLowerCase()];
   if (view) opts.view = view;
+  if (["off", "no", "false", "0"].includes((q.get("keyboard") ?? "").trim().toLowerCase())) opts.keyboard = false;
   const page = (q.get("page") ?? "").trim().toLowerCase();
   if (page === "rides" || page === "chores") opts.page = page;
   return opts;
