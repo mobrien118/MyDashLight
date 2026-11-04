@@ -65,6 +65,8 @@ var isDriver = function (v) { return v === 'mom' || v === 'dad'; };
 // When the driver aims to have the kid there: the Arrive by time if one is set, otherwise a margin
 // before the start that grows with the drive from home: 5 + 1 minute per 6 minutes of driving, rounded
 // down, from 5 to 20. So 5 early for a 5-minute drive, 10 for 30, 15 for an hour (Marty, 2026-11-04).
+// Minutes as written: whole, rounded half up.
+var wholeMin = function (v) { return Math.floor(v + 0.5); };
 var arriveEarly = function (loc) { return Math.min(Math.max(Math.floor(5 + travel('home', loc) / 6 + 1e-9), 5), 20); };
 var arriveAt = function (e) { return e.arriveBy != null ? e.arriveBy : e.start - arriveEarly(e.loc); };
 
@@ -101,6 +103,14 @@ function planDriver(d, events, busy) {
     }
   });
   tasks.sort(function (a, b) { return a.t - b.t; });
+  // Same place, a few minutes apart: drop the next kid off on arriving for the pick-up, instead
+  // of fetching them from home afterwards.
+  for (var q = 0; q + 1 < tasks.length; q++) {
+    var ta = tasks[q], tb = tasks[q + 1];
+    if (ta.type === 'pick' && tb.type !== 'pick' && ta.e.loc === tb.e.loc && ta.e.kid !== tb.e.kid && tb.t - ta.t <= 15) {
+      tasks[q] = tb; tasks[q + 1] = ta; q++;
+    }
+  }
   var out = { d: d, segs: [], stops: [], issues: [], soft: [], overlaps: [], drive: 0, leave: null, trips: 0 };
   if (!tasks.length) return out;
 
@@ -162,7 +172,7 @@ function planDriver(d, events, busy) {
       if (from === 'home') out.trips++;
     }
     s2.arr = arr;
-    if (s2.deadline != null && arr > s2.deadline) out.issues.push({ kind: 'late', d: d, s: s2, e: s2.e, min: arr - s2.deadline });
+    if (s2.deadline != null && arr - s2.deadline >= 0.5) out.issues.push({ kind: 'late', d: d, s: s2, e: s2.e, min: arr - s2.deadline });
     if (s2.kind === 'pick' && arr > s2.ready + 5) out.issues.push({ kind: 'waiting', d: d, s: s2, e: s2.e, min: arr - s2.ready });
     if (s2.kind === 'drop' && s2.deadline - arr > 15) out.soft.push({ kind: 'early', d: d, s: s2, e: s2.e, min: s2.e.start - arr });
     var ready = arr;
@@ -243,10 +253,10 @@ function issueText(x) {
   var e = x.e, kid = e ? K[e.kid].name : '';
   var who = x.d ? PEOPLE[x.d] : '';
   if (x.kind === 'busy') return { title: who + ' is still at ' + x.b.title, body: 'Leaving at ' + fmt(x.seg.start) + (e ? ' for ' + kid + '’s ' + e.title.toLowerCase() : '') + ' overlaps ' + x.b.title + ' until ' + fmt(x.b.end) + '.' };
-  if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + x.min + ' min after ' + (e.arriveBy != null ? 'the ' + fmt(e.arriveBy) + ' arrive-by time.' : 'the ' + fmt(x.s.deadline) + ' target.') };
-  if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + x.min + ' min after it ends.' };
+  if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + (e.arriveBy != null ? 'the ' + fmt(e.arriveBy) + ' arrive-by time.' : 'the ' + fmt(x.s.deadline) + ' target.') };
+  if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after it ends.' };
   if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : ' ends at ' + fmt(e.end)) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
-  if (x.kind === 'early') return { title: kid + ' waits ' + x.min + ' min', body: who + ' gets ' + kid + ' to ' + e.title + ' at ' + fmt(x.s.arr) + ', well before the ' + fmt(e.start) + ' start.', note: kid + ' waits ' + x.min + ' min at ' + e.title };
+  if (x.kind === 'early') return { title: kid + ' waits ' + wholeMin(x.min) + ' min', body: who + ' gets ' + kid + ' to ' + e.title + ' at ' + fmt(x.s.arr) + ', well before the ' + fmt(e.start) + ' start.', note: kid + ' waits ' + wholeMin(x.min) + ' min at ' + e.title };
   if (x.kind === 'tight') return { title: 'No time to spare', body: who + ' has to leave ' + e.title + ' right at ' + fmt(x.at) + ' to make the next stop.', note: who + ' leaves ' + e.title + ' right at ' + fmt(x.at) };
   if (x.kind === 'tightBusy') return { title: 'No time to spare', body: who + ' has to leave right when ' + x.b.title + ' ends at ' + fmt(x.b.end) + '.', note: who + ' leaves right as ' + x.b.title + ' ends' };
   return { title: '', body: '' };
@@ -465,8 +475,8 @@ function buildDay(i, evs) {
       var extra = '';
       plan.hard.forEach(function (x) {
         if (!x.e || x.e.id !== e.id || x.d !== v) return;
-        if (f === 'drop' && x.kind === 'late') extra = ', ' + x.min + ' min late';
-        if (f === 'pick' && x.kind === 'waiting') extra = ', waits ' + x.min + ' min';
+        if (f === 'drop' && x.kind === 'late') extra = ', ' + wholeMin(x.min) + ' min late';
+        if (f === 'pick' && x.kind === 'waiting') extra = ', waits ' + wholeMin(x.min) + ' min';
       });
       var ink = extra ? '#B42318' : '#3D434B';
       if (!r) return { text: (f === 'drop' ? 'Drop-off: ' : 'Pick-up: ') + PEOPLE[v] + extra, ink: ink };

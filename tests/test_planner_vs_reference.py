@@ -64,10 +64,35 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
     return {"events": events, "busy": busy}
 
 
+def handoff_day() -> dict[str, Any]:
+    """Cleo's dance ends as Ava has to be at the same studio: Robin drops one off, picks the other up."""
+
+    def event(i: str, kid: str, start: int, end: int, pick: str, arrive_by: int | None) -> dict[str, Any]:
+        return {
+            "id": i,
+            "day": 0,
+            "kid": kid,
+            "title": "Dance",
+            "loc": "dance",
+            "start": start,
+            "end": end,
+            "drop": "mom",
+            "pick": pick,
+            "stay": False,
+            "arriveBy": arrive_by,
+            "along": [],
+        }
+
+    return {
+        "events": [event("hiphop", "cleo", 1080, 1125, "mom", None), event("tap", "ava", 1155, 1200, "dad", 1125)],
+        "busy": {},
+    }
+
+
 def test_matches_reference_on_random_days() -> None:
     assert NODE is not None
     rng = random.Random(SEED)
-    days = [random_day(rng, n) for n in range(DAYS)]
+    days = [handoff_day()] + [random_day(rng, n) for n in range(DAYS)]
     result = subprocess.run(
         [NODE, str(CLI), "board"],
         input=json.dumps(days),
