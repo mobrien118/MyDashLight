@@ -61,6 +61,8 @@ export interface CardBox extends Box {
   clash: boolean;
   /** The driver stays: the card is striped. */
   stayed: boolean;
+  /** Not attending: it stays on the board, faded and struck through. */
+  skipped: boolean;
   time: string;
   drop: CardLine | null;
   pick: CardLine | null;
@@ -551,6 +553,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         kidName: nameOfKid(e.kid),
         clash,
         stayed: e.stay && drivers.includes(e.drop),
+        skipped: e.attending === false,
         title: shortTitle(e.title, nameOfKid(e.kid)),
         time: `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : ""),
         drop: ln.drop,
@@ -560,6 +563,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         wrap,
         aria:
           `${nameOfKid(e.kid)}, ${e.title} ${clock(e.start)} to ${clock(e.end)}. ` +
+          (e.attending === false && !ln.drop ? "Not attending. " : "") +
           [ln.drop, ln.pick]
             .filter((l): l is CardLine => !!l)
             .map((l) => l.text)
@@ -907,11 +911,16 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
 
 export type IssueTone = "unassigned" | "problem" | "heads_up";
 
+/** A piece of an attention item's text: plain, or a link that opens an event. */
+export type BodyPart = string | { text: string; target: Target };
+
 export interface AttentionItem {
   key: string;
   tone: IssueTone;
   title: string;
   body: string;
+  /** The body with links in it. When set, it's drawn instead of `body`. */
+  parts?: BodyPart[];
   target: Target | null;
   suggestions: { id: string; label: string; note: string }[];
 }
@@ -1029,23 +1038,42 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
       problems++;
       const a = events.get(c.a.event ?? "");
       const name = kidName(plan, c.kid);
-      let body = "";
+      // Each event in the text opens its own details, where it can be marked not attending.
+      const link = (text: string, id: string | null | undefined): BodyPart => {
+        const t = target(id);
+        return t ? { text, target: t } : text;
+      };
+      let parts: BodyPart[] = [];
       if (c.b.type === "act") {
         const b = events.get(c.b.event ?? "");
-        body = a && b ? `${a.title} ${clock(a.start)}–${clock(a.end)} and ${b.title} ${clock(b.start)}–${clock(b.end)} overlap.` : "";
+        if (a && b) {
+          parts = [
+            link(a.title, a.id),
+            ` ${clock(a.start)}–${clock(a.end)} and `,
+            link(b.title, b.id),
+            ` ${clock(b.start)}–${clock(b.end)} overlap.`,
+          ];
+        }
       } else {
         const r = day.rides[c.b.ride ?? -1];
-        body =
-          a && r
-            ? `${name} is in ${driverName(plan, r.driver)}’s car ${clock(n(c.b.start))}–${clock(n(c.b.end))}, during ${a.title}.`
-            : "";
+        if (a && r) {
+          parts = [
+            `${name} is in `,
+            link(`${driverName(plan, r.driver)}’s car`, r.serves[0]),
+            ` ${clock(n(c.b.start))}–${clock(n(c.b.end))}, during `,
+            link(a.title, a.id),
+            ".",
+          ];
+        }
       }
       items.push({
         key: `${day.date}|clash|${i}`,
         tone: "problem",
         title: `${pre}${name} is double-booked`,
-        body,
-        target: target(c.a.event),
+        body: parts.map((p) => (typeof p === "string" ? p : p.text)).join(""),
+        parts,
+        // The headline covers both events, so it opens neither.
+        target: null,
         suggestions: [],
       });
     });

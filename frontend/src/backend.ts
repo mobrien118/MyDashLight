@@ -16,6 +16,8 @@ export interface Backend {
   /** `minutes` past midnight, or null to go back to a few minutes before the start. */
   setArriveBy(event: string, minutes: number | null, scope: Scope): Promise<void>;
   setTakeAlong(event: string, kids: string[], scope: Scope): Promise<void>;
+  /** Going (true) or skipping this one (false). */
+  setAttending(event: string, attending: boolean, scope: Scope): Promise<void>;
   applySuggestion(id: string): Promise<void>;
   /** Changes are saved for real (false in the offline preview). */
   readonly saves: boolean;
@@ -188,6 +190,10 @@ export class HassBackend implements Backend {
     return this.call("set_stay", { event, stay, scope });
   }
 
+  setAttending(event: string, attending: boolean, scope: Scope): Promise<void> {
+    return this.call("set_attending", { event, attending, scope });
+  }
+
   setArriveBy(event: string, minutes: number | null, scope: Scope): Promise<void> {
     return this.call("set_arrive_by", minutes == null ? { event, scope } : { event, time: timeField(minutes), scope });
   }
@@ -229,6 +235,10 @@ export class PreviewBackend implements Backend {
   }
 
   setStay(): Promise<void> {
+    return this.nope();
+  }
+
+  setAttending(): Promise<void> {
     return this.nope();
   }
 

@@ -136,6 +136,14 @@ test("the needs-attention list", () => {
   assert.ok(!items.some((i) => i.title.startsWith("Sun ·")));
   const clash = all.items.find((i) => i.title.endsWith("double-booked"))!;
   assert.equal(clash.body, "Soccer 5:00–6:30 and Art class 6:00–7:00 overlap.");
+  // The headline opens neither event; each event's name opens that event.
+  assert.equal(clash.target, null);
+  const links = (clash.parts ?? []).filter((p) => typeof p !== "string") as { text: string; target: { event: string } }[];
+  assert.deepEqual(
+    links.map((l) => l.text),
+    ["Soccer", "Art class"],
+  );
+  assert.notEqual(links[0]!.target.event, links[1]!.target.event);
   // Seen from later in the week, other days are named.
   assert.equal(attention(plan, { date: plan.days[3]!.date, minutes: 0 }).items.find((i) => i.title.includes("pick-up"))?.title, "Thu · No pick-up for Ava");
 });
@@ -266,4 +274,14 @@ test("planner text is tidied everywhere on the board", async () => {
   assert.equal(out.days[0]!.issues.at(-1)!.body, "Sam gets there at 7:00, ¼ min after the 7:00 arrive-by time.");
   // The plan it was given is left alone.
   assert.match(plan.days[0]!.events[0]!.lines.drop!.text, /15\.2/);
+});
+
+test("an event the kid isn't going to stays on the board, marked", () => {
+  const p = sampleWeek();
+  const e = p.days[0]!.events[0]!;
+  e.attending = false;
+  const b = layout(p, "timeline", 1160, today);
+  const card = b.cards.find((c) => c.event.id === e.id)!;
+  assert.equal(card.skipped, true);
+  assert.equal(b.cards.filter((c) => c.skipped).length, 1);
 });

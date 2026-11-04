@@ -824,6 +824,16 @@ export const styles = css`
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .card.skipped {
+    box-shadow: inset 5px 0 0 rgba(var(--rgb), 0.35);
+    border-style: dashed;
+  }
+  .card.skipped .title,
+  .card.skipped .time {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+  }
   .card .time {
     font-size: 12px;
     line-height: 16px;
@@ -1349,6 +1359,19 @@ export const styles = css`
     font-size: 13px;
     line-height: 18px;
     color: var(--ink-2);
+  }
+  .issue-link {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: rgba(28, 30, 34, 0.35);
+    text-underline-offset: 2px;
+    cursor: pointer;
   }
   .fixes {
     display: flex;
