@@ -84,6 +84,7 @@ Add these to the address you give the setup:
 | Add | Does |
 | --- | --- |
 | `?view=compact` or `?view=timeline` | Opens the board in that view. |
+| `?page=chores` | Opens on the chores board instead of rides. |
 | `?keyboard=off` | Hides the on-screen keyboard, for a screen with a real keyboard. |
 
 Combine them with `&`, for example `.../mydashlight-kitchen?view=compact&keyboard=off`.

@@ -824,6 +824,16 @@ export const styles = css`
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .card.skipped {
+    box-shadow: inset 5px 0 0 rgba(var(--rgb), 0.35);
+    border-style: dashed;
+  }
+  .card.skipped .title,
+  .card.skipped .time {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+  }
   .card .time {
     font-size: 12px;
     line-height: 16px;
@@ -1350,6 +1360,19 @@ export const styles = css`
     line-height: 18px;
     color: var(--ink-2);
   }
+  .issue-link {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: rgba(28, 30, 34, 0.35);
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
   .fixes {
     display: flex;
     flex-direction: column;
@@ -1615,5 +1638,247 @@ export const styles = css`
     line-height: 20px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     z-index: 30;
+  }
+  /* Chores */
+  .chores-area {
+    flex-direction: column;
+  }
+  .chores-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 8px;
+  }
+  .chore-cols {
+    display: grid;
+    grid-template-columns: repeat(var(--n, 3), minmax(220px, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+  .phone .chore-cols {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .chore-col {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 5px solid var(--c);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 14px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  .chore-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px 4px;
+  }
+  .chore-head .name {
+    font-size: 20px;
+    line-height: 25px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chore-head .sub {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted);
+  }
+  .chore-group {
+    margin: 8px 4px 0;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .chore-group.overdue {
+    color: var(--bad-ink);
+  }
+  .chore {
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(var(--rgb), 0.07);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    color: var(--ink);
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+  button.chore:active {
+    background: rgba(var(--rgb), 0.16);
+  }
+  .chore.overdue {
+    border-color: #f0c2be;
+    background: #fdf1f0;
+  }
+  .chore.done {
+    background: var(--surface-2);
+    border-color: var(--line-2);
+  }
+  .chore.later {
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--border);
+    min-height: 52px;
+  }
+  .box {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    flex: none;
+    border: 2.5px solid var(--c);
+    background: var(--surface);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chore.done .box {
+    background: var(--c);
+  }
+  .chore.later .box {
+    border-color: var(--border);
+    border-style: dashed;
+  }
+  .chore-icon {
+    font-size: 24px;
+    line-height: 1;
+    flex: none;
+  }
+  .chore.done .chore-icon,
+  .chore.later .chore-icon {
+    opacity: 0.55;
+  }
+  .chore-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .chore-title {
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+  .chore.done .chore-title {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: rgba(28, 30, 34, 0.35);
+  }
+  .chore.later .chore-title {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  .chore-kid {
+    font-weight: 800;
+    color: var(--k, var(--ink));
+  }
+  .chore-note {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted);
+  }
+  .chore.overdue .chore-note {
+    color: var(--bad-ink);
+    font-weight: 600;
+  }
+  .chore.done .chore-note {
+    color: var(--ok);
+  }
+  .chore-none {
+    margin: 4px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .chores-message {
+    margin: auto;
+    max-width: 560px;
+    padding: 28px 28px 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--ink-2);
+  }
+  .chores-message h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+  .chores-message p {
+    margin: 0 0 12px;
+  }
+  .chores-message p:last-child {
+    margin-bottom: 0;
+  }
+  .chores-message ol {
+    margin: 0 0 14px;
+    padding-left: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .chores-message code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--control);
+    color: var(--ink);
+  }
+  .phone .chores-message {
+    padding: 20px 18px;
+  }
+  .panel-section {
+    margin: 4px 0 0;
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 800;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .panel-section .panel-sub {
+    display: inline;
+  }
+  .attn-chores {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .attn-chores .chore {
+    min-height: 54px;
+  }
+  .attn-chores .chore-title {
+    font-size: 15px;
+    line-height: 20px;
+  }
+  .section-clear {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ok);
+    font-weight: 600;
   }
 `;

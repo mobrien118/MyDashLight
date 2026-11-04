@@ -174,12 +174,18 @@ the top:
 - **Timeline** spaces everything by the clock, so overlaps and tight handoffs are easy to see.
 - **Compact** drops the time scale: everything sits in start order, with each trip's stops listed.
 
-The **Needs attention** list shows problems in the next 48 hours (no driver, late, a kid
+A **Rides | Chores** switch at the top flips between this board and the chores board (see
+[Chores on the board](#chores-on-the-board)).
+
+The **Needs attention** list shows chores that are overdue or due today, then ride problems in the next 48 hours (no driver, late, a kid
 waiting, a parent still at work, a kid double-booked) with the suggested fixes, plus heads-ups
 for today and tomorrow. Problems later in the week show as a red count on their day in the top
 bar. Tap any activity, car or trip to change who drives each way, whether the driver
 stays, who's taken along, and the arrive-by time. A repeating activity asks whether to change just
-that day or every time. Each change is saved in the event's notes on Google straight away.
+that day or every time. If a kid is skipping one, tap **Not attending**: it stays on the board,
+crossed out, with no rides planned, and it no longer counts as a clash. When a kid is
+double-booked, each event's name in the Needs attention card opens that event, so the one being
+skipped is a tap away. Each change is saved in the event's notes on Google straight away.
 
 There are two ways to open it, both signed in to Home Assistant:
 
@@ -218,10 +224,12 @@ Either address can pick the view it opens in, so each screen can have its own:
 | --- | --- |
 | `?view=timeline` (or `?view=full`) | Timeline |
 | `?view=compact` | Compact |
+| `?page=chores` | The chores board instead of rides |
 
-For example, `<your Home Assistant URL>/mydashlight-kitchen?view=compact`. You can still switch
-views by tapping; the kitchen screen goes back to its view after three minutes without a touch.
-Without a `view`, the board opens in whichever view was last picked in that browser.
+For example, `<your Home Assistant URL>/mydashlight-kitchen?view=compact`, or
+`?page=chores&view=compact` for both. You can still switch by tapping; the kitchen screen goes back
+to its page and view after three minutes without a touch. Without a `view`, the board opens in
+whichever view was last picked in that browser; without a `page`, it opens on rides.
 
 The app is built from `frontend/` into `custom_components/mydashlight/frontend`, so a HACS update
 brings it along.
@@ -301,6 +309,21 @@ overdue chores, those coming up, and those done today) and the templates;
 `mydashlight.set_chore_done` checks one off or opens it again; `mydashlight.save_chore_template`
 adds or changes a template; `mydashlight.remove_chore_template` removes one. The app subscribes
 to `{"type": "mydashlight/chores/subscribe"}` for the same chores as they change.
+
+### Chores on the board
+
+Tap **Chores** at the top of the kitchen app for a column per kid, in the kids' colors:
+
+- **Missed**: overdue chores, with how many times they've been missed.
+- **To do**: today's chores, and this week's or month's that are showing ("By Sun").
+- **Done**: checked off today, or ahead of their day, with when.
+- Then the days ahead, each under the day it shows, faded until then.
+
+Tap a chore to check it off, and tap it again to undo; it's saved to Google Tasks straight away.
+The **Needs attention** list starts with a Chores section: every kid's overdue chores and the ones
+due today, with the kid's name, and they can be checked off right there. A chore done sometime this
+week or month joins that list only on its last day, so the list stays short. With no chores yet,
+the Chores board says how to add the first one.
 
 ## Reminders
 

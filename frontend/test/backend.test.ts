@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BackendError, HassBackend, PreviewBackend, type HassConnection } from "../src/backend.ts";
+import type { ChoresPayload } from "../src/chores.ts";
 import type { Plan } from "../src/types.ts";
 import { sampleWeek } from "./helpers.ts";
 
@@ -128,3 +129,107 @@ test("the preview never saves", async () => {
   assert.equal(b.saves, false);
   await assert.rejects(b.setStay(), (e: unknown) => e instanceof BackendError && e.code === "preview");
 });
+
+const CHORES: ChoresPayload = {
+  updated: "2026-11-04T20:00:00Z",
+  today: "2026-11-04",
+  time_zone: "America/Chicago",
+  days_ahead: 7,
+  kids: [{ id: "ava", name: "Ava" }],
+  chores: [],
+  templates: [],
+  status: { ok: true, error: null, needs: null },
+};
+
+class ChoreConnection implements HassConnection {
+  sent: Record<string, unknown>[] = [];
+  pushes = false;
+  push: ((msg: { chores: ChoresPayload | null }) => void) | null = null;
+
+  async sendMessagePromise<T>(message: Record<string, unknown>): Promise<T> {
+    this.sent.push(message);
+    if (message["service"] === "get_chores") return { response: CHORES } as T;
+    return { context: {} } as T;
+  }
+
+  async subscribeMessage<T>(callback: (result: T) => void, message: Record<string, unknown>): Promise<() => Promise<void>> {
+    this.sent.push(message);
+    if (!this.pushes) throw { code: "unknown_command", message: "Unknown command." };
+    this.push = callback as unknown as (msg: { chores: ChoresPayload | null }) => void;
+    return async () => {
+      this.push = null;
+    };
+  }
+}
+
+test("chores come live when MyDashLight pushes them, and are checked off through set_chore_done", async () => {
+  const conn = new ChoreConnection();
+  conn.pushes = true;
+  const b = new HassBackend(conn);
+  const got: (ChoresPayload | null)[] = [];
+  const stop = b.watchChores((c) => got.push(c));
+  await tick();
+  assert.deepEqual(conn.sent[0], { type: "mydashlight/chores/subscribe" });
+  conn.push!({ chores: CHORES });
+  conn.push!({ chores: null });
+  assert.deepEqual(got, [CHORES, null]);
+
+  conn.sent = [];
+  await b.setChoreDone("task-1", true);
+  await b.setChoreDone("task-1", false);
+  assert.deepEqual(
+    conn.sent.map((m) => [m["service"], m["service_data"]]),
+    [
+      ["set_chore_done", { chore: "task-1", done: true }],
+      ["set_chore_done", { chore: "task-1", done: false }],
+    ],
+  );
+  stop();
+  assert.equal(conn.push, null);
+});
+
+test("chores are read with get_chores when they can't be pushed", async () => {
+  const conn = new ChoreConnection();
+  const b = new HassBackend(conn);
+  const got: (ChoresPayload | null)[] = [];
+  const stop = b.watchChores((c) => got.push(c));
+  await tick();
+  await tick();
+  assert.deepEqual(got, [CHORES]);
+  assert.equal(conn.sent.at(-1)?.["service"], "get_chores");
+  stop();
+});
+
+test("the preview checks chores off on the page only", async () => {
+  const chores = { ...CHORES, chores: [{ ...sampleChore(), id: "c1" }] };
+  const b = new PreviewBackend(sampleWeek(), chores);
+  const got: (ChoresPayload | null)[] = [];
+  const stop = b.watchChores((c) => got.push(c));
+  await tick();
+  await b.setChoreDone("c1", true);
+  await tick();
+  assert.equal(got.at(-1)?.chores[0]?.state, "done");
+  await b.setChoreDone("c1", false);
+  await tick();
+  assert.equal(got.at(-1)?.chores[0]?.state, "open");
+  stop();
+});
+
+function sampleChore(): ChoresPayload["chores"][number] {
+  return {
+    id: "c",
+    kid: "ava",
+    title: "Make bed",
+    icon: "🛏️",
+    details: "",
+    repeats: "daily",
+    due: "2026-11-04",
+    shows_from: null,
+    state: "open",
+    done_at: null,
+    missed: 0,
+    points: null,
+    template: null,
+    order: 0,
+  };
+}

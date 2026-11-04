@@ -11,6 +11,7 @@ import { ago, clock, clockAmPm, dayLabel, duration, nowIn, shortDay } from "./fo
 import {
   DAY_HEAD,
   attention,
+  dayTag,
   driverIds,
   driverName,
   kidColors,
@@ -31,7 +32,17 @@ import {
   type Target,
   type Today,
 } from "./layout.ts";
-import { pageOptions } from "./options.ts";
+import {
+  choreColumns,
+  choreNote,
+  choresNeedingAttention,
+  isDone,
+  isDoable,
+  noChoresYet,
+  type Chore,
+  type ChoresPayload,
+} from "./chores.ts";
+import { pageOptions, type Page } from "./options.ts";
 import { styles } from "./styles.ts";
 import type { Plan, PlanDay, PlanEvent, Scope, Side } from "./types.ts";
 
@@ -59,6 +70,12 @@ function localZone(): string {
 function initial(name: string): string {
   const m = /\p{L}|\p{N}/u.exec(name);
   return m ? m[0].toUpperCase() : "?";
+}
+
+/** "Tomorrow", or "Sat" for a day later this week. */
+function dayTagOr(date: string, today: string): string {
+  const tag = dayTag(date, today);
+  return tag || dayLabel(date).split(",")[0]!;
 }
 
 /** "Ava’s, Ben’s or Cleo’s". */
@@ -113,6 +130,9 @@ export class MyDashLightBoard extends LitElement {
     scope: { state: true },
     arriveDraft: { state: true },
     tick: { state: true },
+    page: { state: true },
+    chores: { state: true },
+    choreDraft: { state: true },
   };
 
   declare backend: Backend | null;
@@ -133,6 +153,12 @@ export class MyDashLightBoard extends LitElement {
   /** An arrive-by time being tapped in, not saved yet. Undefined when there's none. */
   declare arriveDraft: number | null | undefined;
   declare tick: number;
+  /** Rides or chores. */
+  declare page: Page;
+  /** Undefined until the first read; null when chores can't be read. */
+  declare chores: ChoresPayload | null | undefined;
+  /** Check-offs tapped but not confirmed yet: chore id to done. */
+  declare choreDraft: ReadonlyMap<string, boolean>;
 
   private stopWatching: (() => void) | null = null;
   private resize: ResizeObserver | null = null;
@@ -152,6 +178,9 @@ export class MyDashLightBoard extends LitElement {
   private keepAt: number | null = null;
   /** The view this screen's address asks for, if any. */
   private readonly urlView = pageOptions(location.search).view;
+  /** The page this screen's address asks for, if any. */
+  private readonly urlPage = pageOptions(location.search).page;
+  private stopChores: (() => void) | null = null;
   private scrolledOnce = false;
 
   constructor() {
@@ -171,6 +200,9 @@ export class MyDashLightBoard extends LitElement {
     this.scope = "this";
     this.arriveDraft = undefined;
     this.tick = 0;
+    this.page = this.urlPage ?? "rides";
+    this.chores = undefined;
+    this.choreDraft = new Map();
   }
 
   override connectedCallback(): void {
@@ -193,6 +225,8 @@ export class MyDashLightBoard extends LitElement {
     super.disconnectedCallback();
     this.stopWatching?.();
     this.stopWatching = null;
+    this.stopChores?.();
+    this.stopChores = null;
     this.resize?.disconnect();
     this.resize = null;
     for (const t of [this.idleTimer, this.toastTimer, this.arriveTimer]) if (t) clearTimeout(t);
@@ -235,7 +269,19 @@ export class MyDashLightBoard extends LitElement {
   private watchBackend(): void {
     this.stopWatching?.();
     this.stopWatching = null;
+    this.stopChores?.();
+    this.stopChores = null;
     if (!this.backend) return;
+    this.stopChores = this.backend.watchChores((chores) => {
+      this.chores = chores;
+      // A check-off is confirmed once the chore comes back that way.
+      if (chores && this.choreDraft.size) {
+        const left = new Map(this.choreDraft);
+        for (const c of chores.chores) if (left.has(c.id) && isDone(c) === left.get(c.id)) left.delete(c.id);
+        for (const id of left.keys()) if (!chores.chores.some((c) => c.id === id)) left.delete(id);
+        this.choreDraft = left;
+      }
+    });
     this.stopWatching = this.backend.watch(
       (plan) => {
         this.plan = tidyPlan(plan);
@@ -352,6 +398,36 @@ export class MyDashLightBoard extends LitElement {
     for (const t of root.querySelectorAll<HTMLElement>(".day-tile")) t.classList.toggle("in-view", t.dataset["date"] === cur.date);
   }
 
+  private setPage(p: Page): void {
+    if (p === this.page) return;
+    this.closeEditor();
+    this.page = p;
+    // Back on rides, start at now again.
+    if (p === "rides") this.scrolledOnce = false;
+  }
+
+  /** Checks a chore off, or opens it again. Shown straight away; undone if saving fails. */
+  private async toggleChore(c: Chore): Promise<void> {
+    if (!this.backend) return;
+    const done = !this.choreDone(c);
+    const draft = new Map(this.choreDraft);
+    draft.set(c.id, done);
+    this.choreDraft = draft;
+    try {
+      await this.backend.setChoreDone(c.id, done);
+    } catch (err) {
+      const back = new Map(this.choreDraft);
+      back.delete(c.id);
+      this.choreDraft = back;
+      const e = err instanceof BackendError ? err : new BackendError("error", String(err));
+      this.showToast(e.code === "preview" ? e.message : `Couldn’t save that. ${e.message}`);
+    }
+  }
+
+  private choreDone(c: Chore): boolean {
+    return this.choreDraft.get(c.id) ?? isDone(c);
+  }
+
   private setMode(m: Mode): void {
     if (m === this.mode) return;
     const el = this.scroller;
@@ -414,6 +490,7 @@ export class MyDashLightBoard extends LitElement {
     this.idleTimer = setTimeout(() => {
       this.closeEditor();
       this.sheet = false;
+      if (this.page !== (this.urlPage ?? "rides")) this.setPage(this.urlPage ?? "rides");
       if (this.urlView && this.mode !== this.urlView) {
         // Back to the view the address asks for, then to now once it's drawn.
         this.mode = this.urlView;
@@ -436,12 +513,21 @@ export class MyDashLightBoard extends LitElement {
     return day && event ? { day, event } : null;
   }
 
-  private open(t: Target | null): void {
+  private open(t: Target | null, reveal = false): void {
     if (!t) return;
     this.flushArrive();
     this.sel = t;
     this.scope = "this";
     this.arriveDraft = undefined;
+    if (reveal) this.reveal(t);
+  }
+
+  /** Scrolls the board to an event opened from the panel, so it's in view beside its details. */
+  private reveal(t: Target): void {
+    const found = this.findEvent(t);
+    const i = this.dayIndexOf(t.day);
+    if (!found || i < 0) return;
+    this.scrollToTime(i * 1440 + Math.max(0, (found.event.arrive_by ?? found.event.start) - 30), t.day);
   }
 
   private closeEditor(): void {
@@ -475,6 +561,12 @@ export class MyDashLightBoard extends LitElement {
     if (!this.backend) return;
     const b = this.backend;
     void this.save(`${side}`, driver, () => b.setRide(e.id, side, driver, this.scope));
+  }
+
+  private setAttending(e: PlanEvent, attending: boolean): void {
+    if (!this.backend || (e.attending !== false) === attending) return;
+    const b = this.backend;
+    void this.save("attending", attending, () => b.setAttending(e.id, attending, this.scope));
   }
 
   private toggleStay(e: PlanEvent): void {
@@ -539,19 +631,24 @@ export class MyDashLightBoard extends LitElement {
       ? attention(plan, this.today())
       : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
     const wide = this.wide;
+    const todo = this.chores ? choresNeedingAttention(this.chores).filter((c) => !this.choreDone(c)) : [];
     const panel = html`<aside class="panel" aria-label=${this.sel ? "Change this ride" : "Needs attention"}>
-      ${this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att)}
+      ${this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att, todo)}
     </aside>`;
+    const rides = this.page === "rides";
     // Wide, the panel runs the full height on the right, beside everything else. Narrower, it
     // slides over the board when opened.
     return html`
       <div class="app ${wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
         <div class="col">
-          ${this.renderHeader(plan, att)} ${plan ? this.renderWeek(plan) : nothing} ${this.renderBanner(plan)}
+          ${this.renderHeader(plan, att, todo.length)} ${rides && plan ? this.renderWeek(plan) : nothing}
+          ${rides ? this.renderBanner(plan) : nothing}
           <main>
-            <section class="board-area" aria-label="Everyone’s week">
-              ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
-            </section>
+            ${rides
+              ? html`<section class="board-area" aria-label="Everyone’s week">
+                  ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
+                </section>`
+              : html`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
             ${!wide && (this.sheet || this.sel)
               ? html`<div class="backdrop" @click=${() => this.closePanel()}></div>
                   ${panel}`
@@ -569,8 +666,8 @@ export class MyDashLightBoard extends LitElement {
     this.sheet = false;
   }
 
-  private renderHeader(plan: Plan | null, att: Attention): TemplateResult {
-    const problems = att.problems;
+  private renderHeader(plan: Plan | null, att: Attention, choresDue: number): TemplateResult {
+    const problems = att.problems + choresDue;
     void this.tick;
     const now = this.today();
     let status: TemplateResult | string = "";
@@ -588,6 +685,11 @@ export class MyDashLightBoard extends LitElement {
     }
     const seg = (m: Mode, label: string, icon: TemplateResult, hint: string): TemplateResult => html`
       <button type="button" class="seg-btn" title=${hint} aria-pressed=${this.mode === m ? "true" : "false"} @click=${() => this.setMode(m)}>
+        ${icon}<span class="seg-label">${label}</span>
+      </button>
+    `;
+    const page = (p: Page, label: string, icon: TemplateResult): TemplateResult => html`
+      <button type="button" class="seg-btn" aria-pressed=${this.page === p ? "true" : "false"} @click=${() => this.setPage(p)}>
         ${icon}<span class="seg-label">${label}</span>
       </button>
     `;
@@ -609,14 +711,20 @@ export class MyDashLightBoard extends LitElement {
         </div>
         ${plan && !quiet ? this.renderNext(plan, nextUp(plan, now), att) : nothing}
         <div class="controls">
-          ${this.wide || quiet
+          ${this.wide || (quiet && !choresDue)
             ? nothing
             : html`<button type="button" class="attn-btn ${problems ? "has" : ""}" @click=${() => {
                 this.sheet = true;
               }}>
                 <span class="attn-label">Needs attention</span> <span class="count">${problems}</span>
               </button>`}
-          <div role="group" aria-label="View" class="seg">
+          <div role="group" aria-label="Page" class="seg pages">
+            ${page("rides", "Rides", svg`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2zm2.2 0h9.6l-1.1-3H8.3zM7 15.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`)}
+            ${page("chores", "Chores", svg`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 6.5l2 2 3.5-3.5M4 15.5l2 2 3.5-3.5M13 7h7M13 16h7"/></svg>`)}
+          </div>
+          ${this.page !== "rides"
+            ? nothing
+            : html`<div role="group" aria-label="View" class="seg">
             ${seg(
               "timeline",
               "Timeline",
@@ -629,7 +737,7 @@ export class MyDashLightBoard extends LitElement {
               svg`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="7.5" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="12" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,
               "Everything in order, no time scale",
             )}
-          </div>
+          </div>`}
         </div>
       </header>
     `;
@@ -886,14 +994,16 @@ export class MyDashLightBoard extends LitElement {
             (x) => x.key,
             (x) => {
               const k = x.color;
-              const bg = x.stayed
+              const bg = x.skipped
+                ? `repeating-linear-gradient(135deg, rgba(${k.rgb},0.10) 0px, rgba(${k.rgb},0.10) 6px, transparent 6px, transparent 12px), var(--surface)`
+                : x.stayed
                 ? `repeating-linear-gradient(135deg, rgba(${k.rgb},0.24) 0px, rgba(${k.rgb},0.24) 6px, rgba(${k.rgb},0.08) 6px, rgba(${k.rgb},0.08) 12px), var(--surface)`
                 : `linear-gradient(rgba(${k.rgb},0.15), rgba(${k.rgb},0.15)), var(--surface)`;
               return html`<button
                 type="button"
-                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""}"
+                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""} ${x.skipped ? "skipped" : ""}"
                 aria-label=${x.aria}
-                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : `rgba(${k.rgb},0.45)`};--c:${k.color};--ring:${k.color}"
+                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : `rgba(${k.rgb},0.45)`};--c:${k.color};--rgb:${k.rgb};--ring:${k.color}"
                 @click=${() => this.open(x.target)}
               >
                 <span class="top">
@@ -971,15 +1081,25 @@ export class MyDashLightBoard extends LitElement {
     `;
   }
 
-  private renderAttention(att: Attention): TemplateResult {
+  private renderAttention(att: Attention, todo: Chore[]): TemplateResult {
     const { items, problems, later } = att;
     const plan = this.plan;
+    const total = problems + todo.length;
+    const chores = this.chores;
+    const showChores = !!chores && !noChoresYet(chores);
     return html`
       <div class="panel-head">
-        <h2>Needs attention <span class="panel-sub">Next two days</span></h2>
-        <span class="count-pill ${problems ? "bad" : "ok"}">${problems}</span>
+        <h2>Needs attention</h2>
+        <span class="count-pill ${total ? "bad" : "ok"}">${total}</span>
         ${this.wide ? nothing : html`<button type="button" class="btn dark" @click=${() => (this.sheet = false)}>Done</button>`}
       </div>
+      ${showChores
+        ? html`<h3 class="panel-section">Chores <span class="panel-sub">Overdue and due today</span></h3>
+            ${todo.length
+              ? html`<div class="attn-chores">${todo.map((c) => this.renderChoreRow(c, true))}</div>`
+              : html`<p class="section-clear">All of today’s chores are done.</p>`}
+            <h3 class="panel-section">Rides <span class="panel-sub">Next two days</span></h3>`
+        : html`<p class="panel-sub">Rides in the next two days</p>`}
       ${plan && !problems
         ? html`<div class="all-clear">
             <span class="check" aria-hidden="true">${svg`<svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`}</span>
@@ -996,9 +1116,17 @@ export class MyDashLightBoard extends LitElement {
             <span class="glyph" aria-hidden="true">${it.tone === "heads_up" ? "i" : "!"}</span>
             <div class="issue-text">
               ${it.target
-                ? html`<button type="button" class="issue-title" @click=${() => this.open(it.target)}>${it.title}</button>`
+                ? html`<button type="button" class="issue-title" @click=${() => this.open(it.target, true)}>${it.title}</button>`
                 : html`<strong class="issue-title">${it.title}</strong>`}
-              <span class="issue-body">${it.body}</span>
+              <span class="issue-body"
+                >${it.parts
+                  ? it.parts.map((part) =>
+                      typeof part === "string"
+                        ? part
+                        : html`<button type="button" class="issue-link" @click=${() => this.open(part.target, true)}>${part.text}</button>`,
+                    )
+                  : it.body}</span
+              >
             </div>
           </div>
           ${it.suggestions.length
@@ -1018,8 +1146,119 @@ export class MyDashLightBoard extends LitElement {
             : nothing}
         </div>`,
       )}
-      ${this.wide && plan && !quietWeek(plan) ? this.renderLegend() : nothing}
+      ${this.wide && plan && !quietWeek(plan) && this.page === "rides" ? this.renderLegend() : nothing}
     `;
+  }
+
+  // Chores
+
+  /** One chore: tap anywhere on it to check it off, or to open it again. */
+  private renderChoreRow(c: Chore, withName = false): TemplateResult {
+    const data = this.chores!;
+    const done = this.choreDone(c);
+    const kid = data.kids.findIndex((k) => k.id === c.kid);
+    const color = (this.plan ? kidColors(this.plan).get(c.kid) : undefined) ?? kidColor(Math.max(0, kid));
+    const name = data.kids[kid]?.name ?? "";
+    const shown: Chore = done === isDone(c) ? c : { ...c, state: done ? "done" : "open", done_at: done ? new Date().toISOString() : null };
+    const note = choreNote(shown, data.today, data.time_zone);
+    const canTap = done || isDoable(c);
+    const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${done ? "Done. Tap to undo." : "Tap when it’s done."}`;
+    const body = html`<span class="box" aria-hidden="true"
+        >${done
+          ? svg`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`
+          : nothing}</span
+      >
+      ${c.icon ? html`<span class="chore-icon" aria-hidden="true">${c.icon}</span>` : nothing}
+      <span class="chore-text">
+        <span class="chore-title">${withName ? html`<span class="chore-kid">${name}</span> · ` : nothing}${c.title}</span>
+        ${note ? html`<span class="chore-note">${note}</span>` : nothing}
+      </span>`;
+    const cls = `chore ${done ? "done" : ""} ${c.state === "overdue" && !done ? "overdue" : ""} ${canTap ? "" : "later"}`;
+    const style = `--c:${color.color};--rgb:${color.rgb};--k:${color.ink}`;
+    return canTap
+      ? html`<button type="button" class=${cls} style=${style} aria-pressed=${done ? "true" : "false"} aria-label=${label} @click=${() => void this.toggleChore(c)}>
+          ${body}
+        </button>`
+      : html`<div class=${cls} style=${style}>${body}</div>`;
+  }
+
+  private renderChores(): TemplateResult {
+    const data = this.chores;
+    if (data === undefined) return html`<div class="chores-message"><p>Loading chores…</p></div>`;
+    if (data === null) {
+      return html`<div class="chores-message">
+        <h2>Chores aren’t available right now</h2>
+        <p>MyDashLight may be restarting. If this stays, check that MyDashLight is up to date in HACS.</p>
+      </div>`;
+    }
+    if (data.status.needs === "sign_in") {
+      return html`<div class="chores-message">
+        <h2>Sign in to Google again to turn on chores</h2>
+        <p>Chores use Google Tasks, which needs one more permission. In Home Assistant, open <strong>Settings › Devices &amp; services</strong> and follow the MyDashLight sign-in prompt.</p>
+      </div>`;
+    }
+    if (data.status.needs === "tasks_api") {
+      return html`<div class="chores-message">
+        <h2>Turn on the Google Tasks API</h2>
+        <p>In Google Cloud, open the MyDashLight project, go to <strong>APIs &amp; Services › Library</strong>, find <strong>Google Tasks API</strong> and choose <strong>Enable</strong>. Chores show up a minute later.</p>
+      </div>`;
+    }
+    const broken = data.templates.filter((t) => t.problems.length);
+    const problems = broken.length
+      ? html`<div class="banner">
+          ${broken.map((t) => html`<div><strong>${t.title}</strong>: ${t.problems.join("; ")}</div>`)}
+        </div>`
+      : nothing;
+    if (noChoresYet(data)) {
+      const kid = data.kids[0]?.name ?? "Ava";
+      return html`<div class="chores-message">
+        <h2>No chores yet</h2>
+        <p>Chores come from Google Tasks, in the Google account MyDashLight signs in with.</p>
+        <ol>
+          <li>Open Google Tasks and pick the list <strong>Chore templates: Daily</strong> (or Weekly or Monthly).</li>
+          <li>Add a task named for the chore, such as <strong>🛏️ Make bed</strong>.</li>
+          <li>In its details, add a line <code>Who: ${kid}</code>. Add <code>Days: Mon-Fri</code> for weekdays only.</li>
+        </ol>
+        <p>Within a minute it shows here, and on ${kid}’s own list in Google Tasks.</p>
+      </div>`;
+    }
+    const cols = choreColumns(data, this.plan ? kidColors(this.plan) : undefined);
+    return html`<div class="chores-scroll">
+      ${problems}
+      <div class="chore-cols" style="--n:${cols.length}">
+        ${cols.map((col) => {
+          const left = col.overdue.filter((c) => !this.choreDone(c)).length + col.now.filter((c) => !this.choreDone(c)).length;
+          return html`<section class="chore-col" style="--c:${col.color.color};--rgb:${col.color.rgb}" aria-label=${`${col.name}’s chores`}>
+            <div class="chore-head">
+              <span class="avatar" aria-hidden="true">${initial(col.name)}</span>
+              <span class="ch-text">
+                <span class="name">${col.name}</span>
+                <span class="sub">${left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span>
+              </span>
+            </div>
+            ${col.overdue.length
+              ? html`<h3 class="chore-group overdue">Missed</h3>
+                  ${col.overdue.map((c) => this.renderChoreRow(c))}`
+              : nothing}
+            ${col.now.length
+              ? html`<h3 class="chore-group">To do</h3>
+                  ${col.now.map((c) => this.renderChoreRow(c))}`
+              : nothing}
+            ${col.done.length
+              ? html`<h3 class="chore-group">Done</h3>
+                  ${col.done.map((c) => this.renderChoreRow(c))}`
+              : nothing}
+            ${col.later.map(
+              (g) => html`<h3 class="chore-group">${dayTagOr(g.date, data.today)}</h3>
+                ${g.chores.map((c) => this.renderChoreRow(c))}`,
+            )}
+            ${!col.overdue.length && !col.now.length && !col.done.length && !col.later.length
+              ? html`<p class="chore-none">No chores this week.</p>`
+              : nothing}
+          </section>`;
+        })}
+      </div>
+    </div>`;
   }
 
   private renderLegend(): TemplateResult {
@@ -1111,6 +1350,9 @@ export class MyDashLightBoard extends LitElement {
     if (e.stay) notes.push("Stay: yes");
     if (e.along.length) notes.push(`Take along: ${e.along.map((k) => kidName(plan, k)).join(", ")}`);
     if (e.arrive_by != null) notes.push(`Arrive by: ${clockAmPm(e.arrive_by)}`);
+    const attendPend = pendingValue("attending");
+    const attending = attendPend !== undefined ? Boolean(attendPend) : e.attending !== false;
+    if (e.attending === false) notes.splice(0, notes.length, "Attending: no");
 
     const ahead = day.date === this.today().date ? "" : `${shortDay(day.date)} · `;
     const head = html`<div class="ed-head">
@@ -1140,10 +1382,22 @@ export class MyDashLightBoard extends LitElement {
             </div>
           </div>`
         : nothing}
-      ${e.where === "anywhere"
-        ? html`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`
-        : nothing}
-      ${side("drop")} ${side("pick")}
+      <div class="field">
+        <span class="field-label">${kidName(plan, e.kid)} is</span>
+        <div role="group" aria-label="Going or not" class="choices" style="grid-template-columns:1fr 1fr">
+          <button type="button" class="choice" aria-pressed=${attending ? "true" : "false"} ?disabled=${busy} @click=${() => this.setAttending(e, true)}>
+            Going
+          </button>
+          <button type="button" class="choice" aria-pressed=${attending ? "false" : "true"} ?disabled=${busy} @click=${() => this.setAttending(e, false)}>
+            Not attending
+          </button>
+        </div>
+      </div>
+      ${attending
+        ? html`${e.where === "anywhere"
+              ? html`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`
+              : nothing}
+            ${side("drop")} ${side("pick")}
       <div class="field">
         <button type="button" class="choice wide" aria-pressed=${stay ? "true" : "false"} ?disabled=${!canStay || busy} @click=${() => this.toggleStay(e)}>
           ${canStay ? (stay ? "Driver stays the whole time" : "Driver leaves and comes back") : "Staying needs the same driver both ways"}
@@ -1175,6 +1429,11 @@ export class MyDashLightBoard extends LitElement {
       ${arrive != null
         ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => this.clearArrive()}>Clear arrive-by time</button>`
         : nothing}
+`
+        : html`<p class="field-hint">
+            Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.
+            Its other ride settings stay saved in the notes, so tapping Going brings them all back.
+          </p>`}
       <div class="notes">
         <span class="notes-label">${this.backend?.saves === false ? "Would be saved" : "Saved"} to this event’s notes in Google Calendar</span>
         <span class="notes-body">--- Rides ---\n${notes.length ? notes.join("\n") : "(no ride lines yet)"}</span>
@@ -1182,7 +1441,9 @@ export class MyDashLightBoard extends LitElement {
       ${e.problems.length
         ? html`<p class="field-hint bad">These lines in the notes couldn’t be read: ${e.problems.join("; ")}</p>`
         : nothing}
-      <p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>
+      ${attending
+        ? html`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`
+        : nothing}
     `;
   }
 }
