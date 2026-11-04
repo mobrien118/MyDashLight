@@ -29,6 +29,8 @@ NOT_NEEDED = "none"
 DEFAULT_DRIVERS: tuple[str, ...] = ("mom", "dad")
 
 INF = math.inf
+LATE_AFTER = 0.5
+"""Getting somewhere less than this many minutes late isn't late: it rounds to the same minute."""
 
 TravelFn = Callable[[str, str], float]
 """Drive minutes from one place to another. Places are opaque keys; :data:`HOME` is home."""
@@ -301,6 +303,7 @@ def plan_driver(
             if e.pick == driver:
                 tasks.append(_Task("pick", e, e.end))
     tasks.sort(key=lambda k: k.t)
+    _same_place_first(tasks, settings)
     out = DriverPlan(driver)
     if not tasks:
         return out
@@ -372,7 +375,7 @@ def plan_driver(
             if here == HOME:
                 out.trips += 1
         s.arrive = arr
-        if s.deadline is not None and arr > s.deadline:
+        if s.deadline is not None and arr - s.deadline >= LATE_AFTER:
             out.issues.append(Issue("late", driver, s.event, s, arr - s.deadline))
         if s.kind == "pick" and s.ready is not None and arr > s.ready + settings.waiting_after:
             out.issues.append(Issue("waiting", driver, s.event, s, arr - s.ready))
@@ -479,6 +482,28 @@ def plan_driver(
         elif 0 <= out.leave - b.end < settings.tight_slack:
             out.soft.append(Issue("tightBusy", driver, busy=b))
     return out
+
+
+def _same_place_first(tasks: list[_Task], settings: PlannerSettings) -> None:
+    """Drop the next kid off on arriving for a pick-up at the same place a few minutes before.
+
+    Otherwise they'd be fetched from home after the pick-up and arrive late. Only when the
+    drop-off is at most :attr:`PlannerSettings.too_early` after the pick-up, so they don't
+    wait long.
+    """
+    q = 0
+    while q + 1 < len(tasks):
+        a, b = tasks[q], tasks[q + 1]
+        if (
+            a.type == "pick"
+            and b.type != "pick"
+            and a.event.loc == b.event.loc
+            and a.event.kid != b.event.kid
+            and b.t - a.t <= settings.too_early
+        ):
+            tasks[q], tasks[q + 1] = b, a
+            q += 1
+        q += 1
 
 
 def _build_stops(tasks: list[_Task]) -> list[Stop]:
@@ -610,10 +635,10 @@ def driving_text(v: float) -> str:
 
 
 def minutes_text(v: float | None) -> str:
-    """A minute count as written in text: ``16``, not ``16.0``."""
+    """A minute count as written in text, rounded to the whole minute: ``16``, not ``15.6``."""
     if v is None:
         return "0"
-    return str(int(v)) if float(v).is_integer() else str(v)
+    return str(math.floor(v + 0.5))
 
 
 def apply_change(
