@@ -222,10 +222,10 @@ test("driving minutes in a fix's note are rounded to the quarter minute", () => 
 });
 
 test("a trip away over several days reads sensibly each day", () => {
-  const trip = "Trip to Minneapolis";
-  assert.equal(busyLabel({ start: 505, end: 1800, title: trip }, false), "Trip to Minneapolis from 8:25");
-  assert.equal(busyLabel({ start: 0, end: 1800, title: trip }, false), "Trip to Minneapolis · all day");
-  assert.equal(busyLabel({ start: 0, end: 1145, title: trip }, true), "Trip to Minneapolis until 7:05");
+  const trip = "Trip to the lake";
+  assert.equal(busyLabel({ start: 505, end: 1800, title: trip }, false), "Trip to the lake from 8:25");
+  assert.equal(busyLabel({ start: 0, end: 1800, title: trip }, false), "Trip to the lake · all day");
+  assert.equal(busyLabel({ start: 0, end: 1145, title: trip }, true), "Trip to the lake until 7:05");
   assert.equal(busyLabel({ start: 780, end: 1000, title: "Work" }, false), "Work until 4:40");
   assert.equal(busyLabel({ start: 780, end: 1000, title: "Work" }, true), "Work 1:00–4:40");
 });
