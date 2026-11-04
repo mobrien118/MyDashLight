@@ -142,6 +142,8 @@ export class MyDashLightBoard extends LitElement {
   private eatClick = false;
   private board: Board | null = null;
   private minuteKey = "";
+  /** The board's scroll area, watched for size: it only exists once a plan has loaded. */
+  private watchedScroller: HTMLElement | null = null;
   private boardPlan: Plan | null = null;
   private boardKey = "";
   /** Where to scroll after the next render: a moment on the board. */
@@ -207,6 +209,12 @@ export class MyDashLightBoard extends LitElement {
 
   protected override updated(): void {
     const el = this.scroller;
+    if (el !== this.watchedScroller && this.resize) {
+      // The columns are laid out for the scroll area's width, so measure it when it appears.
+      if (this.watchedScroller) this.resize.unobserve(this.watchedScroller);
+      if (el) this.resize.observe(el);
+      this.watchedScroller = el;
+    }
     if (!el || !this.board) return;
     if (!this.scrolledOnce && this.plan) {
       this.scrolledOnce = true;

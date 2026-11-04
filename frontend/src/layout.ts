@@ -394,6 +394,20 @@ export function shortTitle(title: string, kid: string): string {
   return out ? out[0]!.toUpperCase() + out.slice(1) : t;
 }
 
+/**
+ * A busy block's label. A trip away spans days: the middle days are "all day", the first says
+ * when it starts, the last when it ends. Otherwise Timeline gives the end ("Work until 4:40",
+ * the start is on the clock) and Compact the whole range.
+ */
+export function busyLabel(b: { start: number; end: number; title: string }, range: boolean): string {
+  const fromBefore = b.start <= 0;
+  const pastMidnight = b.end >= 1440;
+  if (fromBefore && pastMidnight) return `${b.title} · all day`;
+  if (pastMidnight) return `${b.title} from ${clock(b.start)}`;
+  if (fromBefore || !range) return `${b.title} until ${clock(b.end)}`;
+  return `${b.title} ${clock(b.start)}–${clock(b.end)}`;
+}
+
 /** How many problems a day has: issues to fix plus double-bookings. */
 export function problemCount(day: PlanDay): number {
   return day.issues.filter((i) => i.level === "problem").length + day.clashes.length;
@@ -745,7 +759,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             w: c.w - 2,
             h: y1 - y0,
             labelY: 8,
-            label: `${b.title} until ${clock(b.end)}`,
+            label: busyLabel(b, false),
           });
         }
       }
@@ -813,7 +827,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           w: c.w - 2,
           h: m.h,
           labelY: 8,
-          label: `${m.busy.title} ${clock(m.busy.start)}–${clock(m.busy.end)}`,
+          label: busyLabel(m.busy, true),
         });
       } else if (m.kind === "out") {
         const o = m.out;

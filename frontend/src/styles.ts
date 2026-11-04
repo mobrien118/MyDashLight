@@ -570,13 +570,13 @@ export const styles = css`
     position: sticky;
     top: 0;
     z-index: 6;
-    height: 60px;
+    height: 72px;
     background: var(--bg);
   }
   .col-head {
     position: absolute;
     top: 0;
-    height: 54px;
+    height: 66px;
     padding: 4px 8px 6px;
     display: flex;
     align-items: center;
@@ -630,11 +630,12 @@ export const styles = css`
   }
   .col-head .sub {
     font-size: 12px;
-    line-height: 17px;
+    line-height: 16px;
     color: var(--muted);
-    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
   .col-head .sub.warn {
     color: var(--warn-ink);
@@ -651,7 +652,7 @@ export const styles = css`
   }
   .pinned {
     position: sticky;
-    top: 60px;
+    top: 72px;
     z-index: 5;
     margin-bottom: -36px;
     pointer-events: none;
