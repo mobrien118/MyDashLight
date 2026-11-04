@@ -311,3 +311,35 @@ async def test_apply_a_take_along_fix(hass: HomeAssistant, google: FakeGoogle) -
     assert google.event(AVA, "piano")["description"].endswith("Take along: Ben")
     assert planned(entry, "piano")["along"] == [BEN]
     assert first_drive(entry)["kids"] == [AVA, BEN]
+
+
+async def test_not_attending(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        AVA,
+        **timed(
+            "tap",
+            "NO Tap",
+            "2026-11-03T18:00:00-06:00",
+            "2026-11-03T19:00:00-06:00",
+            location="Home",
+            description="--- Rides ---\nAttending: no",
+        ),
+    )
+    entry = await load(hass)
+    assert planned(entry, "tap")["attending"] is False
+
+    await call(hass, "set_attending", event="piano", attending=False)
+    assert google.patches[-1][3] == {"description": "Bring the music book.\n\n--- Rides ---\nAttending: no"}
+    piano = planned(entry, "piano")
+    assert (piano["attending"], piano["drop"], piano["pick"]) == (False, "none", "none")
+
+    # Going again takes the old NO off the title too. Being at home doesn't stop this one.
+    await call(hass, "set_attending", event="tap", attending=True)
+    assert google.patches[-1][3] == {"description": "", "summary": "Tap"}
+    tap = planned(entry, "tap")
+    assert (tap["title"], tap["attending"]) == ("Tap", True)
+
+    # Nothing to write when nothing changes.
+    count = len(google.patches)
+    await call(hass, "set_attending", event="tap", attending=True)
+    assert len(google.patches) == count

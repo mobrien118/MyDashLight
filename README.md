@@ -125,6 +125,12 @@ Travel: 25 min
 | Take along | Kids' names, such as Ben, Cleo | Nobody else rides along. Kids named here leave home in the same car on this drop-off, so the driver can go on to their own drop-offs without coming home for them |
 | Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive early by a margin that grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
+| Attending | no, when the kid isn't going this time | They're going |
+
+An event the kid isn't going to stays on the board, marked "Not attending", but needs no rides,
+raises no problems or reminders, and never clashes with anything. Besides `Attending: no`, the old
+habit of starting the title with a capital `NO` (`NO Soccer`, `NO - Soccer`, `NO: Soccer`) counts
+too, and the board shows the title without it.
 
 Labels ignore case, spaces and hyphens, so `Drop off`, `Dropoff` and `Pickup` all work. Only lines
 inside the block count, so a note like "Pick-up: bring cleats" higher up is never read as a driver.
@@ -142,6 +148,7 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | --- | --- |
 | `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
+| `mydashlight.set_attending` | Whether the kid is going (`attending`). Going again also takes an old `NO` off the start of the title |
 | `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to the usual margin before the start |
 | `mydashlight.set_take_along` | Which kids ride along on this drop-off (`kids`, by name), so the driver can go on to their own drop-offs without coming home for them. No kids takes nobody along |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
