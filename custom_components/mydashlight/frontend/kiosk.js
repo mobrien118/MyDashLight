@@ -1991,6 +1991,7 @@ function Vt(s){return{type:"auth",access_token:s}}function Wt(){return{type:"sup
       ${P!=null?c`<button type="button" class="chip clear" ?disabled=${p} @click=${()=>this.clearArrive()}>Clear arrive-by time</button>`:v}
 `:c`<p class="field-hint">
             Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.
+            Its other ride settings stay saved in the notes, so tapping Going brings them all back.
           </p>`}
       <div class="notes">
         <span class="notes-label">${this.backend?.saves===!1?"Would be saved":"Saved"} to this event’s notes in Google Calendar</span>
