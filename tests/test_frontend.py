@@ -30,9 +30,11 @@ async def load(hass: HomeAssistant) -> MockConfigEntry:
 
 async def test_built_app_is_in_the_integration() -> None:
     # The app is built into the integration so HACS ships it. CI checks it matches the source.
-    for name in ("panel.js", "kiosk.js", "index.html"):
+    for name in ("panel.js", "kiosk.js", "index.html", "favicon.svg", "favicon-32.png", "apple-touch-icon.png"):
         assert (FILES / name).is_file(), name
-    assert "%SCRIPT%" in (FILES / "index.html").read_text("utf-8")
+    page = (FILES / "index.html").read_text("utf-8")
+    assert "%SCRIPT%" in page
+    assert "%FILES%" in page
 
 
 async def test_panel_in_the_sidebar(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
@@ -72,10 +74,19 @@ async def test_kitchen_page_and_files(
     assert "<mydashlight-board kiosk>" in page
     assert f'src="{FILES_URL}/kiosk.js?v=' in page
     assert "%SCRIPT%" not in page
+    # The tab and home-screen icon.
+    assert f'<link rel="icon" href="{FILES_URL}/favicon.svg"' in page
+    assert f'<link rel="apple-touch-icon" href="{FILES_URL}/apple-touch-icon.png"' in page
+    assert "%FILES%" not in page
 
     res = await client.get(f"{FILES_URL}/kiosk.js")
     assert res.status == 200
     assert "mydashlight-board" in await res.text()
+    res = await client.get(f"{FILES_URL}/favicon.svg")
+    assert res.status == 200
+    assert "<svg" in await res.text()
+    res = await client.get(f"{FILES_URL}/apple-touch-icon.png")
+    assert res.status == 200
     res = await client.get(f"{FILES_URL}/panel.js")
     assert res.status == 200
     assert "mydashlight-panel" in await res.text()

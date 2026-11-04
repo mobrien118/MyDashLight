@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>MyDashLight</title>
+  <defs>
+    <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B3A6E"/>
+      <stop offset="1" stop-color="#141A35"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE38F"/>
+      <stop offset="1" stop-color="#FF9636"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFB547" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#FFB547" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="tile">
+      <rect width="256" height="256" rx="60"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="256" height="256" fill="url(#navy)"/>
+    <circle cx="128" cy="160" r="120" fill="url(#glow)"/>
+  </g>
+  <path d="M58 168 A70 70 0 0 1 198 168 Z" fill="url(#sun)"/>
+  <rect x="36" y="186" width="56" height="18" rx="9" fill="#18A595"/>
+  <rect x="100" y="186" width="56" height="18" rx="9" fill="#4A7BE0"/>
+  <rect x="164" y="186" width="56" height="18" rx="9" fill="#D4569F"/>
+</svg>

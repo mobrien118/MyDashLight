@@ -1,4 +1,9 @@
-# MyDashLight
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mobrien118/MyDashLight/main/custom_components/mydashlight/brand/dark_logo@2x.png" />
+    <img src="https://raw.githubusercontent.com/mobrien118/MyDashLight/main/custom_components/mydashlight/brand/logo@2x.png" alt="MyDashLight" height="64" />
+  </picture>
+</h1>
 
 A kitchen touchscreen family hub, like Skylight but built around how our family actually runs:
 rides, chores, lunches and the calendar, shown so you only see what needs attention now.
