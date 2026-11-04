@@ -204,10 +204,14 @@ test("a kid's name in front of the title is left off in their own column", () =>
   assert.equal(shortTitle("Mia's birthday party", "Ava"), "Mia's birthday party");
 });
 
-test("driving minutes in a fix's note are rounded to the half minute", () => {
-  assert.equal(tidyMinutes("+18.299999999999997 min of driving for Sam"), "+18.5 min of driving for Sam");
+test("driving minutes in a fix's note are rounded to the quarter minute", () => {
+  assert.equal(tidyMinutes("+18.299999999999997 min of driving for Sam"), "+18¼ min of driving for Sam");
   assert.equal(tidyMinutes("+37.900000000000006 min of driving"), "+38 min of driving");
-  assert.equal(tidyMinutes("+15.2 min"), "+15 min");
+  assert.equal(tidyMinutes("+15.2 min"), "+15¼ min");
+  assert.equal(tidyMinutes("+17.7 min"), "+17¾ min");
+  assert.equal(tidyMinutes("+32.5 min"), "+32½ min");
+  assert.equal(tidyMinutes("+0.4 min"), "+½ min");
+  assert.equal(tidyMinutes("+0.1 min"), "+0 min");
   assert.equal(tidyMinutes("+30 min of driving"), "+30 min of driving");
   assert.equal(tidyMinutes("Leaves at 4.5 miles"), "Leaves at 4.5 miles");
 });

@@ -880,11 +880,15 @@ export interface AttentionItem {
   suggestions: { id: string; label: string; note: string }[];
 }
 
-/** "+18.299999999999997 min" reads as "+18.5 min": minutes in text, to the nearest half. */
+const QUARTERS = ["", "¼", "½", "¾"];
+
+/** "+18.299999999999997 min" reads as "+18¼ min": minutes in text, to the nearest quarter. */
 export function tidyMinutes(text: string): string {
   return text.replace(/(\d+\.\d+)(?=\s*min\b)/g, (m) => {
-    const v = Math.round(Number(m) * 2) / 2;
-    return Number.isInteger(v) ? String(v) : v.toFixed(1);
+    const q = Math.round(Number(m) * 4);
+    const whole = Math.floor(q / 4);
+    const part = QUARTERS[q % 4]!;
+    return whole || !part ? `${whole}${part}` : part;
   });
 }
 
