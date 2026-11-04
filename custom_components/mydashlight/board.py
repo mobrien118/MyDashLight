@@ -32,9 +32,19 @@ from .planner import (
     minutes_text,
     plan_all,
 )
+from .week import NO_ADDRESS, Where
 
 Tone = Literal["normal", "pending", "problem", "muted"]
 """How a card line reads: as usual, still needs a driver, has a problem, or nothing to do."""
+
+
+def event_where(e: RideEvent) -> Where:
+    """Home, anywhere (no address and no ride, such as a call), or a place to drive to."""
+    if e.loc == HOME:
+        return "home"
+    if e.loc.startswith(NO_ADDRESS) and e.drop == NOT_NEEDED and e.pick == NOT_NEEDED:
+        return "anywhere"
+    return "place"
 
 
 @dataclass(eq=False, slots=True)
@@ -192,8 +202,10 @@ def _clashes(kid_items: dict[str, list[KidItem]]) -> list[Clash]:
         for i, x in enumerate(it):
             for y in it[i + 1 :]:
                 if x.start < y.end and y.start < x.end and "act" in (x.type, y.type):
-                    x.clash = y.clash = True
                     a, b = (x, y) if x.type == "act" else (y, x)
+                    if b.type == "ride" and a.event is not None and event_where(a.event) == "anywhere":
+                        continue  # A call or an online class can happen in the car.
+                    x.clash = y.clash = True
                     clashes.append(Clash(kid, a, b))
     # One warning per clash: a car ride during an activity that already clashes with
     # another activity adds nothing new.
@@ -362,6 +374,9 @@ def _card_lines(
                 return CardLine(f"Home {fmt(r.end)} with {name}{extra}", tone)
             return CardLine(f"Picked up {fmt(r.start)} by {name}{extra}", tone)
 
+        if e.loc == HOME:
+            out[e.id] = CardLines(CardLine("At home", "muted"), None)
+            continue
         if e.drop == NOT_NEEDED and e.pick == NOT_NEEDED:
             out[e.id] = CardLines(CardLine("No ride needed", "muted"), None)
             continue

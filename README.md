@@ -58,6 +58,18 @@ Calendars you don't pick are never read. An event that ends by 6 AM the next day
 it starts. A longer one, such as a weekend trip, is planned as a drop-off on its first day and a
 pick-up on its last. Change the calendars later under the integration's **Configure** button.
 
+Where an event is decides whether it needs a ride:
+
+- **At home**: the location is `Home`, or the same street address as the **Home address** setting
+  (the integration's **Configure** button, then **Names and planner timing**). Only the part
+  before the first comma counts, and "Street" matches "St", so `12 Oak Street` matches
+  `12 Oak St, Springfield, IL`. It needs no ride, whatever its notes say, and the board shows it
+  as "At home". If a kid's ride home from something else runs into it, the board shows a clash.
+- **Anywhere**: no location, or an online one such as a Zoom or Meet link, or `Online`. A call or
+  an online class can happen anywhere, even in the car, so it needs no ride. Naming a driver in
+  its notes plans it after all, using the "Drive time with no address" setting.
+- **Anywhere else**: a place to drive to.
+
 To see the plan, run the **MyDashLight: Get ride plan** action in Developer tools > Actions.
 
 ## Drive times
@@ -72,8 +84,8 @@ leaving half an hour before it starts, and a trip home as leaving when it ends.
 - Lookups stop for the day at the daily limit (150 by default, which stays under 5,000 a month).
   Trips over the limit are estimated and looked up the next day.
 - A Travel line in an event's notes always wins for trips to that event.
-- Without a key, or for an event with no location, every drive counts as the "Drive time with
-  no address" setting (15 minutes).
+- Without a key, every drive counts as the "Drive time with no address" setting (15 minutes).
+  So does a drive to an event with no location whose notes name a driver.
 
 `get_plan` says where the drive times came from under `drive_times`.
 

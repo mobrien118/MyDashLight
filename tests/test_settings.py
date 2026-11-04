@@ -10,6 +10,7 @@ def test_defaults_for_missing_options() -> None:
     settings = HubSettings.from_options({})
     assert settings.planner == PlannerSettings()
     assert settings.no_address_travel == 15
+    assert settings.home_address == ""
     assert settings.driver_names == {"mom": "Mom", "dad": "Dad"}
 
 
@@ -21,6 +22,7 @@ def test_options() -> None:
             "mom_aliases": ["Rae", " Mom ", "mom", ""],
             "dad_aliases": "Dad, Pops",
             "carpools": ["the Parkers"],
+            "home_address": " 12 Oak St,  Springfield ",
             "planner": {"take_along_window": 30, "no_address_travel": 20},
         }
     )
@@ -28,5 +30,6 @@ def test_options() -> None:
     assert settings.directory.aliases == {"mom": ("Rae", "Mom"), "dad": ("Dad", "Pops")}
     assert settings.planner == PlannerSettings(take_along_window=30)
     assert settings.no_address_travel == 20
+    assert settings.home_address == "12 Oak St, Springfield"
     assert settings.directory.resolve("pops") == "dad"
     assert settings.directory.resolve("THE PARKERS") == "the Parkers"

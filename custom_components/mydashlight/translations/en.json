@@ -102,12 +102,14 @@
           "dad_name": "Second parent",
           "mom_aliases": "Other names for the first parent",
           "dad_aliases": "Other names for the second parent",
-          "carpools": "Carpool drivers"
+          "carpools": "Carpool drivers",
+          "home_address": "Home address"
         },
         "data_description": {
           "mom_aliases": "Names that mean this parent in event notes, such as a nickname or Mom.",
           "dad_aliases": "Names that mean this parent in event notes, such as Dad.",
-          "carpools": "Other people who drive, such as the Parkers. Rides with them are shown but not planned."
+          "carpools": "Other people who drive, such as the Parkers. Rides with them are shown but not planned.",
+          "home_address": "Your street address, such as 12 Oak St. Events there, or with Home as the location, need no ride."
         },
         "sections": {
           "planner": {
@@ -133,7 +135,7 @@
               "waiting_after": "Reaching a pick-up later than this after it ends counts as the kid waiting.",
               "too_early": "Getting there more than this long before the target is flagged.",
               "tight_slack": "Less spare time than this before the next stop is flagged.",
-              "no_address_travel": "The drive time used for an event with no location."
+              "no_address_travel": "The drive time used for an event with no location whose notes still name a driver."
             }
           }
         }
@@ -345,6 +347,9 @@
     },
     "suggestion_gone": {
       "message": "That fix no longer applies, because the plan has changed. Check the latest plan."
+    },
+    "at_home": {
+      "message": "{title} is at home, so it doesn't need a ride."
     }
   },
   "selector": {

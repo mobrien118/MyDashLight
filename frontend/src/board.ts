@@ -1085,14 +1085,19 @@ export class MyDashLightBoard extends LitElement {
     if (e.arrive_by != null) notes.push(`Arrive by: ${clockAmPm(e.arrive_by)}`);
 
     const ahead = day.date === this.today().date ? "" : `${shortDay(day.date)} · `;
-    return html`
-      <div class="ed-head">
+    const head = html`<div class="ed-head">
         <div class="ed-titles">
           <span class="ed-title"><span class="dot" style="background:${color.color}"></span>${kidName(plan, e.kid)} · ${e.title}</span>
           <span class="ed-meta">${ahead}${clock(e.start)}–${clock(e.end)}${e.place_name && !e.place.startsWith("?") ? ` · ${e.place_name}` : ""}</span>
         </div>
         <button type="button" class="btn dark" @click=${() => this.closeEditor()}>Done</button>
-      </div>
+      </div>`;
+    if (e.where === "home") {
+      return html`${head}
+        <p class="field-hint">It’s at home, so it doesn’t need a ride. If ${kidName(plan, e.kid)} can’t get home in time, the board shows it as a clash.</p>`;
+    }
+    return html`
+      ${head}
       ${this.pending ? html`<p class="saving" role="status">Saving to Google Calendar…</p>` : nothing}
       ${e.recurring
         ? html`<div class="field">
@@ -1106,6 +1111,9 @@ export class MyDashLightBoard extends LitElement {
               </button>
             </div>
           </div>`
+        : nothing}
+      ${e.where === "anywhere"
+        ? html`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`
         : nothing}
       ${side("drop")} ${side("pick")}
       <div class="field">

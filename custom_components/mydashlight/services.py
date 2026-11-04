@@ -43,6 +43,7 @@ from .const import (
 from .coordinator import target_for
 from .google import GoogleAuthError, GoogleCalendarUnavailable, GoogleConflict, GoogleError
 from .notes import KEEP
+from .planner import HOME
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -168,6 +169,10 @@ async def _async_change_event(
             translation_domain=DOMAIN, translation_key="event_not_found", translation_placeholders={"event": ride_id}
         )
     _, ride, ref = found
+    if ride.loc == HOME:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="at_home", translation_placeholders={"title": ride.title}
+        )
     target = target_for(ride, ref)
     series = ref.recurring_id if call.data.get(ATTR_SCOPE) == SCOPE_SERIES else None
     also = coordinator.occurrences(ref.calendar_id, series) if series else []

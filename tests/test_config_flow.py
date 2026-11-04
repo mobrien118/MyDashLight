@@ -272,6 +272,7 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
             "mom_aliases": ["Rae", "Mom"],
             "dad_aliases": ["Dad"],
             "carpools": ["the Parkers", "Jordan"],
+            "home_address": "12 Oak St",
             "planner": {**DEFAULT_PLANNER, "arrive_early": 10.0},
         },
     )
@@ -284,6 +285,7 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
     assert settings.planner.arrive_early == 10
     assert settings.directory.resolve("rae") == "mom"
     assert settings.directory.resolve("the parkers") == "the Parkers"
+    assert settings.home_address == "12 Oak St"
 
 
 async def test_options_calendars(hass: HomeAssistant, google: FakeGoogle) -> None:
