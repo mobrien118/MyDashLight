@@ -1234,6 +1234,13 @@ export const styles = css`
     font-weight: 700;
     flex: 1 1 auto;
   }
+  .panel-sub {
+    display: block;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 500;
+    color: var(--muted);
+  }
   .all-clear {
     display: flex;
     gap: 12px;
