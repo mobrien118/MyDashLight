@@ -21,6 +21,7 @@ import {
   nextUp,
   problemCount,
   tAt,
+  tidyPlan,
   whoName,
   yAt,
   type AttentionItem,
@@ -237,7 +238,7 @@ export class MyDashLightBoard extends LitElement {
     if (!this.backend) return;
     this.stopWatching = this.backend.watch(
       (plan) => {
-        this.plan = plan;
+        this.plan = tidyPlan(plan);
         this.error = null;
         // The selected event can disappear (moved or deleted in Google).
         if (this.sel && !this.findEvent(this.sel)) this.closeEditor();
@@ -288,10 +289,16 @@ export class MyDashLightBoard extends LitElement {
     return this.plan ? this.plan.days.findIndex((d) => d.date === date) : -1;
   }
 
-  private scrollToTime(t: number): void {
+  /**
+   * Scrolls a moment to just under the pinned day heading. Given its day, it never stops above
+   * that day's heading, or the day before would stay pinned at the top. That happens when
+   * jumping to a day's start, and when the day before runs past midnight.
+   */
+  private scrollToTime(t: number, date?: string): void {
     const el = this.scroller;
     if (!el || !this.board) return;
-    el.scrollTop = Math.max(0, yAt(this.board, t) - DAY_HEAD - 4);
+    const head = this.board.dayHeads.find((h) => h.date === date)?.y ?? 0;
+    el.scrollTop = Math.max(head, yAt(this.board, t) - DAY_HEAD - 4);
     this.syncDay();
   }
 
@@ -299,7 +306,10 @@ export class MyDashLightBoard extends LitElement {
     if (!this.plan) return;
     const today = this.today();
     const i = Math.max(0, this.dayIndexOf(today.date));
-    this.scrollToTime(i * 1440 + (this.mode === "timeline" && i === this.dayIndexOf(today.date) ? today.minutes - 45 : 0));
+    this.scrollToTime(
+      i * 1440 + (this.mode === "timeline" && i === this.dayIndexOf(today.date) ? today.minutes - 45 : 0),
+      this.plan.days[i]?.date,
+    );
   }
 
   /** Jumps to a day: to now if it's today, else to its first activity or trip. */
@@ -319,7 +329,7 @@ export class MyDashLightBoard extends LitElement {
       for (const e of day.events) first = Math.min(first, e.arrive_by ?? e.start);
       for (const d of Object.values(day.drivers)) for (const o of d.outings) if (o.start != null) first = Math.min(first, o.start);
     }
-    this.scrollToTime(i * 1440 + (Number.isFinite(first) ? Math.max(0, first - 30) : 0));
+    this.scrollToTime(i * 1440 + (Number.isFinite(first) ? Math.max(0, first - 30) : 0), date);
   }
 
   private syncDay(): void {

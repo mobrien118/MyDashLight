@@ -243,3 +243,20 @@ test("a car box shows only whole lines of its route", () => {
   assert.ok(alongHeight("Home → Piano", 190) < alongHeight(long, 190));
   for (const b of layout(plan, "compact", 1160, today).rides) if (b.dashed) assert.ok(b.h >= 25 + 15);
 });
+
+test("planner text is tidied everywhere on the board", async () => {
+  const { tidyPlan } = await import("../src/layout.ts");
+  const plan = sampleWeek();
+  const day = plan.days[0]!;
+  const e = day.events[0]!;
+  e.lines.drop = { text: "Leaves 6:53 with Sam, 15.200000000000003 min late", tone: "problem" };
+  day.issues.push({
+    key: "x", level: "problem", kind: "late", driver: null, event: null, side: null, minutes: 0.2, at: null,
+    title: "Ava will be late", body: "Sam gets there at 7:00, 0.20000000000004547 min after the 7:00 arrive-by time.", note: null,
+  });
+  const out = tidyPlan(plan);
+  assert.equal(out.days[0]!.events[0]!.lines.drop!.text, "Leaves 6:53 with Sam, 15¼ min late");
+  assert.equal(out.days[0]!.issues.at(-1)!.body, "Sam gets there at 7:00, ¼ min after the 7:00 arrive-by time.");
+  // The plan it was given is left alone.
+  assert.match(plan.days[0]!.events[0]!.lines.drop!.text, /15\.2/);
+});

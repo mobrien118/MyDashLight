@@ -933,6 +933,42 @@ export function tidyMinutes(text: string): string {
   });
 }
 
+/**
+ * The plan with every bit of the planner's text run through {@link tidyMinutes}: card lines,
+ * trip stops and warnings, and problem and suggestion text. Older planners wrote raw floats
+ * such as "15.200000000000003 min".
+ */
+export function tidyPlan(plan: Plan): Plan {
+  const line = (l: CardLine | null): CardLine | null => (l ? { ...l, text: tidyMinutes(l.text) } : null);
+  return {
+    ...plan,
+    days: plan.days.map((d) => ({
+      ...d,
+      events: d.events.map((e) => ({ ...e, lines: { drop: line(e.lines.drop), pick: line(e.lines.pick) } })),
+      drivers: Object.fromEntries(
+        Object.entries(d.drivers).map(([id, dd]) => [
+          id,
+          {
+            ...dd,
+            outings: dd.outings.map((o) => ({
+              ...o,
+              lines: o.lines.map(tidyMinutes),
+              warn: o.warn == null ? o.warn : tidyMinutes(o.warn),
+            })),
+          },
+        ]),
+      ),
+      issues: d.issues.map((x) => ({
+        ...x,
+        title: tidyMinutes(x.title),
+        body: tidyMinutes(x.body),
+        note: x.note == null ? x.note : tidyMinutes(x.note),
+        ...(x.suggestions ? { suggestions: x.suggestions.map((g) => ({ ...g, note: tidyMinutes(g.note) })) } : {}),
+      })),
+    })),
+  };
+}
+
 /** Heads-ups are only worth reading for today and tomorrow. */
 const HEADS_UP_DAYS = 2;
 
@@ -953,7 +989,7 @@ export function attention(plan: Plan, today: string): { items: AttentionItem[]; 
         title: pre + x.title,
         body: x.body,
         target: target(x.event),
-        suggestions: (x.suggestions ?? []).map((s) => ({ id: s.id, label: s.label, note: tidyMinutes(s.note) })),
+        suggestions: (x.suggestions ?? []).map((s) => ({ id: s.id, label: s.label, note: s.note })),
       });
     }
     day.clashes.forEach((c, i) => {
