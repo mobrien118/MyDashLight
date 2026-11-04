@@ -6,6 +6,8 @@ import type { Mode } from "./layout.ts";
 export interface PageOptions {
   /** The view to open in. Unset means the one last picked in this browser. */
   view?: Mode;
+  /** `keyboard=off` hides the kitchen screen's on-screen keyboard, for a screen with a real one. */
+  keyboard?: false;
 }
 
 const VIEWS: Record<string, Mode> = {
@@ -20,6 +22,7 @@ export function pageOptions(search: string): PageOptions {
   const opts: PageOptions = {};
   const view = VIEWS[(q.get("view") ?? "").trim().toLowerCase()];
   if (view) opts.view = view;
+  if (["off", "no", "false", "0"].includes((q.get("keyboard") ?? "").trim().toLowerCase())) opts.keyboard = false;
   return opts;
 }
 

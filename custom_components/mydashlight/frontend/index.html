@@ -18,7 +18,9 @@
         overflow: hidden;
       }
       mydashlight-board {
-        height: 100%;
+        display: block;
+        /* The on-screen keyboard takes the bottom of the screen; the board fits above it. */
+        height: calc(100% - var(--keyboard-height, 0px));
       }
       #problem {
         position: fixed;
@@ -39,6 +41,8 @@
   </head>
   <body>
     <mydashlight-board kiosk></mydashlight-board>
+    <mydashlight-pairing hidden></mydashlight-pairing>
+    <mydashlight-keyboard hidden></mydashlight-keyboard>
     <div id="problem" role="alert" hidden><p></p></div>
     <script type="module" src="%SCRIPT%"></script>
   </body>
