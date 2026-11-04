@@ -16,6 +16,7 @@ from .const import (
     CONF_CALENDAR_ID,
     CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
+    CONF_CHORE_DAYS,
     CONF_DAD_ALIASES,
     CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
@@ -38,9 +39,11 @@ from .const import (
     CONF_TIGHT_SLACK,
     CONF_TOO_EARLY,
     CONF_WAITING_AFTER,
+    DEFAULT_CHORE_DAYS,
     DEFAULT_NO_DRIVER_HOURS,
     DEFAULT_PLANNER,
     DEFAULT_REMIND_BEFORE,
+    MAX_CHORE_DAYS,
     NOTIFY_OFF,
 )
 from .notes import DriverDirectory
@@ -70,6 +73,8 @@ class HubSettings:
     """Events here are at home and need no ride."""
     roles: CalendarRoles = field(default_factory=CalendarRoles)
     reminders: ReminderSettings = field(default_factory=ReminderSettings)
+    chore_days_ahead: int = DEFAULT_CHORE_DAYS
+    """How many days of chores, counting today, to keep on the kids' lists."""
 
     @property
     def driver_names(self) -> Mapping[str, str]:
@@ -119,6 +124,7 @@ class HubSettings:
                 no_driver_hours=max(1, int(options.get(CONF_NO_DRIVER_HOURS, DEFAULT_NO_DRIVER_HOURS))),
                 calendar=bool(options.get(CONF_CALENDAR_REMINDERS, True)),
             ),
+            chore_days_ahead=min(MAX_CHORE_DAYS, max(1, int(options.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)))),
         )
 
 

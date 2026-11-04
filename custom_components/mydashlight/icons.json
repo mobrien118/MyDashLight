@@ -17,6 +17,18 @@
     },
     "apply_suggestion": {
       "service": "mdi:auto-fix"
+    },
+    "get_chores": {
+      "service": "mdi:broom"
+    },
+    "set_chore_done": {
+      "service": "mdi:check-circle-outline"
+    },
+    "save_chore_template": {
+      "service": "mdi:clipboard-edit-outline"
+    },
+    "remove_chore_template": {
+      "service": "mdi:clipboard-remove-outline"
     }
   }
 }

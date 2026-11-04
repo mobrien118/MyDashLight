@@ -19,7 +19,8 @@ rides, with drive times from Google Routes. The `mydashlight.get_plan` action re
 the other actions change who drives (saving it in the events' notes), and the kitchen app
 subscribes to the plan over Home Assistant's WebSocket API. Before each drive, the driver and the
 kids in the car get a reminder on their phones, and the drive's first drop-off gets a reminder in
-Google Calendar.
+Google Calendar. Chores live in Google Tasks: MyDashLight keeps each kid's chore list filled from
+the chore templates. See [Chores](#chores).
 
 `frontend` is the kitchen app, which the integration serves from Home Assistant. See
 [The rides board](#the-rides-board).
@@ -44,9 +45,15 @@ Google Calendar.
 | `reminders.py` | Works out the reminders from the plan: when each drive's reminder goes off, the Google Calendar reminder for each drop-off, and the rides with no driver. |
 | `alerts.py` | Sends the reminders through each person's notifier, and saves the Google Calendar reminders. |
 | `frontend.py` | Serves the kitchen app: the Rides sidebar item and the kitchen page. |
+| `chore_rules.py` | Reads and writes chore templates and chores in Google Tasks notes, and works out the days each template makes a chore for. |
+| `chores.py` | The chore engine: what to make, fix, remove, mark missed or close out on the kids' lists, and what the board shows. |
+| `tasks_api.py` | A small Google Tasks client: task lists and the tasks on them. |
+| `chore_coordinator.py` | Reads the templates and the kids' lists every minute and keeps the lists filled. |
+| `chore_services.py` | The chore actions: get the chores, check one off, and save or remove a template. |
 
 `planner.py`, `board.py`, `notes.py`, `google.py`, `changes.py`, `week.py`, `payload.py`,
-`routes.py`, `travel.py`, `reminders.py` and `settings.py` don't import Home Assistant, so they can be tested and reused on
+`routes.py`, `travel.py`, `reminders.py`, `settings.py`, `chore_rules.py`, `chores.py` and
+`tasks_api.py` don't import Home Assistant, so they can be tested and reused on
 their own.
 
 ## Calendars
@@ -203,6 +210,66 @@ for all seven days, plus:
 `{"plan": null}` means MyDashLight isn't running at the moment, for example while Home Assistant
 restarts. A plan follows when it's back.
 
+## Chores
+
+Chores live in Google Tasks, under the Google account MyDashLight signs in with. MyDashLight makes
+these lists the first time it runs:
+
+- **Chore templates: Daily**, **Weekly** and **Monthly**, the base lists. Each task on one is a
+  chore's template: its title is the chore, the list says how often, and its notes say the rest.
+- **Chores: \<kid\>**, one per kid. These are the real chores, each due on its day.
+  MyDashLight fills them from the templates, 7 days ahead (**Configure > Names and planner timing
+  > Chore days ahead**). Tasks added to a kid's list by hand are one-off chores: they show, and
+  can be checked off, but MyDashLight leaves them alone.
+
+A template's notes end in a Chore block, which the `save_chore_template` action writes:
+
+```
+Bins at the curb by 7 PM.
+
+--- Chore ---
+Id: 3f9a1c22b7
+Who: Ava, Ben
+Take turns: yes
+Days: Thu
+Every: 2
+Starts: 2026-11-04
+Ends: 2027-06-05
+Points: 1
+```
+
+| Line | Meaning |
+| --- | --- |
+| Who | The kids who do it, by name, or Everyone. Each gets their own, unless they take turns. |
+| Take turns | The kids in Who take turns, one each time, in order from Starts. |
+| Days | Daily: which days, such as `Mon-Fri` (none for every day). Weekly: a day such as `Thu`, or `Any` for sometime that week (shows from Monday, due Sunday). Monthly: a date such as `15` or `last`, a day such as `1st Sat`, or `Any` for sometime that month. Several are separated by commas. |
+| Every | Every this many days, weeks or months, counted from Starts. Monthly with Every 3 is quarterly. |
+| Starts, Ends | The first and last days. Starts is the day the template was made if left out. |
+| Points | Saved on each chore for later. Nothing uses it yet. |
+
+Text above the block is the chore's details, shown when it's tapped. A leading emoji in the title
+is its icon. Checking a template off in Google pauses it. A template typed into Google by hand works
+too; MyDashLight adds its Id and Starts lines the first time it reads it. One it can't read (an
+unknown kid, say) makes no chores, and `get_chores` lists what's wrong with it.
+
+Each chore on a kid's list has the template's title and details, and a Chore block with `From`
+(the template's Id) and `For` (the day it was made for). From then on:
+
+- **Checked off** on the board, on a phone or in the Google Tasks app: Google records when. Done
+  after its due day counts as late.
+- **Still open after its due day:** MyDashLight adds `Missed: <day>` to its notes, once for each
+  day it missed. When the next one of that chore shows (or its template is paused), the missed one
+  is checked off with `Closed: missed`, so the board shows one, not a pile, and the miss stays
+  counted.
+- **Template changed:** chores coming up that aren't done yet follow it (new title, day or kid).
+  Done chores and chores whose day has passed never change, so the history stays true.
+
+The actions: `mydashlight.get_chores` returns the chores the board shows (each kid's open and
+overdue chores, those coming up, and those done today) and the templates;
+`mydashlight.set_chore_done` checks one off or opens it again; `mydashlight.save_chore_template`
+adds or changes a template; `mydashlight.remove_chore_template` removes one. The app subscribes
+to `{"type": "mydashlight/chores/subscribe"}` for the same chores as they change.
+
 ## Reminders
 
 Under **Settings > Devices & services > MyDashLight > Configure > Reminders**, pick a notifier for
@@ -275,7 +342,7 @@ MyDashLight signs in with your own Google Cloud OAuth client, so your calendars 
 between Google and your Home Assistant.
 
 1. In the [Google Cloud console](https://console.cloud.google.com/), make a project and turn on
-   the **Google Calendar API**.
+   the **Google Calendar API** and the **Google Tasks API**.
 2. Set up the [sign-in screen](https://console.cloud.google.com/auth/overview) as an **External**
    app and publish it, so the sign-in doesn't expire after 7 days.
 3. [Create an OAuth client](https://console.cloud.google.com/auth/clients) of type **Web
@@ -289,8 +356,10 @@ between Google and your Home Assistant.
 For drive times, turn on the **Routes API** in the same project, create an API key limited to
 the Routes API, and add it under **Configure** > **Drive times**.
 
-MyDashLight asks Google for two permissions: to see your list of calendars, and to see and edit
-events. It only reads events for now; editing is for writing who drives into an event's notes.
+MyDashLight asks Google for three permissions: to see your list of calendars, to see and edit
+events (for writing who drives into an event's notes), and to see and edit your tasks (for
+chores). If you signed in before chores were added, Home Assistant asks you to sign in again;
+rides keep working until you do.
 
 ## License
 

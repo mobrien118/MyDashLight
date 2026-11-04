@@ -15,7 +15,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker, AiohttpClientMockResponse
 from yarl import URL
 
-from custom_components.mydashlight.const import DEFAULT_PLANNER, DOMAIN
+from custom_components.mydashlight.const import DEFAULT_PLANNER, DOMAIN, SCOPES
 
 CLIENT_ID = "client-id.apps.googleusercontent.com"
 CLIENT_SECRET = "client-secret"
@@ -79,6 +79,7 @@ class FakeGoogle:
         base = re.compile(r"^https://www\.googleapis\.com/calendar/v3/")
         aioclient_mock.get(base, side_effect=self._handle)
         aioclient_mock.patch(base, side_effect=self._patch)
+        self.tasks = FakeTasks(aioclient_mock)
 
     def add(self, calendar_id: str, **event: Any) -> dict[str, Any]:
         item = {"etag": f'"{len(self.events.get(calendar_id, []))}"', **event}
@@ -195,7 +196,7 @@ def make_entry(
                 "refresh_token": "mock-refresh-token",
                 "expires_at": time.time() + 3600 if expires_at is None else expires_at,
                 "token_type": "Bearer",
-                "scope": "calendar",
+                "scope": " ".join(SCOPES),
             },
             **data,
         },
@@ -225,3 +226,91 @@ class FakeRoutes:
         dest = data["destination"].get("address", "home")
         minutes = self.minutes.get(dest, self.default)
         return AiohttpClientMockResponse(method, url, json={"routes": [{"duration": f"{int(minutes * 60)}s"}]})
+
+
+class FakeTasks:
+    """Answers the Google Tasks API calls MyDashLight makes, from in-memory task lists.
+
+    Checking a task off records when, the way Google does, at ``now``.
+    """
+
+    def __init__(self, aioclient_mock: AiohttpClientMocker) -> None:
+        self.lists: dict[str, dict[str, Any]] = {}
+        """Each list's ``title`` and ``items``, by list id."""
+        self.now = "2026-11-04T15:00:00.000Z"
+        self.errors: dict[str, tuple[int, dict[str, Any]]] = {}
+        """Error replies by list id, or "lists" for the list of lists."""
+        self.calls: list[tuple[str, URL]] = []
+        self._ids = 0
+        base = re.compile(r"^https://tasks\.googleapis\.com/tasks/v1/")
+        for method in ("get", "post", "patch", "delete"):
+            getattr(aioclient_mock, method)(base, side_effect=self._handle)
+
+    def add_list(self, title: str, list_id: str | None = None) -> str:
+        list_id = list_id or self._next("list")
+        self.lists[list_id] = {"title": title, "items": []}
+        return list_id
+
+    def list_id(self, title: str) -> str | None:
+        return next((i for i, tl in self.lists.items() if tl["title"] == title), None)
+
+    def add(self, list_id: str, title: str, notes: str = "", **extra: Any) -> dict[str, Any]:
+        item = {"id": self._next("task"), "title": title, "notes": notes, "status": "needsAction", **extra}
+        item.setdefault("position", f"{len(self.lists[list_id]['items']):08d}")
+        self.lists[list_id]["items"].append(item)
+        return item
+
+    def items(self, title: str) -> list[dict[str, Any]]:
+        list_id = self.list_id(title)
+        return list(self.lists[list_id]["items"]) if list_id else []
+
+    def _next(self, kind: str) -> str:
+        self._ids += 1
+        return f"{kind}-{self._ids}"
+
+    async def _handle(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
+        self.calls.append((method, url))
+        path = url.path.removeprefix("/tasks/v1")
+        if path == "/users/@me/lists":
+            if "lists" in self.errors:
+                status, body = self.errors["lists"]
+                return AiohttpClientMockResponse(method, url, status=status, json=body)
+            if method == "POST":
+                list_id = self.add_list(data["title"])
+                return AiohttpClientMockResponse(method, url, json={"id": list_id, "title": data["title"]})
+            items = [{"id": i, "title": tl["title"]} for i, tl in self.lists.items()]
+            return AiohttpClientMockResponse(method, url, json={"items": items})
+        if one := re.fullmatch(r"/users/@me/lists/([^/]+)", path):
+            self.lists[one.group(1)]["title"] = data["title"]
+            return AiohttpClientMockResponse(method, url, json={"id": one.group(1)})
+        match = re.fullmatch(r"/lists/([^/]+)/tasks(?:/([^/]+))?", path)
+        assert match, url
+        list_id, task_id = match.groups()
+        if list_id in self.errors:
+            status, body = self.errors[list_id]
+            return AiohttpClientMockResponse(method, url, status=status, json=body)
+        if list_id not in self.lists:
+            return AiohttpClientMockResponse(method, url, status=HTTPStatus.NOT_FOUND, json=_error(404, "notFound"))
+        items: list[dict[str, Any]] = self.lists[list_id]["items"]
+        if method == "GET":
+            found = [i for i in items if url.query.get("showCompleted") == "true" or i["status"] != "completed"]
+            if since := url.query.get("completedMin"):
+                found = [i for i in found if i["status"] != "completed" or i["completed"] >= since.replace("Z", "")]
+            return AiohttpClientMockResponse(method, url, json={"items": found})
+        if method == "POST":
+            item = self.add(list_id, data["title"], data.get("notes", ""))
+            if "due" in data:
+                item["due"] = data["due"]
+            return AiohttpClientMockResponse(method, url, json=item)
+        item = next((i for i in items if i["id"] == task_id), None)
+        if item is None:
+            return AiohttpClientMockResponse(method, url, status=HTTPStatus.NOT_FOUND, json=_error(404, "notFound"))
+        if method == "DELETE":
+            items.remove(item)
+            return AiohttpClientMockResponse(method, url, status=HTTPStatus.NO_CONTENT)
+        item.update({k: v for k, v in data.items() if k != "completed"})
+        if data.get("status") == "completed" and "completed" not in item:
+            item["completed"] = self.now
+        if data.get("status") == "needsAction":
+            item.pop("completed", None)
+        return AiohttpClientMockResponse(method, url, json=item)

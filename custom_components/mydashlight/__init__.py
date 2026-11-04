@@ -5,6 +5,10 @@ and plans the week's rides with drive times from Google Routes. ``mydashlight.ge
 returns the plan, and the other services save who drives, Stay, Take along and Arrive by into
 the events' notes. The kitchen app subscribes to ``mydashlight/rides/subscribe`` for the plan as
 it changes. Each parent can get a reminder on their phone before each drive leaves.
+
+Chores live in Google Tasks: templates on three base lists, and each kid's chores on their own
+list, which MyDashLight keeps filled from the templates. The app subscribes to
+``mydashlight/chores/subscribe`` for the chores as they change.
 """
 
 from __future__ import annotations
@@ -23,11 +27,21 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
     async_get_config_entry_implementation,
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
 from .alerts import CalendarReminders, Notifier, async_remove_sent
 from .api import OAuthTokens
-from .const import CONF_ROUTES_DAILY_LIMIT, CONF_ROUTES_KEY, DEFAULT_ROUTES_DAILY_LIMIT, DOMAIN, SIGNAL_PLAN_UPDATED
+from .chore_coordinator import STORE_KEY as CHORE_STORE_KEY, STORE_VERSION as CHORE_STORE_VERSION, ChoreCoordinator
+from .chore_services import async_setup_chore_services
+from .const import (
+    CONF_ROUTES_DAILY_LIMIT,
+    CONF_ROUTES_KEY,
+    DEFAULT_ROUTES_DAILY_LIMIT,
+    DOMAIN,
+    SIGNAL_CHORES_UPDATED,
+    SIGNAL_PLAN_UPDATED,
+)
 from .coordinator import MyDashLightCoordinator
 from .frontend import async_register_panel, async_remove_panel
 from .google import GoogleAuthError, GoogleCalendarApi, GoogleError
@@ -35,6 +49,7 @@ from .lookups import RoutesLookups
 from .routes import RoutesApi
 from .services import async_setup_services
 from .settings import HubSettings
+from .tasks_api import GoogleTasksApi
 from .websocket import async_setup_websocket
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -49,6 +64,7 @@ class MyDashLightData:
     calendar_reminders: CalendarReminders
     write_lock: asyncio.Lock
     """One change to Google at a time, so two taps don't race each other."""
+    chores: ChoreCoordinator
 
 
 type MyDashLightConfigEntry = ConfigEntry[MyDashLightData]
@@ -57,6 +73,7 @@ type MyDashLightConfigEntry = ConfigEntry[MyDashLightData]
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the services and the app's live subscription."""
     async_setup_services(hass)
+    async_setup_chore_services(hass)
     async_setup_websocket(hass)
     return True
 
@@ -98,7 +115,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     await notifier.async_load()
     lock = asyncio.Lock()
     reminders = CalendarReminders(hass, api, lock, settings.reminders)
-    entry.runtime_data = MyDashLightData(settings, api, coordinator, notifier, reminders, lock)
+    chores = ChoreCoordinator(hass, entry, GoogleTasksApi(websession, tokens), settings, lock)
+    entry.runtime_data = MyDashLightData(settings, api, coordinator, notifier, reminders, lock, chores)
 
     @callback
     def plan_updated() -> None:
@@ -114,6 +132,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     entry.async_on_unload(reminders.async_stop)
     entry.async_on_unload(lambda: async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, None))
     plan_updated()
+
+    @callback
+    def chores_updated() -> None:
+        async_dispatcher_send(hass, SIGNAL_CHORES_UPDATED, entry)
+
+    # Chores read in the background: a problem with Google Tasks never stops rides.
+    entry.async_on_unload(chores.async_add_listener(chores_updated))
+    entry.async_on_unload(lambda: async_dispatcher_send(hass, SIGNAL_CHORES_UPDATED, None))
+    entry.async_create_background_task(hass, chores.async_refresh(), f"{DOMAIN}_chores_first_read")
     # The kitchen app: the Rides item in the sidebar, and the kitchen page.
     await async_register_panel(hass)
     entry.async_on_unload(lambda: async_remove_panel(hass))
@@ -129,3 +156,4 @@ async def async_remove_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry)
     """Delete the saved drive times and the record of sent reminders along with the entry."""
     await RoutesLookups(hass, None, 0).async_remove()
     await async_remove_sent(hass)
+    await Store(hass, CHORE_STORE_VERSION, CHORE_STORE_KEY).async_remove()

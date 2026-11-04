@@ -120,3 +120,101 @@ apply_suggestion:
       example: "2026-11-03|abc123def456|pick|dad"
       selector:
         text:
+
+get_chores:
+
+set_chore_done:
+  fields:
+    chore:
+      required: true
+      example: MTIzNDU2Nzg5
+      selector:
+        text:
+    done:
+      required: false
+      default: true
+      selector:
+        boolean:
+
+save_chore_template:
+  fields:
+    template:
+      required: false
+      example: 3f9a1c22b7
+      selector:
+        text:
+    repeats:
+      required: false
+      example: weekly
+      selector:
+        select:
+          translation_key: repeats
+          options:
+            - daily
+            - weekly
+            - monthly
+    title:
+      required: false
+      example: Vacuum the stairs
+      selector:
+        text:
+    icon:
+      required: false
+      example: "\U0001F9F9"
+      selector:
+        text:
+    details:
+      required: false
+      selector:
+        text:
+          multiline: true
+    who:
+      required: false
+      example: ["Ava", "Ben"]
+      selector:
+        text:
+          multiple: true
+    take_turns:
+      required: false
+      selector:
+        boolean:
+    days:
+      required: false
+      example: Thu
+      selector:
+        text:
+    every:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 52
+          mode: box
+    starts:
+      required: false
+      selector:
+        date:
+    ends:
+      required: false
+      selector:
+        date:
+    points:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 1000
+          mode: box
+    paused:
+      required: false
+      selector:
+        boolean:
+
+remove_chore_template:
+  fields:
+    template:
+      required: true
+      example: 3f9a1c22b7
+      selector:
+        text:
