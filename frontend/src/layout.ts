@@ -880,6 +880,14 @@ export interface AttentionItem {
   suggestions: { id: string; label: string; note: string }[];
 }
 
+/** "+18.299999999999997 min" reads as "+18.5 min": minutes in text, to the nearest half. */
+export function tidyMinutes(text: string): string {
+  return text.replace(/(\d+\.\d+)(?=\s*min\b)/g, (m) => {
+    const v = Math.round(Number(m) * 2) / 2;
+    return Number.isInteger(v) ? String(v) : v.toFixed(1);
+  });
+}
+
 /** Heads-ups are only worth reading for today and tomorrow. */
 const HEADS_UP_DAYS = 2;
 
@@ -900,7 +908,7 @@ export function attention(plan: Plan, today: string): { items: AttentionItem[]; 
         title: pre + x.title,
         body: x.body,
         target: target(x.event),
-        suggestions: (x.suggestions ?? []).map((s) => ({ id: s.id, label: s.label, note: s.note })),
+        suggestions: (x.suggestions ?? []).map((s) => ({ id: s.id, label: s.label, note: tidyMinutes(s.note) })),
       });
     }
     day.clashes.forEach((c, i) => {
