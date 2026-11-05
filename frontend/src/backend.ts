@@ -5,7 +5,7 @@
 
 import { timeField } from "./format.ts";
 import type { Plan, Scope, Side } from "./types.ts";
-import type { ChoresPayload } from "./chores.ts";
+import type { ChoresPayload, ChoreTemplate, TemplateFields } from "./chores.ts";
 
 export interface Backend {
   /** Calls `onPlan` with the plan now and whenever it changes. Returns a function that stops it. */
@@ -25,8 +25,12 @@ export interface Backend {
    * read (MyDashLight not running, or a version without chores). Returns a function that stops it.
    */
   watchChores(onChores: (chores: ChoresPayload | null) => void): () => void;
-  /** Checks a chore off, or opens it again. */
-  setChoreDone(chore: string, done: boolean): Promise<void>;
+  /** Checks a chore off, or opens it again. `by` is who did it, when it wasn't the kid it's for. */
+  setChoreDone(chore: string, done: boolean, by?: string): Promise<void>;
+  /** Adds a chore template (no `template`) or changes one. */
+  saveChoreTemplate(fields: TemplateFields): Promise<void>;
+  /** Removes a chore template; its chores that aren't done yet go too. */
+  removeChoreTemplate(template: string): Promise<void>;
   /** Changes are saved for real (false in the offline preview). */
   readonly saves: boolean;
   /** Home Assistant pushes each new plan, so the plan on screen is current. */
@@ -257,14 +261,22 @@ export class HassBackend implements Backend {
     };
   }
 
-  async setChoreDone(chore: string, done: boolean): Promise<void> {
+  async setChoreDone(chore: string, done: boolean, by?: string): Promise<void> {
+    await this.choreCall("set_chore_done", { chore, done, ...(done && by ? { by } : {}) });
+  }
+
+  async saveChoreTemplate(fields: TemplateFields): Promise<void> {
+    await this.choreCall("save_chore_template", { ...fields });
+  }
+
+  async removeChoreTemplate(template: string): Promise<void> {
+    await this.choreCall("remove_chore_template", { template });
+  }
+
+  /** Chore actions read the chores again themselves, and the change is pushed to the board. */
+  private async choreCall(service: string, data: Record<string, unknown>): Promise<void> {
     try {
-      await this.conn.sendMessagePromise({
-        type: "call_service",
-        domain: DOMAIN,
-        service: "set_chore_done",
-        service_data: { chore, done },
-      });
+      await this.conn.sendMessagePromise({ type: "call_service", domain: DOMAIN, service, service_data: data });
     } catch (err) {
       throw toError(err);
     }
@@ -292,16 +304,53 @@ export class PreviewBackend implements Backend {
     };
   }
 
-  /** Check-offs stay in this page only, so the preview can be tried out. */
-  async setChoreDone(chore: string, done: boolean): Promise<void> {
+  /** Chore changes stay in this page only, so the preview can be tried out. */
+  async setChoreDone(chore: string, done: boolean, by?: string): Promise<void> {
     const data = this.chores;
     if (!data) return this.nope();
     const chores = data.chores.map((c) => {
       if (c.id !== chore) return c;
-      if (!done) return { ...c, state: c.due && c.due < data.today ? ("overdue" as const) : ("open" as const), done_at: null };
-      return { ...c, state: c.state === "overdue" ? ("late" as const) : ("done" as const), done_at: new Date().toISOString() };
+      if (!done) return { ...c, state: c.due && c.due < data.today ? ("overdue" as const) : ("open" as const), done_at: null, done_by: null };
+      return {
+        ...c,
+        state: c.state === "overdue" ? ("late" as const) : ("done" as const),
+        done_at: new Date().toISOString(),
+        done_by: by ?? c.kid,
+      };
     });
-    this.chores = { ...data, chores };
+    this.setChores({ ...data, chores });
+  }
+
+  async saveChoreTemplate(fields: TemplateFields): Promise<void> {
+    const data = this.chores;
+    if (!data) return this.nope();
+    const old = data.templates.find((t) => t.id === fields.template);
+    const made: ChoreTemplate = {
+      ...(old ?? { problems: [] }),
+      id: old?.id ?? `sample-t${data.templates.length}`,
+      repeats: fields.repeats,
+      title: fields.title,
+      icon: fields.icon || null,
+      details: fields.details,
+      who: fields.who,
+      take_turns: fields.take_turns,
+      days: fields.days,
+      every: fields.every,
+      paused: fields.paused,
+      problems: [],
+    };
+    const templates = old ? data.templates.map((t) => (t === old ? made : t)) : [...data.templates, made];
+    this.setChores({ ...data, templates });
+  }
+
+  async removeChoreTemplate(template: string): Promise<void> {
+    const data = this.chores;
+    if (!data) return this.nope();
+    this.setChores({ ...data, templates: data.templates.filter((t) => t.id !== template) });
+  }
+
+  private setChores(chores: ChoresPayload): void {
+    this.chores = chores;
     const emit = this.onChores;
     if (emit) queueMicrotask(() => emit(this.chores));
   }

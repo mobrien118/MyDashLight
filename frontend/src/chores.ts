@@ -23,6 +23,10 @@ export interface Chore {
   shows_from: string | null;
   state: ChoreState;
   done_at: string | null;
+  /** Who checked it off, when it wasn't the kid it's for: a person's id (MyDashLight 0.11 and later). */
+  done_by?: string | null;
+  /** Who checked it off, as saved in Google: shown when that person isn't set up any more. */
+  done_by_name?: string | null;
   /** Days missed so far. */
   missed: number;
   points: number | null;
@@ -30,13 +34,29 @@ export interface Chore {
   order: number;
 }
 
+export interface Person {
+  id: string;
+  name: string;
+  role: "kid" | "parent";
+}
+
 export interface ChoreTemplate {
   id: string;
   repeats: Repeats;
   title: string;
   icon: string | null;
+  details?: string;
+  /** Kid ids. */
   who: string[];
+  take_turns?: boolean;
+  /** As MyDashLight writes the Days line: "" (every day), "Mon-Fri", "Any", "15", "last", "1st Sat". */
+  days?: string;
+  every?: number;
+  starts?: string | null;
+  ends?: string | null;
+  points?: number | null;
   paused: boolean;
+  /** What couldn't be read, such as "who:" or "days:Funday". A template with problems makes no chores. */
   problems: string[];
 }
 
@@ -46,6 +66,8 @@ export interface ChoresPayload {
   time_zone: string;
   days_ahead: number;
   kids: { id: string; name: string }[];
+  /** Everyone who can check a chore off: the kids, then the parents (MyDashLight 0.11 and later). */
+  people?: Person[];
   chores: Chore[];
   templates: ChoreTemplate[];
   /** `needs` says what's stopping chores: signing in to Google again, or the Tasks API. */
@@ -167,4 +189,174 @@ export function choresNeedingAttention(data: ChoresPayload): Chore[] {
 /** No chores and no templates yet: the Chores view explains how to add some. */
 export function noChoresYet(data: ChoresPayload): boolean {
   return !data.chores.length && !data.templates.length;
+}
+
+// Templates: the chore editor
+
+export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+/** The days in a Days label such as "Mon-Fri" or "Sat, Sun", Monday as 0; "" is every day. Null if it isn't a list of days. */
+export function weekdaysOf(label: string): Set<number> | null {
+  const text = label.trim();
+  if (!text) return new Set([0, 1, 2, 3, 4, 5, 6]);
+  const out = new Set<number>();
+  for (const part of text.split(",")) {
+    const [a, b] = part.split("-").map((s) => WEEKDAYS.indexOf(s.trim() as (typeof WEEKDAYS)[number]));
+    if (a === undefined || a < 0 || (b !== undefined && b < 0)) return null;
+    if (b === undefined) out.add(a);
+    else for (let i = 0; i <= (b - a + 7) % 7; i++) out.add((a + i) % 7);
+  }
+  return out;
+}
+
+/** "Mon-Fri", "Sat, Sun", "Mon, Wed, Fri", or "" for every day: the same as MyDashLight writes. */
+export function weekdaysLabel(days: Iterable<number>): string {
+  const wanted = [...new Set(days)].sort((a, b) => a - b);
+  if (wanted.length === 0 || wanted.length === 7) return "";
+  const runs: number[][] = [];
+  for (const d of wanted) {
+    const last = runs.at(-1);
+    if (last && last.at(-1) === d - 1) last.push(d);
+    else runs.push([d]);
+  }
+  return runs
+    .flatMap((r) => (r.length >= 3 ? [`${WEEKDAYS[r[0]!]}-${WEEKDAYS[r.at(-1)!]}`] : r.map((d) => WEEKDAYS[d]!)))
+    .join(", ");
+}
+
+/** Daily chores with no day picked; never saved. */
+export const NO_DAYS = "none";
+
+/** A template being added or changed, before it's saved. */
+export interface ChoreDraft {
+  /** Null for a new one. */
+  template: string | null;
+  repeats: Repeats;
+  title: string;
+  icon: string | null;
+  details: string;
+  /** Kid ids. */
+  who: string[];
+  take_turns: boolean;
+  /** A Days line, as MyDashLight writes it: "" (every day), "Mon-Fri", "Any", "15", "last"... */
+  days: string;
+  every: number;
+  paused: boolean;
+}
+
+/** What `save_chore_template` is sent. Fields left out keep what the template has. */
+export interface TemplateFields {
+  template?: string;
+  repeats: Repeats;
+  title: string;
+  icon: string;
+  details: string;
+  who: string[];
+  take_turns: boolean;
+  days: string;
+  every: number;
+  paused: boolean;
+}
+
+/** The Days a chore starts with: every day, or sometime that week or month. */
+export function defaultDays(repeats: Repeats): string {
+  return repeats === "daily" ? "" : "Any";
+}
+
+export function newDraft(who: string[] = []): ChoreDraft {
+  return { template: null, repeats: "daily", title: "", icon: null, details: "", who, take_turns: false, days: "", every: 1, paused: false };
+}
+
+export function draftOf(t: ChoreTemplate): ChoreDraft {
+  return {
+    template: t.id,
+    repeats: t.repeats,
+    title: t.title,
+    icon: t.icon,
+    details: t.details ?? "",
+    who: [...t.who],
+    take_turns: !!t.take_turns,
+    days: t.days ?? defaultDays(t.repeats),
+    every: t.every && t.every > 0 ? t.every : 1,
+    paused: t.paused,
+  };
+}
+
+/** Why the draft can't be saved yet, or null when it can. */
+export function draftProblem(d: ChoreDraft): string | null {
+  if (!d.title.trim()) return "Give the chore a name.";
+  if (!d.who.length) return "Pick who does it.";
+  if (d.days === NO_DAYS) return "Pick at least one day.";
+  return null;
+}
+
+export function draftFields(d: ChoreDraft): TemplateFields {
+  return {
+    ...(d.template ? { template: d.template } : {}),
+    repeats: d.repeats,
+    title: d.title.trim(),
+    icon: d.icon ?? "",
+    details: d.details.trim(),
+    who: d.who,
+    take_turns: d.take_turns && d.who.length > 1,
+    days: d.days,
+    every: d.every,
+    paused: d.paused,
+  };
+}
+
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th"}`;
+}
+
+/** "Every day", "Mon-Fri", "Thu every 2 weeks", "Sometime each month", "The 15th each month". */
+export function scheduleText(repeats: Repeats, days: string, every = 1): string {
+  const unit = { daily: "day", weekly: "week", monthly: "month" }[repeats];
+  const each = every > 1 ? `every ${every} ${unit}s` : `each ${unit}`;
+  const d = days.trim();
+  if (repeats === "daily") {
+    const label = d.replace(/-/g, "–");
+    if (every > 1) return label ? `${label}, every ${every} days` : `Every ${every} days`;
+    return label || "Every day";
+  }
+  if (!d || d.toLowerCase() === "any") return `Sometime ${each}`;
+  if (repeats === "weekly") return `${d.replace(/-/g, "–")} ${each}`;
+  const parts = d.split(",").map((p) => {
+    const s = p.trim();
+    if (s.toLowerCase() === "last") return "the last day";
+    return /^\d+$/.test(s) ? `the ${ordinal(Number(s))}` : `the ${s}`;
+  });
+  const text = `${parts.join(" and ")} ${each}`;
+  return text[0]!.toUpperCase() + text.slice(1);
+}
+
+/** "Ava and Ben take turns", "Ava, Ben and Cleo", or "Nobody yet". */
+export function whoText(who: string[], kids: { id: string; name: string }[], takeTurns = false): string {
+  const names = who.map((id) => kids.find((k) => k.id === id)?.name ?? id);
+  if (!names.length) return "Nobody yet";
+  const list = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  return takeTurns && names.length > 1 ? `${list} take turns` : list;
+}
+
+/** What's wrong with a template, in words, from MyDashLight's "who:Zed" style codes. */
+export function problemText(p: string): string {
+  const i = p.indexOf(":");
+  const field = i < 0 ? p : p.slice(0, i);
+  const value = i < 0 ? "" : p.slice(i + 1);
+  switch (field) {
+    case "who":
+      return value ? `“${value}” isn’t one of the kids` : "Nobody is picked to do it";
+    case "days":
+      return `The days (“${value}”) couldn’t be read`;
+    case "title":
+      return "It has no name";
+    case "every":
+      return `“Every ${value}” couldn’t be read`;
+    case "take_turns":
+      return `“Take turns: ${value}” couldn’t be read`;
+    default:
+      return `The ${field.replace(/_/g, " ")} line (“${value}”) couldn’t be read`;
+  }
 }

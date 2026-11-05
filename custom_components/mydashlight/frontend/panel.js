@@ -1,9 +1,9 @@
-var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,xt=Symbol(),Ft=new WeakMap,Be=class{constructor(t,e,n){if(this._$cssResult$=!0,n!==xt)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=t,this.t=e}get styleSheet(){let t=this.o,e=this.t;if(Je&&t===void 0){let n=e!==void 0&&e.length===1;n&&(t=Ft.get(e)),t===void 0&&((this.o=t=new CSSStyleSheet).replaceSync(this.cssText),n&&Ft.set(e,t))}return t}toString(){return this.cssText}},Gt=s=>new Be(typeof s=="string"?s:s+"",void 0,xt),ve=(s,...t)=>{let e=s.length===1?s[0]:t.reduce((n,i,r)=>n+(a=>{if(a._$cssResult$===!0)return a.cssText;if(typeof a=="number")return a;throw Error("Value passed to 'css' function must be a 'css' function result: "+a+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+s[r+1],s[0]);return new Be(e,s,xt)},Yt=(s,t)=>{if(Je)s.adoptedStyleSheets=t.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(let e of t){let n=document.createElement("style"),i=Xe.litNonce;i!==void 0&&n.setAttribute("nonce",i),n.textContent=e.cssText,s.appendChild(n)}},vt=Je?s=>s:s=>s instanceof CSSStyleSheet?(t=>{let e="";for(let n of t.cssRules)e+=n.cssText;return Gt(e)})(s):s;var{is:qn,defineProperty:Wn,getOwnPropertyDescriptor:Vn,getOwnPropertyNames:Kn,getOwnPropertySymbols:Fn,getPrototypeOf:Gn}=Object,Qe=globalThis,Zt=Qe.trustedTypes,Yn=Zt?Zt.emptyScript:"",Zn=Qe.reactiveElementPolyfillSupport,Le=(s,t)=>s,yt={toAttribute(s,t){switch(t){case Boolean:s=s?Yn:null;break;case Object:case Array:s=s==null?s:JSON.stringify(s)}return s},fromAttribute(s,t){let e=s;switch(t){case Boolean:e=s!==null;break;case Number:e=s===null?null:Number(s);break;case Object:case Array:try{e=JSON.parse(s)}catch{e=null}}return e}},Jt=(s,t)=>!qn(s,t),Xt={attribute:!0,type:String,converter:yt,reflect:!1,useDefault:!1,hasChanged:Jt};Symbol.metadata??=Symbol("metadata"),Qe.litPropertyMetadata??=new WeakMap;var re=class extends HTMLElement{static addInitializer(t){this._$Ei(),(this.l??=[]).push(t)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(t,e=Xt){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(t)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(t,e),!e.noAccessor){let n=Symbol(),i=this.getPropertyDescriptor(t,n,e);i!==void 0&&Wn(this.prototype,t,i)}}static getPropertyDescriptor(t,e,n){let{get:i,set:r}=Vn(this.prototype,t)??{get(){return this[e]},set(a){this[e]=a}};return{get:i,set(a){let o=i?.call(this);r?.call(this,a),this.requestUpdate(t,o,n)},configurable:!0,enumerable:!0}}static getPropertyOptions(t){return this.elementProperties.get(t)??Xt}static _$Ei(){if(this.hasOwnProperty(Le("elementProperties")))return;let t=Gn(this);t.finalize(),t.l!==void 0&&(this.l=[...t.l]),this.elementProperties=new Map(t.elementProperties)}static finalize(){if(this.hasOwnProperty(Le("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(Le("properties"))){let e=this.properties,n=[...Kn(e),...Fn(e)];for(let i of n)this.createProperty(i,e[i])}let t=this[Symbol.metadata];if(t!==null){let e=litPropertyMetadata.get(t);if(e!==void 0)for(let[n,i]of e)this.elementProperties.set(n,i)}this._$Eh=new Map;for(let[e,n]of this.elementProperties){let i=this._$Eu(e,n);i!==void 0&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(t){let e=[];if(Array.isArray(t)){let n=new Set(t.flat(1/0).reverse());for(let i of n)e.unshift(vt(i))}else t!==void 0&&e.push(vt(t));return e}static _$Eu(t,e){let n=e.attribute;return n===!1?void 0:typeof n=="string"?n:typeof t=="string"?t.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(t=>this.enableUpdating=t),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(t=>t(this))}addController(t){(this._$EO??=new Set).add(t),this.renderRoot!==void 0&&this.isConnected&&t.hostConnected?.()}removeController(t){this._$EO?.delete(t)}_$E_(){let t=new Map,e=this.constructor.elementProperties;for(let n of e.keys())this.hasOwnProperty(n)&&(t.set(n,this[n]),delete this[n]);t.size>0&&(this._$Ep=t)}createRenderRoot(){let t=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return Yt(t,this.constructor.elementStyles),t}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(t=>t.hostConnected?.())}enableUpdating(t){}disconnectedCallback(){this._$EO?.forEach(t=>t.hostDisconnected?.())}attributeChangedCallback(t,e,n){this._$AK(t,n)}_$ET(t,e){let n=this.constructor.elementProperties.get(t),i=this.constructor._$Eu(t,n);if(i!==void 0&&n.reflect===!0){let r=(n.converter?.toAttribute!==void 0?n.converter:yt).toAttribute(e,n.type);this._$Em=t,r==null?this.removeAttribute(i):this.setAttribute(i,r),this._$Em=null}}_$AK(t,e){let n=this.constructor,i=n._$Eh.get(t);if(i!==void 0&&this._$Em!==i){let r=n.getPropertyOptions(i),a=typeof r.converter=="function"?{fromAttribute:r.converter}:r.converter?.fromAttribute!==void 0?r.converter:yt;this._$Em=i;let o=a.fromAttribute(e,r.type);this[i]=o??this._$Ej?.get(i)??o,this._$Em=null}}requestUpdate(t,e,n,i=!1,r){if(t!==void 0){let a=this.constructor;if(i===!1&&(r=this[t]),n??=a.getPropertyOptions(t),!((n.hasChanged??Jt)(r,e)||n.useDefault&&n.reflect&&r===this._$Ej?.get(t)&&!this.hasAttribute(a._$Eu(t,n))))return;this.C(t,e,n)}this.isUpdatePending===!1&&(this._$ES=this._$EP())}C(t,e,{useDefault:n,reflect:i,wrapped:r},a){n&&!(this._$Ej??=new Map).has(t)&&(this._$Ej.set(t,a??e??this[t]),r!==!0||a!==void 0)||(this._$AL.has(t)||(this.hasUpdated||n||(e=void 0),this._$AL.set(t,e)),i===!0&&this._$Em!==t&&(this._$Eq??=new Set).add(t))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}let t=this.scheduleUpdate();return t!=null&&await t,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(let[i,r]of this._$Ep)this[i]=r;this._$Ep=void 0}let n=this.constructor.elementProperties;if(n.size>0)for(let[i,r]of n){let{wrapped:a}=r,o=this[i];a!==!0||this._$AL.has(i)||o===void 0||this.C(i,void 0,r,o)}}let t=!1,e=this._$AL;try{t=this.shouldUpdate(e),t?(this.willUpdate(e),this._$EO?.forEach(n=>n.hostUpdate?.()),this.update(e)):this._$EM()}catch(n){throw t=!1,this._$EM(),n}t&&this._$AE(e)}willUpdate(t){}_$AE(t){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(t)),this.updated(t)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(t){return!0}update(t){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(t){}firstUpdated(t){}};re.elementStyles=[],re.shadowRootOptions={mode:"open"},re[Le("elementProperties")]=new Map,re[Le("finalized")]=new Map,Zn?.({ReactiveElement:re}),(Qe.reactiveElementVersions??=[]).push("2.1.2");var $t=globalThis,Qt=s=>s,et=$t.trustedTypes,en=et?et.createPolicy("lit-html",{createHTML:s=>s}):void 0,kt="$lit$",oe=`lit$${Math.random().toFixed(9).slice(2)}$`,_t="?"+oe,Xn=`<${_t}>`,$e=document,Ue=()=>$e.createComment(""),Oe=s=>s===null||typeof s!="object"&&typeof s!="function",At=Array.isArray,an=s=>At(s)||typeof s?.[Symbol.iterator]=="function",wt=`[ 	
-\f\r]`,He=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,tn=/-->/g,nn=/>/g,ye=RegExp(`>|${wt}(?:([^\\s"'>=/]+)(${wt}*=${wt}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`,"g"),sn=/'/g,rn=/"/g,ln=/^(?:script|style|textarea|title)$/i,Ct=s=>(t,...e)=>({_$litType$:s,strings:t,values:e}),d=Ct(1),le=Ct(2),Hs=Ct(3),ae=Symbol.for("lit-noChange"),f=Symbol.for("lit-nothing"),on=new WeakMap,we=$e.createTreeWalker($e,129);function dn(s,t){if(!At(s)||!s.hasOwnProperty("raw"))throw Error("invalid template strings array");return en!==void 0?en.createHTML(t):t}var pn=(s,t)=>{let e=s.length-1,n=[],i,r=t===2?"<svg>":t===3?"<math>":"",a=He;for(let o=0;o<e;o++){let l=s[o],p,m,h=-1,g=0;for(;g<l.length&&(a.lastIndex=g,m=a.exec(l),m!==null);)g=a.lastIndex,a===He?m[1]==="!--"?a=tn:m[1]!==void 0?a=nn:m[2]!==void 0?(ln.test(m[2])&&(i=RegExp("</"+m[2],"g")),a=ye):m[3]!==void 0&&(a=ye):a===ye?m[0]===">"?(a=i??He,h=-1):m[1]===void 0?h=-2:(h=a.lastIndex-m[2].length,p=m[1],a=m[3]===void 0?ye:m[3]==='"'?rn:sn):a===rn||a===sn?a=ye:a===tn||a===nn?a=He:(a=ye,i=void 0);let b=a===ye&&s[o+1].startsWith("/>")?" ":"";r+=a===He?l+Xn:h>=0?(n.push(p),l.slice(0,h)+kt+l.slice(h)+oe+b):l+oe+(h===-2?o:b)}return[dn(s,r+(s[e]||"<?>")+(t===2?"</svg>":t===3?"</math>":"")),n]},je=class s{constructor({strings:t,_$litType$:e},n){let i;this.parts=[];let r=0,a=0,o=t.length-1,l=this.parts,[p,m]=pn(t,e);if(this.el=s.createElement(p,n),we.currentNode=this.el.content,e===2||e===3){let h=this.el.content.firstChild;h.replaceWith(...h.childNodes)}for(;(i=we.nextNode())!==null&&l.length<o;){if(i.nodeType===1){if(i.hasAttributes())for(let h of i.getAttributeNames())if(h.endsWith(kt)){let g=m[a++],b=i.getAttribute(h).split(oe),v=/([.?@])?(.*)/.exec(g);l.push({type:1,index:r,name:v[2],strings:b,ctor:v[1]==="."?nt:v[1]==="?"?st:v[1]==="@"?it:_e}),i.removeAttribute(h)}else h.startsWith(oe)&&(l.push({type:6,index:r}),i.removeAttribute(h));if(ln.test(i.tagName)){let h=i.textContent.split(oe),g=h.length-1;if(g>0){i.textContent=et?et.emptyScript:"";for(let b=0;b<g;b++)i.append(h[b],Ue()),we.nextNode(),l.push({type:2,index:++r});i.append(h[g],Ue())}}}else if(i.nodeType===8)if(i.data===_t)l.push({type:2,index:r});else{let h=-1;for(;(h=i.data.indexOf(oe,h+1))!==-1;)l.push({type:7,index:r}),h+=oe.length-1}r++}}static createElement(t,e){let n=$e.createElement("template");return n.innerHTML=t,n}};function ke(s,t,e=s,n){if(t===ae)return t;let i=n!==void 0?e._$Co?.[n]:e._$Cl,r=Oe(t)?void 0:t._$litDirective$;return i?.constructor!==r&&(i?._$AO?.(!1),r===void 0?i=void 0:(i=new r(s),i._$AT(s,e,n)),n!==void 0?(e._$Co??=[])[n]=i:e._$Cl=i),i!==void 0&&(t=ke(s,i._$AS(s,t.values),i,n)),t}var tt=class{constructor(t,e){this._$AV=[],this._$AN=void 0,this._$AD=t,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(t){let{el:{content:e},parts:n}=this._$AD,i=(t?.creationScope??$e).importNode(e,!0);we.currentNode=i;let r=we.nextNode(),a=0,o=0,l=n[0];for(;l!==void 0;){if(a===l.index){let p;l.type===2?p=new Me(r,r.nextSibling,this,t):l.type===1?p=new l.ctor(r,l.name,l.strings,this,t):l.type===6&&(p=new rt(r,this,t)),this._$AV.push(p),l=n[++o]}a!==l?.index&&(r=we.nextNode(),a++)}return we.currentNode=$e,i}p(t){let e=0;for(let n of this._$AV)n!==void 0&&(n.strings!==void 0?(n._$AI(t,n,e),e+=n.strings.length-2):n._$AI(t[e])),e++}},Me=class s{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(t,e,n,i){this.type=2,this._$AH=f,this._$AN=void 0,this._$AA=t,this._$AB=e,this._$AM=n,this.options=i,this._$Cv=i?.isConnected??!0}get parentNode(){let t=this._$AA.parentNode,e=this._$AM;return e!==void 0&&t?.nodeType===11&&(t=e.parentNode),t}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(t,e=this){t=ke(this,t,e),Oe(t)?t===f||t==null||t===""?(this._$AH!==f&&this._$AR(),this._$AH=f):t!==this._$AH&&t!==ae&&this._(t):t._$litType$!==void 0?this.$(t):t.nodeType!==void 0?this.T(t):an(t)?this.k(t):this._(t)}O(t){return this._$AA.parentNode.insertBefore(t,this._$AB)}T(t){this._$AH!==t&&(this._$AR(),this._$AH=this.O(t))}_(t){this._$AH!==f&&Oe(this._$AH)?this._$AA.nextSibling.data=t:this.T($e.createTextNode(t)),this._$AH=t}$(t){let{values:e,_$litType$:n}=t,i=typeof n=="number"?this._$AC(t):(n.el===void 0&&(n.el=je.createElement(dn(n.h,n.h[0]),this.options)),n);if(this._$AH?._$AD===i)this._$AH.p(e);else{let r=new tt(i,this),a=r.u(this.options);r.p(e),this.T(a),this._$AH=r}}_$AC(t){let e=on.get(t.strings);return e===void 0&&on.set(t.strings,e=new je(t)),e}k(t){At(this._$AH)||(this._$AH=[],this._$AR());let e=this._$AH,n,i=0;for(let r of t)i===e.length?e.push(n=new s(this.O(Ue()),this.O(Ue()),this,this.options)):n=e[i],n._$AI(r),i++;i<e.length&&(this._$AR(n&&n._$AB.nextSibling,i),e.length=i)}_$AR(t=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);t!==this._$AB;){let n=Qt(t).nextSibling;Qt(t).remove(),t=n}}setConnected(t){this._$AM===void 0&&(this._$Cv=t,this._$AP?.(t))}},_e=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(t,e,n,i,r){this.type=1,this._$AH=f,this._$AN=void 0,this.element=t,this.name=e,this._$AM=i,this.options=r,n.length>2||n[0]!==""||n[1]!==""?(this._$AH=Array(n.length-1).fill(new String),this.strings=n):this._$AH=f}_$AI(t,e=this,n,i){let r=this.strings,a=!1;if(r===void 0)t=ke(this,t,e,0),a=!Oe(t)||t!==this._$AH&&t!==ae,a&&(this._$AH=t);else{let o=t,l,p;for(t=r[0],l=0;l<r.length-1;l++)p=ke(this,o[n+l],e,l),p===ae&&(p=this._$AH[l]),a||=!Oe(p)||p!==this._$AH[l],p===f?t=f:t!==f&&(t+=(p??"")+r[l+1]),this._$AH[l]=p}a&&!i&&this.j(t)}j(t){t===f?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,t??"")}},nt=class extends _e{constructor(){super(...arguments),this.type=3}j(t){this.element[this.name]=t===f?void 0:t}},st=class extends _e{constructor(){super(...arguments),this.type=4}j(t){this.element.toggleAttribute(this.name,!!t&&t!==f)}},it=class extends _e{constructor(t,e,n,i,r){super(t,e,n,i,r),this.type=5}_$AI(t,e=this){if((t=ke(this,t,e,0)??f)===ae)return;let n=this._$AH,i=t===f&&n!==f||t.capture!==n.capture||t.once!==n.once||t.passive!==n.passive,r=t!==f&&(n===f||i);i&&this.element.removeEventListener(this.name,this,n),r&&this.element.addEventListener(this.name,this,t),this._$AH=t}handleEvent(t){typeof this._$AH=="function"?this._$AH.call(this.options?.host??this.element,t):this._$AH.handleEvent(t)}},rt=class{constructor(t,e,n){this.element=t,this.type=6,this._$AN=void 0,this._$AM=e,this.options=n}get _$AU(){return this._$AM._$AU}_$AI(t){ke(this,t)}},cn={M:kt,P:oe,A:_t,C:1,L:pn,R:tt,D:an,V:ke,I:Me,H:_e,N:st,U:it,B:nt,F:rt},Jn=$t.litHtmlPolyfillSupport;Jn?.(je,Me),($t.litHtmlVersions??=[]).push("3.3.3");var hn=(s,t,e)=>{let n=e?.renderBefore??t,i=n._$litPart$;if(i===void 0){let r=e?.renderBefore??null;n._$litPart$=i=new Me(t.insertBefore(Ue(),r),r,void 0,e??{})}return i._$AI(s),i};var Pt=globalThis,X=class extends re{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){let e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=hn(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return ae}};X._$litElement$=!0,X.finalized=!0,Pt.litElementHydrateSupport?.({LitElement:X});var Qn=Pt.litElementPolyfillSupport;Qn?.({LitElement:X});(Pt.litElementVersions??=[]).push("4.2.2");var Se="mydashlight",Js=`/api/${Se}/pair`,Qs=`/api/${Se}/pair/poll`,ei=`/${Se}`,qe="pair";function un(s){return s.length>4?`${s.slice(0,4)}-${s.slice(4)}`:s}function Tt(s){return s.toUpperCase().replace(/[^A-Z0-9]/g,"")}function gn(s){let t=new URLSearchParams(s);return t.has(qe)?Tt(t.get(qe)??""):null}function es(s){if(s<60)return"just now";let t=Math.round(s/60);return`${t} minute${t===1?"":"s"} ago`}var We=class extends X{constructor(){super();this.typed="";this.connection=null,this.userName="",this.isAdmin=!0,this.code="",this.step="enter",this.error=null,this.waiting=null}willUpdate(e){(e.has("code")||e.has("connection"))&&this.connection&&this.code&&this.step==="enter"&&this.check(this.code)}close(){this.dispatchEvent(new CustomEvent("close"))}async check(e){if(this.connection){this.step="checking",this.error=null;try{let n=await this.connection.sendMessagePromise({type:`${Se}/pair/check`,code:e});n.found?(this.waiting=n,this.step="confirm"):(this.error="No screen is showing that code. Codes change every 10 minutes; check the screen.",this.step="enter")}catch(n){this.error=this.message(n),this.step="enter"}}}async approve(){if(!(!this.connection||!this.waiting?.code)){this.step="approving",this.error=null;try{await this.connection.sendMessagePromise({type:`${Se}/pair/approve`,code:this.waiting.code}),this.step="done"}catch(e){this.error=this.message(e),this.step="enter"}}}message(e){let n=e?.code;return n==="unauthorized"?"Only a Home Assistant admin can pair a screen.":n==="not_found"?"That code isn’t waiting any more. Check the screen for a new one.":n==="unknown_command"?"This version of MyDashLight can’t pair screens. Update it in HACS.":"Something went wrong. Try again."}enter(){let e=this.step==="checking";return d`<form @submit=${i=>{i.preventDefault();let r=Tt(this.typed);r&&this.check(r)}}>
+var Qe=globalThis,et=Qe.ShadowRoot&&(Qe.ShadyCSS===void 0||Qe.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,$t=Symbol(),is=new WeakMap,Oe=class{constructor(s,e,t){if(this._$cssResult$=!0,t!==$t)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=s,this.t=e}get styleSheet(){let s=this.o,e=this.t;if(et&&s===void 0){let t=e!==void 0&&e.length===1;t&&(s=is.get(e)),s===void 0&&((this.o=s=new CSSStyleSheet).replaceSync(this.cssText),t&&is.set(e,s))}return s}toString(){return this.cssText}},rs=n=>new Oe(typeof n=="string"?n:n+"",void 0,$t),ye=(n,...s)=>{let e=n.length===1?n[0]:s.reduce((t,i,r)=>t+(a=>{if(a._$cssResult$===!0)return a.cssText;if(typeof a=="number")return a;throw Error("Value passed to 'css' function must be a 'css' function result: "+a+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+n[r+1],n[0]);return new Oe(e,n,$t)},os=(n,s)=>{if(et)n.adoptedStyleSheets=s.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(let e of s){let t=document.createElement("style"),i=Qe.litNonce;i!==void 0&&t.setAttribute("nonce",i),t.textContent=e.cssText,n.appendChild(t)}},wt=et?n=>n:n=>n instanceof CSSStyleSheet?(s=>{let e="";for(let t of s.cssRules)e+=t.cssText;return rs(e)})(n):n;var{is:sn,defineProperty:nn,getOwnPropertyDescriptor:rn,getOwnPropertyNames:on,getOwnPropertySymbols:an,getPrototypeOf:ln}=Object,tt=globalThis,as=tt.trustedTypes,dn=as?as.emptyScript:"",pn=tt.reactiveElementPolyfillSupport,He=(n,s)=>n,kt={toAttribute(n,s){switch(s){case Boolean:n=n?dn:null;break;case Object:case Array:n=n==null?n:JSON.stringify(n)}return n},fromAttribute(n,s){let e=n;switch(s){case Boolean:e=n!==null;break;case Number:e=n===null?null:Number(n);break;case Object:case Array:try{e=JSON.parse(n)}catch{e=null}}return e}},ds=(n,s)=>!sn(n,s),ls={attribute:!0,type:String,converter:kt,reflect:!1,useDefault:!1,hasChanged:ds};Symbol.metadata??=Symbol("metadata"),tt.litPropertyMetadata??=new WeakMap;var ae=class extends HTMLElement{static addInitializer(s){this._$Ei(),(this.l??=[]).push(s)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(s,e=ls){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(s)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(s,e),!e.noAccessor){let t=Symbol(),i=this.getPropertyDescriptor(s,t,e);i!==void 0&&nn(this.prototype,s,i)}}static getPropertyDescriptor(s,e,t){let{get:i,set:r}=rn(this.prototype,s)??{get(){return this[e]},set(a){this[e]=a}};return{get:i,set(a){let o=i?.call(this);r?.call(this,a),this.requestUpdate(s,o,t)},configurable:!0,enumerable:!0}}static getPropertyOptions(s){return this.elementProperties.get(s)??ls}static _$Ei(){if(this.hasOwnProperty(He("elementProperties")))return;let s=ln(this);s.finalize(),s.l!==void 0&&(this.l=[...s.l]),this.elementProperties=new Map(s.elementProperties)}static finalize(){if(this.hasOwnProperty(He("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(He("properties"))){let e=this.properties,t=[...on(e),...an(e)];for(let i of t)this.createProperty(i,e[i])}let s=this[Symbol.metadata];if(s!==null){let e=litPropertyMetadata.get(s);if(e!==void 0)for(let[t,i]of e)this.elementProperties.set(t,i)}this._$Eh=new Map;for(let[e,t]of this.elementProperties){let i=this._$Eu(e,t);i!==void 0&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(s){let e=[];if(Array.isArray(s)){let t=new Set(s.flat(1/0).reverse());for(let i of t)e.unshift(wt(i))}else s!==void 0&&e.push(wt(s));return e}static _$Eu(s,e){let t=e.attribute;return t===!1?void 0:typeof t=="string"?t:typeof s=="string"?s.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(s=>this.enableUpdating=s),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(s=>s(this))}addController(s){(this._$EO??=new Set).add(s),this.renderRoot!==void 0&&this.isConnected&&s.hostConnected?.()}removeController(s){this._$EO?.delete(s)}_$E_(){let s=new Map,e=this.constructor.elementProperties;for(let t of e.keys())this.hasOwnProperty(t)&&(s.set(t,this[t]),delete this[t]);s.size>0&&(this._$Ep=s)}createRenderRoot(){let s=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return os(s,this.constructor.elementStyles),s}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(s=>s.hostConnected?.())}enableUpdating(s){}disconnectedCallback(){this._$EO?.forEach(s=>s.hostDisconnected?.())}attributeChangedCallback(s,e,t){this._$AK(s,t)}_$ET(s,e){let t=this.constructor.elementProperties.get(s),i=this.constructor._$Eu(s,t);if(i!==void 0&&t.reflect===!0){let r=(t.converter?.toAttribute!==void 0?t.converter:kt).toAttribute(e,t.type);this._$Em=s,r==null?this.removeAttribute(i):this.setAttribute(i,r),this._$Em=null}}_$AK(s,e){let t=this.constructor,i=t._$Eh.get(s);if(i!==void 0&&this._$Em!==i){let r=t.getPropertyOptions(i),a=typeof r.converter=="function"?{fromAttribute:r.converter}:r.converter?.fromAttribute!==void 0?r.converter:kt;this._$Em=i;let o=a.fromAttribute(e,r.type);this[i]=o??this._$Ej?.get(i)??o,this._$Em=null}}requestUpdate(s,e,t,i=!1,r){if(s!==void 0){let a=this.constructor;if(i===!1&&(r=this[s]),t??=a.getPropertyOptions(s),!((t.hasChanged??ds)(r,e)||t.useDefault&&t.reflect&&r===this._$Ej?.get(s)&&!this.hasAttribute(a._$Eu(s,t))))return;this.C(s,e,t)}this.isUpdatePending===!1&&(this._$ES=this._$EP())}C(s,e,{useDefault:t,reflect:i,wrapped:r},a){t&&!(this._$Ej??=new Map).has(s)&&(this._$Ej.set(s,a??e??this[s]),r!==!0||a!==void 0)||(this._$AL.has(s)||(this.hasUpdated||t||(e=void 0),this._$AL.set(s,e)),i===!0&&this._$Em!==s&&(this._$Eq??=new Set).add(s))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}let s=this.scheduleUpdate();return s!=null&&await s,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(let[i,r]of this._$Ep)this[i]=r;this._$Ep=void 0}let t=this.constructor.elementProperties;if(t.size>0)for(let[i,r]of t){let{wrapped:a}=r,o=this[i];a!==!0||this._$AL.has(i)||o===void 0||this.C(i,void 0,r,o)}}let s=!1,e=this._$AL;try{s=this.shouldUpdate(e),s?(this.willUpdate(e),this._$EO?.forEach(t=>t.hostUpdate?.()),this.update(e)):this._$EM()}catch(t){throw s=!1,this._$EM(),t}s&&this._$AE(e)}willUpdate(s){}_$AE(s){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(s)),this.updated(s)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(s){return!0}update(s){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(s){}firstUpdated(s){}};ae.elementStyles=[],ae.shadowRootOptions={mode:"open"},ae[He("elementProperties")]=new Map,ae[He("finalized")]=new Map,pn?.({ReactiveElement:ae}),(tt.reactiveElementVersions??=[]).push("2.1.2");var _t=globalThis,ps=n=>n,st=_t.trustedTypes,cs=st?st.createPolicy("lit-html",{createHTML:n=>n}):void 0,At="$lit$",le=`lit$${Math.random().toFixed(9).slice(2)}$`,Tt="?"+le,cn=`<${Tt}>`,ke=document,je=()=>ke.createComment(""),We=n=>n===null||typeof n!="object"&&typeof n!="function",Pt=Array.isArray,bs=n=>Pt(n)||typeof n?.[Symbol.iterator]=="function",Ct=`[ 	
+\f\r]`,Ue=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,hs=/-->/g,us=/>/g,$e=RegExp(`>|${Ct}(?:([^\\s"'>=/]+)(${Ct}*=${Ct}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`,"g"),gs=/'/g,fs=/"/g,xs=/^(?:script|style|textarea|title)$/i,Et=n=>(s,...e)=>({_$litType$:n,strings:s,values:e}),d=Et(1),Q=Et(2),si=Et(3),de=Symbol.for("lit-noChange"),m=Symbol.for("lit-nothing"),ms=new WeakMap,we=ke.createTreeWalker(ke,129);function vs(n,s){if(!Pt(n)||!n.hasOwnProperty("raw"))throw Error("invalid template strings array");return cs!==void 0?cs.createHTML(s):s}var ys=(n,s)=>{let e=n.length-1,t=[],i,r=s===2?"<svg>":s===3?"<math>":"",a=Ue;for(let o=0;o<e;o++){let l=n[o],c,g,h=-1,f=0;for(;f<l.length&&(a.lastIndex=f,g=a.exec(l),g!==null);)f=a.lastIndex,a===Ue?g[1]==="!--"?a=hs:g[1]!==void 0?a=us:g[2]!==void 0?(xs.test(g[2])&&(i=RegExp("</"+g[2],"g")),a=$e):g[3]!==void 0&&(a=$e):a===$e?g[0]===">"?(a=i??Ue,h=-1):g[1]===void 0?h=-2:(h=a.lastIndex-g[2].length,c=g[1],a=g[3]===void 0?$e:g[3]==='"'?fs:gs):a===fs||a===gs?a=$e:a===hs||a===us?a=Ue:(a=$e,i=void 0);let v=a===$e&&n[o+1].startsWith("/>")?" ":"";r+=a===Ue?l+cn:h>=0?(t.push(c),l.slice(0,h)+At+l.slice(h)+le+v):l+le+(h===-2?o:v)}return[vs(n,r+(n[e]||"<?>")+(s===2?"</svg>":s===3?"</math>":"")),t]},qe=class n{constructor({strings:s,_$litType$:e},t){let i;this.parts=[];let r=0,a=0,o=s.length-1,l=this.parts,[c,g]=ys(s,e);if(this.el=n.createElement(c,t),we.currentNode=this.el.content,e===2||e===3){let h=this.el.content.firstChild;h.replaceWith(...h.childNodes)}for(;(i=we.nextNode())!==null&&l.length<o;){if(i.nodeType===1){if(i.hasAttributes())for(let h of i.getAttributeNames())if(h.endsWith(At)){let f=g[a++],v=i.getAttribute(h).split(le),y=/([.?@])?(.*)/.exec(f);l.push({type:1,index:r,name:y[2],strings:v,ctor:y[1]==="."?it:y[1]==="?"?rt:y[1]==="@"?ot:_e}),i.removeAttribute(h)}else h.startsWith(le)&&(l.push({type:6,index:r}),i.removeAttribute(h));if(xs.test(i.tagName)){let h=i.textContent.split(le),f=h.length-1;if(f>0){i.textContent=st?st.emptyScript:"";for(let v=0;v<f;v++)i.append(h[v],je()),we.nextNode(),l.push({type:2,index:++r});i.append(h[f],je())}}}else if(i.nodeType===8)if(i.data===Tt)l.push({type:2,index:r});else{let h=-1;for(;(h=i.data.indexOf(le,h+1))!==-1;)l.push({type:7,index:r}),h+=le.length-1}r++}}static createElement(s,e){let t=ke.createElement("template");return t.innerHTML=s,t}};function Ce(n,s,e=n,t){if(s===de)return s;let i=t!==void 0?e._$Co?.[t]:e._$Cl,r=We(s)?void 0:s._$litDirective$;return i?.constructor!==r&&(i?._$AO?.(!1),r===void 0?i=void 0:(i=new r(n),i._$AT(n,e,t)),t!==void 0?(e._$Co??=[])[t]=i:e._$Cl=i),i!==void 0&&(s=Ce(n,i._$AS(n,s.values),i,t)),s}var nt=class{constructor(s,e){this._$AV=[],this._$AN=void 0,this._$AD=s,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(s){let{el:{content:e},parts:t}=this._$AD,i=(s?.creationScope??ke).importNode(e,!0);we.currentNode=i;let r=we.nextNode(),a=0,o=0,l=t[0];for(;l!==void 0;){if(a===l.index){let c;l.type===2?c=new Me(r,r.nextSibling,this,s):l.type===1?c=new l.ctor(r,l.name,l.strings,this,s):l.type===6&&(c=new at(r,this,s)),this._$AV.push(c),l=t[++o]}a!==l?.index&&(r=we.nextNode(),a++)}return we.currentNode=ke,i}p(s){let e=0;for(let t of this._$AV)t!==void 0&&(t.strings!==void 0?(t._$AI(s,t,e),e+=t.strings.length-2):t._$AI(s[e])),e++}},Me=class n{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(s,e,t,i){this.type=2,this._$AH=m,this._$AN=void 0,this._$AA=s,this._$AB=e,this._$AM=t,this.options=i,this._$Cv=i?.isConnected??!0}get parentNode(){let s=this._$AA.parentNode,e=this._$AM;return e!==void 0&&s?.nodeType===11&&(s=e.parentNode),s}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(s,e=this){s=Ce(this,s,e),We(s)?s===m||s==null||s===""?(this._$AH!==m&&this._$AR(),this._$AH=m):s!==this._$AH&&s!==de&&this._(s):s._$litType$!==void 0?this.$(s):s.nodeType!==void 0?this.T(s):bs(s)?this.k(s):this._(s)}O(s){return this._$AA.parentNode.insertBefore(s,this._$AB)}T(s){this._$AH!==s&&(this._$AR(),this._$AH=this.O(s))}_(s){this._$AH!==m&&We(this._$AH)?this._$AA.nextSibling.data=s:this.T(ke.createTextNode(s)),this._$AH=s}$(s){let{values:e,_$litType$:t}=s,i=typeof t=="number"?this._$AC(s):(t.el===void 0&&(t.el=qe.createElement(vs(t.h,t.h[0]),this.options)),t);if(this._$AH?._$AD===i)this._$AH.p(e);else{let r=new nt(i,this),a=r.u(this.options);r.p(e),this.T(a),this._$AH=r}}_$AC(s){let e=ms.get(s.strings);return e===void 0&&ms.set(s.strings,e=new qe(s)),e}k(s){Pt(this._$AH)||(this._$AH=[],this._$AR());let e=this._$AH,t,i=0;for(let r of s)i===e.length?e.push(t=new n(this.O(je()),this.O(je()),this,this.options)):t=e[i],t._$AI(r),i++;i<e.length&&(this._$AR(t&&t._$AB.nextSibling,i),e.length=i)}_$AR(s=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);s!==this._$AB;){let t=ps(s).nextSibling;ps(s).remove(),s=t}}setConnected(s){this._$AM===void 0&&(this._$Cv=s,this._$AP?.(s))}},_e=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(s,e,t,i,r){this.type=1,this._$AH=m,this._$AN=void 0,this.element=s,this.name=e,this._$AM=i,this.options=r,t.length>2||t[0]!==""||t[1]!==""?(this._$AH=Array(t.length-1).fill(new String),this.strings=t):this._$AH=m}_$AI(s,e=this,t,i){let r=this.strings,a=!1;if(r===void 0)s=Ce(this,s,e,0),a=!We(s)||s!==this._$AH&&s!==de,a&&(this._$AH=s);else{let o=s,l,c;for(s=r[0],l=0;l<r.length-1;l++)c=Ce(this,o[t+l],e,l),c===de&&(c=this._$AH[l]),a||=!We(c)||c!==this._$AH[l],c===m?s=m:s!==m&&(s+=(c??"")+r[l+1]),this._$AH[l]=c}a&&!i&&this.j(s)}j(s){s===m?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,s??"")}},it=class extends _e{constructor(){super(...arguments),this.type=3}j(s){this.element[this.name]=s===m?void 0:s}},rt=class extends _e{constructor(){super(...arguments),this.type=4}j(s){this.element.toggleAttribute(this.name,!!s&&s!==m)}},ot=class extends _e{constructor(s,e,t,i,r){super(s,e,t,i,r),this.type=5}_$AI(s,e=this){if((s=Ce(this,s,e,0)??m)===de)return;let t=this._$AH,i=s===m&&t!==m||s.capture!==t.capture||s.once!==t.once||s.passive!==t.passive,r=s!==m&&(t===m||i);i&&this.element.removeEventListener(this.name,this,t),r&&this.element.addEventListener(this.name,this,s),this._$AH=s}handleEvent(s){typeof this._$AH=="function"?this._$AH.call(this.options?.host??this.element,s):this._$AH.handleEvent(s)}},at=class{constructor(s,e,t){this.element=s,this.type=6,this._$AN=void 0,this._$AM=e,this.options=t}get _$AU(){return this._$AM._$AU}_$AI(s){Ce(this,s)}},$s={M:At,P:le,A:Tt,C:1,L:ys,R:nt,D:bs,V:Ce,I:Me,H:_e,N:rt,U:ot,B:it,F:at},hn=_t.litHtmlPolyfillSupport;hn?.(qe,Me),(_t.litHtmlVersions??=[]).push("3.3.3");var ws=(n,s,e)=>{let t=e?.renderBefore??s,i=t._$litPart$;if(i===void 0){let r=e?.renderBefore??null;t._$litPart$=i=new Me(s.insertBefore(je(),r),r,void 0,e??{})}return i._$AI(n),i};var St=globalThis,X=class extends ae{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let s=super.createRenderRoot();return this.renderOptions.renderBefore??=s.firstChild,s}update(s){let e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(s),this._$Do=ws(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return de}};X._$litElement$=!0,X.finalized=!0,St.litElementHydrateSupport?.({LitElement:X});var un=St.litElementPolyfillSupport;un?.({LitElement:X});(St.litElementVersions??=[]).push("4.2.2");var De="mydashlight",fi=`/api/${De}/pair`,mi=`/api/${De}/pair/poll`,bi=`/${De}`,Fe="pair";function ks(n){return n.length>4?`${n.slice(0,4)}-${n.slice(4)}`:n}function Mt(n){return n.toUpperCase().replace(/[^A-Z0-9]/g,"")}function Cs(n){let s=new URLSearchParams(n);return s.has(Fe)?Mt(s.get(Fe)??""):null}function gn(n){if(n<60)return"just now";let s=Math.round(n/60);return`${s} minute${s===1?"":"s"} ago`}var Ve=class extends X{constructor(){super();this.typed="";this.connection=null,this.userName="",this.isAdmin=!0,this.code="",this.step="enter",this.error=null,this.waiting=null}willUpdate(e){(e.has("code")||e.has("connection"))&&this.connection&&this.code&&this.step==="enter"&&this.check(this.code)}close(){this.dispatchEvent(new CustomEvent("close"))}async check(e){if(this.connection){this.step="checking",this.error=null;try{let t=await this.connection.sendMessagePromise({type:`${De}/pair/check`,code:e});t.found?(this.waiting=t,this.step="confirm"):(this.error="No screen is showing that code. Codes change every 10 minutes; check the screen.",this.step="enter")}catch(t){this.error=this.message(t),this.step="enter"}}}async approve(){if(!(!this.connection||!this.waiting?.code)){this.step="approving",this.error=null;try{await this.connection.sendMessagePromise({type:`${De}/pair/approve`,code:this.waiting.code}),this.step="done"}catch(e){this.error=this.message(e),this.step="enter"}}}message(e){let t=e?.code;return t==="unauthorized"?"Only a Home Assistant admin can pair a screen.":t==="not_found"?"That code isn’t waiting any more. Check the screen for a new one.":t==="unknown_command"?"This version of MyDashLight can’t pair screens. Update it in HACS.":"Something went wrong. Try again."}enter(){let e=this.step==="checking";return d`<form @submit=${i=>{i.preventDefault();let r=Mt(this.typed);r&&this.check(r)}}>
       <h2>Pair a screen</h2>
       <p>Type the code the screen is showing.</p>
-      ${this.error?d`<p class="error" role="alert">${this.error}</p>`:f}
+      ${this.error?d`<p class="error" role="alert">${this.error}</p>`:m}
       <input
         aria-label="Code"
         autocomplete="off"
@@ -18,23 +18,23 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
         <button type="button" @click=${()=>this.close()}>Cancel</button>
         <button type="submit" class="dark" ?disabled=${e}>${e?"Checking…":"Next"}</button>
       </div>
-    </form>`}confirm(){let e=this.waiting,n=this.step==="approving";return d`<h2>Allow this screen?</h2>
-      <p class="code">${un(e.code??"")}</p>
+    </form>`}confirm(){let e=this.waiting,t=this.step==="approving";return d`<h2>Allow this screen?</h2>
+      <p class="code">${ks(e.code??"")}</p>
       <p>
-        A screen at ${e.address} asked ${es(e.age??0)}. Check the code matches the one on the screen. It will be
+        A screen at ${e.address} asked ${gn(e.age??0)}. Check the code matches the one on the screen. It will be
         signed in to Home Assistant as <b>${this.userName||"you"}</b>.
       </p>
       <p>To sign it out later, delete its entry under Refresh tokens on your Home Assistant profile’s Security tab.</p>
       <div class="actions">
-        <button type="button" @click=${()=>this.close()} ?disabled=${n}>Cancel</button>
-        <button type="button" class="dark" @click=${()=>void this.approve()} ?disabled=${n}>
-          ${n?"Allowing…":"Allow"}
+        <button type="button" @click=${()=>this.close()} ?disabled=${t}>Cancel</button>
+        <button type="button" class="dark" @click=${()=>void this.approve()} ?disabled=${t}>
+          ${t?"Allowing…":"Allow"}
         </button>
       </div>`}render(){let e;return this.isAdmin?this.step==="done"?e=d`<h2>Screen paired</h2>
         <p>It will open the board in a few seconds.</p>
         <div class="actions"><button type="button" class="dark" @click=${()=>this.close()}>Done</button></div>`:this.step==="confirm"||this.step==="approving"?e=this.confirm():e=this.enter():e=d`<h2>Pair a screen</h2>
         <p>Only a Home Assistant admin can pair a screen. Ask an admin to scan the code instead.</p>
-        <div class="actions"><button type="button" class="dark" @click=${()=>this.close()}>Close</button></div>`,d`<div class="card" role="dialog" aria-modal="true" aria-label="Pair a screen">${e}</div>`}};We.styles=ve`
+        <div class="actions"><button type="button" class="dark" @click=${()=>this.close()}>Close</button></div>`,d`<div class="card" role="dialog" aria-modal="true" aria-label="Pair a screen">${e}</div>`}};Ve.styles=ye`
     :host {
       position: fixed;
       inset: 0;
@@ -121,7 +121,7 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
       outline: 3px solid #2d5fc4;
       outline-offset: 2px;
     }
-  `,We.properties={connection:{attribute:!1},userName:{attribute:!1},isAdmin:{attribute:!1},code:{},step:{state:!0},error:{state:!0},waiting:{state:!0}};customElements.get("mydashlight-pair-approve")||customElements.define("mydashlight-pair-approve",We);function k(s){let t=Math.round(s),e=Math.floor(t/60),n=(t%60+60)%60;return`${((e+11)%12+12)%12+1}:${n<10?"0":""}${n}`}function Ve(s){let t=Math.floor(Math.round(s)/60)%24;return`${k(s)} ${t<12?"AM":"PM"}`}function fn(s){let t=Math.floor(s/60)%24;return`${(t+11)%12+1} ${t<12?"AM":"PM"}`}function Fe(s){let t=Math.max(0,Math.round(s)),e=Math.floor(t/60),n=t%60;return e?n?`${e} hr ${n} min`:`${e} hr`:`${n} min`}function mn(s){let t=Math.floor(s/60)%24,e=s%60;return`${String(t).padStart(2,"0")}:${String(e).padStart(2,"0")}:00`}var ts=new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}),ns=new Intl.DateTimeFormat("en-US",{weekday:"short",timeZone:"UTC"}),ss=new Intl.DateTimeFormat("en-US",{month:"long",day:"numeric",timeZone:"UTC"});function ot(s){return new Date(`${s}T12:00:00Z`)}function Ae(s){let t=ot(s);return`${ts.format(t)}, ${ss.format(t)}`}function G(s){return ns.format(ot(s))}function he(s,t){return Math.round((ot(t).getTime()-ot(s).getTime())/864e5)}function Ke(s,t=new Date){let e;try{e=new Intl.DateTimeFormat("en-CA",{timeZone:s,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(t)}catch{return Ke("UTC",t)}let n=i=>e.find(r=>r.type===i)?.value??"0";return{date:`${n("year")}-${n("month")}-${n("day")}`,minutes:Number(n("hour"))*60+Number(n("minute"))}}function at(s,t,e){let n=Math.floor((t.getTime()-s.getTime())/6e4);if(n<1)return"just now";if(n<60)return`${n} min ago`;let i=Ke(e,s),r=Ke(e,t).date;return i.date===r?`at ${Ve(i.minutes)}`:`on ${G(i.date)} at ${Ve(i.minutes)}`}var Y=class extends Error{constructor(t,e){super(e),this.code=t,this.name="BackendError"}},De="mydashlight",is=7,bn=3e4;function Et(s){if(s instanceof Y)return s;if(s&&typeof s=="object"){let t=s;if(typeof t.message=="string")return new Y(String(t.code??"error"),t.message)}return typeof s=="number"?new Y("connection_lost","Lost the connection to Home Assistant."):new Y("error",String(s))}var lt=class{constructor(t){this.saves=!0;this.listeners=new Set;this.timer=null;this.unsubscribe=null;this.pushing=!1;this.reading=null;this.onVisible=()=>{(typeof document>"u"||document.visibilityState==="visible")&&this.refresh()};this.onReady=()=>void this.refresh();this.onDisconnected=()=>this.fail(new Y("connection_lost","Lost the connection to Home Assistant."));this.conn=t}get live(){return this.pushing}watch(t,e){let n={onPlan:t,onError:e};return this.listeners.add(n),this.listeners.size===1?this.start():this.refresh(),()=>{this.listeners.delete(n),this.listeners.size||this.stop()}}start(){this.refresh(),this.trySubscribe(),this.timer=setInterval(()=>{this.pushing||this.refresh()},bn),typeof document<"u"&&document.addEventListener("visibilitychange",this.onVisible),this.conn.addEventListener?.("ready",this.onReady),this.conn.addEventListener?.("disconnected",this.onDisconnected)}stop(){this.timer&&clearInterval(this.timer),this.timer=null,typeof document<"u"&&document.removeEventListener("visibilitychange",this.onVisible),this.conn.removeEventListener?.("ready",this.onReady),this.conn.removeEventListener?.("disconnected",this.onDisconnected);let t=this.unsubscribe;this.unsubscribe=null,this.pushing=!1,t&&t().catch(()=>{})}async trySubscribe(){try{this.unsubscribe=await this.conn.subscribeMessage(t=>{this.pushing=!0,t.plan?this.emit(t.plan):this.fail(new Y("not_running","MyDashLight isn’t running right now."))},{type:`${De}/rides/subscribe`},{resubscribe:!0})}catch{this.pushing=!1}}fail(t){for(let e of this.listeners)e.onError(t)}emit(t){for(let e of this.listeners)e.onPlan(t)}refresh(){return this.reading?this.reading:(this.reading=this.read().finally(()=>{this.reading=null}),this.reading)}async read(){try{let t=await this.conn.sendMessagePromise({type:"call_service",domain:De,service:"get_plan",service_data:{days:is},return_response:!0});this.emit(t.response)}catch(t){this.fail(Et(t))}}async call(t,e){try{await this.conn.sendMessagePromise({type:"call_service",domain:De,service:t,service_data:e})}catch(n){throw Et(n)}this.pushing||await this.refresh()}setRide(t,e,n,i){return this.call("set_ride",{event:t,side:e,driver:n,scope:i})}setStay(t,e,n){return this.call("set_stay",{event:t,stay:e,scope:n})}setAttending(t,e,n){return this.call("set_attending",{event:t,attending:e,scope:n})}setArriveBy(t,e,n){return this.call("set_arrive_by",e==null?{event:t,scope:n}:{event:t,time:mn(e),scope:n})}setTakeAlong(t,e,n){return this.call("set_take_along",{event:t,kids:e,scope:n})}applySuggestion(t){return this.call("apply_suggestion",{suggestion:t})}watchChores(t){let e=!1,n=null,i=null,r=async()=>{try{let a=await this.conn.sendMessagePromise({type:"call_service",domain:De,service:"get_chores",service_data:{},return_response:!0});e||t(a.response??null)}catch{e||t(null)}};return(async()=>{try{let a=await this.conn.subscribeMessage(o=>{e||t(o.chores)},{type:`${De}/chores/subscribe`},{resubscribe:!0});e?a().catch(()=>{}):n=a}catch{if(e)return;r(),i=setInterval(()=>void r(),bn)}})(),()=>{e=!0,i&&clearInterval(i),n&&n().catch(()=>{})}}async setChoreDone(t,e){try{await this.conn.sendMessagePromise({type:"call_service",domain:De,service:"set_chore_done",service_data:{chore:t,done:e}})}catch(n){throw Et(n)}}};var xn={ATTRIBUTE:1,CHILD:2,PROPERTY:3,BOOLEAN_ATTRIBUTE:4,EVENT:5,ELEMENT:6},vn=s=>(...t)=>({_$litDirective$:s,values:t}),dt=class{constructor(t){}get _$AU(){return this._$AM._$AU}_$AT(t,e,n){this._$Ct=t,this._$AM=e,this._$Ci=n}_$AS(t,e){return this.update(t,e)}update(t,e){return this.render(...e)}};var{I:rs}=cn,yn=s=>s;var wn=()=>document.createComment(""),ze=(s,t,e)=>{let n=s._$AA.parentNode,i=t===void 0?s._$AB:t._$AA;if(e===void 0){let r=n.insertBefore(wn(),i),a=n.insertBefore(wn(),i);e=new rs(r,a,s,s.options)}else{let r=e._$AB.nextSibling,a=e._$AM,o=a!==s;if(o){let l;e._$AQ?.(s),e._$AM=s,e._$AP!==void 0&&(l=s._$AU)!==a._$AU&&e._$AP(l)}if(r!==i||o){let l=e._$AA;for(;l!==r;){let p=yn(l).nextSibling;yn(n).insertBefore(l,i),l=p}}}return e},ue=(s,t,e=s)=>(s._$AI(t,e),s),os={},$n=(s,t=os)=>s._$AH=t,kn=s=>s._$AH,pt=s=>{s._$AR(),s._$AA.remove()};var _n=(s,t,e)=>{let n=new Map;for(let i=t;i<=e;i++)n.set(s[i],i);return n},Q=vn(class extends dt{constructor(s){if(super(s),s.type!==xn.CHILD)throw Error("repeat() can only be used in text expressions")}dt(s,t,e){let n;e===void 0?e=t:t!==void 0&&(n=t);let i=[],r=[],a=0;for(let o of s)i[a]=n?n(o,a):a,r[a]=e(o,a),a++;return{values:r,keys:i}}render(s,t,e){return this.dt(s,t,e).values}update(s,[t,e,n]){let i=kn(s),{values:r,keys:a}=this.dt(t,e,n);if(!Array.isArray(i))return this.ut=a,r;let o=this.ut??=[],l=[],p,m,h=0,g=i.length-1,b=0,v=r.length-1;for(;h<=g&&b<=v;)if(i[h]===null)h++;else if(i[g]===null)g--;else if(o[h]===a[b])l[b]=ue(i[h],r[b]),h++,b++;else if(o[g]===a[v])l[v]=ue(i[g],r[v]),g--,v--;else if(o[h]===a[v])l[v]=ue(i[h],r[v]),ze(s,l[v+1],i[h]),h++,v--;else if(o[g]===a[b])l[b]=ue(i[g],r[b]),ze(s,i[h],i[g]),g--,b++;else if(p===void 0&&(p=_n(a,b,v),m=_n(o,h,g)),p.has(o[h]))if(p.has(o[g])){let u=m.get(a[b]),y=u!==void 0?i[u]:null;if(y===null){let P=ze(s,i[h]);ue(P,r[b]),l[b]=P}else l[b]=ue(y,r[b]),ze(s,i[h],y),i[u]=null;b++}else pt(i[g]),g--;else pt(i[h]),h++;for(;b<=v;){let u=ze(s,l[v+1]);ue(u,r[b]),l[b++]=u}for(;h<=g;){let u=i[h++];u!==null&&pt(u)}return this.ut=a,$n(s,l),ae}});var ct=[{color:"#12877A",rgb:"18,135,122",ink:"#0B5E55"},{color:"#2D5FC4",rgb:"45,95,196",ink:"#1E4594"},{color:"#B83E8A",rgb:"184,62,138",ink:"#8A2A66"},{color:"#B35C00",rgb:"179,92,0",ink:"#7F4100"},{color:"#6B4FBB",rgb:"107,79,187",ink:"#4C3590"},{color:"#3F7D20",rgb:"63,125,32",ink:"#2C5916"}];function F(s){return ct[(s%ct.length+ct.length)%ct.length]}var An="#23272E",Cn="35,39,46";var as=3,mt=36,Mt=12,ls=8,St=60,Dt=10,ut=30,zt=10,ds=150,ps=200,ft=1.4;function Nt(s,t){let e=Math.max(ds,ps/ft);return Math.ceil(St+Math.max(0,s-1)*Dt+ut+Math.max(0,t-1)*zt+e*(s+ft*t))}function Pe(s){return s.people?s.people.kids.map(t=>t.id):s.days.length?Object.keys(s.days[0].kids):[]}function ge(s){return s.people?s.people.drivers.map(t=>t.id):s.days.length?Object.keys(s.days[0].drivers):[]}function de(s){return new Map(Pe(s).map((t,e)=>[t,F(e)]))}function Z(s,t){let e=s.people?.kids.find(n=>n.id===t);if(e)return e.name;for(let n of s.days)if(n.kids[t])return n.kids[t].name;return t}function fe(s,t){let e=s.people?.drivers.find(n=>n.id===t);if(e)return e.name;for(let n of s.days)if(n.drivers[t])return n.drivers[t].name;return t}function It(s,t){return t==="none"?"Not needed":ge(s).includes(t)?fe(s,t):t}function cs(s){let t=new Map([["home","Home"]]);for(let e of s.days)for(let n of e.events)t.set(n.place,n.short_place||n.place_name||n.place);return t}function gt(s,t){return t?s.get(t)??(t.split(",")[0]?.trim()||t):""}function ht(s,t){let e=[];for(let n of s)n.type==="drive"?(e.length||e.push(gt(t,n.from)),e.push(gt(t,n.to))):(n.type==="wait"||n.type==="stay")&&(e.length||e.push(gt(t,n.place)),n.type==="wait"&&!e[e.length-1].endsWith("(wait)")&&(e[e.length-1]+=" (wait)"));return e}function hs(s){let t=s.map(a=>({...a,col:0,cols:1})).sort((a,o)=>a.s-o.s||o.en-a.en),e=[],n=[],i=-1/0,r=()=>{for(let a of e)a.cols=n.length;e=[],n=[]};for(let a of t){a.s>=i&&(r(),i=-1/0);let o=n.findIndex(l=>l<=a.s);o<0?(o=n.length,n.push(a.en)):n[o]=a.en,a.col=o,e.push(a),i=Math.max(i,a.en)}return r(),t}function us(s,t){if(!s.length)return 0;if(t<=s[0].t)return s[0].y;for(let e=0;e<s.length-1;e++){let n=s[e],i=s[e+1];if(t<=i.t)return i.t===n.t?n.y:Math.round(n.y+(t-n.t)/(i.t-n.t)*(i.y-n.y))}return s[s.length-1].y}function gs(s,t){if(!s.length)return 0;if(t<=s[0].y)return s[0].t;for(let e=0;e<s.length-1;e++){let n=s[e],i=s[e+1];if(t<=i.y)return i.y===n.y?n.t:n.t+(t-n.y)/(i.y-n.y)*(i.t-n.t)}return s[s.length-1].t}function En(s,t){return us(s.anchors,t)}function Mn(s,t){return gs(s.anchors,t)}function fs(s,t){let e=Pe(s),n=ge(s),i=Math.max(t,Nt(e.length,n.length)),a=(i-St-Math.max(0,e.length-1)*Dt-ut-Math.max(0,n.length-1)*zt)/(e.length+ft*n.length||1),o=Math.floor(a),l=Math.floor(a*ft),p=new Map;for(let v of s.days)for(let u of v.events){let y=p.get(u.kid)??[];y.some(P=>P.event_id===u.event_id&&P.calendar_id===u.calendar_id)||y.push(u),p.set(u.kid,y)}let m=de(s),h=[],g=St;e.forEach((v,u)=>{let y=p.get(v)??[],P=s.days.some(x=>x.events.some(R=>R.kid===v&&(R.sides.includes("drop")&&R.drop===""||R.sides.includes("pick")&&R.pick==="")));h.push({id:v,kind:"kid",x:g,w:o,name:Z(s,v),dot:m.get(v).color,rgb:m.get(v).rgb,sub:`${P?"Needs a ride · ":""}${y.length} this week`,subWarn:P}),g+=o+(u<e.length-1?Dt:0)});let b=g+ut/2;return g+=ut,n.forEach((v,u)=>{let y=0,P=0;for(let x of s.days){let R=x.drivers[v];R&&(y+=R.outings.length,P+=R.drive??0)}h.push({id:v,kind:"driver",x:g,w:l,name:fe(s,v),dot:An,rgb:Cn,sub:`${y} ${y===1?"trip":"trips"} this week · ${Fe(P)} driving`,subWarn:!1}),g+=l+(u<n.length-1?zt:0)}),{columns:h,sepX:b,width:i}}function ms(s,t){let e=s.trim();if(!t||e.length<=t.length||e.slice(0,t.length).localeCompare(t,void 0,{sensitivity:"accent"})!==0)return e;let i=e.slice(t.length),r=/^(?:’s|'s)?\s*[-–—:·]?\s+/u.exec(i);if(!r)return e;let a=i.slice(r[0].length);return a?a[0].toUpperCase()+a.slice(1):e}function Pn(s,t){let e=s.start<=0,n=s.end>=1440;return e&&n?`${s.title} · all day`:n?`${s.title} from ${k(s.start)}`:e||!t?`${s.title} until ${k(s.end)}`:`${s.title} ${k(s.start)}–${k(s.end)}`}function Bt(s){return s.issues.filter(t=>t.level==="problem").length+s.clashes.length}function Lt(s,t){let e=he(t,s);return e===0?"Today":e===1?"Tomorrow":""}function W(s,t=0){return s==null||!Number.isFinite(s)?t:s}function Rt(s,t,e=7){let n=Math.max(8,Math.floor(t/e)),i=1,r=0;for(let a of s.split(/\s+/).filter(Boolean)){let o=a.length;for(r===0?r=o:r+1+o<=n?r+=1+o:(i++,r=o);r>n;)i++,r-=n}return i}var Sn=25,Dn=15,Ht=3;function Tn(s){return Math.max(0,Math.min(Ht,Math.floor((s-Sn)/Dn)))}function bs(s,t){let e=Math.min(Ht,Rt(s,t-19,6.6));return Sn+e*Dn+2}function xs(s,t){let e=t-23,n=`${k(s.start)}–${k(s.end)}`+(s.arrive_by!=null?` · arrive ${k(s.arrive_by)}`:""),i=33+Rt(n,e,6.6)*16;for(let r of[s.lines.drop,s.lines.pick])r&&(i+=2+Rt(r.text,e,7)*16);return i+4}function zn(s,t,e,n){let i=t==="compact",{columns:r,sepX:a,width:o}=fs(s,e),l=new Map(r.map(x=>[x.id,x])),p=Pe(s),m=ge(s),h=[...p,...m],g=de(s),b=cs(s),v=x=>Z(s,x),u=x=>fe(s,x),y={mode:t,width:o,height:0,columns:r,sepX:a,dayHeads:[],empties:[],grid:[],hours:[],cards:[],rides:[],bands:[],trips:[],stays:[],busy:[],preps:[],overlaps:[],marks:[],now:null,anchors:[]},P=0;return s.days.forEach((x,R)=>{let K=R*1440,T=new Map(x.events.map(c=>[c.id,c])),H=c=>c&&T.has(c)?{day:x.date,event:c}:null,ee=Bt(x),me=x.events.length,Te=Lt(x.date,n.date);y.dayHeads.push({date:x.date,y:P,label:Ae(x.date),tag:Te,sub:(me?`${me} ${me===1?"activity":"activities"}`:"Nothing scheduled")+(ee?` · ${ee} to sort out`:""),warn:ee>0}),y.anchors.push({t:K,y:P});let pe=P+mt+Mt,Ne=m.flatMap(c=>x.drivers[c]?.outings??[]);if(!me&&!Ne.length){y.empties.push({key:x.date,y:pe,text:"Nothing planned"}),P=pe+40,y.anchors.push({t:K+1439,y:P});return}let M=(c,C,_,E,A,S,$)=>{let U=g.get(c.kid)??F(0),O=c.lines;return{key:`${x.date}|card|${c.id}`,x:C,y:_,w:E,h:A,target:{day:x.date,event:c.id},event:c,color:U,kidName:v(c.kid),clash:S,stayed:c.stay&&m.includes(c.drop),skipped:c.attending===!1,title:ms(c.title,v(c.kid)),time:`${k(c.start)}–${k(c.end)}`+(c.arrive_by!=null?` · arrive ${k(c.arrive_by)}`:""),drop:O.drop,pick:O.pick,showDrop:!!O.drop&&($||A>=56),showPick:!!O.pick&&($||A>=74),wrap:$,aria:`${v(c.kid)}, ${c.title} ${k(c.start)} to ${k(c.end)}. `+(c.attending===!1&&!O.drop?"Not attending. ":"")+[O.drop,O.pick].filter(ie=>!!ie).map(ie=>ie.text).join(". ")}},te=c=>{let C=x.rides[c];return C?(x.drivers[C.driver]?.segments??[]).filter(E=>E.type!=="home"&&E.kids.includes(C.kid)&&W(E.start)>=W(C.start)&&W(E.end)<=W(C.end)):[]},N=c=>{let C=x.rides[c];if(!C)return null;let _=C.serves.find(E=>T.get(E)?.kid===C.kid);return H(_??C.serves[0])},J=new Map;for(let c of x.issues)c.level!=="problem"||!c.event||(c.kind==="late"&&J.set(c.event,`${Math.round(W(c.minutes))} min late`),c.kind==="waiting"&&J.set(`${c.event}|pick`,`Waits ${Math.round(W(c.minutes))} min`));if(!i){let c=1/0,C=-1/0;for(let $ of x.events)c=Math.min(c,$.start-20,$.arrive_by!=null?$.arrive_by-10:1/0),C=Math.max(C,$.end+20);for(let $ of Ne)$.start!=null&&(c=Math.min(c,$.start)),$.end!=null&&(C=Math.max(C,$.end));x.date===n.date&&Number.isFinite(c)&&n.minutes>c-60&&n.minutes<C&&(c=Math.min(c,n.minutes-15));let _=Number.isFinite(c)?Math.floor((c-5)/30)*30:900,E=Number.isFinite(C)?Math.ceil((C+5)/30)*30:960,A=$=>Math.round(pe+(Math.max(_,Math.min(E,$))-_)*as);y.anchors.push({t:K+_,y:A(_)},{t:K+E,y:A(E)});for(let $ of p){let U=l.get($),O=g.get($),ie=(x.kids[$]?.items??[]).filter(D=>D.start!=null&&D.end!=null).map(D=>({item:D,s:W(D.start),en:W(D.end)}));for(let D of hs(ie)){let w=U.w/D.cols,B=Math.round(U.x+D.col*w),I=Math.round(w-(D.cols>1?4:0)),j=A(D.s),ce=D.item;if(ce.type==="act"){let V=T.get(ce.event??"");if(!V)continue;let qt=Math.max(30,A(D.en)-j);if(y.cards.push(M(V,B,j,I,qt,ce.clash,!1)),V.arrive_by!=null&&V.start-V.arrive_by>=5){let Kt=A(V.arrive_by);y.preps.push({key:`${x.date}|prep|${V.id}`,x:B,y:Kt,w:I,h:j-Kt+6,color:O,label:`Arrive by ${k(V.arrive_by)}`})}let Wt=J.get(V.id);Wt&&y.marks.push({key:`${x.date}|late|${V.id}`,x:B+I-4,y:j+4,text:Wt,right:!0});let Vt=J.get(`${V.id}|pick`);Vt&&y.marks.push({key:`${x.date}|wait|${V.id}`,x:B+4,y:j+qt+2,text:Vt,right:!1});continue}let q=x.rides[ce.ride??-1];if(!q)continue;let be=Math.max(22,A(D.en)-j),Ie=ht(te(q.index),b),L=u(q.driver);y.rides.push({key:`${x.date}|ride|${q.index}`,x:B,y:j,w:I,h:be,target:N(q.index),l1:`${q.own?"In":"Along in"} ${L}’s car`,l2:Ie.join(" → "),show2:Tn(be)>0,lines2:Tn(be),dashed:!q.own,clash:ce.clash,aria:`${v($)} ${q.own?"in":"riding along in"} ${L}’s car, ${k(W(q.start))} to ${k(W(q.end))}: ${Ie.join(" to ")}`});let xe=l.get(q.driver);xe&&y.bands.push({key:`${x.date}|band|${q.index}`,x:B+I,y:j,w:Math.max(0,xe.x+8-(B+I)),h:be,color:O})}}for(let $ of m){let U=l.get($),O=x.drivers[$];if(!O)continue;let ie=[],D=null;for(let w of O.segments)if(!(w.start==null||w.end==null)){if(w.type==="home"){D=null;continue}if(w.type==="stay"){D=null,ie.push({type:"stay",g:w,s:w.start,en:w.end});continue}D&&D.en===w.start?(D.en=w.end,D.legs.push(w)):(D={type:"trip",s:w.start,en:w.end,legs:[w]},ie.push(D))}for(let w of ie){let B=A(w.s),I=Math.max(24,A(w.en)-B);if(w.type==="stay"){let L=T.get(w.g.event??w.g.serves??""),xe=L?g.get(L.kid)??F(0):F(0),V=w.g.kids.map(v);y.stays.push({key:`${x.date}|stay|${$}|${w.s}`,x:U.x+8,y:B,w:U.w-16,h:I,target:H(L?.id),color:xe,l1:L?`At ${L.title} with ${v(L.kid)}`:"Staying",l2:`until ${k(w.en)}`+(V.length?` · ${V.join(" and ")} too`:"")});continue}let j=w.legs[0],ce=w.legs[w.legs.length-1],q=[];for(let L of w.legs)for(let xe of L.kids)q.includes(xe)||q.push(xe);let be=ce.type==="drive"&&ce.to==="home",Ie=ht(w.legs,b);y.trips.push({key:`${x.date}|trip|${$}|${w.s}`,x:U.x+8,y:B,w:U.w-16,h:I,target:H(w.legs.find(L=>L.serves)?.serves),l1:j.type==="drive"&&j.from==="home"?`Leave ${k(w.s)}`:`From ${gt(b,j.from??j.place)} ${k(w.s)}`,l2:Ie.join(" → "),show2:I>=36,l3:be?`Home ${k(w.en)}`:"",show3:be&&I>=62,stops:null,kids:q.map(L=>(g.get(L)??F(0)).color),bad:w.legs.some(L=>L.overlaps_busy),aria:`${u($)} drives ${Ie.join(" to ")}, ${k(w.s)} to ${k(w.en)}`})}for(let w of O.segments)if(!(!w.overlaps_busy||w.start==null||w.end==null))for(let B of O.busy){let I=Math.max(w.start,B.start),j=Math.min(w.end,B.end);j<=I||y.overlaps.push({key:`${x.date}|overlap|${$}|${I}`,x:U.x+6,y:A(I)-2,w:U.w-12,h:Math.max(8,A(j)-A(I)+4)})}for(let w of O.busy){if(w.end<=_||w.start>=E)continue;let B=A(w.start),I=A(w.end);y.busy.push({key:`${x.date}|busy|${$}|${w.start}`,x:U.x+1,y:B,w:U.w-2,h:I-B,labelY:8,label:Pn(w,!1)})}}let S=-1/0;for(let $=_;$<=E;$+=30)y.grid.push({key:`${x.date}|grid|${$}`,y:A($),strong:$%60===0}),$%60===0&&A($)-S>=22&&(y.hours.push({key:`${x.date}|hour|${$}`,y:A($)-8,label:fn($)}),S=A($));x.date===n.date&&n.minutes>_&&n.minutes<E&&(y.now={y:A(n.minutes),label:`Now ${k(n.minutes)}`}),P=A(E)+Mt;return}let ne=[];for(let c of p){let C=l.get(c);for(let _ of x.kids[c]?.items??[])if(_.start!=null){if(_.type==="act"){let E=T.get(_.event??"");if(!E)continue;ne.push({col:c,s:_.start,h:xs(E,C.w),kind:"act",item:_})}else if(!x.rides[_.ride??-1]?.own){let E=x.rides[_.ride??-1],A=E?ht(te(E.index),b).join(" → "):"";ne.push({col:c,s:_.start,h:bs(A,C.w),kind:"along",item:_})}}}for(let c of m){let C=x.drivers[c];if(C){for(let _ of C.busy)ne.push({col:c,s:_.start,h:32,kind:"busy",busy:_});for(let _ of C.outings)_.start!=null&&ne.push({col:c,s:_.start,h:30+_.lines.length*16+(_.warn?16:0),kind:"out",out:_})}}ne.sort((c,C)=>c.s-C.s||h.indexOf(c.col)-h.indexOf(C.col));let Ee=new Map,z=pe;ne.forEach((c,C)=>{let _=Ee.get(c.col),E=Math.max(_!=null?_+ls:pe,z);Ee.set(c.col,E+c.h),z=E,y.anchors.push({t:K+c.s,y:E});let A=l.get(c.col);if(c.kind==="busy")y.busy.push({key:`${x.date}|busy|${c.col}|${C}`,x:A.x+1,y:E,w:A.w-2,h:c.h,labelY:8,label:Pn(c.busy,!0)});else if(c.kind==="out"){let S=c.out;y.trips.push({key:`${x.date}|trip|${c.col}|${C}`,x:A.x+8,y:E,w:A.w-16,h:c.h,target:H(S.target),l1:S.lead,l2:"",show2:!1,l3:"",show3:!1,stops:[...S.lines.map($=>({text:$,warn:!1})),...S.warn?[{text:S.warn,warn:!0}]:[]],kids:S.kids.map($=>(g.get($)??F(0)).color),bad:!!S.warn,aria:`${u(c.col)}: ${S.lead}. ${S.lines.join(". ")}${S.warn?`. ${S.warn}`:""}`})}else if(c.kind==="act"){let S=T.get(c.item.event??"");y.cards.push(M(S,A.x,E,A.w,c.h,c.item.clash,!0))}else{let S=x.rides[c.item.ride??-1],$=ht(te(S.index),b),U=u(S.driver);y.rides.push({key:`${x.date}|ride|${S.index}`,x:A.x,y:E,w:A.w,h:c.h,target:N(S.index),l1:`Along with ${U} ${k(W(S.start))}`,l2:$.join(" → "),show2:!0,lines2:Ht,dashed:!0,clash:c.item.clash,aria:`${v(c.col)} riding along with ${U}, ${k(W(S.start))} to ${k(W(S.end))}: ${$.join(" to ")}`})}});let se=pe;for(let c of Ee.values())se=Math.max(se,c);P=se+Mt+6,y.anchors.push({t:K+1439,y:P})}),y.height=P,y}var vs=["","¼","½","¾"];function Ce(s){return s.replace(/(\d+(?:\.\d+)?)\s*min\b/g,(t,e)=>{let n=Number(e);if(n>=59.5)return Fe(n);let i=Math.round(n*4),r=Math.floor(i/4),a=vs[i%4];return`${r||!a?r:""}${a} min`})}function Rn(s){let t=e=>e?{...e,text:Ce(e.text)}:null;return{...s,days:s.days.map(e=>({...e,events:e.events.map(n=>({...n,lines:{drop:t(n.lines.drop),pick:t(n.lines.pick)}})),drivers:Object.fromEntries(Object.entries(e.drivers).map(([n,i])=>[n,{...i,outings:i.outings.map(r=>({...r,lines:r.lines.map(Ce),warn:r.warn==null?r.warn:Ce(r.warn)}))}])),issues:e.issues.map(n=>({...n,title:Ce(n.title),body:Ce(n.body),note:n.note==null?n.note:Ce(n.note),...n.suggestions?{suggestions:n.suggestions.map(i=>({...i,note:Ce(i.note)}))}:{}}))}))}}var ys=2,ws=48;function Nn(s,t,e=ws){let n=[],i=0,r=0,a=0,o=0,l=t.minutes+e*60;for(let p of s.days){let m=he(t.date,p.date),h=m===0?"":`${G(p.date)} · `,g=new Map(p.events.map(u=>[u.id,u])),b=u=>u&&g.has(u)?{day:p.date,event:u}:null,v=(u,y)=>m*1440+(u??g.get(y??"")?.start??0)<l;for(let u of p.issues)if(u.level==="problem"){if(!v(u.at,u.event)){a++,u.kind==="unassigned"&&o++;continue}i++,u.kind==="unassigned"&&r++,n.push({key:`${p.date}|${u.key}`,tone:u.kind==="unassigned"?"unassigned":"problem",title:h+u.title,body:u.body,target:b(u.event),suggestions:(u.suggestions??[]).map(y=>({id:y.id,label:y.label,note:y.note}))})}if(p.clashes.forEach((u,y)=>{if(!v(u.a.start,u.a.event)){a++;return}i++;let P=g.get(u.a.event??""),x=Z(s,u.kid),R=(T,H)=>{let ee=b(H);return ee?{text:T,target:ee}:T},K=[];if(u.b.type==="act"){let T=g.get(u.b.event??"");P&&T&&(K=[R(P.title,P.id),` ${k(P.start)}–${k(P.end)} and `,R(T.title,T.id),` ${k(T.start)}–${k(T.end)} overlap.`])}else{let T=p.rides[u.b.ride??-1];P&&T&&(K=[`${x} is in `,R(`${fe(s,T.driver)}’s car`,T.serves[0]),` ${k(W(u.b.start))}–${k(W(u.b.end))}, during `,R(P.title,P.id),"."])}n.push({key:`${p.date}|clash|${y}`,tone:"problem",title:`${h}${x} is double-booked`,body:K.map(T=>typeof T=="string"?T:T.text).join(""),parts:K,target:null,suggestions:[]})}),m>=0&&m<ys)for(let u of p.issues)u.level!=="heads_up"||!v(u.at,u.event)||n.push({key:`${p.date}|${u.key}`,tone:"heads_up",title:h+u.title,body:u.body,target:b(u.event),suggestions:[]});for(let u of p.events)!u.problems.length||!v(u.start)||n.push({key:`${p.date}|notes|${u.id}`,tone:"heads_up",title:`${h}Check the notes on ${Z(s,u.kid)}’s ${u.title}`,body:`These lines couldn’t be read: ${u.problems.join("; ")}`,target:b(u.id),suggestions:[]})}return{items:n,problems:i,unassigned:r,later:a,laterUnassigned:o}}function In(s,t){let e=de(s),n=null,i=r=>r.ahead>0?2:r.ongoing?1:0;for(let r of s.days){let a=he(t.date,r.date);if(!(a<0))for(let o of ge(s))for(let l of r.drivers[o]?.outings??[]){if(l.start==null)continue;let p=a*1440+l.start;if(a*1440+W(l.end,l.start)<=t.minutes)continue;let h=p-t.minutes,g={driver:o,name:fe(s,o),date:r.date,ahead:a,start:l.start,inMinutes:h,ongoing:h<=0,lead:l.lead,stop:(l.lines[0]??"").replace(/\s+/g," ").trim(),kids:l.kids.map(b=>e.get(b)??F(0)),warn:l.warn,target:l.target&&r.events.some(b=>b.id===l.target)?{day:r.date,event:l.target}:null};(!n||i(g)<i(n)||i(g)===i(n)&&g.inMinutes<n.inMinutes)&&(n=g)}}return n}function Re(s){return s.state==="done"||s.state==="late"}function Bn(s){return s.state==="open"||s.state==="overdue"}function Ln(s,t,e){if(Re(s)){let n=s.done_at?ks(s.done_at,t,e):"";return s.state==="late"?`Done late${n?` · ${n}`:""}`:`Done${n?` ${n}`:""}`}if(s.state==="overdue")return s.missed>1?`Missed ${s.missed} times`:s.due?`Missed ${$s(s.due,t)}`:"Missed";if(s.state==="upcoming"){let n=s.shows_from??s.due;if(!s.due||!n||s.due<=n)return"";let i=he(t,s.due);return`By ${i===1?"tomorrow":i<7?G(s.due):Ut(s.due)}`}if(s.due&&s.due>t){let n=he(t,s.due);return n===1?"By tomorrow":`By ${n<7?G(s.due):Ut(s.due)}`}return s.missed?`Today · missed ${s.missed===1?"once":`${s.missed} times`} before`:"Today"}function $s(s,t){let e=he(t,s);return e===0?"today":e===-1?"yesterday":Math.abs(e)<7?G(s):Ut(s)}function Ut(s){let[t,e,n]=s.split("-").map(Number);return new Date(Date.UTC(t,e-1,n)).toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"})}function ks(s,t,e){let n=new Date(s);if(Number.isNaN(n.getTime()))return"";let i=e;try{new Intl.DateTimeFormat("en-US",{timeZone:i})}catch{i=void 0}let r=n.toLocaleDateString("en-CA",{timeZone:i}),a=n.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:i});return r===t?a:`${G(r)} ${a}`}function Hn(s,t){let e=[...s.chores].sort((n,i)=>n.order-i.order);return s.kids.map((n,i)=>{let r=e.filter(p=>p.kid===n.id),a=new Map;for(let p of r){if(p.state!=="upcoming")continue;let m=p.shows_from??p.due??s.today;a.set(m,[...a.get(m)??[],p])}let o=r.filter(p=>p.state==="overdue"),l=r.filter(p=>p.state==="open");return{kid:n.id,name:n.name,color:t?.get(n.id)??F(i),overdue:o,now:l,done:r.filter(Re),later:[...a.entries()].sort(([p],[m])=>p.localeCompare(m)).map(([p,m])=>({date:p,chores:m})),left:o.length+l.length}})}function Un(s){return[...s.chores].filter(t=>t.state==="overdue"||t.state==="open"&&(t.due==null||t.due<=s.today)).sort((t,e)=>t.state===e.state?t.order-e.order:t.state==="overdue"?-1:1)}function Ot(s){return!s.chores.length&&!s.templates.length}var _s={timeline:"timeline",full:"timeline",compact:"compact"};function jt(s){let t=new URLSearchParams(s),e={},n=_s[(t.get("view")??"").trim().toLowerCase()];n&&(e.view=n),["off","no","false","0"].includes((t.get("keyboard")??"").trim().toLowerCase())&&(e.keyboard=!1),(t.get("cursor")??"").trim().toLowerCase()==="show"&&(e.cursor="show");let i=(t.get("page")??"").trim().toLowerCase();return(i==="rides"||i==="chores")&&(e.page=i),e}var On=ve`
+  `,Ve.properties={connection:{attribute:!1},userName:{attribute:!1},isAdmin:{attribute:!1},code:{},step:{state:!0},error:{state:!0},waiting:{state:!0}};customElements.get("mydashlight-pair-approve")||customElements.define("mydashlight-pair-approve",Ve);function C(n){let s=Math.round(n),e=Math.floor(s/60),t=(s%60+60)%60;return`${((e+11)%12+12)%12+1}:${t<10?"0":""}${t}`}function Ke(n){let s=Math.floor(Math.round(n)/60)%24;return`${C(n)} ${s<12?"AM":"PM"}`}function _s(n){let s=Math.floor(n/60)%24;return`${(s+11)%12+1} ${s<12?"AM":"PM"}`}function Ye(n){let s=Math.max(0,Math.round(n)),e=Math.floor(s/60),t=s%60;return e?t?`${e} hr ${t} min`:`${e} hr`:`${t} min`}function As(n){let s=Math.floor(n/60)%24,e=n%60;return`${String(s).padStart(2,"0")}:${String(e).padStart(2,"0")}:00`}var fn=new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}),mn=new Intl.DateTimeFormat("en-US",{weekday:"short",timeZone:"UTC"}),bn=new Intl.DateTimeFormat("en-US",{month:"long",day:"numeric",timeZone:"UTC"});function lt(n){return new Date(`${n}T12:00:00Z`)}function Ae(n){let s=lt(n);return`${fn.format(s)}, ${bn.format(s)}`}function Y(n){return mn.format(lt(n))}function he(n,s){return Math.round((lt(s).getTime()-lt(n).getTime())/864e5)}function Ge(n,s=new Date){let e;try{e=new Intl.DateTimeFormat("en-CA",{timeZone:n,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(s)}catch{return Ge("UTC",s)}let t=i=>e.find(r=>r.type===i)?.value??"0";return{date:`${t("year")}-${t("month")}-${t("day")}`,minutes:Number(t("hour"))*60+Number(t("minute"))}}function dt(n,s,e){let t=Math.floor((s.getTime()-n.getTime())/6e4);if(t<1)return"just now";if(t<60)return`${t} min ago`;let i=Ge(e,n),r=Ge(e,s).date;return i.date===r?`at ${Ke(i.minutes)}`:`on ${Y(i.date)} at ${Ke(i.minutes)}`}var H=class extends Error{constructor(s,e){super(e),this.code=s,this.name="BackendError"}},ze="mydashlight",xn=7,Ts=3e4;function Dt(n){if(n instanceof H)return n;if(n&&typeof n=="object"){let s=n;if(typeof s.message=="string")return new H(String(s.code??"error"),s.message)}return typeof n=="number"?new H("connection_lost","Lost the connection to Home Assistant."):new H("error",String(n))}var pt=class{constructor(s){this.saves=!0;this.listeners=new Set;this.timer=null;this.unsubscribe=null;this.pushing=!1;this.reading=null;this.onVisible=()=>{(typeof document>"u"||document.visibilityState==="visible")&&this.refresh()};this.onReady=()=>void this.refresh();this.onDisconnected=()=>this.fail(new H("connection_lost","Lost the connection to Home Assistant."));this.conn=s}get live(){return this.pushing}watch(s,e){let t={onPlan:s,onError:e};return this.listeners.add(t),this.listeners.size===1?this.start():this.refresh(),()=>{this.listeners.delete(t),this.listeners.size||this.stop()}}start(){this.refresh(),this.trySubscribe(),this.timer=setInterval(()=>{this.pushing||this.refresh()},Ts),typeof document<"u"&&document.addEventListener("visibilitychange",this.onVisible),this.conn.addEventListener?.("ready",this.onReady),this.conn.addEventListener?.("disconnected",this.onDisconnected)}stop(){this.timer&&clearInterval(this.timer),this.timer=null,typeof document<"u"&&document.removeEventListener("visibilitychange",this.onVisible),this.conn.removeEventListener?.("ready",this.onReady),this.conn.removeEventListener?.("disconnected",this.onDisconnected);let s=this.unsubscribe;this.unsubscribe=null,this.pushing=!1,s&&s().catch(()=>{})}async trySubscribe(){try{this.unsubscribe=await this.conn.subscribeMessage(s=>{this.pushing=!0,s.plan?this.emit(s.plan):this.fail(new H("not_running","MyDashLight isn’t running right now."))},{type:`${ze}/rides/subscribe`},{resubscribe:!0})}catch{this.pushing=!1}}fail(s){for(let e of this.listeners)e.onError(s)}emit(s){for(let e of this.listeners)e.onPlan(s)}refresh(){return this.reading?this.reading:(this.reading=this.read().finally(()=>{this.reading=null}),this.reading)}async read(){try{let s=await this.conn.sendMessagePromise({type:"call_service",domain:ze,service:"get_plan",service_data:{days:xn},return_response:!0});this.emit(s.response)}catch(s){this.fail(Dt(s))}}async call(s,e){try{await this.conn.sendMessagePromise({type:"call_service",domain:ze,service:s,service_data:e})}catch(t){throw Dt(t)}this.pushing||await this.refresh()}setRide(s,e,t,i){return this.call("set_ride",{event:s,side:e,driver:t,scope:i})}setStay(s,e,t){return this.call("set_stay",{event:s,stay:e,scope:t})}setAttending(s,e,t){return this.call("set_attending",{event:s,attending:e,scope:t})}setArriveBy(s,e,t){return this.call("set_arrive_by",e==null?{event:s,scope:t}:{event:s,time:As(e),scope:t})}setTakeAlong(s,e,t){return this.call("set_take_along",{event:s,kids:e,scope:t})}applySuggestion(s){return this.call("apply_suggestion",{suggestion:s})}watchChores(s){let e=!1,t=null,i=null,r=async()=>{try{let a=await this.conn.sendMessagePromise({type:"call_service",domain:ze,service:"get_chores",service_data:{},return_response:!0});e||s(a.response??null)}catch{e||s(null)}};return(async()=>{try{let a=await this.conn.subscribeMessage(o=>{e||s(o.chores)},{type:`${ze}/chores/subscribe`},{resubscribe:!0});e?a().catch(()=>{}):t=a}catch{if(e)return;r(),i=setInterval(()=>void r(),Ts)}})(),()=>{e=!0,i&&clearInterval(i),t&&t().catch(()=>{})}}async setChoreDone(s,e,t){await this.choreCall("set_chore_done",{chore:s,done:e,...e&&t?{by:t}:{}})}async saveChoreTemplate(s){await this.choreCall("save_chore_template",{...s})}async removeChoreTemplate(s){await this.choreCall("remove_chore_template",{template:s})}async choreCall(s,e){try{await this.conn.sendMessagePromise({type:"call_service",domain:ze,service:s,service_data:e})}catch(t){throw Dt(t)}}};var Ps={ATTRIBUTE:1,CHILD:2,PROPERTY:3,BOOLEAN_ATTRIBUTE:4,EVENT:5,ELEMENT:6},Es=n=>(...s)=>({_$litDirective$:n,values:s}),ct=class{constructor(s){}get _$AU(){return this._$AM._$AU}_$AT(s,e,t){this._$Ct=s,this._$AM=e,this._$Ci=t}_$AS(s,e){return this.update(s,e)}update(s,e){return this.render(...e)}};var{I:vn}=$s,Ss=n=>n;var Ms=()=>document.createComment(""),Re=(n,s,e)=>{let t=n._$AA.parentNode,i=s===void 0?n._$AB:s._$AA;if(e===void 0){let r=t.insertBefore(Ms(),i),a=t.insertBefore(Ms(),i);e=new vn(r,a,n,n.options)}else{let r=e._$AB.nextSibling,a=e._$AM,o=a!==n;if(o){let l;e._$AQ?.(n),e._$AM=n,e._$AP!==void 0&&(l=n._$AU)!==a._$AU&&e._$AP(l)}if(r!==i||o){let l=e._$AA;for(;l!==r;){let c=Ss(l).nextSibling;Ss(t).insertBefore(l,i),l=c}}}return e},ue=(n,s,e=n)=>(n._$AI(s,e),n),yn={},Ds=(n,s=yn)=>n._$AH=s,zs=n=>n._$AH,ht=n=>{n._$AR(),n._$AA.remove()};var Rs=(n,s,e)=>{let t=new Map;for(let i=s;i<=e;i++)t.set(n[i],i);return t},te=Es(class extends ct{constructor(n){if(super(n),n.type!==Ps.CHILD)throw Error("repeat() can only be used in text expressions")}dt(n,s,e){let t;e===void 0?e=s:s!==void 0&&(t=s);let i=[],r=[],a=0;for(let o of n)i[a]=t?t(o,a):a,r[a]=e(o,a),a++;return{values:r,keys:i}}render(n,s,e){return this.dt(n,s,e).values}update(n,[s,e,t]){let i=zs(n),{values:r,keys:a}=this.dt(s,e,t);if(!Array.isArray(i))return this.ut=a,r;let o=this.ut??=[],l=[],c,g,h=0,f=i.length-1,v=0,y=r.length-1;for(;h<=f&&v<=y;)if(i[h]===null)h++;else if(i[f]===null)f--;else if(o[h]===a[v])l[v]=ue(i[h],r[v]),h++,v++;else if(o[f]===a[y])l[y]=ue(i[f],r[y]),f--,y--;else if(o[h]===a[y])l[y]=ue(i[h],r[y]),Re(n,l[y+1],i[h]),h++,y--;else if(o[f]===a[v])l[v]=ue(i[f],r[v]),Re(n,i[h],i[f]),f--,v++;else if(c===void 0&&(c=Rs(a,v,y),g=Rs(o,h,f)),c.has(o[h]))if(c.has(o[f])){let p=g.get(a[v]),b=p!==void 0?i[p]:null;if(b===null){let $=Re(n,i[h]);ue($,r[v]),l[v]=$}else l[v]=ue(b,r[v]),Re(n,i[h],b),i[p]=null;v++}else ht(i[f]),f--;else ht(i[h]),h++;for(;v<=y;){let p=Re(n,l[y+1]);ue(p,r[v]),l[v++]=p}for(;h<=f;){let p=i[h++];p!==null&&ht(p)}return this.ut=a,Ds(n,l),de}});var ut=[{color:"#12877A",rgb:"18,135,122",ink:"#0B5E55"},{color:"#2D5FC4",rgb:"45,95,196",ink:"#1E4594"},{color:"#B83E8A",rgb:"184,62,138",ink:"#8A2A66"},{color:"#B35C00",rgb:"179,92,0",ink:"#7F4100"},{color:"#6B4FBB",rgb:"107,79,187",ink:"#4C3590"},{color:"#3F7D20",rgb:"63,125,32",ink:"#2C5916"}];function L(n){return ut[(n%ut.length+ut.length)%ut.length]}var Ns="#23272E",Is="35,39,46";var $n=3,xt=36,zt=12,wn=8,Rt=60,Nt=10,ft=30,It=10,kn=150,Cn=200,bt=1.4;function Bt(n,s){let e=Math.max(kn,Cn/bt);return Math.ceil(Rt+Math.max(0,n-1)*Nt+ft+Math.max(0,s-1)*It+e*(n+bt*s))}function Pe(n){return n.people?n.people.kids.map(s=>s.id):n.days.length?Object.keys(n.days[0].kids):[]}function ge(n){return n.people?n.people.drivers.map(s=>s.id):n.days.length?Object.keys(n.days[0].drivers):[]}function J(n){return new Map(Pe(n).map((s,e)=>[s,L(e)]))}function Z(n,s){let e=n.people?.kids.find(t=>t.id===s);if(e)return e.name;for(let t of n.days)if(t.kids[s])return t.kids[s].name;return s}function fe(n,s){let e=n.people?.drivers.find(t=>t.id===s);if(e)return e.name;for(let t of n.days)if(t.drivers[s])return t.drivers[s].name;return s}function Ot(n,s){return s==="none"?"Not needed":ge(n).includes(s)?fe(n,s):s}function _n(n){let s=new Map([["home","Home"]]);for(let e of n.days)for(let t of e.events)s.set(t.place,t.short_place||t.place_name||t.place);return s}function mt(n,s){return s?n.get(s)??(s.split(",")[0]?.trim()||s):""}function gt(n,s){let e=[];for(let t of n)t.type==="drive"?(e.length||e.push(mt(s,t.from)),e.push(mt(s,t.to))):(t.type==="wait"||t.type==="stay")&&(e.length||e.push(mt(s,t.place)),t.type==="wait"&&!e[e.length-1].endsWith("(wait)")&&(e[e.length-1]+=" (wait)"));return e}function An(n){let s=n.map(a=>({...a,col:0,cols:1})).sort((a,o)=>a.s-o.s||o.en-a.en),e=[],t=[],i=-1/0,r=()=>{for(let a of e)a.cols=t.length;e=[],t=[]};for(let a of s){a.s>=i&&(r(),i=-1/0);let o=t.findIndex(l=>l<=a.s);o<0?(o=t.length,t.push(a.en)):t[o]=a.en,a.col=o,e.push(a),i=Math.max(i,a.en)}return r(),s}function Tn(n,s){if(!n.length)return 0;if(s<=n[0].t)return n[0].y;for(let e=0;e<n.length-1;e++){let t=n[e],i=n[e+1];if(s<=i.t)return i.t===t.t?t.y:Math.round(t.y+(s-t.t)/(i.t-t.t)*(i.y-t.y))}return n[n.length-1].y}function Pn(n,s){if(!n.length)return 0;if(s<=n[0].y)return n[0].t;for(let e=0;e<n.length-1;e++){let t=n[e],i=n[e+1];if(s<=i.y)return i.y===t.y?t.t:t.t+(s-t.y)/(i.y-t.y)*(i.t-t.t)}return n[n.length-1].t}function Os(n,s){return Tn(n.anchors,s)}function Hs(n,s){return Pn(n.anchors,s)}function En(n,s){let e=Pe(n),t=ge(n),i=Math.max(s,Bt(e.length,t.length)),a=(i-Rt-Math.max(0,e.length-1)*Nt-ft-Math.max(0,t.length-1)*It)/(e.length+bt*t.length||1),o=Math.floor(a),l=Math.floor(a*bt),c=new Map;for(let y of n.days)for(let p of y.events){let b=c.get(p.kid)??[];b.some($=>$.event_id===p.event_id&&$.calendar_id===p.calendar_id)||b.push(p),c.set(p.kid,b)}let g=J(n),h=[],f=Rt;e.forEach((y,p)=>{let b=c.get(y)??[],$=n.days.some(x=>x.events.some(S=>S.kid===y&&(S.sides.includes("drop")&&S.drop===""||S.sides.includes("pick")&&S.pick==="")));h.push({id:y,kind:"kid",x:f,w:o,name:Z(n,y),dot:g.get(y).color,rgb:g.get(y).rgb,sub:`${$?"Needs a ride · ":""}${b.length} this week`,subWarn:$}),f+=o+(p<e.length-1?Nt:0)});let v=f+ft/2;return f+=ft,t.forEach((y,p)=>{let b=0,$=0;for(let x of n.days){let S=x.drivers[y];S&&(b+=S.outings.length,$+=S.drive??0)}h.push({id:y,kind:"driver",x:f,w:l,name:fe(n,y),dot:Ns,rgb:Is,sub:`${b} ${b===1?"trip":"trips"} this week · ${Ye($)} driving`,subWarn:!1}),f+=l+(p<t.length-1?It:0)}),{columns:h,sepX:v,width:i}}function Sn(n,s){let e=n.trim();if(!s||e.length<=s.length||e.slice(0,s.length).localeCompare(s,void 0,{sensitivity:"accent"})!==0)return e;let i=e.slice(s.length),r=/^(?:’s|'s)?\s*[-–—:·]?\s+/u.exec(i);if(!r)return e;let a=i.slice(r[0].length);return a?a[0].toUpperCase()+a.slice(1):e}function Ls(n,s){let e=n.start<=0,t=n.end>=1440;return e&&t?`${n.title} · all day`:t?`${n.title} from ${C(n.start)}`:e||!s?`${n.title} until ${C(n.end)}`:`${n.title} ${C(n.start)}–${C(n.end)}`}function Ht(n){return n.issues.filter(s=>s.level==="problem").length+n.clashes.length}function Ut(n,s){let e=he(s,n);return e===0?"Today":e===1?"Tomorrow":""}function V(n,s=0){return n==null||!Number.isFinite(n)?s:n}function Lt(n,s,e=7){let t=Math.max(8,Math.floor(s/e)),i=1,r=0;for(let a of n.split(/\s+/).filter(Boolean)){let o=a.length;for(r===0?r=o:r+1+o<=t?r+=1+o:(i++,r=o);r>t;)i++,r-=t}return i}var Us=25,js=15,jt=3;function Bs(n){return Math.max(0,Math.min(jt,Math.floor((n-Us)/js)))}function Mn(n,s){let e=Math.min(jt,Lt(n,s-19,6.6));return Us+e*js+2}function Dn(n,s){let e=s-23,t=`${C(n.start)}–${C(n.end)}`+(n.arrive_by!=null?` · arrive ${C(n.arrive_by)}`:""),i=33+Lt(t,e,6.6)*16;for(let r of[n.lines.drop,n.lines.pick])r&&(i+=2+Lt(r.text,e,7)*16);return i+4}function Ws(n,s,e,t){let i=s==="compact",{columns:r,sepX:a,width:o}=En(n,e),l=new Map(r.map(x=>[x.id,x])),c=Pe(n),g=ge(n),h=[...c,...g],f=J(n),v=_n(n),y=x=>Z(n,x),p=x=>fe(n,x),b={mode:s,width:o,height:0,columns:r,sepX:a,dayHeads:[],empties:[],grid:[],hours:[],cards:[],rides:[],bands:[],trips:[],stays:[],busy:[],preps:[],overlaps:[],marks:[],now:null,anchors:[]},$=0;return n.days.forEach((x,S)=>{let G=S*1440,P=new Map(x.events.map(u=>[u.id,u])),U=u=>u&&P.has(u)?{day:x.date,event:u}:null,se=Ht(x),be=x.events.length,Ee=Ut(x.date,t.date);b.dayHeads.push({date:x.date,y:$,label:Ae(x.date),tag:Ee,sub:(be?`${be} ${be===1?"activity":"activities"}`:"Nothing scheduled")+(se?` · ${se} to sort out`:""),warn:se>0}),b.anchors.push({t:G,y:$});let pe=$+xt+zt,Le=g.flatMap(u=>x.drivers[u]?.outings??[]);if(!be&&!Le.length){b.empties.push({key:x.date,y:pe,text:"Nothing planned"}),$=pe+40,b.anchors.push({t:G+1439,y:$});return}let M=(u,T,_,E,A,D,k)=>{let j=f.get(u.kid)??L(0),W=u.lines;return{key:`${x.date}|card|${u.id}`,x:T,y:_,w:E,h:A,target:{day:x.date,event:u.id},event:u,color:j,kidName:y(u.kid),clash:D,stayed:u.stay&&g.includes(u.drop),skipped:u.attending===!1,title:Sn(u.title,y(u.kid)),time:`${C(u.start)}–${C(u.end)}`+(u.arrive_by!=null?` · arrive ${C(u.arrive_by)}`:""),drop:W.drop,pick:W.pick,showDrop:!!W.drop&&(k||A>=56),showPick:!!W.pick&&(k||A>=74),wrap:k,aria:`${y(u.kid)}, ${u.title} ${C(u.start)} to ${C(u.end)}. `+(u.attending===!1&&!W.drop?"Not attending. ":"")+[W.drop,W.pick].filter(oe=>!!oe).map(oe=>oe.text).join(". ")}},ne=u=>{let T=x.rides[u];return T?(x.drivers[T.driver]?.segments??[]).filter(E=>E.type!=="home"&&E.kids.includes(T.kid)&&V(E.start)>=V(T.start)&&V(E.end)<=V(T.end)):[]},N=u=>{let T=x.rides[u];if(!T)return null;let _=T.serves.find(E=>P.get(E)?.kid===T.kid);return U(_??T.serves[0])},ee=new Map;for(let u of x.issues)u.level!=="problem"||!u.event||(u.kind==="late"&&ee.set(u.event,`${Math.round(V(u.minutes))} min late`),u.kind==="waiting"&&ee.set(`${u.event}|pick`,`Waits ${Math.round(V(u.minutes))} min`));if(!i){let u=1/0,T=-1/0;for(let k of x.events)u=Math.min(u,k.start-20,k.arrive_by!=null?k.arrive_by-10:1/0),T=Math.max(T,k.end+20);for(let k of Le)k.start!=null&&(u=Math.min(u,k.start)),k.end!=null&&(T=Math.max(T,k.end));x.date===t.date&&Number.isFinite(u)&&t.minutes>u-60&&t.minutes<T&&(u=Math.min(u,t.minutes-15));let _=Number.isFinite(u)?Math.floor((u-5)/30)*30:900,E=Number.isFinite(T)?Math.ceil((T+5)/30)*30:960,A=k=>Math.round(pe+(Math.max(_,Math.min(E,k))-_)*$n);b.anchors.push({t:G+_,y:A(_)},{t:G+E,y:A(E)});for(let k of c){let j=l.get(k),W=f.get(k),oe=(x.kids[k]?.items??[]).filter(z=>z.start!=null&&z.end!=null).map(z=>({item:z,s:V(z.start),en:V(z.end)}));for(let z of An(oe)){let w=j.w/z.cols,B=Math.round(j.x+z.col*w),I=Math.round(w-(z.cols>1?4:0)),q=A(z.s),ce=z.item;if(ce.type==="act"){let K=P.get(ce.event??"");if(!K)continue;let es=Math.max(30,A(z.en)-q);if(b.cards.push(M(K,B,q,I,es,ce.clash,!1)),K.arrive_by!=null&&K.start-K.arrive_by>=5){let ns=A(K.arrive_by);b.preps.push({key:`${x.date}|prep|${K.id}`,x:B,y:ns,w:I,h:q-ns+6,color:W,label:`Arrive by ${C(K.arrive_by)}`})}let ts=ee.get(K.id);ts&&b.marks.push({key:`${x.date}|late|${K.id}`,x:B+I-4,y:q+4,text:ts,right:!0});let ss=ee.get(`${K.id}|pick`);ss&&b.marks.push({key:`${x.date}|wait|${K.id}`,x:B+4,y:q+es+2,text:ss,right:!1});continue}let F=x.rides[ce.ride??-1];if(!F)continue;let xe=Math.max(22,A(z.en)-q),Be=gt(ne(F.index),v),O=p(F.driver);b.rides.push({key:`${x.date}|ride|${F.index}`,x:B,y:q,w:I,h:xe,target:N(F.index),l1:`${F.own?"In":"Along in"} ${O}’s car`,l2:Be.join(" → "),show2:Bs(xe)>0,lines2:Bs(xe),dashed:!F.own,clash:ce.clash,aria:`${y(k)} ${F.own?"in":"riding along in"} ${O}’s car, ${C(V(F.start))} to ${C(V(F.end))}: ${Be.join(" to ")}`});let ve=l.get(F.driver);ve&&b.bands.push({key:`${x.date}|band|${F.index}`,x:B+I,y:q,w:Math.max(0,ve.x+8-(B+I)),h:xe,color:W})}}for(let k of g){let j=l.get(k),W=x.drivers[k];if(!W)continue;let oe=[],z=null;for(let w of W.segments)if(!(w.start==null||w.end==null)){if(w.type==="home"){z=null;continue}if(w.type==="stay"){z=null,oe.push({type:"stay",g:w,s:w.start,en:w.end});continue}z&&z.en===w.start?(z.en=w.end,z.legs.push(w)):(z={type:"trip",s:w.start,en:w.end,legs:[w]},oe.push(z))}for(let w of oe){let B=A(w.s),I=Math.max(24,A(w.en)-B);if(w.type==="stay"){let O=P.get(w.g.event??w.g.serves??""),ve=O?f.get(O.kid)??L(0):L(0),K=w.g.kids.map(y);b.stays.push({key:`${x.date}|stay|${k}|${w.s}`,x:j.x+8,y:B,w:j.w-16,h:I,target:U(O?.id),color:ve,l1:O?`At ${O.title} with ${y(O.kid)}`:"Staying",l2:`until ${C(w.en)}`+(K.length?` · ${K.join(" and ")} too`:"")});continue}let q=w.legs[0],ce=w.legs[w.legs.length-1],F=[];for(let O of w.legs)for(let ve of O.kids)F.includes(ve)||F.push(ve);let xe=ce.type==="drive"&&ce.to==="home",Be=gt(w.legs,v);b.trips.push({key:`${x.date}|trip|${k}|${w.s}`,x:j.x+8,y:B,w:j.w-16,h:I,target:U(w.legs.find(O=>O.serves)?.serves),l1:q.type==="drive"&&q.from==="home"?`Leave ${C(w.s)}`:`From ${mt(v,q.from??q.place)} ${C(w.s)}`,l2:Be.join(" → "),show2:I>=36,l3:xe?`Home ${C(w.en)}`:"",show3:xe&&I>=62,stops:null,kids:F.map(O=>(f.get(O)??L(0)).color),bad:w.legs.some(O=>O.overlaps_busy),aria:`${p(k)} drives ${Be.join(" to ")}, ${C(w.s)} to ${C(w.en)}`})}for(let w of W.segments)if(!(!w.overlaps_busy||w.start==null||w.end==null))for(let B of W.busy){let I=Math.max(w.start,B.start),q=Math.min(w.end,B.end);q<=I||b.overlaps.push({key:`${x.date}|overlap|${k}|${I}`,x:j.x+6,y:A(I)-2,w:j.w-12,h:Math.max(8,A(q)-A(I)+4)})}for(let w of W.busy){if(w.end<=_||w.start>=E)continue;let B=A(w.start),I=A(w.end);b.busy.push({key:`${x.date}|busy|${k}|${w.start}`,x:j.x+1,y:B,w:j.w-2,h:I-B,labelY:8,label:Ls(w,!1)})}}let D=-1/0;for(let k=_;k<=E;k+=30)b.grid.push({key:`${x.date}|grid|${k}`,y:A(k),strong:k%60===0}),k%60===0&&A(k)-D>=22&&(b.hours.push({key:`${x.date}|hour|${k}`,y:A(k)-8,label:_s(k)}),D=A(k));x.date===t.date&&t.minutes>_&&t.minutes<E&&(b.now={y:A(t.minutes),label:`Now ${C(t.minutes)}`}),$=A(E)+zt;return}let ie=[];for(let u of c){let T=l.get(u);for(let _ of x.kids[u]?.items??[])if(_.start!=null){if(_.type==="act"){let E=P.get(_.event??"");if(!E)continue;ie.push({col:u,s:_.start,h:Dn(E,T.w),kind:"act",item:_})}else if(!x.rides[_.ride??-1]?.own){let E=x.rides[_.ride??-1],A=E?gt(ne(E.index),v).join(" → "):"";ie.push({col:u,s:_.start,h:Mn(A,T.w),kind:"along",item:_})}}}for(let u of g){let T=x.drivers[u];if(T){for(let _ of T.busy)ie.push({col:u,s:_.start,h:32,kind:"busy",busy:_});for(let _ of T.outings)_.start!=null&&ie.push({col:u,s:_.start,h:30+_.lines.length*16+(_.warn?16:0),kind:"out",out:_})}}ie.sort((u,T)=>u.s-T.s||h.indexOf(u.col)-h.indexOf(T.col));let Se=new Map,R=pe;ie.forEach((u,T)=>{let _=Se.get(u.col),E=Math.max(_!=null?_+wn:pe,R);Se.set(u.col,E+u.h),R=E,b.anchors.push({t:G+u.s,y:E});let A=l.get(u.col);if(u.kind==="busy")b.busy.push({key:`${x.date}|busy|${u.col}|${T}`,x:A.x+1,y:E,w:A.w-2,h:u.h,labelY:8,label:Ls(u.busy,!0)});else if(u.kind==="out"){let D=u.out;b.trips.push({key:`${x.date}|trip|${u.col}|${T}`,x:A.x+8,y:E,w:A.w-16,h:u.h,target:U(D.target),l1:D.lead,l2:"",show2:!1,l3:"",show3:!1,stops:[...D.lines.map(k=>({text:k,warn:!1})),...D.warn?[{text:D.warn,warn:!0}]:[]],kids:D.kids.map(k=>(f.get(k)??L(0)).color),bad:!!D.warn,aria:`${p(u.col)}: ${D.lead}. ${D.lines.join(". ")}${D.warn?`. ${D.warn}`:""}`})}else if(u.kind==="act"){let D=P.get(u.item.event??"");b.cards.push(M(D,A.x,E,A.w,u.h,u.item.clash,!0))}else{let D=x.rides[u.item.ride??-1],k=gt(ne(D.index),v),j=p(D.driver);b.rides.push({key:`${x.date}|ride|${D.index}`,x:A.x,y:E,w:A.w,h:u.h,target:N(D.index),l1:`Along with ${j} ${C(V(D.start))}`,l2:k.join(" → "),show2:!0,lines2:jt,dashed:!0,clash:u.item.clash,aria:`${y(u.col)} riding along with ${j}, ${C(V(D.start))} to ${C(V(D.end))}: ${k.join(" to ")}`})}});let re=pe;for(let u of Se.values())re=Math.max(re,u);$=re+zt+6,b.anchors.push({t:G+1439,y:$})}),b.height=$,b}var zn=["","¼","½","¾"];function Te(n){return n.replace(/(\d+(?:\.\d+)?)\s*min\b/g,(s,e)=>{let t=Number(e);if(t>=59.5)return Ye(t);let i=Math.round(t*4),r=Math.floor(i/4),a=zn[i%4];return`${r||!a?r:""}${a} min`})}function qs(n){let s=e=>e?{...e,text:Te(e.text)}:null;return{...n,days:n.days.map(e=>({...e,events:e.events.map(t=>({...t,lines:{drop:s(t.lines.drop),pick:s(t.lines.pick)}})),drivers:Object.fromEntries(Object.entries(e.drivers).map(([t,i])=>[t,{...i,outings:i.outings.map(r=>({...r,lines:r.lines.map(Te),warn:r.warn==null?r.warn:Te(r.warn)}))}])),issues:e.issues.map(t=>({...t,title:Te(t.title),body:Te(t.body),note:t.note==null?t.note:Te(t.note),...t.suggestions?{suggestions:t.suggestions.map(i=>({...i,note:Te(i.note)}))}:{}}))}))}}var Rn=2,Nn=48;function Fs(n,s,e=Nn){let t=[],i=0,r=0,a=0,o=0,l=s.minutes+e*60;for(let c of n.days){let g=he(s.date,c.date),h=g===0?"":`${Y(c.date)} · `,f=new Map(c.events.map(p=>[p.id,p])),v=p=>p&&f.has(p)?{day:c.date,event:p}:null,y=(p,b)=>g*1440+(p??f.get(b??"")?.start??0)<l;for(let p of c.issues)if(p.level==="problem"){if(!y(p.at,p.event)){a++,p.kind==="unassigned"&&o++;continue}i++,p.kind==="unassigned"&&r++,t.push({key:`${c.date}|${p.key}`,tone:p.kind==="unassigned"?"unassigned":"problem",title:h+p.title,body:p.body,target:v(p.event),suggestions:(p.suggestions??[]).map(b=>({id:b.id,label:b.label,note:b.note}))})}if(c.clashes.forEach((p,b)=>{if(!y(p.a.start,p.a.event)){a++;return}i++;let $=f.get(p.a.event??""),x=Z(n,p.kid),S=(P,U)=>{let se=v(U);return se?{text:P,target:se}:P},G=[];if(p.b.type==="act"){let P=f.get(p.b.event??"");$&&P&&(G=[S($.title,$.id),` ${C($.start)}–${C($.end)} and `,S(P.title,P.id),` ${C(P.start)}–${C(P.end)} overlap.`])}else{let P=c.rides[p.b.ride??-1];$&&P&&(G=[`${x} is in `,S(`${fe(n,P.driver)}’s car`,P.serves[0]),` ${C(V(p.b.start))}–${C(V(p.b.end))}, during `,S($.title,$.id),"."])}t.push({key:`${c.date}|clash|${b}`,tone:"problem",title:`${h}${x} is double-booked`,body:G.map(P=>typeof P=="string"?P:P.text).join(""),parts:G,target:null,suggestions:[]})}),g>=0&&g<Rn)for(let p of c.issues)p.level!=="heads_up"||!y(p.at,p.event)||t.push({key:`${c.date}|${p.key}`,tone:"heads_up",title:h+p.title,body:p.body,target:v(p.event),suggestions:[]});for(let p of c.events)!p.problems.length||!y(p.start)||t.push({key:`${c.date}|notes|${p.id}`,tone:"heads_up",title:`${h}Check the notes on ${Z(n,p.kid)}’s ${p.title}`,body:`These lines couldn’t be read: ${p.problems.join("; ")}`,target:v(p.id),suggestions:[]})}return{items:t,problems:i,unassigned:r,later:a,laterUnassigned:o}}function Vs(n,s){let e=J(n),t=null,i=r=>r.ahead>0?2:r.ongoing?1:0;for(let r of n.days){let a=he(s.date,r.date);if(!(a<0))for(let o of ge(n))for(let l of r.drivers[o]?.outings??[]){if(l.start==null)continue;let c=a*1440+l.start;if(a*1440+V(l.end,l.start)<=s.minutes)continue;let h=c-s.minutes,f={driver:o,name:fe(n,o),date:r.date,ahead:a,start:l.start,inMinutes:h,ongoing:h<=0,lead:l.lead,stop:(l.lines[0]??"").replace(/\s+/g," ").trim(),kids:l.kids.map(v=>e.get(v)??L(0)),warn:l.warn,target:l.target&&r.events.some(v=>v.id===l.target)?{day:r.date,event:l.target}:null};(!t||i(f)<i(t)||i(f)===i(t)&&f.inMinutes<t.inMinutes)&&(t=f)}}return t}function Ie(n){return n.state==="done"||n.state==="late"}function Ks(n){return n.state==="open"||n.state==="overdue"}function qt(n,s,e){if(Ie(n)){let t=n.done_at?Ln(n.done_at,s,e):"";return n.state==="late"?`Done late${t?` · ${t}`:""}`:`Done${t?` ${t}`:""}`}if(n.state==="overdue")return n.missed>1?`Missed ${n.missed} times`:n.due?`Missed ${In(n.due,s)}`:"Missed";if(n.state==="upcoming"){let t=n.shows_from??n.due;if(!n.due||!t||n.due<=t)return"";let i=he(s,n.due);return`By ${i===1?"tomorrow":i<7?Y(n.due):Wt(n.due)}`}if(n.due&&n.due>s){let t=he(s,n.due);return t===1?"By tomorrow":`By ${t<7?Y(n.due):Wt(n.due)}`}return n.missed?`Today · missed ${n.missed===1?"once":`${n.missed} times`} before`:"Today"}function In(n,s){let e=he(s,n);return e===0?"today":e===-1?"yesterday":Math.abs(e)<7?Y(n):Wt(n)}function Wt(n){let[s,e,t]=n.split("-").map(Number);return new Date(Date.UTC(s,e-1,t)).toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"})}function Ln(n,s,e){let t=new Date(n);if(Number.isNaN(t.getTime()))return"";let i=e;try{new Intl.DateTimeFormat("en-US",{timeZone:i})}catch{i=void 0}let r=t.toLocaleDateString("en-CA",{timeZone:i}),a=t.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:i});return r===s?a:`${Y(r)} ${a}`}function Gs(n,s){let e=[...n.chores].sort((t,i)=>t.order-i.order);return n.kids.map((t,i)=>{let r=e.filter(c=>c.kid===t.id),a=new Map;for(let c of r){if(c.state!=="upcoming")continue;let g=c.shows_from??c.due??n.today;a.set(g,[...a.get(g)??[],c])}let o=r.filter(c=>c.state==="overdue"),l=r.filter(c=>c.state==="open");return{kid:t.id,name:t.name,color:s?.get(t.id)??L(i),overdue:o,now:l,done:r.filter(Ie),later:[...a.entries()].sort(([c],[g])=>c.localeCompare(g)).map(([c,g])=>({date:c,chores:g})),left:o.length+l.length}})}function Ys(n){return[...n.chores].filter(s=>s.state==="overdue"||s.state==="open"&&(s.due==null||s.due<=n.today)).sort((s,e)=>s.state===e.state?s.order-e.order:s.state==="overdue"?-1:1)}function Ft(n){return!n.chores.length&&!n.templates.length}var Ne=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];function Zs(n){let s=n.trim();if(!s)return new Set([0,1,2,3,4,5,6]);let e=new Set;for(let t of s.split(",")){let[i,r]=t.split("-").map(a=>Ne.indexOf(a.trim()));if(i===void 0||i<0||r!==void 0&&r<0)return null;if(r===void 0)e.add(i);else for(let a=0;a<=(r-i+7)%7;a++)e.add((i+a)%7)}return e}function Vt(n){let s=[...new Set(n)].sort((t,i)=>t-i);if(s.length===0||s.length===7)return"";let e=[];for(let t of s){let i=e.at(-1);i&&i.at(-1)===t-1?i.push(t):e.push([t])}return e.flatMap(t=>t.length>=3?[`${Ne[t[0]]}-${Ne[t.at(-1)]}`]:t.map(i=>Ne[i])).join(", ")}var Ze="none";function vt(n){return n==="daily"?"":"Any"}function Xs(n=[]){return{template:null,repeats:"daily",title:"",icon:null,details:"",who:n,take_turns:!1,days:"",every:1,paused:!1}}function Js(n){return{template:n.id,repeats:n.repeats,title:n.title,icon:n.icon,details:n.details??"",who:[...n.who],take_turns:!!n.take_turns,days:n.days??vt(n.repeats),every:n.every&&n.every>0?n.every:1,paused:n.paused}}function Kt(n){return n.title.trim()?n.who.length?n.days===Ze?"Pick at least one day.":null:"Pick who does it.":"Give the chore a name."}function Qs(n){return{...n.template?{template:n.template}:{},repeats:n.repeats,title:n.title.trim(),icon:n.icon??"",details:n.details.trim(),who:n.who,take_turns:n.take_turns&&n.who.length>1,days:n.days,every:n.every,paused:n.paused}}function Gt(n){let s=n%100;return s>=11&&s<=13?`${n}th`:`${n}${{1:"st",2:"nd",3:"rd"}[n%10]??"th"}`}function Yt(n,s,e=1){let t={daily:"day",weekly:"week",monthly:"month"}[n],i=e>1?`every ${e} ${t}s`:`each ${t}`,r=s.trim();if(n==="daily"){let l=r.replace(/-/g,"–");return e>1?l?`${l}, every ${e} days`:`Every ${e} days`:l||"Every day"}if(!r||r.toLowerCase()==="any")return`Sometime ${i}`;if(n==="weekly")return`${r.replace(/-/g,"–")} ${i}`;let o=`${r.split(",").map(l=>{let c=l.trim();return c.toLowerCase()==="last"?"the last day":/^\d+$/.test(c)?`the ${Gt(Number(c))}`:`the ${c}`}).join(" and ")} ${i}`;return o[0].toUpperCase()+o.slice(1)}function Zt(n,s,e=!1){let t=n.map(r=>s.find(a=>a.id===r)?.name??r);if(!t.length)return"Nobody yet";let i=t.length===1?t[0]:`${t.slice(0,-1).join(", ")} and ${t.at(-1)}`;return e&&t.length>1?`${i} take turns`:i}function Xt(n){let s=n.indexOf(":"),e=s<0?n:n.slice(0,s),t=s<0?"":n.slice(s+1);switch(e){case"who":return t?`“${t}” isn’t one of the kids`:"Nobody is picked to do it";case"days":return`The days (“${t}”) couldn’t be read`;case"title":return"It has no name";case"every":return`“Every ${t}” couldn’t be read`;case"take_turns":return`“Take turns: ${t}” couldn’t be read`;default:return`The ${e.replace(/_/g," ")} line (“${t}”) couldn’t be read`}}var Bn={timeline:"timeline",full:"timeline",compact:"compact"};function Jt(n){let s=new URLSearchParams(n),e={},t=Bn[(s.get("view")??"").trim().toLowerCase()];t&&(e.view=t),["off","no","false","0"].includes((s.get("keyboard")??"").trim().toLowerCase())&&(e.keyboard=!1),(s.get("cursor")??"").trim().toLowerCase()==="show"&&(e.cursor="show");let i=(s.get("page")??"").trim().toLowerCase();return(i==="rides"||i==="chores")&&(e.page=i),e}var en=ye`
   :host {
     --bg: #f4f3ef;
     --surface: #ffffff;
@@ -2004,95 +2004,366 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
     color: var(--ok);
     font-weight: 600;
   }
-`;var jn="mydashlight.rides.mode",As=1100,Cs=440,Ps=700,Ts=3*6e4,Es=1200;function Ms(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}catch{return"UTC"}}function Ge(s){let t=/\p{L}|\p{N}/u.exec(s);return t?t[0].toUpperCase():"?"}function Ss(s,t){return Lt(s,t)||Ae(s).split(",")[0]}function Ds(s){let t=s.map(e=>`${e}’s`);return t.length<2?t[0]??"":`${t.slice(0,-1).join(", ")} or ${t[t.length-1]}`}function zs(){try{return localStorage.getItem(jn)==="compact"?"compact":"timeline"}catch{return"timeline"}}function Rs(s){try{localStorage.setItem(jn,s)}catch{}}function bt(s){return s.days.every(t=>!t.events.length)}var Ye=class extends X{constructor(){super();this.stopWatching=null;this.resize=null;this.clockTimer=null;this.idleTimer=null;this.toastTimer=null;this.arriveTimer=null;this.drag=null;this.eatClick=!1;this.board=null;this.minuteKey="";this.watchedScroller=null;this.boardPlan=null;this.boardKey="";this.keepAt=null;this.urlView=jt(location.search).view;this.urlPage=jt(location.search).page;this.stopChores=null;this.scrolledOnce=!1;this.onDown=e=>{if(e.pointerType==="touch"||e.button!==0)return;let n=e.currentTarget;this.drag={el:n,x:e.clientX,y:e.clientY,top:n.scrollTop,left:n.scrollLeft,moved:!1,id:e.pointerId}};this.onMove=e=>{let n=this.drag;if(!n)return;let i=e.clientX-n.x,r=e.clientY-n.y;if(!n.moved){if(Math.abs(i)+Math.abs(r)<6)return;n.moved=!0;try{n.el.setPointerCapture(n.id)}catch{}n.el.classList.add("dragging")}n.el.scrollTop=n.top-r,n.el.scrollLeft=n.left-i};this.onUp=()=>{let e=this.drag;this.drag=null,e&&(e.el.classList.remove("dragging"),e.moved&&(this.eatClick=!0,setTimeout(()=>{this.eatClick=!1},0)))};this.onClickCapture=e=>{this.eatClick&&(e.stopPropagation(),e.preventDefault(),this.eatClick=!1)};this.onActivity=()=>{this.kiosk&&(this.idleTimer&&clearTimeout(this.idleTimer),this.idleTimer=setTimeout(()=>{this.closeEditor(),this.sheet=!1,this.page!==(this.urlPage??"rides")&&this.setPage(this.urlPage??"rides"),this.urlView&&this.mode!==this.urlView?(this.mode=this.urlView,this.scrolledOnce=!1):this.scrollToNow()},Ts))};this.onKey=e=>{e.key==="Escape"&&(this.sel?this.closeEditor():this.sheet=!1)};this.toggleMenu=()=>{this.dispatchEvent(new CustomEvent("hass-toggle-menu",{bubbles:!0,composed:!0}))};this.backend=null,this.kiosk=!1,this.showMenu=!1,this.plan=null,this.error=null,this.mode=this.urlView??zs(),this.sel=null,this.sheet=!1,this.width=1600,this.boardWidth=1160,this.pending=null,this.toast=null,this.scope="this",this.arriveDraft=void 0,this.tick=0,this.page=this.urlPage??"rides",this.chores=void 0,this.choreDraft=new Map}connectedCallback(){super.connectedCallback(),this.clockTimer=setInterval(()=>{let e=this.today(),n=`${e.date}|${e.minutes}`;n!==this.minuteKey&&(this.minuteKey=n,this.tick++)},5e3),this.addEventListener("pointerdown",this.onActivity,{capture:!0}),this.addEventListener("keydown",this.onKey),this.watchBackend()}disconnectedCallback(){super.disconnectedCallback(),this.stopWatching?.(),this.stopWatching=null,this.stopChores?.(),this.stopChores=null,this.resize?.disconnect(),this.resize=null;for(let e of[this.idleTimer,this.toastTimer,this.arriveTimer])e&&clearTimeout(e);this.clockTimer&&clearInterval(this.clockTimer),this.removeEventListener("pointerdown",this.onActivity,{capture:!0}),this.removeEventListener("keydown",this.onKey)}willUpdate(e){e.has("backend")&&this.isConnected&&this.watchBackend()}firstUpdated(){this.resize=new ResizeObserver(()=>this.measure()),this.resize.observe(this),this.measure()}updated(){let e=this.scroller;if(e!==this.watchedScroller&&this.resize&&(this.watchedScroller&&this.resize.unobserve(this.watchedScroller),e&&this.resize.observe(e),this.watchedScroller=e),!(!e||!this.board)){if(!this.scrolledOnce&&this.plan){this.scrolledOnce=!0,this.scrollToNow();return}if(this.keepAt!=null){let n=this.keepAt;this.keepAt=null,this.scrollToTime(n)}else this.syncDay()}}watchBackend(){this.stopWatching?.(),this.stopWatching=null,this.stopChores?.(),this.stopChores=null,this.backend&&(this.stopChores=this.backend.watchChores(e=>{if(this.chores=e,e&&this.choreDraft.size){let n=new Map(this.choreDraft);for(let i of e.chores)n.has(i.id)&&Re(i)===n.get(i.id)&&n.delete(i.id);for(let i of n.keys())e.chores.some(r=>r.id===i)||n.delete(i);this.choreDraft=n}}),this.stopWatching=this.backend.watch(e=>{this.plan=Rn(e),this.error=null,this.sel&&!this.findEvent(this.sel)&&this.closeEditor()},e=>{this.error=e}))}measure(){this.width=this.clientWidth||window.innerWidth;let e=this.scroller;e&&(this.boardWidth=e.clientWidth)}get scroller(){return this.renderRoot.querySelector(".scroller")}get wide(){if(this.width<As)return!1;let e=this.plan;return!e||this.width-Cs>=Nt(Pe(e).length,ge(e).length)}today(){return Ke(this.plan?.time_zone??Ms())}currentBoard(){let e=this.plan;if(!e)return null;let n=this.today(),i=`${this.mode}|${this.boardWidth}|${n.date}|${n.minutes}`;return(this.board==null||e!==this.boardPlan||i!==this.boardKey)&&(this.board=zn(e,this.mode,this.boardWidth,n),this.boardPlan=e,this.boardKey=i),this.board}dayIndexOf(e){return this.plan?this.plan.days.findIndex(n=>n.date===e):-1}scrollToTime(e,n){let i=this.scroller;if(!i||!this.board)return;let r=this.board.dayHeads.find(a=>a.date===n)?.y??0;i.scrollTop=Math.max(r,En(this.board,e)-mt-4),this.syncDay()}scrollToNow(){if(!this.plan)return;let e=this.today(),n=Math.max(0,this.dayIndexOf(e.date));this.scrollToTime(n*1440+(this.mode==="timeline"&&n===this.dayIndexOf(e.date)?e.minutes-45:0),this.plan.days[n]?.date)}goToDay(e){let n=this.plan;if(!n)return;let i=this.today();if(e===i.date){this.scrollToNow();return}let r=this.dayIndexOf(e),a=n.days[r];if(!a)return;let o=1/0;if(this.mode==="timeline"){for(let l of a.events)o=Math.min(o,l.arrive_by??l.start);for(let l of Object.values(a.drivers))for(let p of l.outings)p.start!=null&&(o=Math.min(o,p.start))}this.scrollToTime(r*1440+(Number.isFinite(o)?Math.max(0,o-30):0),e)}syncDay(){let e=this.scroller;if(!e||!this.board||!this.board.dayHeads.length)return;let n=e.scrollTop,i=this.board.dayHeads[0];for(let p of this.board.dayHeads)p.y<=n+1&&(i=p);let r=this.renderRoot,a=r.querySelector(".pinned .label"),o=r.querySelector(".pinned .tag"),l=r.querySelector(".pinned .sub");a&&a.textContent!==i.label&&(a.textContent=i.label),o&&(o.textContent!==i.tag&&(o.textContent=i.tag),o.hidden=!i.tag),l&&l.textContent!==i.sub&&(l.textContent=i.sub),l?.classList.toggle("warn",i.warn);for(let p of r.querySelectorAll(".day-tile"))p.classList.toggle("in-view",p.dataset.date===i.date)}setPage(e){e!==this.page&&(this.closeEditor(),this.page=e,e==="rides"&&(this.scrolledOnce=!1))}async toggleChore(e){if(!this.backend)return;let n=!this.choreDone(e),i=new Map(this.choreDraft);i.set(e.id,n),this.choreDraft=i;try{await this.backend.setChoreDone(e.id,n)}catch(r){let a=new Map(this.choreDraft);a.delete(e.id),this.choreDraft=a;let o=r instanceof Y?r:new Y("error",String(r));this.showToast(o.code==="preview"?o.message:`Couldn’t save that. ${o.message}`)}}choreDone(e){return this.choreDraft.get(e.id)??Re(e)}setMode(e){if(e===this.mode)return;let n=this.scroller;this.keepAt=n&&this.board?Mn(this.board,n.scrollTop+mt+4):null,this.mode=e,this.urlView||Rs(e)}findEvent(e){let n=this.plan?.days.find(r=>r.date===e.day),i=n?.events.find(r=>r.id===e.event);return n&&i?{day:n,event:i}:null}open(e,n=!1){e&&(this.flushArrive(),this.sel=e,this.scope="this",this.arriveDraft=void 0,n&&this.reveal(e))}reveal(e){let n=this.findEvent(e),i=this.dayIndexOf(e.day);!n||i<0||this.scrollToTime(i*1440+Math.max(0,(n.event.arrive_by??n.event.start)-30),e.day)}closeEditor(){this.flushArrive(),this.sel=null,this.arriveDraft=void 0}showToast(e){this.toast=e,this.toastTimer&&clearTimeout(this.toastTimer),this.toastTimer=setTimeout(()=>{this.toast=null},7e3)}async save(e,n,i){if(!this.pending){this.pending={key:e,value:n};try{await i()}catch(r){let a=r instanceof Y?r:new Y("error",String(r));this.showToast(a.code==="preview"?a.message:`Couldn’t save that. ${a.message}`)}finally{this.pending=null}}}setRide(e,n,i){if(!this.backend)return;let r=this.backend;this.save(`${n}`,i,()=>r.setRide(e.id,n,i,this.scope))}setAttending(e,n){if(!this.backend||e.attending!==!1===n)return;let i=this.backend;this.save("attending",n,()=>i.setAttending(e.id,n,this.scope))}toggleStay(e){if(!this.backend)return;let n=this.backend;this.save("stay",!e.stay,()=>n.setStay(e.id,!e.stay,this.scope))}toggleAlong(e,n){if(!this.backend)return;let i=this.backend,r=e.along.includes(n)?e.along.filter(a=>a!==n):[...e.along,n];this.save("along",r,()=>i.setTakeAlong(e.id,r,this.scope))}nudgeArrive(e,n){let i=this.arriveDraft!==void 0?this.arriveDraft:e.arrive_by,r;n<0?r=(i??e.start)-5:r=i==null||i+5>=e.start?null:i+5,this.arriveDraft=r,this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=setTimeout(()=>this.flushArrive(),Es)}clearArrive(){this.arriveDraft=null,this.flushArrive()}flushArrive(){this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=null;let e=this.arriveDraft,n=this.sel;if(e===void 0||!n||!this.backend)return;let i=this.findEvent(n);if(!i||i.event.arrive_by===e){this.arriveDraft=void 0;return}let r=this.backend,a=i.event.id,o=this.scope;this.save("arrive",e,()=>r.setArriveBy(a,e,o)).then(()=>{this.arriveDraft=void 0})}apply(e){if(!this.backend)return;let n=this.backend;this.save(`fix|${e}`,e,()=>n.applySuggestion(e))}render(){let e=this.plan,n=this.currentBoard(),i=e?Nn(e,this.today()):{items:[],problems:0,unassigned:0,later:0,laterUnassigned:0},r=this.wide,a=this.chores?Un(this.chores).filter(p=>!this.choreDone(p)):[],o=d`<aside class="panel" aria-label=${this.sel?"Change this ride":"Needs attention"}>
-      ${this.sel&&e?this.renderEditor(e):this.renderAttention(i,a)}
-    </aside>`,l=this.page==="rides";return d`
-      <div class="app ${r?"wide":this.width<Ps?"narrow phone":"narrow"}">
+  /* Managing chores */
+  .chores-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .chores-bar .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chores-hint {
+    flex: 1 1 auto;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .manage-title {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 800;
+  }
+  .setup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 16px;
+    background: #fff8e8;
+    border: 1px solid #ebcb7e;
+  }
+  .setup-head {
+    margin: 0 4px;
+    color: #5c3d00;
+  }
+  .setup-list,
+  .tmpl-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 8px;
+  }
+  .phone .setup-list,
+  .phone .tmpl-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .manage-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tmpl {
+    min-height: 64px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    color: var(--ink);
+  }
+  .tmpl.needs {
+    border: 1px dashed #c9a24d;
+    box-shadow: none;
+  }
+  .tmpl.paused {
+    background: var(--surface-2);
+  }
+  .tmpl.paused .chore-title,
+  .tmpl.paused .tmpl-icon {
+    opacity: 0.6;
+  }
+  .tmpl.sel {
+    outline: 3px solid var(--ink);
+    outline-offset: 1px;
+  }
+  .tmpl-icon {
+    width: 32px;
+    flex: none;
+    text-align: center;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--faint);
+  }
+  .tmpl .chore-text {
+    flex: 1 1 auto;
+  }
+  .tmpl-note {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted);
+  }
+  .tmpl-note.bad {
+    color: var(--warn-ink);
+    font-weight: 600;
+  }
+  .tmpl-dots {
+    display: flex;
+    gap: 4px;
+    flex: none;
+  }
+  .tag-paused {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--control);
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 700;
+    vertical-align: 2px;
+    text-decoration: none;
+  }
+  .message-aside {
+    margin: 16px 0 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--muted);
+  }
+  .chores-message .big-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
+    padding: 0 22px;
+    font-size: 16px;
+  }
+  .text-input {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    resize: vertical;
+  }
+  .text-input:focus {
+    outline: 3px solid #2d5fc4;
+    outline-offset: 1px;
+  }
+  textarea.text-input {
+    min-height: 64px;
+  }
+  .icon-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 6px;
+  }
+  .icon-chips .chip {
+    min-height: 44px;
+    padding: 0;
+    border-radius: 10px;
+    font-size: 22px;
+  }
+  .icon-chips .chip[aria-pressed="true"] {
+    background: #e8eefb;
+    border: 2px solid var(--ink);
+    color: var(--ink);
+  }
+  .day-chips {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .day-chips .chip {
+    min-height: 44px;
+    padding: 0;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .who-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .who-chip {
+    min-height: 48px;
+    padding: 0 16px 0 6px;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .who-chip .avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+    background: var(--control);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .who-chip[aria-pressed="true"] {
+    border-color: var(--c);
+    background: rgba(var(--rgb), 0.12);
+    box-shadow: inset 0 0 0 1px var(--c);
+  }
+  .who-chip[aria-pressed="true"] .avatar {
+    background: var(--c);
+    color: #fff;
+  }
+  .ed-icon {
+    font-size: 24px;
+    line-height: 1;
+  }
+  .ed-foot {
+    position: sticky;
+    bottom: -20px;
+    margin: 4px -20px -20px;
+    padding: 12px 20px 20px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface) 12px);
+  }
+  .narrow .ed-foot {
+    margin: 4px -18px calc(-20px - env(safe-area-inset-bottom));
+    padding: 12px 18px calc(20px + env(safe-area-inset-bottom));
+    bottom: calc(-20px - env(safe-area-inset-bottom));
+  }
+  .ed-foot .save {
+    width: 100%;
+    min-height: 52px;
+    font-size: 16px;
+  }
+  .ed-foot .save:disabled {
+    background: var(--control);
+    border-color: var(--control);
+    color: var(--muted);
+  }
+  .chip.remove {
+    align-self: flex-start;
+    color: var(--bad-ink);
+    border-color: #f0c2be;
+  }
+  .done-by {
+    min-height: 56px;
+    padding: 0 16px 0 8px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: left;
+  }
+  .done-by.main {
+    min-height: 76px;
+    font-size: 20px;
+    border: 2px solid var(--c);
+    background: rgba(var(--rgb), 0.1);
+  }
+  .done-by.main .avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+  .done-by-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+`;var tn="mydashlight.rides.mode",On=1100,Hn=440,Un=700,jn=3*6e4,Wn=1200;function qn(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"}catch{return"UTC"}}var Qt=Q`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>`,Fn=Q`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.3V20h2.7l9.9-9.9-2.7-2.7zM19.7 7a1 1 0 0 0 0-1.4l-1.3-1.3a1 1 0 0 0-1.4 0l-1.2 1.2 2.7 2.7z"/></svg>`,Vn=["🛏️","🍽️","🧺","👕","🧹","🧽","🗑️","♻️","🐕","🐈","🐟","🌱","🪥","🛁","🧸","📚","🎒","🎻","🎹","🚗","🥪","💊"];function Kn(n,s){let e={daily:"day",weekly:"week",monthly:"month"}[n];return s<=1?`Every ${e}`:s===2?`Every other ${e}`:`Every ${s} ${e}s${n==="monthly"&&s===3?" (quarterly)":""}`}function me(n){let s=/\p{L}|\p{N}/u.exec(n);return s?s[0].toUpperCase():"?"}function Gn(n,s){return Ut(n,s)||Ae(n).split(",")[0]}function Yn(n){let s=n.map(e=>`${e}’s`);return s.length<2?s[0]??"":`${s.slice(0,-1).join(", ")} or ${s[s.length-1]}`}function Zn(){try{return localStorage.getItem(tn)==="compact"?"compact":"timeline"}catch{return"timeline"}}function Xn(n){try{localStorage.setItem(tn,n)}catch{}}function yt(n){return n.days.every(s=>!s.events.length)}var Xe=class extends X{constructor(){super();this.stopWatching=null;this.resize=null;this.clockTimer=null;this.idleTimer=null;this.toastTimer=null;this.arriveTimer=null;this.drag=null;this.eatClick=!1;this.board=null;this.minuteKey="";this.watchedScroller=null;this.boardPlan=null;this.boardKey="";this.keepAt=null;this.urlView=Jt(location.search).view;this.urlPage=Jt(location.search).page;this.stopChores=null;this.scrolledOnce=!1;this.onDown=e=>{if(e.pointerType==="touch"||e.button!==0)return;let t=e.currentTarget;this.drag={el:t,x:e.clientX,y:e.clientY,top:t.scrollTop,left:t.scrollLeft,moved:!1,id:e.pointerId}};this.onMove=e=>{let t=this.drag;if(!t)return;let i=e.clientX-t.x,r=e.clientY-t.y;if(!t.moved){if(Math.abs(i)+Math.abs(r)<6)return;t.moved=!0;try{t.el.setPointerCapture(t.id)}catch{}t.el.classList.add("dragging")}t.el.scrollTop=t.top-r,t.el.scrollLeft=t.left-i};this.onUp=()=>{let e=this.drag;this.drag=null,e&&(e.el.classList.remove("dragging"),e.moved&&(this.eatClick=!0,setTimeout(()=>{this.eatClick=!1},0)))};this.onClickCapture=e=>{this.eatClick&&(e.stopPropagation(),e.preventDefault(),this.eatClick=!1)};this.onActivity=()=>{this.kiosk&&(this.idleTimer&&clearTimeout(this.idleTimer),this.idleTimer=setTimeout(()=>{this.closeEditor(),this.sheet=!1,this.page!==(this.urlPage??"rides")&&this.setPage(this.urlPage??"rides"),this.urlView&&this.mode!==this.urlView?(this.mode=this.urlView,this.scrolledOnce=!1):this.scrollToNow()},jn))};this.onKey=e=>{e.key==="Escape"&&(this.choreEdit||this.whoFor?this.closeChorePanels():this.sel?this.closeEditor():this.sheet=!1)};this.toggleMenu=()=>{this.dispatchEvent(new CustomEvent("hass-toggle-menu",{bubbles:!0,composed:!0}))};this.backend=null,this.kiosk=!1,this.showMenu=!1,this.plan=null,this.error=null,this.mode=this.urlView??Zn(),this.sel=null,this.sheet=!1,this.width=1600,this.boardWidth=1160,this.pending=null,this.toast=null,this.scope="this",this.arriveDraft=void 0,this.tick=0,this.page=this.urlPage??"rides",this.chores=void 0,this.choreDraft=new Map,this.manage=!1,this.choreEdit=null,this.choreBusy=!1,this.removeArmed=!1,this.whoFor=null,this.whoOthers=!1}connectedCallback(){super.connectedCallback(),this.clockTimer=setInterval(()=>{let e=this.today(),t=`${e.date}|${e.minutes}`;t!==this.minuteKey&&(this.minuteKey=t,this.tick++)},5e3),this.addEventListener("pointerdown",this.onActivity,{capture:!0}),this.addEventListener("keydown",this.onKey),this.watchBackend()}disconnectedCallback(){super.disconnectedCallback(),this.stopWatching?.(),this.stopWatching=null,this.stopChores?.(),this.stopChores=null,this.resize?.disconnect(),this.resize=null;for(let e of[this.idleTimer,this.toastTimer,this.arriveTimer])e&&clearTimeout(e);this.clockTimer&&clearInterval(this.clockTimer),this.removeEventListener("pointerdown",this.onActivity,{capture:!0}),this.removeEventListener("keydown",this.onKey)}willUpdate(e){e.has("backend")&&this.isConnected&&this.watchBackend()}firstUpdated(){this.resize=new ResizeObserver(()=>this.measure()),this.resize.observe(this),this.measure()}updated(){let e=this.scroller;if(e!==this.watchedScroller&&this.resize&&(this.watchedScroller&&this.resize.unobserve(this.watchedScroller),e&&this.resize.observe(e),this.watchedScroller=e),!(!e||!this.board)){if(!this.scrolledOnce&&this.plan){this.scrolledOnce=!0,this.scrollToNow();return}if(this.keepAt!=null){let t=this.keepAt;this.keepAt=null,this.scrollToTime(t)}else this.syncDay()}}watchBackend(){this.stopWatching?.(),this.stopWatching=null,this.stopChores?.(),this.stopChores=null,this.backend&&(this.stopChores=this.backend.watchChores(e=>{if(this.chores=e,e&&this.choreDraft.size){let t=new Map(this.choreDraft);for(let i of e.chores)t.has(i.id)&&Ie(i)===t.get(i.id)&&t.delete(i.id);for(let i of t.keys())e.chores.some(r=>r.id===i)||t.delete(i);this.choreDraft=t}}),this.stopWatching=this.backend.watch(e=>{this.plan=qs(e),this.error=null,this.sel&&!this.findEvent(this.sel)&&this.closeEditor()},e=>{this.error=e}))}measure(){this.width=this.clientWidth||window.innerWidth;let e=this.scroller;e&&(this.boardWidth=e.clientWidth)}get scroller(){return this.renderRoot.querySelector(".scroller")}get wide(){if(this.width<On)return!1;let e=this.plan;return!e||this.width-Hn>=Bt(Pe(e).length,ge(e).length)}today(){return Ge(this.plan?.time_zone??qn())}currentBoard(){let e=this.plan;if(!e)return null;let t=this.today(),i=`${this.mode}|${this.boardWidth}|${t.date}|${t.minutes}`;return(this.board==null||e!==this.boardPlan||i!==this.boardKey)&&(this.board=Ws(e,this.mode,this.boardWidth,t),this.boardPlan=e,this.boardKey=i),this.board}dayIndexOf(e){return this.plan?this.plan.days.findIndex(t=>t.date===e):-1}scrollToTime(e,t){let i=this.scroller;if(!i||!this.board)return;let r=this.board.dayHeads.find(a=>a.date===t)?.y??0;i.scrollTop=Math.max(r,Os(this.board,e)-xt-4),this.syncDay()}scrollToNow(){if(!this.plan)return;let e=this.today(),t=Math.max(0,this.dayIndexOf(e.date));this.scrollToTime(t*1440+(this.mode==="timeline"&&t===this.dayIndexOf(e.date)?e.minutes-45:0),this.plan.days[t]?.date)}goToDay(e){let t=this.plan;if(!t)return;let i=this.today();if(e===i.date){this.scrollToNow();return}let r=this.dayIndexOf(e),a=t.days[r];if(!a)return;let o=1/0;if(this.mode==="timeline"){for(let l of a.events)o=Math.min(o,l.arrive_by??l.start);for(let l of Object.values(a.drivers))for(let c of l.outings)c.start!=null&&(o=Math.min(o,c.start))}this.scrollToTime(r*1440+(Number.isFinite(o)?Math.max(0,o-30):0),e)}syncDay(){let e=this.scroller;if(!e||!this.board||!this.board.dayHeads.length)return;let t=e.scrollTop,i=this.board.dayHeads[0];for(let c of this.board.dayHeads)c.y<=t+1&&(i=c);let r=this.renderRoot,a=r.querySelector(".pinned .label"),o=r.querySelector(".pinned .tag"),l=r.querySelector(".pinned .sub");a&&a.textContent!==i.label&&(a.textContent=i.label),o&&(o.textContent!==i.tag&&(o.textContent=i.tag),o.hidden=!i.tag),l&&l.textContent!==i.sub&&(l.textContent=i.sub),l?.classList.toggle("warn",i.warn);for(let c of r.querySelectorAll(".day-tile"))c.classList.toggle("in-view",c.dataset.date===i.date)}setPage(e){e!==this.page&&(this.closeEditor(),this.closeChorePanels(),this.manage=!1,this.page=e,e==="rides"&&(this.scrolledOnce=!1))}tapChore(e){if(this.choreDone(e)||!this.chores?.people?.length){this.toggleChore(e);return}this.closeEditor(),this.closeChorePanels(),this.whoFor=e}async toggleChore(e,t){if(!this.backend)return;this.whoFor=null,this.whoOthers=!1;let i=!this.choreDone(e),r=new Map(this.choreDraft);r.set(e.id,i),this.choreDraft=r;try{await this.backend.setChoreDone(e.id,i,t&&t!==e.kid?t:void 0)}catch(a){let o=new Map(this.choreDraft);o.delete(e.id),this.choreDraft=o;let l=a instanceof H?a:new H("error",String(a));this.showToast(l.code==="preview"?l.message:`Couldn’t save that. ${l.message}`)}}choreDone(e){return this.choreDraft.get(e.id)??Ie(e)}editChore(e){this.closeEditor(),this.closeChorePanels();let t=this.chores?.kids[0]?.id;this.choreEdit=e?Js(e):Xs(this.chores?.kids.length===1&&t?[t]:[])}closeChorePanels(){this.choreEdit=null,this.choreBusy=!1,this.removeArmed=!1,this.whoFor=null,this.whoOthers=!1}changeDraft(e){this.choreEdit&&(this.choreEdit={...this.choreEdit,...e},this.removeArmed=!1)}async saveChoreEdit(){let e=this.choreEdit;if(!(!e||!this.backend||Kt(e))){this.choreBusy=!0;try{await this.backend.saveChoreTemplate(Qs(e)),this.closeChorePanels(),this.showToast(e.template?"Saved.":`Added. ${e.title.trim()} shows on the board in a moment.`)}catch(t){this.choreBusy=!1;let i=t instanceof H?t:new H("error",String(t));this.showToast(i.code==="preview"?i.message:`Couldn’t save that. ${i.message}`)}}}async removeChoreEdit(){let e=this.choreEdit;if(!(!e?.template||!this.backend)){if(!this.removeArmed){this.removeArmed=!0;return}this.choreBusy=!0;try{await this.backend.removeChoreTemplate(e.template),this.closeChorePanels(),this.showToast(`Removed ${e.title.trim()||"the chore"}.`)}catch(t){this.choreBusy=!1,this.removeArmed=!1;let i=t instanceof H?t:new H("error",String(t));this.showToast(i.code==="preview"?i.message:`Couldn’t remove that. ${i.message}`)}}}setMode(e){if(e===this.mode)return;let t=this.scroller;this.keepAt=t&&this.board?Hs(this.board,t.scrollTop+xt+4):null,this.mode=e,this.urlView||Xn(e)}findEvent(e){let t=this.plan?.days.find(r=>r.date===e.day),i=t?.events.find(r=>r.id===e.event);return t&&i?{day:t,event:i}:null}open(e,t=!1){e&&(this.flushArrive(),this.closeChorePanels(),this.sel=e,this.scope="this",this.arriveDraft=void 0,t&&this.reveal(e))}reveal(e){let t=this.findEvent(e),i=this.dayIndexOf(e.day);!t||i<0||this.scrollToTime(i*1440+Math.max(0,(t.event.arrive_by??t.event.start)-30),e.day)}closeEditor(){this.flushArrive(),this.sel=null,this.arriveDraft=void 0}showToast(e){this.toast=e,this.toastTimer&&clearTimeout(this.toastTimer),this.toastTimer=setTimeout(()=>{this.toast=null},7e3)}async save(e,t,i){if(!this.pending){this.pending={key:e,value:t};try{await i()}catch(r){let a=r instanceof H?r:new H("error",String(r));this.showToast(a.code==="preview"?a.message:`Couldn’t save that. ${a.message}`)}finally{this.pending=null}}}setRide(e,t,i){if(!this.backend)return;let r=this.backend;this.save(`${t}`,i,()=>r.setRide(e.id,t,i,this.scope))}setAttending(e,t){if(!this.backend||e.attending!==!1===t)return;let i=this.backend;this.save("attending",t,()=>i.setAttending(e.id,t,this.scope))}toggleStay(e){if(!this.backend)return;let t=this.backend;this.save("stay",!e.stay,()=>t.setStay(e.id,!e.stay,this.scope))}toggleAlong(e,t){if(!this.backend)return;let i=this.backend,r=e.along.includes(t)?e.along.filter(a=>a!==t):[...e.along,t];this.save("along",r,()=>i.setTakeAlong(e.id,r,this.scope))}nudgeArrive(e,t){let i=this.arriveDraft!==void 0?this.arriveDraft:e.arrive_by,r;t<0?r=(i??e.start)-5:r=i==null||i+5>=e.start?null:i+5,this.arriveDraft=r,this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=setTimeout(()=>this.flushArrive(),Wn)}clearArrive(){this.arriveDraft=null,this.flushArrive()}flushArrive(){this.arriveTimer&&clearTimeout(this.arriveTimer),this.arriveTimer=null;let e=this.arriveDraft,t=this.sel;if(e===void 0||!t||!this.backend)return;let i=this.findEvent(t);if(!i||i.event.arrive_by===e){this.arriveDraft=void 0;return}let r=this.backend,a=i.event.id,o=this.scope;this.save("arrive",e,()=>r.setArriveBy(a,e,o)).then(()=>{this.arriveDraft=void 0})}apply(e){if(!this.backend)return;let t=this.backend;this.save(`fix|${e}`,e,()=>t.applySuggestion(e))}render(){let e=this.plan,t=this.currentBoard(),i=e?Fs(e,this.today()):{items:[],problems:0,unassigned:0,later:0,laterUnassigned:0},r=this.wide,a=this.chores?Ys(this.chores).filter(h=>!this.choreDone(h)):[],o=this.choreEdit?this.renderChoreEditor(this.choreEdit):this.whoFor?this.renderWhoDidIt(this.whoFor):null,l=this.choreEdit?this.choreEdit.template?"Change a chore":"Add a chore":this.whoFor?"Who did it":this.sel?"Change this ride":"Needs attention",c=d`<aside class="panel" aria-label=${l}>
+      ${o??(this.sel&&e?this.renderEditor(e):this.renderAttention(i,a))}
+    </aside>`,g=this.page==="rides";return d`
+      <div class="app ${r?"wide":this.width<Un?"narrow phone":"narrow"}">
         <div class="col">
-          ${this.renderHeader(e,i,a.length)} ${l&&e?this.renderWeek(e):f}
-          ${l?this.renderBanner(e):f}
+          ${this.renderHeader(e,i,a.length)} ${g&&e?this.renderWeek(e):m}
+          ${g?this.renderBanner(e):m}
           <main>
-            ${l?d`<section class="board-area" aria-label="Everyone’s week">
-                  ${n&&e?bt(e)?this.renderQuiet(e):this.renderBoard(n):this.renderEmpty()}
+            ${g?d`<section class="board-area" aria-label="Everyone’s week">
+                  ${t&&e?yt(e)?this.renderQuiet(e):this.renderBoard(t):this.renderEmpty()}
                 </section>`:d`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
-            ${!r&&(this.sheet||this.sel)?d`<div class="backdrop" @click=${()=>this.closePanel()}></div>
-                  ${o}`:f}
+            ${!r&&(this.sheet||this.sel||this.choreEdit||this.whoFor)?d`<div class="backdrop" @click=${()=>this.closePanel()}></div>
+                  ${c}`:m}
           </main>
         </div>
-        ${r?o:f}
-        ${this.toast?d`<div class="toast" role="status">${this.toast}</div>`:f}
+        ${r?c:m}
+        ${this.toast?d`<div class="toast" role="status">${this.toast}</div>`:m}
       </div>
-    `}closePanel(){this.closeEditor(),this.sheet=!1}renderHeader(e,n,i){let r=n.problems+i;this.tick;let a=this.today(),o="";if(e){let g=e.time_zone,b=new Date(e.updated);this.error?o=d`<span class="bad">Can’t reach Home Assistant · showing the plan from ${at(b,new Date,g)}</span>`:e.status&&!e.status.ok?o=d`<span class="bad">Couldn’t read Google Calendar${e.status.error?`: ${e.status.error}`:""} · plan from ${at(b,new Date,g)}</span>`:this.backend?.live||(o=`Updated ${at(b,new Date,g)}`)}let l=(g,b,v,u)=>d`
-      <button type="button" class="seg-btn" title=${u} aria-pressed=${this.mode===g?"true":"false"} @click=${()=>this.setMode(g)}>
-        ${v}<span class="seg-label">${b}</span>
+    `}closePanel(){this.closeEditor(),this.closeChorePanels(),this.sheet=!1}renderHeader(e,t,i){let r=t.problems+i;this.tick;let a=this.today(),o="";if(e){let f=e.time_zone,v=new Date(e.updated);this.error?o=d`<span class="bad">Can’t reach Home Assistant · showing the plan from ${dt(v,new Date,f)}</span>`:e.status&&!e.status.ok?o=d`<span class="bad">Couldn’t read Google Calendar${e.status.error?`: ${e.status.error}`:""} · plan from ${dt(v,new Date,f)}</span>`:this.backend?.live||(o=`Updated ${dt(v,new Date,f)}`)}let l=(f,v,y,p)=>d`
+      <button type="button" class="seg-btn" title=${p} aria-pressed=${this.mode===f?"true":"false"} @click=${()=>this.setMode(f)}>
+        ${y}<span class="seg-label">${v}</span>
       </button>
-    `,p=(g,b,v)=>d`
-      <button type="button" class="seg-btn" aria-pressed=${this.page===g?"true":"false"} @click=${()=>this.setPage(g)}>
-        ${v}<span class="seg-label">${b}</span>
+    `,c=(f,v,y)=>d`
+      <button type="button" class="seg-btn" aria-pressed=${this.page===f?"true":"false"} @click=${()=>this.setPage(f)}>
+        ${y}<span class="seg-label">${v}</span>
       </button>
-    `,m=Ve(a.minutes),h=!!e&&bt(e);return d`
+    `,g=Ke(a.minutes),h=!!e&&yt(e);return d`
       <header>
         ${this.showMenu?d`<button type="button" class="icon-btn" aria-label="Open the Home Assistant menu" @click=${this.toggleMenu}>
-              ${le`<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>`}
-            </button>`:f}
+              ${Q`<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>`}
+            </button>`:m}
         <div class="titles">
-          <h1 class="clock" aria-label=${`${Ae(a.date)}, ${m}`}>
-            <span class="hm">${m.slice(0,-3)}</span><span class="ampm">${m.slice(-2)}</span>
+          <h1 class="clock" aria-label=${`${Ae(a.date)}, ${g}`}>
+            <span class="hm">${g.slice(0,-3)}</span><span class="ampm">${g.slice(-2)}</span>
           </h1>
           <p class="today-line">${Ae(a.date)}</p>
-          ${o?d`<p class="status">${o}</p>`:f}
+          ${o?d`<p class="status">${o}</p>`:m}
         </div>
-        ${e&&!h?this.renderNext(e,In(e,a),n):f}
+        ${e&&!h?this.renderNext(e,Vs(e,a),t):m}
         <div class="controls">
-          ${this.wide||h&&!i?f:d`<button type="button" class="attn-btn ${r?"has":""}" @click=${()=>{this.sheet=!0}}>
+          ${this.wide||h&&!i?m:d`<button type="button" class="attn-btn ${r?"has":""}" @click=${()=>{this.sheet=!0}}>
                 <span class="attn-label">Needs attention</span> <span class="count">${r}</span>
               </button>`}
           <!-- Views first: they go on Chores, so the page switch stays put at the edge. -->
-          ${this.page!=="rides"?f:d`<div role="group" aria-label="View" class="seg">
-            ${l("timeline","Timeline",le`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="1" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="8" width="14" height="3" rx="1.5" fill="currentColor" opacity="0.55"/><rect x="2" y="14" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Spacing matches the clock")}
-            ${l("compact","Compact",le`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="7.5" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="12" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Everything in order, no time scale")}
+          ${this.page!=="rides"?m:d`<div role="group" aria-label="View" class="seg">
+            ${l("timeline","Timeline",Q`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="1" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="8" width="14" height="3" rx="1.5" fill="currentColor" opacity="0.55"/><rect x="2" y="14" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Spacing matches the clock")}
+            ${l("compact","Compact",Q`<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="7.5" width="14" height="3" rx="1.5" fill="currentColor"/><rect x="2" y="12" width="14" height="3" rx="1.5" fill="currentColor"/></svg>`,"Everything in order, no time scale")}
           </div>`}
           <div role="group" aria-label="Page" class="seg pages">
-            ${p("rides","Rides",le`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2zm2.2 0h9.6l-1.1-3H8.3zM7 15.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`)}
-            ${p("chores","Chores",le`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 6.5l2 2 3.5-3.5M4 15.5l2 2 3.5-3.5M13 7h7M13 16h7"/></svg>`)}
+            ${c("rides","Rides",Q`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2zm2.2 0h9.6l-1.1-3H8.3zM7 15.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`)}
+            ${c("chores","Chores",Q`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 6.5l2 2 3.5-3.5M4 15.5l2 2 3.5-3.5M13 7h7M13 16h7"/></svg>`)}
           </div>
         </div>
       </header>
-    `}renderNext(e,n,i){if(!n){let p=this.today().date,m=i.unassigned,h=i.laterUnassigned;if(m){let b=d`<span class="next-eyebrow">No trips planned yet</span>
-          <span class="next-lead">${m} ${m===1?"ride needs":"rides need"} a driver</span>
-          <span class="next-stop">${this.wide?"Pick who drives under Needs attention.":"Tap to pick who drives."}</span>`;return this.wide?d`<div class="next idle needs">${b}</div>`:d`<button type="button" class="next idle needs" @click=${()=>this.sheet=!0}>${b}</button>`}if(h)return d`<div class="next idle">
+    `}renderNext(e,t,i){if(!t){let c=this.today().date,g=i.unassigned,h=i.laterUnassigned;if(g){let v=d`<span class="next-eyebrow">No trips planned yet</span>
+          <span class="next-lead">${g} ${g===1?"ride needs":"rides need"} a driver</span>
+          <span class="next-stop">${this.wide?"Pick who drives under Needs attention.":"Tap to pick who drives."}</span>`;return this.wide?d`<div class="next idle needs">${v}</div>`:d`<button type="button" class="next idle needs" @click=${()=>this.sheet=!0}>${v}</button>`}if(h)return d`<div class="next idle">
           <span class="next-eyebrow">No trips planned yet</span>
           <span class="next-lead">All set for the next two days</span>
           <span class="next-stop">${h} ${h===1?"ride needs":"rides need"} a driver later this week.</span>
-        </div>`;let g=e.days.some(b=>b.date>=p&&b.events.length);return d`<div class="next idle">
+        </div>`;let f=e.days.some(v=>v.date>=c&&v.events.length);return d`<div class="next idle">
         <span class="next-eyebrow">All set</span>
-        <span class="next-lead">${g?"No more trips this week":"No trips this week"}</span>
-        <span class="next-stop">${g?"Nobody else needs driving anywhere.":"Nobody needs a ride yet."}</span>
-      </div>`}let r;n.ongoing?r="On the road now":n.ahead===0?r=n.inMinutes<180?`Next trip · in ${Fe(n.inMinutes)}`:"Next trip · later today":n.ahead===1?r="Next trip · tomorrow":r=`Next trip · ${G(n.date)}`;let a=!n.ongoing&&n.ahead===0&&n.inMinutes<=30,o=d`
+        <span class="next-lead">${f?"No more trips this week":"No trips this week"}</span>
+        <span class="next-stop">${f?"Nobody else needs driving anywhere.":"Nobody needs a ride yet."}</span>
+      </div>`}let r;t.ongoing?r="On the road now":t.ahead===0?r=t.inMinutes<180?`Next trip · in ${Ye(t.inMinutes)}`:"Next trip · later today":t.ahead===1?r="Next trip · tomorrow":r=`Next trip · ${Y(t.date)}`;let a=!t.ongoing&&t.ahead===0&&t.inMinutes<=30,o=d`
       <span class="next-eyebrow">${r}</span>
       <span class="next-main">
-        <span class="avatar driver" aria-hidden="true">${Ge(n.name)}</span>
-        <span class="next-lead">${n.name} · ${n.lead}</span>
-        <span class="next-kids">${n.kids.map(p=>d`<span class="kid-dot" style="background:${p.color}"></span>`)}</span>
+        <span class="avatar driver" aria-hidden="true">${me(t.name)}</span>
+        <span class="next-lead">${t.name} · ${t.lead}</span>
+        <span class="next-kids">${t.kids.map(c=>d`<span class="kid-dot" style="background:${c.color}"></span>`)}</span>
       </span>
-      ${n.warn?d`<span class="next-stop warn">${n.warn}</span>`:n.stop?d`<span class="next-stop">${n.stop}</span>`:f}
-    `,l=`next ${n.ongoing?"ongoing":a?"soon":""}`;return n.target?d`<button type="button" class=${l} @click=${()=>this.open(n.target)}>${o}</button>`:d`<div class=${l}>${o}</div>`}renderWeek(e){let n=this.today().date,i=de(e);return d`<nav class="week" aria-label="Days">
-      ${e.days.map(r=>{let a=Bt(r),o=r.events.length,l=r.events.slice(0,6).map(m=>i.get(m.kid)?.color??F(0).color),p=`${Ae(r.date)}: ${o?`${o} ${o===1?"activity":"activities"}`:"nothing planned"}${a?`, ${a} to sort out`:""}`;return d`<button
+      ${t.warn?d`<span class="next-stop warn">${t.warn}</span>`:t.stop?d`<span class="next-stop">${t.stop}</span>`:m}
+    `,l=`next ${t.ongoing?"ongoing":a?"soon":""}`;return t.target?d`<button type="button" class=${l} @click=${()=>this.open(t.target)}>${o}</button>`:d`<div class=${l}>${o}</div>`}renderWeek(e){let t=this.today().date,i=J(e);return d`<nav class="week" aria-label="Days">
+      ${e.days.map(r=>{let a=Ht(r),o=r.events.length,l=r.events.slice(0,6).map(g=>i.get(g.kid)?.color??L(0).color),c=`${Ae(r.date)}: ${o?`${o} ${o===1?"activity":"activities"}`:"nothing planned"}${a?`, ${a} to sort out`:""}`;return d`<button
           type="button"
-          class="day-tile ${r.date===n?"today":""}"
+          class="day-tile ${r.date===t?"today":""}"
           data-date=${r.date}
-          aria-label=${p}
+          aria-label=${c}
           @click=${()=>this.goToDay(r.date)}
         >
-          <span class="dt-wd">${r.date===n?"Today":G(r.date)}</span>
+          <span class="dt-wd">${r.date===t?"Today":Y(r.date)}</span>
           <span class="dt-num">${Number(r.date.slice(8))}</span>
           <span class="dt-dots" aria-hidden="true">
-            ${l.length?l.map(m=>d`<span class="dt-dot" style="background:${m}"></span>`):d`<span class="dt-free">free</span>`}
-            ${o>6?d`<span class="dt-more">+${o-6}</span>`:f}
+            ${l.length?l.map(g=>d`<span class="dt-dot" style="background:${g}"></span>`):d`<span class="dt-free">free</span>`}
+            ${o>6?d`<span class="dt-more">+${o-6}</span>`:m}
           </span>
-          ${a?d`<span class="dt-badge" aria-hidden="true">${a}</span>`:f}
+          ${a?d`<span class="dt-badge" aria-hidden="true">${a}</span>`:m}
         </button>`})}
-    </nav>`}renderQuiet(e){let n=Pe(e),i=ge(e),r=de(e),a=n.map(o=>Z(e,o));return d`<div class="quiet-week">
+    </nav>`}renderQuiet(e){let t=Pe(e),i=ge(e),r=J(e),a=t.map(o=>Z(e,o));return d`<div class="quiet-week">
       <div class="qw-hero">
         <svg class="qw-art" viewBox="0 0 160 120" aria-hidden="true">
           <rect x="18" y="20" width="124" height="92" rx="16" fill="var(--surface)" stroke="var(--line)" stroke-width="2" />
@@ -2100,22 +2371,22 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
           <rect x="18" y="34" width="124" height="12" fill="var(--ink)" />
           <rect x="46" y="10" width="8" height="20" rx="4" fill="var(--ink-2)" />
           <rect x="106" y="10" width="8" height="20" rx="4" fill="var(--ink-2)" />
-          ${n.slice(0,3).map((o,l)=>le`<circle cx=${50+l*30} cy="80" r="11" fill=${r.get(o).color} opacity="0.9" />`)}
+          ${t.slice(0,3).map((o,l)=>Q`<circle cx=${50+l*30} cy="80" r="11" fill=${r.get(o).color} opacity="0.9" />`)}
         </svg>
         <h2>A quiet week, with nothing to drive</h2>
         <p>
-          When something lands on ${Ds(a)} Google calendar, it shows up here within a minute, with who’s driving and when
+          When something lands on ${Yn(a)} Google calendar, it shows up here within a minute, with who’s driving and when
           to leave.
         </p>
       </div>
       <div class="qw-people">
-        ${n.map(o=>{let l=r.get(o);return d`<div class="qw-person" style="--c:${l.color};--rgb:${l.rgb}">
-            <span class="avatar" aria-hidden="true">${Ge(Z(e,o))}</span>
+        ${t.map(o=>{let l=r.get(o);return d`<div class="qw-person" style="--c:${l.color};--rgb:${l.rgb}">
+            <span class="avatar" aria-hidden="true">${me(Z(e,o))}</span>
             <span class="qw-name">${Z(e,o)}</span>
             <span class="qw-sub">Free all week</span>
           </div>`})}
         ${i.map(o=>d`<div class="qw-person driver">
-            <span class="avatar driver" aria-hidden="true">${Ge(fe(e,o))}</span>
+            <span class="avatar driver" aria-hidden="true">${me(fe(e,o))}</span>
             <span class="qw-name">${fe(e,o)}</span>
             <span class="qw-sub">No trips</span>
           </div>`)}
@@ -2134,14 +2405,14 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
           <span><strong>Tap a ride to change it</strong>Changes are saved in the event’s notes in Google Calendar.</span>
         </li>
       </ol>
-    </div>`}renderBanner(e){let n=e?.unavailable_calendars.length??0;return n?d`<div class="banner" role="status">
-      Couldn’t read ${n===1?"one calendar":`${n} calendars`} just now, so some activities may be missing. MyDashLight tries again every
+    </div>`}renderBanner(e){let t=e?.unavailable_calendars.length??0;return t?d`<div class="banner" role="status">
+      Couldn’t read ${t===1?"one calendar":`${t} calendars`} just now, so some activities may be missing. MyDashLight tries again every
       minute.
-    </div>`:f}renderEmpty(){return this.error?d`<div class="empty-state">
+    </div>`:m}renderEmpty(){return this.error?d`<div class="empty-state">
         <p class="big">Can’t load the rides</p>
         <p>${this.error.message}</p>
         <button type="button" class="btn dark" @click=${()=>void this.backend?.refresh()}>Try again</button>
-      </div>`:d`<div class="empty-state"><p class="big">Loading the week…</p></div>`}renderBoard(e){let n=this.sel,i=o=>!!o&&!!n&&o.day===n.day&&o.event===n.event,r=e.dayHeads[0],a=e.width;return d`
+      </div>`:d`<div class="empty-state"><p class="big">Loading the week…</p></div>`}renderBoard(e){let t=this.sel,i=o=>!!o&&!!t&&o.day===t.day&&o.event===t.event,r=e.dayHeads[0],a=e.width;return d`
       <div
         class="scroller"
         @pointerdown=${this.onDown}
@@ -2153,7 +2424,7 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
       >
         <div class="heads" style="width:${a}px">
           ${e.columns.map(o=>d`<div class="col-head ${o.kind}" style="left:${o.x}px;width:${o.w}px;--c:${o.dot};--rgb:${o.rgb}">
-              <span class="avatar ${o.kind}" aria-hidden="true">${Ge(o.name)}</span>
+              <span class="avatar ${o.kind}" aria-hidden="true">${me(o.name)}</span>
               <span class="ch-text">
                 <span class="name">${o.name}</span>
                 <span class="sub ${o.subWarn?"warn":""}">${o.sub}</span>
@@ -2171,7 +2442,7 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
               ></div>`)}
           <span class="sep" style="left:${e.sepX}px;height:${Math.max(e.height+392,592)}px"></span>
           ${e.dayHeads.map(o=>d`<div class="day-head" style="top:${o.y}px;width:${a}px">
-              <span class="label">${o.label}</span>${o.tag?d`<span class="tag">${o.tag}</span>`:f}<span
+              <span class="label">${o.label}</span>${o.tag?d`<span class="tag">${o.tag}</span>`:m}<span
                 class="sub ${o.warn?"warn":""}"
                 >${o.sub}</span
               >
@@ -2179,45 +2450,45 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
           ${e.empties.map(o=>d`<span class="empty" style="top:${o.y}px">${o.text}</span>`)}
           ${e.grid.map(o=>d`<div class="grid ${o.strong?"strong":""}" style="top:${o.y}px;width:${a-60}px"></div>`)}
           ${e.hours.map(o=>d`<span class="hour" style="top:${o.y}px">${o.label}</span>`)}
-          ${Q(e.bands,o=>o.key,o=>d`<div
+          ${te(e.bands,o=>o.key,o=>d`<div
                 class="band"
                 aria-hidden="true"
                 style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px;background:rgba(${o.color.rgb},0.10);border-color:rgba(${o.color.rgb},0.45)"
               ></div>`)}
-          ${Q(e.busy,o=>o.key,o=>d`<div class="busy" style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px">
+          ${te(e.busy,o=>o.key,o=>d`<div class="busy" style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px">
                 <span style="top:${o.labelY}px">${o.label}</span>
               </div>`)}
-          ${Q(e.preps,o=>o.key,o=>d`<div
+          ${te(e.preps,o=>o.key,o=>d`<div
                 class="prep"
                 aria-hidden="true"
                 style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px;border-color:${o.color.color};background:rgba(${o.color.rgb},0.07);color:${o.color.ink}"
               >
                 ${o.label}
               </div>`)}
-          ${Q(e.cards,o=>o.key,o=>{let l=o.color,p=o.skipped?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.10) 0px, rgba(${l.rgb},0.10) 6px, transparent 6px, transparent 12px), var(--surface)`:o.stayed?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.24) 0px, rgba(${l.rgb},0.24) 6px, rgba(${l.rgb},0.08) 6px, rgba(${l.rgb},0.08) 12px), var(--surface)`:`linear-gradient(rgba(${l.rgb},0.15), rgba(${l.rgb},0.15)), var(--surface)`;return d`<button
+          ${te(e.cards,o=>o.key,o=>{let l=o.color,c=o.skipped?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.10) 0px, rgba(${l.rgb},0.10) 6px, transparent 6px, transparent 12px), var(--surface)`:o.stayed?`repeating-linear-gradient(135deg, rgba(${l.rgb},0.24) 0px, rgba(${l.rgb},0.24) 6px, rgba(${l.rgb},0.08) 6px, rgba(${l.rgb},0.08) 12px), var(--surface)`:`linear-gradient(rgba(${l.rgb},0.15), rgba(${l.rgb},0.15)), var(--surface)`;return d`<button
                 type="button"
                 class="card ${o.wrap?"wrap":""} ${i(o.target)?"sel":""} ${o.clash?"clash":""} ${o.skipped?"skipped":""}"
                 aria-label=${o.aria}
-                style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px;background:${p};border-color:${o.clash?"var(--bad)":`rgba(${l.rgb},0.45)`};--c:${l.color};--rgb:${l.rgb};--ring:${l.color}"
+                style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px;background:${c};border-color:${o.clash?"var(--bad)":`rgba(${l.rgb},0.45)`};--c:${l.color};--rgb:${l.rgb};--ring:${l.color}"
                 @click=${()=>this.open(o.target)}
               >
                 <span class="top">
                   <span class="title">${o.title}</span>
                   <span class="time">${o.time}</span>
-                  ${o.showDrop&&o.drop?d`<span class="line tone-${o.drop.tone}">${o.drop.text}</span>`:f}
+                  ${o.showDrop&&o.drop?d`<span class="line tone-${o.drop.tone}">${o.drop.text}</span>`:m}
                 </span>
-                ${o.showPick&&o.pick?d`<span class="line tone-${o.pick.tone}">${o.pick.text}</span>`:f}
+                ${o.showPick&&o.pick?d`<span class="line tone-${o.pick.tone}">${o.pick.text}</span>`:m}
               </button>`})}
-          ${Q(e.rides,o=>o.key,o=>d`<button
+          ${te(e.rides,o=>o.key,o=>d`<button
                 type="button"
                 class="ride ${o.dashed?"dashed":""} ${o.clash?"clash":""}"
                 aria-label=${o.aria}
                 style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px"
                 @click=${()=>this.open(o.target)}
               >
-                <span class="l1">${o.l1}</span>${o.show2?d`<span class="l2" style="-webkit-line-clamp:${o.lines2}">${o.l2}</span>`:f}
+                <span class="l1">${o.l1}</span>${o.show2?d`<span class="l2" style="-webkit-line-clamp:${o.lines2}">${o.l2}</span>`:m}
               </button>`)}
-          ${Q(e.stays,o=>o.key,o=>d`<button
+          ${te(e.stays,o=>o.key,o=>d`<button
                 type="button"
                 class="stay"
                 style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px;border-color:${o.color.color};background:repeating-linear-gradient(135deg, rgba(${o.color.rgb},0.28) 0px, rgba(${o.color.rgb},0.28) 5px, #fff 5px, #fff 10px)"
@@ -2225,7 +2496,7 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
               >
                 <span class="l1" style="color:${o.color.ink}">${o.l1}</span><span class="l2">${o.l2}</span>
               </button>`)}
-          ${Q(e.trips,o=>o.key,o=>d`<button
+          ${te(e.trips,o=>o.key,o=>d`<button
                 type="button"
                 class="trip ${o.bad?"bad":""} ${o.stops?"list":""}"
                 aria-label=${o.aria}
@@ -2233,62 +2504,62 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
                 @click=${()=>this.open(o.target)}
               >
                 <span class="l1">${o.l1}${o.kids.map(l=>d`<span class="kid-dot" style="background:${l}"></span>`)}</span>
-                ${o.show2?d`<span class="l2">${o.l2}</span>`:f}
-                ${o.stops?o.stops.map(l=>d`<span class="stop ${l.warn?"warn":""}">${l.text}</span>`):f}
-                ${o.show3?d`<span class="l3">${o.l3}</span>`:f}
+                ${o.show2?d`<span class="l2">${o.l2}</span>`:m}
+                ${o.stops?o.stops.map(l=>d`<span class="stop ${l.warn?"warn":""}">${l.text}</span>`):m}
+                ${o.show3?d`<span class="l3">${o.l3}</span>`:m}
               </button>`)}
-          ${Q(e.overlaps,o=>o.key,o=>d`<div class="overlap" aria-hidden="true" style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px"></div>`)}
-          ${Q(e.marks,o=>o.key,o=>d`<span class="mark" style="left:${o.x}px;top:${o.y}px;${o.right?"transform:translateX(-100%)":""}">${o.text}</span>`)}
+          ${te(e.overlaps,o=>o.key,o=>d`<div class="overlap" aria-hidden="true" style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px"></div>`)}
+          ${te(e.marks,o=>o.key,o=>d`<span class="mark" style="left:${o.x}px;top:${o.y}px;${o.right?"transform:translateX(-100%)":""}">${o.text}</span>`)}
           ${e.now?d`<div class="now-line" aria-hidden="true" style="top:${e.now.y-1.5}px;width:${a-56}px"></div>
-                <span class="now-label" aria-hidden="true" style="top:${e.now.y-9}px">${e.now.label}</span>`:f}
+                <span class="now-label" aria-hidden="true" style="top:${e.now.y-9}px">${e.now.label}</span>`:m}
         </div>
       </div>
-    `}renderAttention(e,n){let{items:i,problems:r,later:a}=e,o=this.plan,l=r+n.length,p=this.chores,m=!!p&&!Ot(p);return d`
+    `}renderAttention(e,t){let{items:i,problems:r,later:a}=e,o=this.plan,l=r+t.length,c=this.chores,g=!!c&&!Ft(c);return d`
       <div class="panel-head">
         <h2>Needs attention</h2>
         <span class="count-pill ${l?"bad":"ok"}">${l}</span>
-        ${this.wide?f:d`<button type="button" class="btn dark" @click=${()=>this.sheet=!1}>Done</button>`}
+        ${this.wide?m:d`<button type="button" class="btn dark" @click=${()=>this.sheet=!1}>Done</button>`}
       </div>
-      ${m?d`<h3 class="panel-section">Chores <span class="panel-sub">Overdue and due today</span></h3>
-            ${n.length?d`<div class="attn-chores">${n.map(h=>this.renderChoreRow(h,!0))}</div>`:d`<p class="section-clear">All of today’s chores are done.</p>`}
+      ${g?d`<h3 class="panel-section">Chores <span class="panel-sub">Overdue and due today</span></h3>
+            ${t.length?d`<div class="attn-chores">${t.map(h=>this.renderChoreRow(h,!0))}</div>`:d`<p class="section-clear">All of today’s chores are done.</p>`}
             <h3 class="panel-section">Rides <span class="panel-sub">Next two days</span></h3>`:d`<p class="panel-sub">Rides in the next two days</p>`}
       ${o&&!r?d`<div class="all-clear">
-            <span class="check" aria-hidden="true">${le`<svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`}</span>
-            <span><strong>All clear</strong>${bt(o)?"Nothing needs you this week.":a?`Nothing for the next two days. ${a} more later this week, marked on the days above.`:"Every ride is covered and nobody is double-booked."}</span>
-          </div>`:f}
+            <span class="check" aria-hidden="true">${Q`<svg width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`}</span>
+            <span><strong>All clear</strong>${yt(o)?"Nothing needs you this week.":a?`Nothing for the next two days. ${a} more later this week, marked on the days above.`:"Every ride is covered and nobody is double-booked."}</span>
+          </div>`:m}
       ${i.map(h=>d`<div class="issue ${h.tone}">
           <div class="issue-main">
             <span class="glyph" aria-hidden="true">${h.tone==="heads_up"?"i":"!"}</span>
             <div class="issue-text">
               ${h.target?d`<button type="button" class="issue-title" @click=${()=>this.open(h.target,!0)}>${h.title}</button>`:d`<strong class="issue-title">${h.title}</strong>`}
               <span class="issue-body"
-                >${h.parts?h.parts.map(g=>typeof g=="string"?g:d`<button type="button" class="issue-link" @click=${()=>this.open(g.target,!0)}>${g.text}</button>`):h.body}</span
+                >${h.parts?h.parts.map(f=>typeof f=="string"?f:d`<button type="button" class="issue-link" @click=${()=>this.open(f.target,!0)}>${f.text}</button>`):h.body}</span
               >
             </div>
           </div>
           ${h.suggestions.length?d`<div class="fixes">
-                ${h.suggestions.map(g=>d`<button
+                ${h.suggestions.map(f=>d`<button
                     type="button"
                     class="fix"
                     ?disabled=${!!this.pending}
-                    @click=${()=>this.apply(g.id)}
+                    @click=${()=>this.apply(f.id)}
                   >
-                    <span class="fix-label">${this.pending?.key===`fix|${g.id}`?"Saving…":g.label}</span>
-                    <span class="fix-note">${g.note}</span>
+                    <span class="fix-label">${this.pending?.key===`fix|${f.id}`?"Saving…":f.label}</span>
+                    <span class="fix-note">${f.note}</span>
                   </button>`)}
-              </div>`:f}
+              </div>`:m}
         </div>`)}
-      ${this.wide&&o&&!bt(o)&&this.page==="rides"?this.renderLegend():f}
-    `}renderChoreRow(e,n=!1){let i=this.chores,r=this.choreDone(e),a=i.kids.findIndex(y=>y.id===e.kid),o=(this.plan?de(this.plan).get(e.kid):void 0)??F(Math.max(0,a)),l=i.kids[a]?.name??"",p=r===Re(e)?e:{...e,state:r?"done":"open",done_at:r?new Date().toISOString():null},m=Ln(p,i.today,i.time_zone),h=r||Bn(e),g=`${n?`${l}: `:""}${e.title}. ${m?`${m}. `:""}${r?"Done. Tap to undo.":"Tap when it’s done."}`,b=d`<span class="box" aria-hidden="true"
-        >${r?le`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`:f}</span
+      ${this.wide&&o&&!yt(o)&&this.page==="rides"?this.renderLegend():m}
+    `}renderChoreRow(e,t=!1){let i=this.chores,r=this.choreDone(e),a=i.kids.findIndex($=>$.id===e.kid),o=(this.plan?J(this.plan).get(e.kid):void 0)??L(Math.max(0,a)),l=i.kids[a]?.name??"",c=r===Ie(e)?e:{...e,state:r?"done":"open",done_at:r?new Date().toISOString():null},g=r&&c.done_by&&c.done_by!==e.kid?i.people?.find($=>$.id===c.done_by)?.name??c.done_by_name??null:null,h=`${qt(c,i.today,i.time_zone)}${g?` · by ${g}`:""}`,f=r||Ks(e),v=`${t?`${l}: `:""}${e.title}. ${h?`${h}. `:""}${r?"Done. Tap to undo.":"Tap when it’s done."}`,y=d`<span class="box" aria-hidden="true"
+        >${r?Q`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`:m}</span
       >
-      ${e.icon?d`<span class="chore-icon" aria-hidden="true">${e.icon}</span>`:f}
+      ${e.icon?d`<span class="chore-icon" aria-hidden="true">${e.icon}</span>`:m}
       <span class="chore-text">
-        <span class="chore-title">${n?d`<span class="chore-kid">${l}</span> · `:f}${e.title}</span>
-        ${m?d`<span class="chore-note">${m}</span>`:f}
-      </span>`,v=`chore ${r?"done":""} ${e.state==="overdue"&&!r?"overdue":""} ${h?"":"later"}`,u=`--c:${o.color};--rgb:${o.rgb};--k:${o.ink}`;return h?d`<button type="button" class=${v} style=${u} aria-pressed=${r?"true":"false"} aria-label=${g} @click=${()=>void this.toggleChore(e)}>
-          ${b}
-        </button>`:d`<div class=${v} style=${u}>${b}</div>`}renderChores(){let e=this.chores;if(e===void 0)return d`<div class="chores-message"><p>Loading chores…</p></div>`;if(e===null)return d`<div class="chores-message">
+        <span class="chore-title">${t?d`<span class="chore-kid">${l}</span> · `:m}${e.title}</span>
+        ${h?d`<span class="chore-note">${h}</span>`:m}
+      </span>`,p=`chore ${r?"done":""} ${e.state==="overdue"&&!r?"overdue":""} ${f?"":"later"}`,b=`--c:${o.color};--rgb:${o.rgb};--k:${o.ink}`;return f?d`<button type="button" class=${p} style=${b} aria-pressed=${r?"true":"false"} aria-label=${v} @click=${()=>this.tapChore(e)}>
+          ${y}
+        </button>`:d`<div class=${p} style=${b}>${y}</div>`}renderChores(){let e=this.chores;if(e===void 0)return d`<div class="chores-message"><p>Loading chores…</p></div>`;if(e===null)return d`<div class="chores-message">
         <h2>Chores aren’t available right now</h2>
         <p>MyDashLight may be restarting. If this stays, check that MyDashLight is up to date in HACS.</p>
       </div>`;if(e.status.needs==="sign_in")return d`<div class="chores-message">
@@ -2297,146 +2568,304 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
       </div>`;if(e.status.needs==="tasks_api")return d`<div class="chores-message">
         <h2>Turn on the Google Tasks API</h2>
         <p>In Google Cloud, open the MyDashLight project, go to <strong>APIs &amp; Services › Library</strong>, find <strong>Google Tasks API</strong> and choose <strong>Enable</strong>. Chores show up a minute later.</p>
-      </div>`;let n=e.templates.filter(a=>a.problems.length),i=n.length?d`<div class="banner">
-          ${n.map(a=>d`<div><strong>${a.title}</strong>: ${a.problems.join("; ")}</div>`)}
-        </div>`:f;if(Ot(e)){let a=e.kids[0]?.name??"Ava";return d`<div class="chores-message">
+      </div>`;if(this.manage)return this.renderManage(e);if(Ft(e))return d`<div class="chores-message">
         <h2>No chores yet</h2>
-        <p>Chores come from Google Tasks, in the Google account MyDashLight signs in with.</p>
-        <ol>
-          <li>Open Google Tasks and pick the list <strong>Chore templates: Daily</strong> (or Weekly or Monthly).</li>
-          <li>Add a task named for the chore, such as <strong>🛏️ Make bed</strong>.</li>
-          <li>In its details, add a line <code>Who: ${a}</code>. Add <code>Days: Mon-Fri</code> for weekdays only.</li>
-        </ol>
-        <p>Within a minute it shows here, and on ${a}’s own list in Google Tasks.</p>
-      </div>`}let r=Hn(e,this.plan?de(this.plan):void 0);return d`<div class="chores-scroll">
+        <p>Add the first one here: give it a name, pick who does it and which days.</p>
+        <button type="button" class="btn dark big-btn" @click=${()=>this.editChore(null)}>${Qt} Add a chore</button>
+        <p class="message-aside">
+          Or add a task to the Google Tasks list <strong>Chore templates: Daily</strong> (or Weekly or Monthly). It
+          shows here to be set up.
+        </p>
+      </div>`;let t=e.templates.filter(a=>a.problems.length),i=t.length?d`<section class="setup" aria-label="Chores to set up">
+          <h3 class="chore-group setup-head">${t.length===1?"1 chore needs setting up":`${t.length} chores need setting up`}</h3>
+          <div class="setup-list">${t.map(a=>this.renderTemplateRow(a))}</div>
+        </section>`:m,r=Gs(e,this.plan?J(this.plan):void 0);return d`<div class="chores-scroll">
+      <div class="chores-bar">
+        <span class="chores-hint">Tap a chore when it’s done.</span>
+        <button type="button" class="btn" @click=${()=>this.editChore(null)}>${Qt} Add a chore</button>
+        <button type="button" class="btn" @click=${()=>{this.closeChorePanels(),this.manage=!0}}>${Fn} Manage chores</button>
+      </div>
       ${i}
       <div class="chore-cols" style="--n:${r.length}">
         ${r.map(a=>{let o=a.overdue.filter(l=>!this.choreDone(l)).length+a.now.filter(l=>!this.choreDone(l)).length;return d`<section class="chore-col" style="--c:${a.color.color};--rgb:${a.color.rgb}" aria-label=${`${a.name}’s chores`}>
             <div class="chore-head">
-              <span class="avatar" aria-hidden="true">${Ge(a.name)}</span>
+              <span class="avatar" aria-hidden="true">${me(a.name)}</span>
               <span class="ch-text">
                 <span class="name">${a.name}</span>
                 <span class="sub">${o?`${o} to do`:a.done.length?"All done for now":"Nothing to do now"}</span>
               </span>
             </div>
             ${a.overdue.length?d`<h3 class="chore-group overdue">Missed</h3>
-                  ${a.overdue.map(l=>this.renderChoreRow(l))}`:f}
+                  ${a.overdue.map(l=>this.renderChoreRow(l))}`:m}
             ${a.now.length?d`<h3 class="chore-group">To do</h3>
-                  ${a.now.map(l=>this.renderChoreRow(l))}`:f}
+                  ${a.now.map(l=>this.renderChoreRow(l))}`:m}
             ${a.done.length?d`<h3 class="chore-group">Done</h3>
-                  ${a.done.map(l=>this.renderChoreRow(l))}`:f}
-            ${a.later.map(l=>d`<h3 class="chore-group">${Ss(l.date,e.today)}</h3>
-                ${l.chores.map(p=>this.renderChoreRow(p))}`)}
-            ${!a.overdue.length&&!a.now.length&&!a.done.length&&!a.later.length?d`<p class="chore-none">No chores this week.</p>`:f}
+                  ${a.done.map(l=>this.renderChoreRow(l))}`:m}
+            ${a.later.map(l=>d`<h3 class="chore-group">${Gn(l.date,e.today)}</h3>
+                ${l.chores.map(c=>this.renderChoreRow(c))}`)}
+            ${!a.overdue.length&&!a.now.length&&!a.done.length&&!a.later.length?d`<p class="chore-none">No chores this week.</p>`:m}
           </section>`})}
       </div>
-    </div>`}renderLegend(){return d`<div class="legend">
+    </div>`}renderTemplateRow(e){let i=this.chores.kids,r=this.plan?J(this.plan):void 0,a=this.choreEdit?.template===e.id,o=e.problems.length?d`<span class="tmpl-note bad">${e.problems.map(Xt).join(" · ")} · tap to set up</span>`:d`<span class="tmpl-note">${Zt(e.who,i,e.take_turns)} · ${Yt(e.repeats,e.days??"",e.every??1)}</span>`;return d`<button type="button" class="tmpl ${e.problems.length?"needs":""} ${e.paused?"paused":""} ${a?"sel":""}" @click=${()=>this.editChore(e)}>
+      <span class="tmpl-icon" aria-hidden="true">${e.icon??"•"}</span>
+      <span class="chore-text">
+        <span class="chore-title">${e.title||"(no name)"}${e.paused?d` <span class="tag-paused">Paused</span>`:m}</span>
+        ${o}
+      </span>
+      <span class="tmpl-dots" aria-hidden="true">
+        ${e.who.map(l=>{let c=i.findIndex(h=>h.id===l),g=r?.get(l)??L(Math.max(0,c));return d`<span class="kid-dot" style="background:${g.color}"></span>`})}
+      </span>
+    </button>`}renderManage(e){let t=[["daily","Every day or some days"],["weekly","Weekly"],["monthly","Monthly"]];return d`<div class="chores-scroll">
+      <div class="chores-bar">
+        <h2 class="manage-title">Manage chores</h2>
+        <button type="button" class="btn" @click=${()=>this.editChore(null)}>${Qt} Add a chore</button>
+        <button type="button" class="btn dark" @click=${()=>{this.closeChorePanels(),this.manage=!1}}>Done</button>
+      </div>
+      ${e.templates.length?t.map(([i,r])=>{let a=e.templates.filter(o=>o.repeats===i);return a.length?d`<section class="manage-group" aria-label=${r}>
+                  <h3 class="chore-group">${r}</h3>
+                  <div class="tmpl-list">${a.map(o=>this.renderTemplateRow(o))}</div>
+                </section>`:m}):d`<p class="chore-none">No chores yet. Tap <strong>Add a chore</strong> to make the first one.</p>`}
+      <p class="message-aside">
+        Chores are kept in Google Tasks, on the lists <strong>Chore templates: Daily</strong>, <strong>Weekly</strong> and
+        <strong>Monthly</strong>. A task added there by hand shows up here to be set up.
+      </p>
+    </div>`}renderChoreEditor(e){let t=this.chores;if(!t)return d``;let i=t.kids,r=this.plan?J(this.plan):void 0,a=this.choreBusy,o=e.template?t.templates.find(p=>p.id===e.template):void 0,l=Kt(e),c=(o?.problems??[]).filter(p=>p!=="who:"),g=(p,b,$,x=!1)=>d`<button type="button" class="choice ${x?"wide":""}" aria-pressed=${p?"true":"false"} ?disabled=${a} @click=${$}>${b}</button>`,h=(p,b,$,x)=>d`<button type="button" class="chip" aria-pressed=${p?"true":"false"} aria-label=${x??m} ?disabled=${a} @click=${$}>${b}</button>`,f=p=>{p!==e.repeats&&this.changeDraft({repeats:p,days:o&&o.repeats===p?o.days??vt(p):vt(p)})},v=p=>{let b=e.who.includes(p)?e.who.filter($=>$!==p):i.filter($=>$.id===p||e.who.includes($.id)).map($=>$.id);this.changeDraft({who:b})},y;if(e.repeats==="monthly"){let p=e.days.trim(),b=/^\d+$/.test(p)?Number(p):null,$=p&&p.toLowerCase()!=="any"&&p.toLowerCase()!=="last"&&b===null;y=d`<div class="field">
+        <span class="field-label">When in the month</span>
+        <div role="group" aria-label="When in the month" class="choices" style="grid-template-columns:repeat(${$?4:3}, minmax(0, 1fr))">
+          ${g(p===""||p.toLowerCase()==="any","Any time",()=>this.changeDraft({days:"Any"}))}
+          ${g(b!==null,"On a date",()=>this.changeDraft({days:String(b??1)}))}
+          ${g(p.toLowerCase()==="last","Last day",()=>this.changeDraft({days:"last"}))}
+          ${$?g(!0,p,()=>{}):m}
+        </div>
+        ${b!==null?d`<div class="field arrive">
+              <span class="arrive-text"><span class="field-label">On the</span></span>
+              <span class="stepper">
+                <button type="button" class="step" aria-label="A day earlier" ?disabled=${a||b<=1} @click=${()=>this.changeDraft({days:String(b-1)})}>−</button>
+                <span class="arrive-value">${Gt(b)}</span>
+                <button type="button" class="step" aria-label="A day later" ?disabled=${a||b>=31} @click=${()=>this.changeDraft({days:String(b+1)})}>+</button>
+              </span>
+            </div>`:d`<p class="field-hint">${p.toLowerCase()==="last"?"Due on the month’s last day.":$?"Set in Google Tasks; pick another to change it.":"Shows all month, due on its last day."}</p>`}
+      </div>`}else{let p=e.repeats==="weekly"&&(e.days===""||e.days.toLowerCase()==="any"),b=e.days===Ze?new Set:p?new Set:Zs(e.days)??new Set,$=x=>{let S=new Set(b);S.has(x)?S.delete(x):S.add(x),e.repeats==="weekly"?this.changeDraft({days:S.size?Vt(S)||"Mon-Sun":"Any"}):this.changeDraft({days:S.size?Vt(S):Ze})};y=d`<div class="field">
+        <span class="field-label">${e.repeats==="weekly"?"Which day":"Which days"}</span>
+        ${e.repeats==="weekly"?d`<div role="group" aria-label="Any day" class="choices" style="grid-template-columns:1fr 1fr">
+              ${g(p,"Any day that week",()=>this.changeDraft({days:"Any"}))}
+              ${g(!p,"On a set day",()=>this.changeDraft({days:p?"Sat":e.days}))}
+            </div>`:m}
+        ${e.repeats==="daily"||!p?d`<div role="group" aria-label="Days of the week" class="day-chips">
+              ${Ne.map((x,S)=>h(b.has(S),x.slice(0,2),()=>$(S),x))}
+            </div>`:m}
+        ${e.repeats==="daily"?d`<div class="chips">
+              ${h(e.days==="","Every day",()=>this.changeDraft({days:""}))}
+              ${h(e.days==="Mon-Fri","Weekdays",()=>this.changeDraft({days:"Mon-Fri"}))}
+              ${h(e.days==="Sat, Sun","Weekends",()=>this.changeDraft({days:"Sat, Sun"}))}
+            </div>`:d`<p class="field-hint">${p?"Shows all week, due on Sunday.":"Due that day."}</p>`}
+      </div>`}return d`
+      <div class="ed-head">
+        <div class="ed-titles">
+          <span class="ed-title">${e.icon?d`<span class="ed-icon" aria-hidden="true">${e.icon}</span>`:m}${e.template?e.title||"Set up a chore":"Add a chore"}</span>
+          <span class="ed-meta">${e.who.length?Zt(e.who,i,e.take_turns):"Nobody yet"} · ${e.days===Ze?"No days picked":Yt(e.repeats,e.days,e.every)}</span>
+        </div>
+        <button type="button" class="btn" ?disabled=${a} @click=${()=>this.closeChorePanels()}>Cancel</button>
+      </div>
+      ${c.length?d`<p class="field-hint bad">${c.map(Xt).join(". ")}. Saving fixes it.</p>`:m}
+      <div class="field">
+        <label class="field-label" for="chore-name">Chore</label>
+        <input
+          id="chore-name"
+          class="text-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Make bed"
+          .value=${e.title}
+          ?disabled=${a}
+          @input=${p=>this.changeDraft({title:p.target.value})}
+        />
+        <div role="group" aria-label="Picture" class="icon-chips">
+          ${Vn.map(p=>h(e.icon===p,p,()=>this.changeDraft({icon:e.icon===p?null:p}),`Picture ${p}`))}
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Who does it</span>
+        <div role="group" aria-label="Who does it" class="who-chips">
+          ${i.map((p,b)=>{let $=r?.get(p.id)??L(b),x=e.who.includes(p.id);return d`<button type="button" class="who-chip" style="--c:${$.color};--rgb:${$.rgb}" aria-pressed=${x?"true":"false"} ?disabled=${a} @click=${()=>v(p.id)}>
+              <span class="avatar" aria-hidden="true">${me(p.name)}</span>${p.name}
+            </button>`})}
+        </div>
+        ${e.who.length>1?d`<div role="group" aria-label="Each or take turns" class="choices" style="grid-template-columns:1fr 1fr">
+              ${g(!e.take_turns,"Each does it",()=>this.changeDraft({take_turns:!1}))}
+              ${g(e.take_turns,"They take turns",()=>this.changeDraft({take_turns:!0}))}
+            </div>`:m}
+      </div>
+      <div class="field">
+        <span class="field-label">How often</span>
+        <div role="group" aria-label="How often" class="choices" style="grid-template-columns:repeat(3, minmax(0, 1fr))">
+          ${g(e.repeats==="daily","Days",()=>f("daily"))}
+          ${g(e.repeats==="weekly","Weekly",()=>f("weekly"))}
+          ${g(e.repeats==="monthly","Monthly",()=>f("monthly"))}
+        </div>
+      </div>
+      ${y}
+      <div class="field arrive">
+        <span class="arrive-text">
+          <span class="field-label">Repeats</span>
+          <span class="field-hint">${Kn(e.repeats,e.every)}</span>
+        </span>
+        <span class="stepper">
+          <button type="button" class="step" aria-label="More often" ?disabled=${a||e.every<=1} @click=${()=>this.changeDraft({every:e.every-1})}>−</button>
+          <span class="arrive-value">${e.every}</span>
+          <button type="button" class="step" aria-label="Less often" ?disabled=${a||e.every>=52} @click=${()=>this.changeDraft({every:e.every+1})}>+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label class="field-label" for="chore-details">Notes <span class="field-hint">Optional, shown with the chore</span></label>
+        <textarea
+          id="chore-details"
+          class="text-input"
+          rows="2"
+          .value=${e.details}
+          ?disabled=${a}
+          @input=${p=>this.changeDraft({details:p.target.value})}
+        ></textarea>
+      </div>
+      ${e.template?d`<div class="field">
+              ${g(e.paused,e.paused?"Paused: no new chores until it’s turned back on":"On: makes chores as set above",()=>this.changeDraft({paused:!e.paused}),!0)}
+            </div>
+            <button type="button" class="chip clear remove" ?disabled=${a} @click=${()=>void this.removeChoreEdit()}>
+              ${this.removeArmed?"Tap again to remove it for good":"Remove this chore"}
+            </button>`:m}
+      <div class="ed-foot">
+        <button type="button" class="btn dark save" ?disabled=${a||!!l} @click=${()=>void this.saveChoreEdit()}>
+          ${a?"Saving to Google Tasks…":l?l.replace(/\.$/,""):e.template?"Save":"Add this chore"}
+        </button>
+      </div>
+    `}renderWhoDidIt(e){let t=this.chores;if(!t)return d``;let i=t.people?.length?t.people:t.kids.map(h=>({...h,role:"kid"})),r=t.kids.findIndex(h=>h.id===e.kid),a=t.kids[r],o=this.plan?J(this.plan):void 0,l=o?.get(e.kid)??L(Math.max(0,r)),c=i.filter(h=>h.id!==e.kid),g=h=>{let f=t.kids.findIndex(v=>v.id===h.id);return f>=0?(o?.get(h.id)??L(f)).color:"var(--dark)"};return d`
+      <div class="ed-head">
+        <div class="ed-titles">
+          <span class="ed-title">${e.icon?d`<span class="ed-icon" aria-hidden="true">${e.icon}</span>`:m}${e.title}</span>
+          <span class="ed-meta">${a?.name??""} · ${qt(e,t.today,t.time_zone)}</span>
+        </div>
+        <button type="button" class="btn" @click=${()=>this.closeChorePanels()}>Cancel</button>
+      </div>
+      <div class="field">
+        <span class="field-label">Who did it?</span>
+        <button type="button" class="done-by main" style="--c:${l.color};--rgb:${l.rgb}" @click=${()=>void this.toggleChore(e)}>
+          <span class="avatar" aria-hidden="true">${me(a?.name??"?")}</span>
+          <span>${a?.name??"Done"} did it</span>
+        </button>
+        ${this.whoOthers?d`<div role="group" aria-label="Somebody else" class="done-by-list">
+              ${c.map(h=>d`<button type="button" class="done-by" style="--c:${g(h)}" @click=${()=>void this.toggleChore(e,h.id)}>
+                  <span class="avatar ${h.role==="parent"?"driver":""}" aria-hidden="true">${me(h.name)}</span>
+                  <span>${h.name}</span>
+                </button>`)}
+            </div>`:d`<button type="button" class="choice wide" @click=${()=>this.whoOthers=!0}>Somebody else…</button>`}
+      </div>
+    `}renderLegend(){return d`<div class="legend">
       <span><span class="sw trip-sw"></span>A driver’s trip out of the house; dots show who’s in the car</span>
       <span><span class="sw ride-sw"></span>A kid in a car (dashed: along for someone else’s stop)</span>
       <span><span class="sw band-sw"></span>Link from the kid to whoever is driving</span>
       <span><span class="sw stay-sw"></span>Staying through the activity</span>
       <span><span class="sw busy-sw"></span>Busy on their own calendar</span>
       <span><span class="sw overlap-sw"></span>Overlap: can’t do both</span>
-    </div>`}renderEditor(e){let n=this.findEvent(this.sel);if(!n)return d``;let{day:i,event:r}=n,a=ge(e),l=de(e).get(r.kid)??F(0),p=!!this.pending,m=M=>this.pending?.key===M?this.pending.value:void 0,h=[...e.people?.carpools??[]];for(let M of e.days)for(let te of M.events)for(let N of[te.drop,te.pick])N&&N!=="none"&&!a.includes(N)&&!h.some(J=>J.toLowerCase()===N.toLowerCase())&&h.push(N);let g=M=>{if(!r.sides.includes(M))return f;let te=m(M),N=te!==void 0?String(te):M==="drop"?r.drop:r.pick,J=N&&N!=="none"&&!a.includes(N)?N:"",ne=z=>this.setRide(r,M,N===z?"":z),Ee=[...a.map(z=>[z,It(e,z)]),["none","Not needed"]];return d`<div class="field">
-        <span class="field-label">${M==="drop"?"Drop-off":"Pick-up"} ${N===""?d`<span class="nobody">· nobody yet</span>`:f}</span>
-        <div role="group" aria-label=${M==="drop"?"Drop-off driver":"Pick-up driver"} class="choices" style="grid-template-columns:repeat(${Ee.length}, minmax(0, 1fr))">
-          ${Ee.map(([z,se])=>d`<button type="button" class="choice" aria-pressed=${N===z?"true":"false"} ?disabled=${p} @click=${()=>ne(z)}>
-                ${se}
+    </div>`}renderEditor(e){let t=this.findEvent(this.sel);if(!t)return d``;let{day:i,event:r}=t,a=ge(e),l=J(e).get(r.kid)??L(0),c=!!this.pending,g=M=>this.pending?.key===M?this.pending.value:void 0,h=[...e.people?.carpools??[]];for(let M of e.days)for(let ne of M.events)for(let N of[ne.drop,ne.pick])N&&N!=="none"&&!a.includes(N)&&!h.some(ee=>ee.toLowerCase()===N.toLowerCase())&&h.push(N);let f=M=>{if(!r.sides.includes(M))return m;let ne=g(M),N=ne!==void 0?String(ne):M==="drop"?r.drop:r.pick,ee=N&&N!=="none"&&!a.includes(N)?N:"",ie=R=>this.setRide(r,M,N===R?"":R),Se=[...a.map(R=>[R,Ot(e,R)]),["none","Not needed"]];return d`<div class="field">
+        <span class="field-label">${M==="drop"?"Drop-off":"Pick-up"} ${N===""?d`<span class="nobody">· nobody yet</span>`:m}</span>
+        <div role="group" aria-label=${M==="drop"?"Drop-off driver":"Pick-up driver"} class="choices" style="grid-template-columns:repeat(${Se.length}, minmax(0, 1fr))">
+          ${Se.map(([R,re])=>d`<button type="button" class="choice" aria-pressed=${N===R?"true":"false"} ?disabled=${c} @click=${()=>ie(R)}>
+                ${re}
               </button>`)}
         </div>
         ${h.length?d`<div role="group" aria-label=${M==="drop"?"Drop-off: someone else":"Pick-up: someone else"} class="chips">
-              ${h.map(z=>d`<button type="button" class="chip" aria-pressed=${N.toLowerCase()===z.toLowerCase()?"true":"false"} ?disabled=${p} @click=${()=>ne(z)}>
-                    ${z}
+              ${h.map(R=>d`<button type="button" class="chip" aria-pressed=${N.toLowerCase()===R.toLowerCase()?"true":"false"} ?disabled=${c} @click=${()=>ie(R)}>
+                    ${R}
                   </button>`)}
-            </div>`:f}
+            </div>`:m}
         <input
           type="text"
-          .value=${J&&!h.some(z=>z.toLowerCase()===J.toLowerCase())?J:""}
-          ?disabled=${p}
+          .value=${ee&&!h.some(R=>R.toLowerCase()===ee.toLowerCase())?ee:""}
+          ?disabled=${c}
           aria-label=${M==="drop"?"Drop-off by someone else":"Pick-up by someone else"}
           placeholder="Someone else, e.g. Grandma"
           enterkeyhint="done"
-          @change=${z=>{let se=z.target.value.trim();se&&se!==N&&this.setRide(r,M,se)}}
-          @keydown=${z=>{z.key==="Enter"&&z.target.blur()}}
+          @change=${R=>{let re=R.target.value.trim();re&&re!==N&&this.setRide(r,M,re)}}
+          @keydown=${R=>{R.key==="Enter"&&R.target.blur()}}
         />
-      </div>`},b=m("stay"),v=b!==void 0?!!b:r.stay,u=r.drop===r.pick&&a.includes(r.drop),y=m("along"),P=y!==void 0?y:r.along,x=Pe(e).filter(M=>M!==r.kid),R=a.includes(r.drop)&&r.sides.includes("drop"),K=m("arrive"),T=this.arriveDraft!==void 0?this.arriveDraft:K!==void 0?K:r.arrive_by,H=[],ee=M=>M==="none"?"Not needed":It(e,M);r.drop!==""&&H.push(`Drop-off: ${ee(r.drop)}`),r.pick!==""&&H.push(`Pick-up: ${ee(r.pick)}`),r.stay&&H.push("Stay: yes"),r.along.length&&H.push(`Take along: ${r.along.map(M=>Z(e,M)).join(", ")}`),r.arrive_by!=null&&H.push(`Arrive by: ${Ve(r.arrive_by)}`);let me=m("attending"),Te=me!==void 0?!!me:r.attending!==!1;r.attending===!1&&H.splice(0,H.length,"Attending: no");let pe=i.date===this.today().date?"":`${G(i.date)} · `,Ne=d`<div class="ed-head">
+      </div>`},v=g("stay"),y=v!==void 0?!!v:r.stay,p=r.drop===r.pick&&a.includes(r.drop),b=g("along"),$=b!==void 0?b:r.along,x=Pe(e).filter(M=>M!==r.kid),S=a.includes(r.drop)&&r.sides.includes("drop"),G=g("arrive"),P=this.arriveDraft!==void 0?this.arriveDraft:G!==void 0?G:r.arrive_by,U=[],se=M=>M==="none"?"Not needed":Ot(e,M);r.drop!==""&&U.push(`Drop-off: ${se(r.drop)}`),r.pick!==""&&U.push(`Pick-up: ${se(r.pick)}`),r.stay&&U.push("Stay: yes"),r.along.length&&U.push(`Take along: ${r.along.map(M=>Z(e,M)).join(", ")}`),r.arrive_by!=null&&U.push(`Arrive by: ${Ke(r.arrive_by)}`);let be=g("attending"),Ee=be!==void 0?!!be:r.attending!==!1;r.attending===!1&&U.splice(0,U.length,"Attending: no");let pe=i.date===this.today().date?"":`${Y(i.date)} · `,Le=d`<div class="ed-head">
         <div class="ed-titles">
           <span class="ed-title"><span class="dot" style="background:${l.color}"></span>${Z(e,r.kid)} · ${r.title}</span>
-          <span class="ed-meta">${pe}${k(r.start)}–${k(r.end)}${r.place_name&&!r.place.startsWith("?")?` · ${r.place_name}`:""}</span>
+          <span class="ed-meta">${pe}${C(r.start)}–${C(r.end)}${r.place_name&&!r.place.startsWith("?")?` · ${r.place_name}`:""}</span>
         </div>
         <button type="button" class="btn dark" @click=${()=>this.closeEditor()}>Done</button>
-      </div>`;return r.where==="home"?d`${Ne}
+      </div>`;return r.where==="home"?d`${Le}
         <p class="field-hint">It’s at home, so it doesn’t need a ride. If ${Z(e,r.kid)} can’t get home in time, the board shows it as a clash.</p>`:d`
-      ${Ne}
-      ${this.pending?d`<p class="saving" role="status">Saving to Google Calendar…</p>`:f}
+      ${Le}
+      ${this.pending?d`<p class="saving" role="status">Saving to Google Calendar…</p>`:m}
       ${r.recurring?d`<div class="field">
             <span class="field-label">Change</span>
             <div role="group" aria-label="Which ones to change" class="choices" style="grid-template-columns:1fr 1fr">
               <button type="button" class="choice" aria-pressed=${this.scope==="this"?"true":"false"} @click=${()=>this.scope="this"}>
-                Just ${G(i.date)}’s
+                Just ${Y(i.date)}’s
               </button>
               <button type="button" class="choice" aria-pressed=${this.scope==="series"?"true":"false"} @click=${()=>this.scope="series"}>
                 Every time
               </button>
             </div>
-          </div>`:f}
+          </div>`:m}
       <div class="field">
         <span class="field-label">${Z(e,r.kid)} is</span>
         <div role="group" aria-label="Going or not" class="choices" style="grid-template-columns:1fr 1fr">
-          <button type="button" class="choice" aria-pressed=${Te?"true":"false"} ?disabled=${p} @click=${()=>this.setAttending(r,!0)}>
+          <button type="button" class="choice" aria-pressed=${Ee?"true":"false"} ?disabled=${c} @click=${()=>this.setAttending(r,!0)}>
             Going
           </button>
-          <button type="button" class="choice" aria-pressed=${Te?"false":"true"} ?disabled=${p} @click=${()=>this.setAttending(r,!1)}>
+          <button type="button" class="choice" aria-pressed=${Ee?"false":"true"} ?disabled=${c} @click=${()=>this.setAttending(r,!1)}>
             Not attending
           </button>
         </div>
       </div>
-      ${Te?d`${r.where==="anywhere"?d`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`:f}
-            ${g("drop")} ${g("pick")}
+      ${Ee?d`${r.where==="anywhere"?d`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`:m}
+            ${f("drop")} ${f("pick")}
       <div class="field">
-        <button type="button" class="choice wide" aria-pressed=${v?"true":"false"} ?disabled=${!u||p} @click=${()=>this.toggleStay(r)}>
-          ${u?v?"Driver stays the whole time":"Driver leaves and comes back":"Staying needs the same driver both ways"}
+        <button type="button" class="choice wide" aria-pressed=${y?"true":"false"} ?disabled=${!p||c} @click=${()=>this.toggleStay(r)}>
+          ${p?y?"Driver stays the whole time":"Driver leaves and comes back":"Staying needs the same driver both ways"}
         </button>
       </div>
-      ${R&&x.length?d`<div class="field">
+      ${S&&x.length?d`<div class="field">
             <span class="field-label">Take along <span class="field-hint">They leave home in the same car</span></span>
             <div role="group" aria-label="Kids taken along" class="chips">
-              ${x.map(M=>d`<button type="button" class="chip" aria-pressed=${P.includes(M)?"true":"false"} ?disabled=${p} @click=${()=>this.toggleAlong(r,M)}>
+              ${x.map(M=>d`<button type="button" class="chip" aria-pressed=${$.includes(M)?"true":"false"} ?disabled=${c} @click=${()=>this.toggleAlong(r,M)}>
                   ${Z(e,M)}
                 </button>`)}
             </div>
-          </div>`:f}
+          </div>`:m}
       <div class="field arrive">
         <span class="arrive-text">
           <span class="field-label">Arrive by</span>
-          <span class="field-hint">${T!=null?`${r.start-T} min before it starts`:`Aims for a few minutes before ${k(r.start)}`}</span>
+          <span class="field-hint">${P!=null?`${r.start-P} min before it starts`:`Aims for a few minutes before ${C(r.start)}`}</span>
         </span>
         <span class="stepper">
-          <button type="button" class="step" aria-label="Five minutes earlier" ?disabled=${p} @click=${()=>this.nudgeArrive(r,-5)}>−</button>
-          <span class="arrive-value">${T!=null?k(T):"Not set"}</span>
-          <button type="button" class="step" aria-label="Five minutes later" ?disabled=${p||T==null} @click=${()=>this.nudgeArrive(r,5)}>+</button>
+          <button type="button" class="step" aria-label="Five minutes earlier" ?disabled=${c} @click=${()=>this.nudgeArrive(r,-5)}>−</button>
+          <span class="arrive-value">${P!=null?C(P):"Not set"}</span>
+          <button type="button" class="step" aria-label="Five minutes later" ?disabled=${c||P==null} @click=${()=>this.nudgeArrive(r,5)}>+</button>
         </span>
       </div>
-      ${T!=null?d`<button type="button" class="chip clear" ?disabled=${p} @click=${()=>this.clearArrive()}>Clear arrive-by time</button>`:f}
+      ${P!=null?d`<button type="button" class="chip clear" ?disabled=${c} @click=${()=>this.clearArrive()}>Clear arrive-by time</button>`:m}
 `:d`<p class="field-hint">
             Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.
             Its other ride settings stay saved in the notes, so tapping Going brings them all back.
           </p>`}
       <div class="notes">
         <span class="notes-label">${this.backend?.saves===!1?"Would be saved":"Saved"} to this event’s notes in Google Calendar</span>
-        <span class="notes-body">--- Rides ---\n${H.length?H.join(`
+        <span class="notes-body">--- Rides ---\n${U.length?U.join(`
 `):"(no ride lines yet)"}</span>
       </div>
-      ${r.problems.length?d`<p class="field-hint bad">These lines in the notes couldn’t be read: ${r.problems.join("; ")}</p>`:f}
-      ${Te?d`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`:f}
-    `}};Ye.styles=On,Ye.properties={backend:{attribute:!1},kiosk:{type:Boolean},showMenu:{type:Boolean,attribute:"show-menu"},plan:{state:!0},error:{state:!0},mode:{state:!0},sel:{state:!0},sheet:{state:!0},width:{state:!0},boardWidth:{state:!0},pending:{state:!0},toast:{state:!0},scope:{state:!0},arriveDraft:{state:!0},tick:{state:!0},page:{state:!0},chores:{state:!0},choreDraft:{state:!0}};customElements.get("mydashlight-board")||customElements.define("mydashlight-board",Ye);var Ze=class extends X{constructor(){super();this.conn=null;this.hass=void 0,this.narrow=!1,this.backend=null,this.pairing=null}connectedCallback(){super.connectedCallback(),this.pairing=gn(location.search)}closePairing(){this.pairing=null;let e=new URLSearchParams(location.search);e.delete(qe);let n=e.toString();history.replaceState(history.state,"",`${location.pathname}${n?`?${n}`:""}`)}willUpdate(e){e.has("hass")&&this.hass&&this.hass.connection!==this.conn&&(this.conn=this.hass.connection,this.backend=new lt(this.conn))}render(){let e=this.narrow||this.hass?.dockedSidebar==="always_hidden";return d`<mydashlight-board .backend=${this.backend} ?show-menu=${e}></mydashlight-board>
+      ${r.problems.length?d`<p class="field-hint bad">These lines in the notes couldn’t be read: ${r.problems.join("; ")}</p>`:m}
+      ${Ee?d`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`:m}
+    `}};Xe.styles=en,Xe.properties={backend:{attribute:!1},kiosk:{type:Boolean},showMenu:{type:Boolean,attribute:"show-menu"},plan:{state:!0},error:{state:!0},mode:{state:!0},sel:{state:!0},sheet:{state:!0},width:{state:!0},boardWidth:{state:!0},pending:{state:!0},toast:{state:!0},scope:{state:!0},arriveDraft:{state:!0},tick:{state:!0},page:{state:!0},chores:{state:!0},choreDraft:{state:!0},manage:{state:!0},choreEdit:{state:!0},choreBusy:{state:!0},removeArmed:{state:!0},whoFor:{state:!0},whoOthers:{state:!0}};customElements.get("mydashlight-board")||customElements.define("mydashlight-board",Xe);var Je=class extends X{constructor(){super();this.conn=null;this.hass=void 0,this.narrow=!1,this.backend=null,this.pairing=null}connectedCallback(){super.connectedCallback(),this.pairing=Cs(location.search)}closePairing(){this.pairing=null;let e=new URLSearchParams(location.search);e.delete(Fe);let t=e.toString();history.replaceState(history.state,"",`${location.pathname}${t?`?${t}`:""}`)}willUpdate(e){e.has("hass")&&this.hass&&this.hass.connection!==this.conn&&(this.conn=this.hass.connection,this.backend=new pt(this.conn))}render(){let e=this.narrow||this.hass?.dockedSidebar==="always_hidden";return d`<mydashlight-board .backend=${this.backend} ?show-menu=${e}></mydashlight-board>
       ${this.pairing!==null?d`<mydashlight-pair-approve
             .connection=${this.hass?.connection??null}
             .userName=${this.hass?.user?.name??""}
             .isAdmin=${this.hass?.user?.is_admin??!0}
             .code=${this.pairing}
             @close=${()=>this.closePairing()}
-          ></mydashlight-pair-approve>`:f}`}};Ze.styles=ve`
+          ></mydashlight-pair-approve>`:m}`}};Je.styles=ye`
     /* Home Assistant's panel container has no height of its own, so 100% would let the board grow
        as tall as its content and the whole page would scroll. Fill the screen instead, less the
        safe-area padding HA puts around the panel on phones. Then the board scrolls on its own,
@@ -2450,7 +2879,7 @@ var Xe=globalThis,Je=Xe.ShadowRoot&&(Xe.ShadyCSS===void 0||Xe.ShadyCSS.nativeSha
     mydashlight-board {
       height: 100%;
     }
-  `,Ze.properties={hass:{attribute:!1},narrow:{type:Boolean},backend:{state:!0},pairing:{state:!0}};customElements.get("mydashlight-panel")||customElements.define("mydashlight-panel",Ze);
+  `,Je.properties={hass:{attribute:!1},narrow:{type:Boolean},backend:{state:!0},pairing:{state:!0}};customElements.get("mydashlight-panel")||customElements.define("mydashlight-panel",Je);
 /*! Bundled license information:
 
 @lit/reactive-element/css-tag.js:
