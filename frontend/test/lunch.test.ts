@@ -8,6 +8,7 @@ import {
   lunchMonths,
   lunchOn,
   menuOn,
+  menuSides,
   monthCounts,
   monthGrid,
   monthTitle,
@@ -117,4 +118,13 @@ test("the lunch chip on a kid's card", () => {
   assert.deepEqual(lunchChip(ava, "2026-11-24", 19 * 60), { lunch: "buy", when: "Mon", date: "2026-11-30", menu: null });
   const off: KidLunches = { ...ava, days_off: [{ first: "2026-11-04", last: "2026-11-20", title: "No School" }] };
   assert.equal(lunchChip(off, TODAY, 8 * 60), null);
+});
+
+test("the rest of a menu, without MyDashLight's feed note", () => {
+  assert.equal(menuSides("Peas, Pears, Milk\n\nFrom the school's menu feed."), "Peas, Pears, Milk");
+  assert.equal(menuSides("Or: chef salad\n Fruit "), "Or: chef salad\nFruit");
+  assert.equal(menuSides("From the school's menu feed."), null);
+  assert.equal(menuSides(""), null);
+  const cell = monthGrid(data, ava, "2026-11").flat().find((c) => c.date === "2026-11-04")!;
+  assert.equal(cell.sides, "Or: chef salad");
 });

@@ -123,12 +123,25 @@ function sampleLunch(plan: Plan): LunchPayload {
     ["Chicken tenders", "Cheese pizza", "Beef tacos", "Mac & cheese", "Orange chicken", "Hamburger", "Pancakes & sausage"],
     ["Pizza dippers", "Corn dog", "Chicken nuggets", "Spaghetti & meatballs", "Grilled cheese & tomato soup", "Walking taco"],
   ];
+  // Like a school's feed: the sides and other choices, then MyDashLight's note.
+  const sides = [
+    [
+      "Seasoned Spiral Fries, Hamburger, Cheeseburger, Black Bean Burger, Grilled Chicken Sandwich, PBJ Uncrustable, Daily Entree Salad",
+      "Parmesan Roasted Broccoli, Hamburger, Cheeseburger, Grilled Cheese Pretzel Roll, Choice of Cold Milk",
+      "Sweet Corn, Hamburger, Cheeseburger, Black Bean Burger, Daily Entree Salad, Choice of Cold Milk",
+    ],
+    [
+      "Italian Sweet Peas, Fresh Honeydew Slices, Choice of Cold Milk",
+      "Southwestern Refried Beans, Orange Wedges, Choice of Cold Milk",
+      "Baked Sweet Potato, Fresh Apple Slices, Choice of Cold Milk",
+    ],
+  ];
   const menus = (school: number): Record<string, { dish: string; details: string }> => {
     const out: Record<string, { dish: string; details: string }> = {};
     const list = dishes[school]!;
     let n = 0;
     for (let d = first; d <= addDays(first, 30) && d.slice(0, 7) === first.slice(0, 7); d = addDays(d, 1)) {
-      if (weekday(d) < 5) out[d] = { dish: list[n++ % list.length]!, details: "Or: turkey sandwich or chef salad\nFruit, veggies, milk" };
+      if (weekday(d) < 5) out[d] = { dish: list[n++ % list.length]!, details: `${sides[school]![n % 3]}\n\nFrom the school's menu feed.` };
     }
     return out;
   };

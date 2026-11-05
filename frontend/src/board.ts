@@ -112,6 +112,9 @@ const ICONS = ["🛏️", "🍽️", "🧺", "👕", "🧹", "🧽", "🗑️", 
 const BAG = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 8h12l-1 13H7L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>`;
 /** A fork and knife, for Buy. */
 const TRAY = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/></svg>`;
+/** Arrows out, to make a kid's lunch month fill the tab; arrows in, to go back to everyone. */
+const EXPAND = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>`;
+const COLLAPSE = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>`;
 const LUNCH_WORD: Record<Lunch, string> = { bring: "Bring", buy: "Buy" };
 
 /** "Every week", "Every other week", "Every 3 months (quarterly)". */
@@ -217,6 +220,7 @@ export class MyDashLightBoard extends LitElement {
     lunch: { state: true },
     lunchDraft: { state: true },
     lunchMonth: { state: true },
+    lunchKid: { state: true },
     menuMode: { state: true },
     menuEdit: { state: true },
   };
@@ -262,6 +266,8 @@ export class MyDashLightBoard extends LitElement {
   declare lunchDraft: ReadonlyMap<string, Lunch | null>;
   /** The month the Lunch tab shows, "2026-11"; null for this month. */
   declare lunchMonth: string | null;
+  /** The one kid whose month fills the Lunch tab, with each day's whole menu; null for everyone. */
+  declare lunchKid: string | null;
   /** The Lunch tab's days open the menu editor instead of switching Buy and Bring. */
   declare menuMode: boolean;
   /** A day's menu being added or changed in the panel. */
@@ -320,6 +326,7 @@ export class MyDashLightBoard extends LitElement {
     this.lunch = undefined;
     this.lunchDraft = new Map();
     this.lunchMonth = null;
+    this.lunchKid = null;
     this.menuMode = false;
     this.menuEdit = null;
   }
@@ -541,6 +548,7 @@ export class MyDashLightBoard extends LitElement {
     this.closeChorePanels();
     this.manage = false;
     this.lunchMonth = null;
+    this.lunchKid = null;
     this.menuMode = false;
     this.page = p;
     // Back on rides, start at now again.
@@ -1473,6 +1481,9 @@ export class MyDashLightBoard extends LitElement {
       const m = months[at + by];
       if (m) this.lunchMonth = m;
     };
+    // One kid's month can fill the tab, with room for each day's whole menu.
+    const shown = data.kids.some((k) => k.id === this.lunchKid) ? this.lunchKid : null;
+    const kids = shown ? data.kids.filter((k) => k.id === shown) : data.kids;
     const status =
       data.status && !data.status.ok
         ? html`<p class="field-hint bad">Couldn’t read the calendars just now${data.status.error ? `: ${data.status.error}` : ""}. Showing the last read.</p>`
@@ -1506,8 +1517,8 @@ export class MyDashLightBoard extends LitElement {
         </button>
       </div>
       ${status}
-      <div class="chore-cols lunch-cols" style="--n:${data.kids.length}">
-        ${data.kids.map((k) => this.renderLunchCard(data, k, month))}
+      <div class="chore-cols lunch-cols ${shown ? "wide" : ""}" style="--n:${kids.length}">
+        ${kids.map((k) => this.renderLunchCard(data, k, month, shown !== null))}
       </div>
       <p class="message-aside">
         Picks are saved as <strong>Bring Lunch</strong> and <strong>Buy Lunch</strong> all-day events on each kid’s calendar.
@@ -1521,7 +1532,7 @@ export class MyDashLightBoard extends LitElement {
     </div>`;
   }
 
-  private renderLunchCard(data: LunchPayload, k: KidLunches, month: string): TemplateResult {
+  private renderLunchCard(data: LunchPayload, k: KidLunches, month: string, wide: boolean): TemplateResult {
     const color = this.kidColorOf(k.id);
     const weeks = monthGrid(data, k, month, this.lunchDraft);
     const counts = monthCounts(weeks);
@@ -1542,14 +1553,26 @@ export class MyDashLightBoard extends LitElement {
     const sub = days.length
       ? `${counts.bring} Bring · ${counts.buy} Buy${month === monthOf(data.today) ? " left this month" : ""}`
       : "No school days left this month";
-    return html`<section class="chore-col lunch-card" style="--c:${color.color};--rgb:${color.rgb};--k:${color.ink}" aria-label=${`${k.name}’s lunches`}>
+    return html`<section class="chore-col lunch-card ${wide ? "wide" : ""}" style="--c:${color.color};--rgb:${color.rgb};--k:${color.ink}" aria-label=${`${k.name}’s lunches`}>
       <div class="chore-head">
         <span class="avatar" aria-hidden="true">${initial(k.name)}</span>
         <span class="ch-text">
           <span class="name">${k.name}</span>
           <span class="sub">${sub}</span>
         </span>
-        <span class="lunch-default">${LUNCH_WORD[k.default]} unless picked</span>
+        <span class="lunch-actions">
+          <span class="lunch-default">${LUNCH_WORD[k.default]} unless picked</span>
+          ${data.kids.length < 2
+            ? nothing
+            : html`<button
+                type="button"
+                class="btn lunch-expand"
+                aria-label=${wide ? "Show everyone’s lunches" : `Expand ${k.name}’s lunches to show each day’s whole menu`}
+                @click=${() => (this.lunchKid = wide ? null : k.id)}
+              >
+                ${wide ? COLLAPSE : EXPAND}${wide ? "Show everyone" : "Expand to pick"}
+              </button>`}
+        </span>
       </div>
       ${k.menu_feed && !k.menu_feed.ok
         ? html`<p class="field-hint bad">Couldn’t read the school menu feed${k.menu_feed.error ? `: ${k.menu_feed.error}` : ""}.</p>`
@@ -1566,7 +1589,7 @@ export class MyDashLightBoard extends LitElement {
             ${w}
           </button>`,
         )}
-        ${cells.map((c) => this.renderLunchCell(k, c))}
+        ${cells.map((c) => this.renderLunchCell(k, c, wide))}
       </div>
       ${offs.length
         ? html`<p class="lunch-offs">
@@ -1584,7 +1607,7 @@ export class MyDashLightBoard extends LitElement {
     </section>`;
   }
 
-  private renderLunchCell(k: KidLunches, c: LunchCell): TemplateResult {
+  private renderLunchCell(k: KidLunches, c: LunchCell, wide = false): TemplateResult {
     if (c.outside) return html`<span class="lunch-day outside" aria-hidden="true"></span>`;
     if (c.off !== null || !c.lunch) {
       return html`<span class="lunch-day off ${c.today ? "today" : ""}" title=${c.off ?? ""}>
@@ -1609,7 +1632,7 @@ export class MyDashLightBoard extends LitElement {
       <span class="lunch-num">${c.day}</span>
       <span class="lunch-word">${lunch === "bring" ? BAG : TRAY}${LUNCH_WORD[lunch]}</span>
       ${c.menu
-        ? html`<span class="lunch-menu">${c.menu}</span>`
+        ? html`<span class="lunch-menu">${c.menu}</span>${wide && c.sides ? html`<span class="lunch-sides">${c.sides}</span>` : nothing}`
         : editing
           ? html`<span class="lunch-menu add">${PLUS} Menu</span>`
           : nothing}

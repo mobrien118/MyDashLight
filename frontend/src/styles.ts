@@ -2352,6 +2352,78 @@ export const styles = css`
       0 0 0 2px var(--surface),
       0 0 0 4px var(--c);
   }
+  .lunch-card .chore-head {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .lunch-card .ch-text {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+  .lunch-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .lunch-actions .lunch-default {
+    margin-left: 0;
+  }
+  .lunch-expand {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 12px;
+    color: var(--k);
+    border-color: rgba(var(--rgb), 0.45);
+    white-space: nowrap;
+  }
+  .lunch-expand:active {
+    background: rgba(var(--rgb), 0.1);
+  }
+  /* One kid's month filling the tab: room for each day's whole menu. */
+  .lunch-card.wide {
+    padding: 16px 16px 14px;
+  }
+  .lunch-card.wide .lunch-grid {
+    gap: 8px;
+  }
+  .lunch-card.wide .lunch-wd {
+    font-size: 14px;
+  }
+  .lunch-card.wide .lunch-day {
+    min-height: 120px;
+    padding: 10px 12px;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+  .lunch-card.wide .lunch-num,
+  .lunch-card.wide .lunch-word {
+    font-size: 15px;
+    line-height: 19px;
+  }
+  .lunch-card.wide .lunch-menu {
+    display: block;
+    margin-top: 4px;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 800;
+    opacity: 1;
+  }
+  .lunch-card.wide .lunch-menu.add {
+    display: inline-flex;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .lunch-sides {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    line-height: 19px;
+    font-weight: 500;
+    opacity: 0.9;
+  }
   .lunch-chip-text {
     overflow: hidden;
     text-overflow: ellipsis;

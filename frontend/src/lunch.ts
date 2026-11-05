@@ -86,6 +86,18 @@ export function menuOn(kid: KidLunches, date: string): Menu | null {
   return kid.menus?.[date] ?? null;
 }
 
+/** MyDashLight's note on a menu copied from the school's feed: not part of the menu. */
+export const FEED_NOTE = "From the school's menu feed.";
+
+/** The rest of a menu to show under the dish, without MyDashLight's own note; null when empty. */
+export function menuSides(details: string): string | null {
+  const lines = details
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && line !== FEED_NOTE);
+  return lines.length ? lines.join("\n") : null;
+}
+
 export interface LunchCell {
   date: string;
   day: number;
@@ -97,6 +109,8 @@ export interface LunchCell {
   picked: boolean;
   /** The day's dish, such as "Pizza". */
   menu: string | null;
+  /** The rest of the menu (sides, other choices), one item per line; null when there's none. */
+  sides: string | null;
   past: boolean;
   today: boolean;
 }
@@ -147,6 +161,7 @@ export function monthGrid(data: LunchPayload, kid: KidLunches, month: string, dr
         lunch: l?.lunch ?? null,
         picked: l?.picked ?? false,
         menu: outside ? null : (menuOn(kid, date)?.dish ?? null),
+        sides: outside ? null : menuSides(menuOn(kid, date)?.details ?? ""),
         past: date < data.today,
         today: date === data.today,
       });
