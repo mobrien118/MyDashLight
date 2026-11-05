@@ -469,7 +469,7 @@
     },
     "set_lunch_menu": {
       "name": "Set lunch menu",
-      "description": "Saves what the school serves on a day as a \"Lunch: <menu>\" all-day event on each kid's calendar. An empty menu removes it.",
+      "description": "Saves what the school serves on a day as a \"Lunch: Pizza\"-style all-day event on each kid's calendar. An empty menu removes it.",
       "fields": {
         "kids": {
           "name": "Kids",
