@@ -722,7 +722,7 @@
         "value": "mom"
        },
        "who": "mom",
-       "note": "+16 min of driving for Robin"
+       "note": "+16 min round trip"
       },
       {
        "id": "2026-11-05|volley|pick|dad",
@@ -733,7 +733,7 @@
         "value": "dad"
        },
        "who": "dad",
-       "note": "+16 min of driving for Sam"
+       "note": "+16 min round trip"
       }
      ]
     }
@@ -1876,7 +1876,7 @@
         "value": "mom"
        },
        "who": "mom",
-       "note": "+24 min of driving for Robin"
+       "note": "+24 min round trip"
       },
       {
        "id": "2026-11-08|sun-youth|pick|dad",
@@ -1887,7 +1887,7 @@
         "value": "dad"
        },
        "who": "dad",
-       "note": "+24 min of driving for Sam"
+       "note": "+24 min round trip"
       }
      ]
     }

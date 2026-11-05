@@ -315,7 +315,9 @@ function suggestionsFor(issue, events, base, busy) {
     }
     var extra = p.soft.filter(function (x) { return baseSoft.indexOf(issueKey(x)) < 0; });
     var delta = p[c.who].drive - base[c.who].drive;
-    c.note = extra.length ? issueText(extra[0]).note : (delta > 0 ? '+' + drivingText(delta) + ' of driving for ' + PEOPLE[c.who] : delta < 0 ? drivingText(-delta) + ' less driving for ' + PEOPLE[c.who] : 'No new problems');
+    // A new trip from home and back says so (Marty, 2026-11-05). The label already names who drives.
+    var newTrip = p[c.who].trips > base[c.who].trips;
+    c.note = extra.length ? issueText(extra[0]).note : (delta > 0 ? '+' + drivingText(delta) + (newTrip ? ' round trip' : ' of driving') : delta < 0 ? drivingText(-delta) + ' less driving' : 'No new problems');
     c.score = p.score;
     good.push(c);
   });

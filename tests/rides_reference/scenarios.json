@@ -228,7 +228,7 @@
                   "field": "pick",
                   "value": "mom"
                 },
-                "note": "+16 min of driving for Robin"
+                "note": "+16 min round trip"
               },
               {
                 "label": "Sam picks up",
@@ -237,7 +237,7 @@
                   "field": "pick",
                   "value": "dad"
                 },
-                "note": "+16 min of driving for Sam"
+                "note": "+16 min round trip"
               }
             ]
           }
@@ -629,7 +629,7 @@
                   "field": "pick",
                   "value": "mom"
                 },
-                "note": "+24 min of driving for Robin"
+                "note": "+24 min round trip"
               },
               {
                 "label": "Sam picks up",
@@ -638,7 +638,7 @@
                   "field": "pick",
                   "value": "dad"
                 },
-                "note": "+24 min of driving for Sam"
+                "note": "+24 min round trip"
               }
             ]
           }
@@ -1297,7 +1297,7 @@
                   "field": "pick",
                   "value": "mom"
                 },
-                "note": "+16 min of driving for Robin"
+                "note": "+16 min round trip"
               },
               {
                 "label": "Sam picks up",
@@ -1306,7 +1306,7 @@
                   "field": "pick",
                   "value": "dad"
                 },
-                "note": "+16 min of driving for Sam"
+                "note": "+16 min round trip"
               }
             ]
           }
@@ -1539,7 +1539,7 @@
                   "field": "pick",
                   "value": "mom"
                 },
-                "note": "+16 min of driving for Robin"
+                "note": "+16 min round trip"
               },
               {
                 "label": "Sam picks up",
@@ -1548,7 +1548,7 @@
                   "field": "pick",
                   "value": "dad"
                 },
-                "note": "+16 min of driving for Sam"
+                "note": "+16 min round trip"
               }
             ]
           }
@@ -1782,7 +1782,7 @@
                   "field": "pick",
                   "value": "dad"
                 },
-                "note": "+4 min of driving for Sam"
+                "note": "+4 min of driving"
               },
               {
                 "label": "Robin picks up",
@@ -1791,7 +1791,7 @@
                   "field": "pick",
                   "value": "mom"
                 },
-                "note": "+16 min of driving for Robin"
+                "note": "+16 min round trip"
               }
             ]
           }
