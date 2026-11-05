@@ -149,6 +149,10 @@ ATTR_TEMPLATE: Final = "template"
 # events for days off. The only setting is each kid's lunch when nobody picked.
 CONF_LUNCH_DEFAULTS: Final = "lunch_defaults"
 """Each kid's default lunch, "buy" or "bring", by the kid's calendar id."""
+CONF_LUNCH_FEEDS: Final = "lunch_feeds"
+"""Each kid's school menu feed (an iCal address), by the kid's calendar id."""
+MENU_FEED_HOURS: Final = 6
+"""How often the menu feeds are read."""
 LUNCH_UPDATE_SECONDS: Final = 120
 SIGNAL_LUNCH_UPDATED: Final = f"{DOMAIN}_lunch_updated"
 """Sent with the config entry when the lunches change, and with None when they stop."""
@@ -158,3 +162,6 @@ SERVICE_SET_LUNCH: Final = "set_lunch"
 ATTR_KID: Final = "kid"
 ATTR_DATES: Final = "dates"
 ATTR_LUNCH: Final = "lunch"
+ATTR_MENU: Final = "menu"
+ATTR_DETAILS: Final = "details"
+SERVICE_SET_LUNCH_MENU: Final = "set_lunch_menu"

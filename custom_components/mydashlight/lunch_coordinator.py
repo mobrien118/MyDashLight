@@ -7,11 +7,12 @@ Lunch tab can show both months and the chore engine knows the school days it pla
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import date, datetime, time, timedelta
 import logging
 from typing import TYPE_CHECKING, Any
 
+from aiohttp import ClientError, ClientSession, ClientTimeout
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -28,7 +29,19 @@ from .google import (
     GoogleConflict,
     GoogleError,
 )
-from .school import LUNCH_TITLES, Lunch, SchoolCalendar, lunch_changes, lunch_payload, read_school
+from .menu_feed import FeedMenu, feed_changes, feed_menus, read_feed, webcal_to_https
+from .school import (
+    LUNCH_TITLES,
+    MENU_FROM_FEED,
+    MENU_MARK,
+    Lunch,
+    MenuChange,
+    SchoolCalendar,
+    lunch_changes,
+    lunch_payload,
+    menu_changes,
+    read_school,
+)
 from .settings import HubSettings
 
 if TYPE_CHECKING:
@@ -37,6 +50,29 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 LUNCH_NOTE = "Picked on the MyDashLight Lunch tab."
+_FEED_TIMEOUT = ClientTimeout(total=30)
+_FEED_MAX_BYTES = 2_000_000
+
+
+class MenuFeedError(Exception):
+    """A menu feed couldn't be read, or isn't a calendar."""
+
+
+async def async_read_menu_feed(session: ClientSession, url: str) -> dict[date, FeedMenu]:
+    """Each day's lunch in the menu feed at ``url``. Raises :class:`MenuFeedError`."""
+    try:
+        async with session.get(webcal_to_https(url), timeout=_FEED_TIMEOUT) as resp:
+            if resp.status >= 400:
+                raise MenuFeedError(f"The feed answered with HTTP {resp.status}")
+            raw = await resp.content.read(_FEED_MAX_BYTES + 1)
+    except (ClientError, TimeoutError, ValueError) as err:
+        raise MenuFeedError(f"The feed couldn't be read: {err}") from err
+    if len(raw) > _FEED_MAX_BYTES:
+        raise MenuFeedError("The feed is too big to be a menu")
+    text = raw.decode("utf-8", errors="replace")
+    if "BEGIN:VCALENDAR" not in text:
+        raise MenuFeedError("That address isn't a calendar feed")
+    return feed_menus(read_feed(text))
 
 
 def lunch_window(today: date) -> tuple[date, date]:
@@ -55,6 +91,7 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         api: GoogleCalendarApi,
         settings: HubSettings,
         write_lock: asyncio.Lock,
+        session: ClientSession | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -66,6 +103,9 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         self.api = api
         self.settings = settings
         self.write_lock = write_lock
+        self.session = session
+        self.feed_errors: dict[str, str | None] = {}
+        """Each kid with a menu feed: why it couldn't be read last time, or None."""
 
     @property
     def kids(self) -> dict[str, str]:
@@ -111,10 +151,12 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         if data is None:
             return None
         error = None if self.last_update_success or self.last_exception is None else str(self.last_exception)
-        return {
-            **lunch_payload(data, self.kids, dt_util.now().date()),
-            "status": {"ok": self.last_update_success, "error": error},
-        }
+        out = lunch_payload(data, self.kids, dt_util.now().date())
+        for kid in out["kids"]:
+            if kid["id"] in self.settings.lunch_feeds:
+                feed_error = self.feed_errors.get(kid["id"])
+                kid["menu_feed"] = {"ok": feed_error is None, "error": feed_error}
+        return {**out, "status": {"ok": self.last_update_success, "error": error}}
 
     async def async_set_lunch(self, kid: str, days: Iterable[date], lunch: Lunch | None) -> None:
         """Save ``kid``'s lunch on each of ``days``, or take the picks away when None.
@@ -123,6 +165,87 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         in Google meanwhile is read again and tried once more.
         """
         days = list(days)
+
+        async def apply(school: SchoolCalendar) -> None:
+            for change in lunch_changes(school, kid, days, lunch):
+                if change.make:
+                    await self.api.async_add_all_day(kid, change.day, LUNCH_TITLES[change.make], LUNCH_NOTE)
+                elif change.retitle:
+                    event_id, etag, to = change.retitle
+                    await self.api.async_set_title(kid, event_id, etag, LUNCH_TITLES[to])
+                elif change.remove:
+                    event_id, etag = change.remove
+                    await self.api.async_delete_event(kid, event_id, etag)
+
+        await self._async_write(apply)
+
+    async def async_set_menu(self, kids: Iterable[str], day: date, dish: str, details: str = "") -> None:
+        """Save the menu on ``day`` for each of ``kids``: a "Lunch: <dish>" event on the kid's
+        calendar, with ``details`` in its notes. An empty ``dish`` removes it."""
+        kids = list(dict.fromkeys(kids))
+
+        async def apply(school: SchoolCalendar) -> None:
+            for kid in kids:
+                await self._async_menu_changes(kid, menu_changes(school, kid, day, dish, details))
+
+        await self._async_write(apply)
+
+    async def _async_menu_changes(self, kid: str, changes: list[MenuChange]) -> None:
+        for change in changes:
+            # A menu changed by hand stops following the feed.
+            private = {MENU_MARK: MENU_FROM_FEED if change.from_feed else ""}
+            if change.make:
+                title, notes = change.make
+                await self.api.async_add_all_day(kid, change.day, title, notes, private if change.from_feed else None)
+            elif change.update:
+                event_id, etag, title, notes = change.update
+                await self.api.async_set_notes(kid, event_id, etag, notes, title, private)
+            elif change.remove:
+                event_id, etag = change.remove
+                await self.api.async_delete_event(kid, event_id, etag)
+
+    async def async_sync_feeds(self) -> None:
+        """Read each kid's menu feed and copy its lunches from today on onto their calendar."""
+        feeds = dict(self.settings.lunch_feeds)
+        if not feeds or self.session is None:
+            return
+        menus: dict[str, dict[date, FeedMenu]] = {}
+        read: dict[str, dict[date, FeedMenu] | MenuFeedError] = {}
+        for url in dict.fromkeys(feeds.values()):
+            try:
+                read[url] = await async_read_menu_feed(self.session, url)
+            except MenuFeedError as err:
+                _LOGGER.warning("Couldn't read the menu feed %s: %s", url, err)
+                read[url] = err
+        for kid, url in feeds.items():
+            result = read[url]
+            if isinstance(result, MenuFeedError):
+                self.feed_errors[kid] = str(result)
+            else:
+                self.feed_errors[kid] = None
+                menus[kid] = result
+        if not menus:
+            self.async_update_listeners()
+            return
+        today = dt_util.now().date()
+
+        async def apply(school: SchoolCalendar) -> None:
+            for kid, kid_menus in menus.items():
+                await self._async_menu_changes(kid, feed_changes(school, kid, kid_menus, today, school.last))
+
+        try:
+            await self._async_write(apply)
+        except GoogleError as err:
+            _LOGGER.warning("Couldn't copy the menu feeds onto the kids' calendars: %s", err)
+            for kid in menus:
+                self.feed_errors[kid] = f"Couldn't save the menus to the calendar: {err}"
+            self.async_update_listeners()
+
+    async def _async_write(self, apply: Callable[[SchoolCalendar], Awaitable[None]]) -> None:
+        """Work out and make changes against what was last read, then read again.
+
+        An event someone changed in Google meanwhile is read again and tried once more.
+        """
         # Holding the lock through the read after keeps a second quick tap from working out
         # its changes from the calendars as they were before this one.
         async with self.write_lock:
@@ -134,15 +257,7 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
                     if school is None or not self.last_update_success:
                         raise GoogleError("The kids' calendars couldn't be read")
                 try:
-                    for change in lunch_changes(school, kid, days, lunch):
-                        if change.make:
-                            await self.api.async_add_all_day(kid, change.day, LUNCH_TITLES[change.make], LUNCH_NOTE)
-                        elif change.retitle:
-                            event_id, etag, to = change.retitle
-                            await self.api.async_set_title(kid, event_id, etag, LUNCH_TITLES[to])
-                        elif change.remove:
-                            event_id, etag = change.remove
-                            await self.api.async_delete_event(kid, event_id, etag)
+                    await apply(school)
                 except GoogleConflict:
                     await self.async_refresh()
                     if attempt:

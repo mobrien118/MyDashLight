@@ -56,6 +56,7 @@ from .const import (
     CONF_KID_NOTIFY,
     CONF_KIDS,
     CONF_LUNCH_DEFAULTS,
+    CONF_LUNCH_FEEDS,
     CONF_MOM_ALIASES,
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
@@ -87,6 +88,8 @@ from .const import (
     TITLE,
 )
 from .google import CalendarInfo, GoogleApiDisabled, GoogleAuthError, GoogleCalendarApi, GoogleError, StaticToken
+from .lunch_coordinator import MenuFeedError, async_read_menu_feed
+from .menu_feed import webcal_to_https
 from .routes import Place, RoutesApi, RoutesError, RoutesKeyError, RoutesNoRoute, RoutesQuotaError
 from .settings import HubSettings
 
@@ -357,6 +360,7 @@ class MyDashLightConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
 
 CONF_BRING_BY_DEFAULT = "bring_by_default"
+CONF_MENU_FEED = "menu_feed"
 
 
 class MyDashLightOptionsFlow(OptionsFlowWithReload):
@@ -368,6 +372,8 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
         self._calendars: list[CalendarInfo] = []
         self._pending: dict[str, Any] = {}
         self._kid_names: _KidNames | None = None
+        self._feed_kids: list[tuple[str, str]] = []
+        self._feeds: dict[str, str] = {}
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_show_menu(
@@ -559,12 +565,13 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
         kids = HubSettings.from_options(options).roles.kids
         if user_input is not None:
             bring = set(user_input.get(CONF_BRING_BY_DEFAULT) or [])
-            return self.async_create_entry(
-                data={
-                    **options,
-                    CONF_LUNCH_DEFAULTS: {k.calendar_id: "bring" if k.calendar_id in bring else "buy" for k in kids},
-                }
-            )
+            self._pending = {
+                CONF_LUNCH_DEFAULTS: {k.calendar_id: "bring" if k.calendar_id in bring else "buy" for k in kids}
+            }
+            # Then each kid's menu feed, one form per kid.
+            self._feed_kids = [(k.calendar_id, k.name) for k in kids]
+            self._feeds = {}
+            return await self.async_step_lunch_feed()
         defaults = HubSettings.from_options(options).lunch_defaults
         schema = vol.Schema(
             {
@@ -580,6 +587,46 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
             }
         )
         return self.async_show_form(step_id="lunch", data_schema=schema)
+
+    async def async_step_lunch_feed(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """One kid's school menu feed: an iCal address, read every few hours. Optional."""
+        options = self.config_entry.options
+        saved = HubSettings.from_options(options).lunch_feeds
+        errors: dict[str, str] = {}
+        done = len(self._feeds)
+        if user_input is not None and done < len(self._feed_kids):
+            kid = self._feed_kids[done][0]
+            url = webcal_to_https(str(user_input.get(CONF_MENU_FEED) or ""))
+            if url and not re.match(r"^https?://\S+$", url, re.IGNORECASE):
+                errors[CONF_MENU_FEED] = "feed_not_web"
+            elif url and url != saved.get(kid) and url not in self._feeds.values():
+                try:
+                    await async_read_menu_feed(async_get_clientsession(self.hass), url)
+                except MenuFeedError as err:
+                    _LOGGER.warning("Couldn't read the menu feed %s: %s", url, err)
+                    errors[CONF_MENU_FEED] = "feed_unreadable"
+            if not errors:
+                self._feeds[kid] = url
+                done += 1
+        if done >= len(self._feed_kids):
+            return self.async_create_entry(
+                data={**options, **self._pending, CONF_LUNCH_FEEDS: {k: v for k, v in self._feeds.items() if v}}
+            )
+        kid, name = self._feed_kids[done]
+        current = (user_input or {}).get(CONF_MENU_FEED) if errors else saved.get(kid, "")
+        schema = vol.Schema(
+            {
+                vol.Optional(CONF_MENU_FEED, description={"suggested_value": current or ""}): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.URL)
+                )
+            }
+        )
+        return self.async_show_form(
+            step_id="lunch_feed",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"kid": name, "number": str(done + 1), "count": str(len(self._feed_kids))},
+        )
 
     async def _check_routes_key(self, key: str) -> dict[str, str]:
         """Try the key with one short lookup from home to home."""

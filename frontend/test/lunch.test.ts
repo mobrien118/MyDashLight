@@ -7,6 +7,7 @@ import {
   lunchChip,
   lunchMonths,
   lunchOn,
+  menuOn,
   monthCounts,
   monthGrid,
   monthTitle,
@@ -25,6 +26,11 @@ const ava: KidLunches = {
   name: "Ava",
   default: "buy",
   picks: { "2026-11-05": "bring", "2026-11-09": "bring", "2026-11-30": "buy" },
+  menus: {
+    "2026-11-04": { dish: "Pizza", details: "Or: chef salad" },
+    // A menu on a day off isn't shown.
+    "2026-11-26": { dish: "Turkey", details: "" },
+  },
   days_off: [{ first: "2026-11-25", last: "2026-11-27", title: "No School – Thanksgiving Break" }],
 };
 
@@ -60,6 +66,10 @@ test("school days and lunches", () => {
     [draftKey("ava", "2026-11-05"), null],
   ]);
   assert.deepEqual(lunchOn(ava, "2026-11-04", drafts), { lunch: "bring", picked: true });
+  assert.deepEqual(menuOn(ava, "2026-11-04"), { dish: "Pizza", details: "Or: chef salad" });
+  assert.equal(menuOn(ava, "2026-11-05"), null);
+  assert.equal(menuOn(ava, "2026-11-26"), null);
+  assert.equal(menuOn({ ...ava, menus: undefined }, "2026-11-04"), null);
   assert.deepEqual(lunchOn(ava, "2026-11-05", drafts), { lunch: "buy", picked: false });
 });
 
@@ -82,6 +92,9 @@ test("the month grid is school weeks, Monday to Friday", () => {
   assert.equal(cell("2026-11-06").picked, false);
   assert.equal(cell("2026-11-26").off, "No School – Thanksgiving Break");
   assert.equal(cell("2026-11-26").lunch, null);
+  assert.equal(cell("2026-11-04").menu, "Pizza");
+  assert.equal(cell("2026-11-26").menu, null);
+  assert.equal(last[1]!.menu, null);
   // From today on: Nov 4–24 and Nov 30 (15 school days), two of them Bring.
   assert.deepEqual(monthCounts(weeks), { bring: 2, buy: 14 });
 });
@@ -95,13 +108,13 @@ test("a day off's name", () => {
 
 test("the lunch chip on a kid's card", () => {
   // Morning: today's lunch.
-  assert.deepEqual(lunchChip(ava, TODAY, 8 * 60), { lunch: "buy", when: "today" });
+  assert.deepEqual(lunchChip(ava, TODAY, 8 * 60), { lunch: "buy", when: "today", date: TODAY, menu: "Pizza" });
   // Afternoon on: the next school day's.
-  assert.deepEqual(lunchChip(ava, TODAY, 19 * 60), { lunch: "bring", when: "tomorrow" });
+  assert.deepEqual(lunchChip(ava, TODAY, 19 * 60), { lunch: "bring", when: "tomorrow", date: "2026-11-05", menu: null });
   // Friday evening: Monday's.
-  assert.deepEqual(lunchChip(ava, "2026-11-06", 19 * 60), { lunch: "bring", when: "Mon" });
+  assert.deepEqual(lunchChip(ava, "2026-11-06", 19 * 60), { lunch: "bring", when: "Mon", date: "2026-11-09", menu: null });
   // The night before Thanksgiving break: the Monday after.
-  assert.deepEqual(lunchChip(ava, "2026-11-24", 19 * 60), { lunch: "buy", when: "Mon" });
+  assert.deepEqual(lunchChip(ava, "2026-11-24", 19 * 60), { lunch: "buy", when: "Mon", date: "2026-11-30", menu: null });
   const off: KidLunches = { ...ava, days_off: [{ first: "2026-11-04", last: "2026-11-20", title: "No School" }] };
   assert.equal(lunchChip(off, TODAY, 8 * 60), null);
 });

@@ -22,6 +22,9 @@ from custom_components.mydashlight.school import (
     lunch_changes,
     lunch_of,
     lunch_payload,
+    menu_changes,
+    menu_of,
+    menu_title,
     read_school,
 )
 
@@ -34,10 +37,10 @@ FIRST = date(2026, 11, 1)
 LAST = date(2026, 12, 31)
 
 
-def day(event_id: str, title: str, first: str, last: str | None = None) -> CalendarEvent:
+def day(event_id: str, title: str, first: str, last: str | None = None, notes: str = "") -> CalendarEvent:
     start = date.fromisoformat(first)
     end = date.fromisoformat(last or first) + timedelta(days=1)
-    return CalendarEvent("cal", event_id, f'"{event_id}"', title, "", "", start, end, busy=False)
+    return CalendarEvent("cal", event_id, f'"{event_id}"', title, "", notes, start, end, busy=False)
 
 
 def school(**events: list[CalendarEvent]) -> SchoolCalendar:
@@ -104,6 +107,7 @@ def test_payload() -> None:
         "name": "Ava",
         "default": "buy",
         "picks": {"2026-11-05": "bring"},
+        "menus": {},
         "days_off": [{"first": "2026-11-25", "last": "2026-11-27", "title": "No School"}],
     }
     assert ben["default"] == "bring"
@@ -240,3 +244,63 @@ def test_board_says_which_school_day_a_night_before_chore_is_for() -> None:
     ]
     items = board_items(chores, [t], ["ava"], thursday, 4, CENTRAL, None, school())
     assert [(i["due"], i["for_day"]) for i in items] == [("2026-11-05", "2026-11-06"), ("2026-11-08", "2026-11-09")]
+
+
+def test_menu_titles() -> None:
+    assert menu_of("Lunch: Pizza, side salad") == ("Pizza, side salad", "")
+    assert menu_of("🍕 lunch – Pizza", "Or: turkey wrap") == ("Pizza", "Or: turkey wrap")
+    assert menu_of("LUNCH - Tacos") == ("Tacos", "")
+    # Just "Lunch": the notes' first line is the dish.
+    assert menu_of("Lunch", "\nChicken nuggets\nCorn\nMilk") == ("Chicken nuggets", "Corn\nMilk")
+    assert menu_of("Lunch") is None
+    assert menu_of("Lunch:") is None
+    assert menu_of("Lunch with Grandma") is None
+    assert menu_of("Bring Lunch") is None
+    assert menu_of("Buy Lunch") is None
+    assert menu_title("  Pizza,   side salad ") == "Lunch: Pizza, side salad"
+
+
+def test_reads_menus() -> None:
+    cal = school(
+        ava=[
+            day("m1", "Lunch: Pizza", "2026-11-05", notes="Or: salad bar"),
+            day("m2", "Lunch", "2026-11-06", notes="Tacos\nRice"),
+            day("b1", "Bring Lunch", "2026-11-06"),
+            day("x", "Lunch with Grandma", "2026-11-07"),
+        ],
+        ben=[day("m3", "Lunch: Fish sticks", "2026-11-05")],
+    )
+    assert cal.menu("ava", date(2026, 11, 5)).dish == "Pizza"  # type: ignore[union-attr]
+    assert cal.menu("ava", date(2026, 11, 7)) is None
+    assert cal.pick("ava", date(2026, 11, 6)).lunch == "bring"  # type: ignore[union-attr]
+    ava, ben = lunch_payload(cal, KIDS, TODAY)["kids"]
+    assert ava["menus"] == {
+        "2026-11-05": {"dish": "Pizza", "details": "Or: salad bar"},
+        "2026-11-06": {"dish": "Tacos", "details": "Rice"},
+    }
+    assert ben["menus"] == {"2026-11-05": {"dish": "Fish sticks", "details": ""}}
+
+
+def test_menu_changes() -> None:
+    cal = school(
+        ava=[
+            day("m1", "Lunch: Pizza", "2026-11-05"),
+            day("m2", "Lunch: Pizza", "2026-11-05"),
+            day("m3", "Lunch", "2026-11-06", notes="Tacos"),
+        ]
+    )
+    d5, d6, d9 = date(2026, 11, 5), date(2026, 11, 6), date(2026, 11, 9)
+    # A new day: one event.
+    (made,) = menu_changes(cal, "ava", d9, " Fish   sticks ", " Or: salad ")
+    assert made.make == ("Lunch: Fish sticks", "Or: salad")
+    # Same dish: only the extra copy goes.
+    assert [c.remove for c in menu_changes(cal, "ava", d5, "Pizza")] == [("m2", '"m2"')]
+    # A different dish: the first is changed, the copy removed.
+    changes = menu_changes(cal, "ava", d5, "Burgers")
+    assert [c.remove for c in changes if c.remove] == [("m2", '"m2"')]
+    assert [c.update for c in changes if c.update] == [("m1", '"m1"', "Lunch: Burgers", "")]
+    # The same menu written as "Lunch" plus notes needs nothing.
+    assert menu_changes(cal, "ava", d6, "Tacos") == []
+    # Empty removes.
+    assert [c.remove for c in menu_changes(cal, "ava", d6, "")] == [("m3", '"m3"')]
+    assert menu_changes(cal, "ava", d9, "") == []

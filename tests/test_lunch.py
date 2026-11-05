@@ -18,6 +18,9 @@ from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 from custom_components.mydashlight.const import DOMAIN
 
 from .common import AVA, BEN, OPTIONS, FakeGoogle, FakeTasks, all_day, make_entry, setup_credentials
+from .test_menu_feed import FEED
+
+FEED_URL = "https://school.example/calendar/menus.ics"
 
 NOW = "2026-11-04T15:00:00+00:00"  # 9 AM in Central time, a Wednesday
 SCHOOL = "Chore templates: School days"
@@ -100,6 +103,34 @@ async def test_set_lunch(hass: HomeAssistant, google: FakeGoogle) -> None:
         await call(hass, "set_lunch", kid="Zed", dates=["2026-11-06"], lunch="buy")
 
 
+async def test_menus(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(AVA, **all_day("m1", "Lunch: Pizza", "2026-11-05", "2026-11-06", description="Or: salad bar"))
+    google.add(BEN, **all_day("m2", "Lunch", "2026-11-05", "2026-11-06", description="Fish sticks\nCorn"))
+    await load(hass)
+    ava, ben = (await call(hass, "get_lunches"))["kids"]
+    assert ava["menus"] == {"2026-11-05": {"dish": "Pizza", "details": "Or: salad bar"}}
+    assert ben["menus"] == {"2026-11-05": {"dish": "Fish sticks", "details": "Corn"}}
+    # A menu event isn't a ride or a pick.
+    assert ava["picks"] == {}
+
+    await call(hass, "set_lunch_menu", kids=["Ava", "Ben"], date="2026-11-05", menu="Burgers", details="Or: salad")
+    assert titles(google, AVA) == [("2026-11-05", "Lunch: Burgers")]
+    assert titles(google, BEN) == [("2026-11-05", "Lunch: Burgers")]
+    await call(hass, "set_lunch_menu", kids=["Ben"], date="2026-11-09", menu="Tacos")
+    (cal, made) = google.inserted[-1]
+    assert cal == BEN
+    assert made["summary"] == "Lunch: Tacos"
+    assert made["transparency"] == "transparent"
+    ava, ben = (await call(hass, "get_lunches"))["kids"]
+    assert ava["menus"] == {"2026-11-05": {"dish": "Burgers", "details": "Or: salad"}}
+    assert ben["menus"]["2026-11-09"] == {"dish": "Tacos", "details": ""}
+
+    await call(hass, "set_lunch_menu", kids=["Ava"], date="2026-11-05", menu="")
+    assert titles(google, AVA) == []
+    with pytest.raises(ServiceValidationError):
+        await call(hass, "set_lunch_menu", kids=["Zed"], date="2026-11-05", menu="Pizza")
+
+
 async def test_live_feed(hass: HomeAssistant, google: FakeGoogle, hass_ws_client: WebSocketGenerator) -> None:
     await load(hass)
     client = await hass_ws_client(hass)
@@ -119,11 +150,72 @@ async def test_default_setting(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert result["step_id"] == "lunch"
     assert result["data_schema"]({}) == {"bring_by_default": []}
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"bring_by_default": [BEN]})
+    # Then a menu feed for each kid, which can be left empty.
+    for _kid in (AVA, BEN):
+        assert result["step_id"] == "lunch_feed"
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["lunch_defaults"] == {AVA: "buy", BEN: "bring"}
+    assert entry.options["lunch_feeds"] == {}
     await hass.async_block_till_done()
     lunches = await call(hass, "get_lunches")
     assert [k["default"] for k in lunches["kids"]] == ["buy", "bring"]
+
+
+async def test_menu_feed(hass: HomeAssistant, google: FakeGoogle, aioclient_mock: AiohttpClientMocker) -> None:
+    aioclient_mock.get(FEED_URL, text=FEED)
+    aioclient_mock.get("https://school.example/missing.ics", status=404)
+    # Typed by hand before: the feed leaves it alone.
+    google.add(BEN, **all_day("hand", "Lunch: Pizza party", "2026-11-06", "2026-11-07"))
+    entry = await load(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "lunch"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"bring_by_default": []})
+    assert result["step_id"] == "lunch_feed"
+    assert result["description_placeholders"] == {"kid": "Ava", "number": "1", "count": "2"}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"menu_feed": "not a link"})
+    assert result["errors"] == {"menu_feed": "feed_not_web"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"menu_feed": "https://school.example/missing.ics"}
+    )
+    assert result["errors"] == {"menu_feed": "feed_unreadable"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"menu_feed": "webcal://school.example/calendar/menus.ics"}
+    )
+    assert result["description_placeholders"]["kid"] == "Ben"
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"menu_feed": FEED_URL})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["lunch_feeds"] == {AVA: FEED_URL, BEN: FEED_URL}
+    # Saving reloads MyDashLight, which reads the feeds after its first read of the calendars.
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    # Today is Wednesday Nov 4: the feed's lunches from Nov 5 on are on both calendars.
+    assert titles(google, AVA) == [
+        ("2026-11-05", "Lunch: Wild Mike's Cheese Pocket w/ Marinara Sauce"),
+        ("2026-11-06", "Lunch: Nachos Supreme w/ Queso"),
+        ("2026-11-09", "Lunch: Create Your Own Pizza"),
+    ]
+    assert ("2026-11-06", "Lunch: Pizza party") in titles(google, BEN)
+    assert ("2026-11-06", "Lunch: Nachos Supreme w/ Queso") not in titles(google, BEN)
+    made = next(e for e in google.events[AVA] if e["start"]["date"] == "2026-11-09")
+    assert made["extendedProperties"] == {"private": {"mydashlight_menu": "feed"}}
+    assert made["description"].startswith("Parmesan Roasted Broccoli")
+    ava, _ben = (await call(hass, "get_lunches"))["kids"]
+    assert ava["menus"]["2026-11-09"]["dish"] == "Create Your Own Pizza"
+    assert ava["menu_feed"] == {"ok": True, "error": None}
+
+    # Reading it again changes nothing.
+    count = len(google.inserted)
+    await entry.runtime_data.lunch.async_sync_feeds()
+    assert len(google.inserted) == count
+
+    # Changed on the Lunch tab, it stops following the feed.
+    await call(hass, "set_lunch_menu", kids=["Ava"], date="2026-11-09", menu="Pizza")
+    changed = next(e for e in google.events[AVA] if e["start"]["date"] == "2026-11-09")
+    assert changed["summary"] == "Lunch: Pizza"
+    assert changed["extendedProperties"] == {"private": {"mydashlight_menu": ""}}
+    await entry.runtime_data.lunch.async_sync_feeds()
+    assert ("2026-11-09", "Lunch: Pizza") in titles(google, AVA)
 
 
 async def test_pack_lunch_follows_the_picks(hass: HomeAssistant, google: FakeGoogle, tasks: FakeTasks) -> None:

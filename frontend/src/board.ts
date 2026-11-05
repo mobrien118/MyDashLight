@@ -65,6 +65,7 @@ import {
   lunchChip,
   lunchMonths,
   lunchOn,
+  menuOn,
   monthCounts,
   monthGrid,
   monthOf,
@@ -166,6 +167,20 @@ interface Pending {
   value: unknown;
 }
 
+/** A day's lunch menu being added or changed. */
+interface MenuEdit {
+  /** The kid whose day was tapped. */
+  kid: string;
+  date: string;
+  dish: string;
+  details: string;
+  /** The kids it's saved for: the tapped kid, and others who had the same menu that day. */
+  kids: string[];
+  /** The day had a menu: it can be removed. */
+  had: boolean;
+  busy: boolean;
+}
+
 /** Nothing on any kid's calendar all week. */
 function quietWeek(plan: Plan): boolean {
   return plan.days.every((d) => !d.events.length);
@@ -202,6 +217,8 @@ export class MyDashLightBoard extends LitElement {
     lunch: { state: true },
     lunchDraft: { state: true },
     lunchMonth: { state: true },
+    menuMode: { state: true },
+    menuEdit: { state: true },
   };
 
   declare backend: Backend | null;
@@ -245,6 +262,10 @@ export class MyDashLightBoard extends LitElement {
   declare lunchDraft: ReadonlyMap<string, Lunch | null>;
   /** The month the Lunch tab shows, "2026-11"; null for this month. */
   declare lunchMonth: string | null;
+  /** The Lunch tab's days open the menu editor instead of switching Buy and Bring. */
+  declare menuMode: boolean;
+  /** A day's menu being added or changed in the panel. */
+  declare menuEdit: MenuEdit | null;
 
   private stopWatching: (() => void) | null = null;
   private resize: ResizeObserver | null = null;
@@ -299,6 +320,8 @@ export class MyDashLightBoard extends LitElement {
     this.lunch = undefined;
     this.lunchDraft = new Map();
     this.lunchMonth = null;
+    this.menuMode = false;
+    this.menuEdit = null;
   }
 
   override connectedCallback(): void {
@@ -518,6 +541,7 @@ export class MyDashLightBoard extends LitElement {
     this.closeChorePanels();
     this.manage = false;
     this.lunchMonth = null;
+    this.menuMode = false;
     this.page = p;
     // Back on rides, start at now again.
     if (p === "rides") this.scrolledOnce = false;
@@ -561,6 +585,29 @@ export class MyDashLightBoard extends LitElement {
     return this.choreDraft.get(c.id) ?? isDone(c);
   }
 
+  /** Opens the menu editor on a kid's day, with the other kids who have the same menu that day. */
+  private editMenu(k: KidLunches, date: string): void {
+    const kids = this.lunch?.kids ?? [];
+    const menu = menuOn(k, date);
+    const same = kids.filter((o) => o.id === k.id || (menu && menuOn(o, date)?.dish === menu.dish)).map((o) => o.id);
+    this.closePanel();
+    this.menuEdit = { kid: k.id, date, dish: menu?.dish ?? "", details: menu?.details ?? "", kids: same, had: !!menu, busy: false };
+  }
+
+  private async saveMenu(remove = false): Promise<void> {
+    const m = this.menuEdit;
+    if (!m || !this.backend || !m.kids.length) return;
+    this.menuEdit = { ...m, busy: true };
+    try {
+      await this.backend.setLunchMenu(m.kids, m.date, remove ? "" : m.dish.trim(), remove ? "" : m.details.trim());
+      this.menuEdit = null;
+    } catch (err) {
+      this.menuEdit = { ...m, busy: false };
+      const e = err instanceof BackendError ? err : new BackendError("error", String(err));
+      this.showToast(e.code === "preview" ? e.message : `Couldn’t save that. ${e.message}`);
+    }
+  }
+
   /** Saves lunch picks. Shown straight away; undone if saving fails. */
   private async saveLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void> {
     if (!this.backend || !dates.length) return;
@@ -587,6 +634,7 @@ export class MyDashLightBoard extends LitElement {
   }
 
   private closeChorePanels(): void {
+    this.menuEdit = null;
     this.choreEdit = null;
     this.choreBusy = false;
     this.removeArmed = false;
@@ -841,8 +889,24 @@ export class MyDashLightBoard extends LitElement {
       : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
     const wide = this.wide;
     const todo = this.chores ? choresNeedingAttention(this.chores, this.today().minutes).filter((c) => !this.choreDone(c)) : [];
-    const chorePanel = this.choreEdit ? this.renderChoreEditor(this.choreEdit) : this.whoFor ? this.renderWhoDidIt(this.whoFor) : null;
-    const label = this.choreEdit ? (this.choreEdit.template ? "Change a chore" : "Add a chore") : this.whoFor ? "Who did it" : this.sel ? "Change this ride" : "Needs attention";
+    const chorePanel = this.menuEdit
+      ? this.renderMenuEditor(this.menuEdit)
+      : this.choreEdit
+        ? this.renderChoreEditor(this.choreEdit)
+        : this.whoFor
+          ? this.renderWhoDidIt(this.whoFor)
+          : null;
+    const label = this.menuEdit
+      ? "Lunch menu"
+      : this.choreEdit
+        ? this.choreEdit.template
+          ? "Change a chore"
+          : "Add a chore"
+        : this.whoFor
+          ? "Who did it"
+          : this.sel
+            ? "Change this ride"
+            : "Needs attention";
     const panel = html`<aside class="panel" aria-label=${label}>
       ${chorePanel ?? (this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att, todo))}
     </aside>`;
@@ -862,7 +926,7 @@ export class MyDashLightBoard extends LitElement {
               : this.page === "lunch"
                 ? html`<section class="board-area chores-area" aria-label="Lunch">${this.renderLunch()}</section>`
                 : html`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
-            ${!wide && (this.sheet || this.sel || this.choreEdit || this.whoFor)
+            ${!wide && (this.sheet || this.sel || this.choreEdit || this.whoFor || this.menuEdit)
               ? html`<div class="backdrop" @click=${() => this.closePanel()}></div>
                   ${panel}`
               : nothing}
@@ -1385,8 +1449,10 @@ export class MyDashLightBoard extends LitElement {
     const chip = lunchChip(k, now.date, now.minutes, this.lunchDraft);
     if (!chip) return nothing;
     const word = LUNCH_WORD[chip.lunch];
-    return html`<span class="lunch-chip ${chip.lunch} ${small ? "small" : ""}" title=${`${word} lunch ${chip.when}`}
-      >${chip.lunch === "bring" ? BAG : TRAY}<span class="lunch-chip-text">${word}${small ? nothing : ` ${chip.when}`}</span></span
+    return html`<span class="lunch-chip ${chip.lunch} ${small ? "small" : ""}" title=${`${word} lunch ${chip.when}${chip.menu ? `: ${chip.menu}` : ""}`}
+      >${chip.lunch === "bring" ? BAG : TRAY}<span class="lunch-chip-text"
+        >${word}${small ? nothing : ` ${chip.when}`}${!small && chip.menu ? html`<span class="lunch-chip-menu"> · ${chip.menu}</span>` : nothing}</span
+      ></span
     >`;
   }
 
@@ -1422,7 +1488,22 @@ export class MyDashLightBoard extends LitElement {
             ${svg`<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg>`}
           </button>
         </div>
-        <span class="chores-hint">Tap a day to switch between Buy and Bring. Tap a weekday to set the whole month.</span>
+        <span class="chores-hint"
+          >${this.menuMode
+            ? "Tap a day to add or change what’s served."
+            : "Tap a day to switch between Buy and Bring. Tap a weekday to set the whole month."}</span
+        >
+        <button
+          type="button"
+          class="btn ${this.menuMode ? "dark" : ""}"
+          aria-pressed=${this.menuMode ? "true" : "false"}
+          @click=${() => {
+            this.menuMode = !this.menuMode;
+            this.menuEdit = null;
+          }}
+        >
+          ${this.menuMode ? "Done" : html`${PENCIL} Edit menus`}
+        </button>
       </div>
       ${status}
       <div class="chore-cols lunch-cols" style="--n:${data.kids.length}">
@@ -1430,6 +1511,9 @@ export class MyDashLightBoard extends LitElement {
       </div>
       <p class="message-aside">
         Picks are saved as <strong>Bring Lunch</strong> and <strong>Buy Lunch</strong> all-day events on each kid’s calendar.
+        Menus are <strong>Lunch: Pizza</strong> all-day events there, with the rest of the menu in the notes. They can
+        come from the school’s menu feed (set in Home Assistant under MyDashLight’s options, Lunch), a calendar file
+        imported once a month, or <strong>Edit menus</strong> here.
         Days off come from <strong>No School</strong> events there. A day nobody picked gets the kid’s default, set in
         Home Assistant under MyDashLight’s options. For a Pack lunch reminder, add a School days chore set to
         <strong>Only on Bring lunch days</strong>.
@@ -1467,6 +1551,9 @@ export class MyDashLightBoard extends LitElement {
         </span>
         <span class="lunch-default">${LUNCH_WORD[k.default]} unless picked</span>
       </div>
+      ${k.menu_feed && !k.menu_feed.ok
+        ? html`<p class="field-hint bad">Couldn’t read the school menu feed${k.menu_feed.error ? `: ${k.menu_feed.error}` : ""}.</p>`
+        : nothing}
       <div class="lunch-grid" role="grid" aria-label=${`${k.name}, ${monthTitle(month)}`}>
         ${["Mon", "Tue", "Wed", "Thu", "Fri"].map(
           (w, i) => html`<button
@@ -1506,16 +1593,26 @@ export class MyDashLightBoard extends LitElement {
     }
     const lunch = c.lunch;
     const to: Lunch = lunch === "buy" ? "bring" : "buy";
-    const label = `${k.name}, ${dayLabel(c.date)}: ${LUNCH_WORD[lunch]}${c.picked ? "" : " (not picked yet)"}. Tap to ${LUNCH_WORD[to]}.`;
+    const menu = c.menu ? `, ${c.menu}` : "";
+    const editing = this.menuMode;
+    const sel = this.menuEdit?.date === c.date && this.menuEdit.kids.includes(k.id);
+    const label = editing
+      ? `${k.name}, ${dayLabel(c.date)}${menu || ", no menu yet"}. Tap to ${c.menu ? "change" : "add"} the menu.`
+      : `${k.name}, ${dayLabel(c.date)}: ${LUNCH_WORD[lunch]}${c.picked ? "" : " (not picked yet)"}${menu}. Tap to ${LUNCH_WORD[to]}.`;
     return html`<button
       type="button"
-      class="lunch-day ${lunch} ${c.picked ? "picked" : "unpicked"} ${c.past ? "past" : ""} ${c.today ? "today" : ""}"
-      ?disabled=${c.past}
+      class="lunch-day ${lunch} ${c.picked ? "picked" : "unpicked"} ${c.past ? "past" : ""} ${c.today ? "today" : ""} ${editing ? "editing" : ""} ${sel ? "sel" : ""}"
+      ?disabled=${c.past && !editing}
       aria-label=${label}
-      @click=${() => void this.saveLunch(k.id, [c.date], to)}
+      @click=${() => (editing ? this.editMenu(k, c.date) : void this.saveLunch(k.id, [c.date], to))}
     >
       <span class="lunch-num">${c.day}</span>
       <span class="lunch-word">${lunch === "bring" ? BAG : TRAY}${LUNCH_WORD[lunch]}</span>
+      ${c.menu
+        ? html`<span class="lunch-menu">${c.menu}</span>`
+        : editing
+          ? html`<span class="lunch-menu add">${PLUS} Menu</span>`
+          : nothing}
     </button>`;
   }
 
@@ -1903,6 +2000,78 @@ export class MyDashLightBoard extends LitElement {
       <div class="ed-foot">
         <button type="button" class="btn dark save" ?disabled=${busy || !!problem} @click=${() => void this.saveChoreEdit()}>
           ${busy ? "Saving to Google Tasks…" : problem ? problem.replace(/\.$/, "") : d.template ? "Save" : "Add this chore"}
+        </button>
+      </div>
+    `;
+  }
+
+  /** A day's lunch menu: the dish, the rest of the menu, and which kids get it. */
+  private renderMenuEditor(m: MenuEdit): TemplateResult {
+    const data = this.lunch;
+    if (!data) return html``;
+    const busy = m.busy;
+    const change = (c: Partial<MenuEdit>): void => {
+      if (this.menuEdit) this.menuEdit = { ...this.menuEdit, ...c };
+    };
+    const toggle = (id: string): void =>
+      change({ kids: m.kids.includes(id) ? m.kids.filter((x) => x !== id) : [...m.kids, id] });
+    const school = data.kids.filter((k) => lunchOn(k, m.date));
+    const dish = m.dish.trim();
+    const problem = !m.kids.length ? "Pick who gets this menu" : !dish ? "Type what’s served" : null;
+    return html`
+      <div class="ed-head">
+        <div class="ed-titles">
+          <span class="ed-title">${m.had ? "Change the menu" : "Add a menu"}</span>
+          <span class="ed-meta">${dayLabel(m.date)}</span>
+        </div>
+        <button type="button" class="btn" ?disabled=${busy} @click=${() => (this.menuEdit = null)}>Cancel</button>
+      </div>
+      <div class="field">
+        <label class="field-label" for="menu-dish">What’s served</label>
+        <input
+          id="menu-dish"
+          class="text-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Pizza, side salad"
+          .value=${m.dish}
+          ?disabled=${busy}
+          @input=${(ev: Event) => change({ dish: (ev.target as HTMLInputElement).value })}
+        />
+        <span class="field-hint">Shown on the Lunch tab and on each kid’s lunch tag.</span>
+      </div>
+      <div class="field">
+        <label class="field-label" for="menu-details">More <span class="field-hint">Optional, like other choices or sides</span></label>
+        <textarea
+          id="menu-details"
+          class="text-input"
+          rows="3"
+          .value=${m.details}
+          ?disabled=${busy}
+          @input=${(ev: Event) => change({ details: (ev.target as HTMLTextAreaElement).value })}
+        ></textarea>
+      </div>
+      <div class="field">
+        <span class="field-label">For</span>
+        <div role="group" aria-label="Who gets this menu" class="who-chips">
+          ${school.map((k) => {
+            const c = this.kidColorOf(k.id);
+            const on = m.kids.includes(k.id);
+            return html`<button type="button" class="who-chip" style="--c:${c.color};--rgb:${c.rgb}" aria-pressed=${on ? "true" : "false"} ?disabled=${busy} @click=${() => toggle(k.id)}>
+              <span class="avatar" aria-hidden="true">${initial(k.name)}</span>${k.name}
+            </button>`;
+          })}
+        </div>
+        <span class="field-hint">Saved as a <strong>Lunch: ${dish || "…"}</strong> all-day event on each one’s calendar.</span>
+      </div>
+      ${m.had
+        ? html`<button type="button" class="chip clear remove" ?disabled=${busy || !m.kids.length} @click=${() => void this.saveMenu(true)}>
+            Remove this day’s menu
+          </button>`
+        : nothing}
+      <div class="ed-foot">
+        <button type="button" class="btn dark save" ?disabled=${busy || !!problem} @click=${() => void this.saveMenu()}>
+          ${busy ? "Saving to Google Calendar…" : (problem ?? "Save")}
         </button>
       </div>
     `;
