@@ -158,6 +158,28 @@ test("needs attention lists overdue chores first, then today's", () => {
   );
 });
 
+test("a night-before chore waits for the afternoon of its day", () => {
+  const data = payload([
+    chore("ben", "Pack lunch", { repeats: "school", for_day: "2026-11-05" }),
+    chore("ben", "Make bed"),
+    chore("cleo", "Pack lunch", { repeats: "school", for_day: "2026-11-05", state: "done" }),
+  ]);
+  // Morning: coming up later today, not to do.
+  const morning = choreColumns(data, undefined, 9 * 60).find((c) => c.kid === "ben")!;
+  assert.deepEqual(morning.now.map((c) => c.title), ["Make bed"]);
+  assert.deepEqual(morning.later.map((g) => [g.date, g.chores.map((c) => c.title)]), [[TODAY, ["Pack lunch"]]]);
+  assert.equal(morning.left, 1);
+  assert.equal(choreNote(morning.later[0]!.chores[0]!, TODAY, TZ), "From 1 PM · for tomorrow");
+  assert.deepEqual(choresNeedingAttention(data, 9 * 60).map((c) => c.title), ["Make bed"]);
+  // From 1 PM it's to do.
+  const afternoon = choreColumns(data, undefined, 13 * 60).find((c) => c.kid === "ben")!;
+  assert.deepEqual(afternoon.now.map((c) => c.title), ["Pack lunch", "Make bed"]);
+  assert.deepEqual(choresNeedingAttention(data, 13 * 60).map((c) => c.title), ["Pack lunch", "Make bed"]);
+  // Done early stays done.
+  const cleo = choreColumns(data, undefined, 9 * 60).find((c) => c.kid === "cleo")!;
+  assert.deepEqual(cleo.done.map((c) => c.title), ["Pack lunch"]);
+});
+
 test("no chores yet only when there are no chores and no templates", () => {
   assert.ok(noChoresYet(payload([])));
   assert.ok(!noChoresYet(payload([chore("ava", "Make bed")])));
