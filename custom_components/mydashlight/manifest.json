@@ -9,6 +9,7 @@
     "application_credentials",
     "frontend",
     "http",
+    "network",
     "panel_custom",
     "websocket_api"
   ],
@@ -18,5 +19,5 @@
   "issue_tracker": "https://github.com/mobrien118/MyDashLight/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.11.1"
+  "version": "0.11.2"
 }
