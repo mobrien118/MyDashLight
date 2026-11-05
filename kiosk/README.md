@@ -60,6 +60,11 @@ to Home Assistant if asked, check the code matches, and press **Allow**. The boa
 seconds later and stays signed in from then on. You need to be a Home Assistant admin to approve
 it, and the screen is signed in as you.
 
+If Home Assistant can be reached from the internet, anyone can open the kitchen page and get a code,
+but a code does nothing until an admin allows it. If the approval says the code came from outside
+your home network, press **Cancel** unless you're standing at your own screen, and never allow a
+code or link that someone sent you.
+
 To sign the screen out, open your Home Assistant profile, go to **Security**, and delete the
 refresh token for your `/mydashlight-kitchen` address. The screen shows a new code.
 

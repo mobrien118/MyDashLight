@@ -15,13 +15,19 @@ the screen out, and it shows a new code.
 
 Codes live only in memory and last ten minutes; a code that's approved but never collected has
 its sign-in deleted when it runs out.
+
+Anyone on the internet who can reach Home Assistant can open the kitchen page and get a code too. A
+code like that is harmless unless an admin approves it, so the admin is warned when a code didn't
+come from the home network, and codes from outside can't use up the room home screens need.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 import hashlib
 import hmac
+from ipaddress import ip_address, ip_network
 import logging
 import secrets
 import time
@@ -29,7 +35,7 @@ from typing import Any, Final
 
 from aiohttp import web
 from homeassistant.auth.models import RefreshToken
-from homeassistant.components import websocket_api
+from homeassistant.components import network, websocket_api
 from homeassistant.components.websocket_api.connection import ActiveConnection
 from homeassistant.components.websocket_api.decorators import async_response, require_admin, websocket_command
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
@@ -54,6 +60,8 @@ MAX_PENDING: Final = 20
 """Codes waiting at once, across all screens. More is someone flooding the page."""
 MAX_PENDING_PER_ADDRESS: Final = 3
 """Codes waiting at once from one address. A new one past this replaces the oldest."""
+MAX_PENDING_OUTSIDE: Final = 10
+"""Codes waiting at once from outside the home network, so they can't crowd out home screens."""
 
 ALPHABET: Final = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 """No 0/O or 1/I, so a code can't be misread. 32 letters, 8 of them: about a trillion codes."""
@@ -71,6 +79,37 @@ def normalize_code(text: str) -> str:
     return "".join(c for c in text.upper() if c.isalnum())
 
 
+def is_home_address(address: str, home_networks: Iterable[str] = ()) -> bool:
+    """Whether a request came from the home network: a private address, or one on a network that
+    Home Assistant itself is on (which covers a home's public IPv6 addresses)."""
+    try:
+        ip = ip_address(address)
+    except ValueError:
+        return False
+    if ip.version == 6 and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    if ip.is_loopback or ip.is_link_local or (ip.is_private and not ip.is_unspecified):
+        return True
+    for net in home_networks:
+        try:
+            if ip in ip_network(net, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+async def async_home_networks(hass: HomeAssistant) -> list[str]:
+    """The networks Home Assistant's own network adapters are on, like ``2600:1700:1:2::/64``."""
+    nets: list[str] = []
+    for adapter in await network.async_get_adapters(hass):
+        if not adapter["enabled"]:
+            continue
+        for ip in [*adapter["ipv4"], *adapter["ipv6"]]:
+            nets.append(f"{ip['address']}/{ip['network_prefix']}")
+    return nets
+
+
 def _digest(secret: str) -> str:
     return hashlib.sha256(secret.encode()).hexdigest()
 
@@ -83,6 +122,8 @@ class Pending:
     """The address the sign-in is for: the kitchen page on the address the screen used."""
     address: str
     """Where the request came from, shown when approving."""
+    home: bool
+    """Whether that's on the home network. If not, the admin is warned before approving."""
     created: float
     approving: bool = False
     refresh_token: RefreshToken | None = None
@@ -97,18 +138,20 @@ class Pairing:
         self.hass = hass
         self.pending: dict[str, Pending] = {}
 
-    def start(self, client_id: str, address: str) -> tuple[Pending, str] | None:
+    def start(self, client_id: str, address: str, home: bool) -> tuple[Pending, str] | None:
         """A new code and its secret, or None if too many are waiting."""
         mine = sorted((p for p in self.pending.values() if p.address == address), key=lambda p: p.created)
         while len(mine) >= MAX_PENDING_PER_ADDRESS:
             self._drop(mine.pop(0))
         if len(self.pending) >= MAX_PENDING:
             return None
+        if not home and sum(not p.home for p in self.pending.values()) >= MAX_PENDING_OUTSIDE:
+            return None
         code = new_code()
         while code in self.pending:
             code = new_code()
         secret = secrets.token_urlsafe(32)
-        p = Pending(code, _digest(secret), client_id, address, time.monotonic())
+        p = Pending(code, _digest(secret), client_id, address, home, time.monotonic())
         p.expire = async_call_later(self.hass, CODE_LIFETIME, lambda _now: self._drop(p))
         self.pending[code] = p
         return p, secret
@@ -140,7 +183,12 @@ class Pairing:
             return False
         p.refresh_token = token
         p.approved_by = user.name
-        _LOGGER.info("%s paired a screen at %s, signed in as them", user.name, p.address)
+        if p.home:
+            _LOGGER.info("%s paired a screen at %s, signed in as them", user.name, p.address)
+        else:
+            _LOGGER.warning(
+                "%s paired a screen at %s, outside the home network, signed in as them", user.name, p.address
+            )
         return True
 
     def collect(self, p: Pending, address: str) -> dict[str, Any]:
@@ -211,7 +259,9 @@ class PairStartView(HomeAssistantView):
     async def post(self, request: web.Request) -> web.Response:
         hass = request.app[KEY_HASS]
         client_id = f"{request.url.origin()}{self._kitchen_url}"
-        started = _pairing(hass).start(client_id, _address(request))
+        address = _address(request)
+        home = is_home_address(address, await async_home_networks(hass))
+        started = _pairing(hass).start(client_id, address, home)
         if started is None:
             return self.json({"error": "busy"}, 429)
         p, secret = started
@@ -263,6 +313,7 @@ def _ws_check(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, 
             "found": True,
             "code": p.code,
             "address": p.address,
+            "home": p.home,
             "age": int(time.monotonic() - p.created),
             "expires_in": max(0, int(CODE_LIFETIME - (time.monotonic() - p.created))),
         },

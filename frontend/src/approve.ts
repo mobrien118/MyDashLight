@@ -9,6 +9,8 @@ interface Waiting {
   found: boolean;
   code?: string;
   address?: string;
+  /** False when the code came from outside the home network: likely someone else's screen. */
+  home?: boolean;
   age?: number;
 }
 
@@ -82,6 +84,12 @@ export class MyDashLightPairApprove extends LitElement {
     .error {
       color: #b42318;
       font-weight: 600;
+    }
+    .warning {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #fdecea;
+      color: #8a1c12;
     }
     .actions {
       display: flex;
@@ -227,8 +235,15 @@ export class MyDashLightPairApprove extends LitElement {
   private confirm(): TemplateResult {
     const w = this.waiting!;
     const busy = this.step === "approving";
+    const outside = w.home === false;
     return html`<h2>Allow this screen?</h2>
       <p class="code">${displayCode(w.code ?? "")}</p>
+      ${outside
+        ? html`<p class="warning" role="alert">
+            <b>This code came from outside your home network.</b> Only allow it if you can see this code on a
+            screen of your own right now. If someone sent you this code or link, press Cancel.
+          </p>`
+        : nothing}
       <p>
         A screen at ${w.address} asked ${ago(w.age ?? 0)}. Check the code matches the one on the screen. It will be
         signed in to Home Assistant as <b>${this.userName || "you"}</b>.
@@ -237,7 +252,7 @@ export class MyDashLightPairApprove extends LitElement {
       <div class="actions">
         <button type="button" @click=${() => this.close()} ?disabled=${busy}>Cancel</button>
         <button type="button" class="dark" @click=${() => void this.approve()} ?disabled=${busy}>
-          ${busy ? "Allowing…" : "Allow"}
+          ${busy ? "Allowing…" : outside ? "Allow anyway" : "Allow"}
         </button>
       </div>`;
   }

@@ -19,10 +19,12 @@ from custom_components.mydashlight.pairing import (
     CODE_LENGTH,
     CODE_LIFETIME,
     MAX_PENDING,
+    MAX_PENDING_OUTSIDE,
     MAX_PENDING_PER_ADDRESS,
     POLL_URL,
     START_URL,
     Pairing,
+    is_home_address,
     new_code,
     normalize_code,
 )
@@ -71,6 +73,31 @@ def test_codes_are_easy_to_read() -> None:
     assert normalize_code(" kq7m-4txp ") == "KQ7M4TXP"
 
 
+@pytest.mark.parametrize(
+    ("address", "home"),
+    [
+        ("192.168.1.50", True),
+        ("10.0.0.7", True),
+        ("172.30.33.2", True),
+        ("127.0.0.1", True),
+        ("::1", True),
+        ("fe80::1", True),
+        ("fd12:3456::9", True),
+        ("::ffff:192.168.1.50", True),
+        ("2600:1700:1:2::50", True),  # On the same network as Home Assistant.
+        ("2600:1700:9:9::50", False),
+        ("8.8.8.8", False),
+        ("::ffff:8.8.8.8", False),
+        ("100.64.1.1", False),
+        ("0.0.0.0", False),
+        ("unknown", False),
+        ("", False),
+    ],
+)
+def test_home_addresses(address: str, home: bool) -> None:
+    assert is_home_address(address, ["192.168.1.10/24", "2600:1700:1:2::10/64", "not-a-network"]) is home
+
+
 async def test_a_screen_pairs_and_stays_signed_in(
     hass: HomeAssistant, hass_client_no_auth: ClientSessionGenerator, hass_ws_client: WebSocketGenerator
 ) -> None:
@@ -89,6 +116,7 @@ async def test_a_screen_pairs_and_stays_signed_in(
     assert checked["result"]["found"] is True
     assert checked["result"]["code"] == code
     assert checked["result"]["address"] == "127.0.0.1"
+    assert checked["result"]["home"] is True
     approved = await ws(hass, hass_ws_client, {"type": "mydashlight/pair/approve", "code": code})
     assert approved["success"], approved
 
@@ -196,26 +224,34 @@ async def test_codes_run_out(
 
 async def test_too_many_codes_at_once(hass: HomeAssistant, hass_client_no_auth: ClientSessionGenerator) -> None:
     pairing = Pairing(hass)
+    url = "https://ha.example/mydashlight-kitchen"
     # One address asking again and again keeps only its newest few.
-    first = pairing.start("https://ha.example/mydashlight-kitchen", "192.168.1.50")
+    first = pairing.start(url, "192.168.1.50", True)
     assert first is not None
     for _ in range(MAX_PENDING_PER_ADDRESS):
-        assert pairing.start("https://ha.example/mydashlight-kitchen", "192.168.1.50") is not None
+        assert pairing.start(url, "192.168.1.50", True) is not None
     assert pairing.find(first[0].code) is None
     assert len(pairing.pending) == MAX_PENDING_PER_ADDRESS
 
     # Many addresses at once: past the limit, no more codes until some run out.
     for i in range(MAX_PENDING - MAX_PENDING_PER_ADDRESS):
-        assert pairing.start("https://ha.example/mydashlight-kitchen", f"10.0.0.{i}") is not None
-    assert pairing.start("https://ha.example/mydashlight-kitchen", "10.0.1.1") is None
+        assert pairing.start(url, f"10.0.0.{i}", True) is not None
+    assert pairing.start(url, "10.0.1.1", True) is None
     pairing.clear()
     assert not pairing.pending
+
+    # Codes from outside the home can't take up all the room: home screens can still pair.
+    for i in range(MAX_PENDING_OUTSIDE):
+        assert pairing.start(url, f"52.0.0.{i}", False) is not None
+    assert pairing.start(url, "52.0.1.1", False) is None
+    assert pairing.start(url, "192.168.1.50", True) is not None
+    pairing.clear()
 
     # The page is told to try again later.
     client = await hass_client_no_auth()
     real = pairing_module._pairing(hass)
     for i in range(MAX_PENDING):
-        real.start("https://ha.example/mydashlight-kitchen", f"10.1.0.{i}")
+        real.start(url, f"10.1.0.{i}", True)
     res = await client.post(START_URL)
     assert res.status == 429
     real.clear()
