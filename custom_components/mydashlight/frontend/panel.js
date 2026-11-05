@@ -18,8 +18,12 @@ var nt=globalThis,st=nt.ShadowRoot&&(nt.ShadyCSS===void 0||nt.ShadyCSS.nativeSha
         <button type="button" @click=${()=>this.close()}>Cancel</button>
         <button type="submit" class="dark" ?disabled=${e}>${e?"Checking…":"Next"}</button>
       </div>
-    </form>`}confirm(){let e=this.waiting,t=this.step==="approving";return d`<h2>Allow this screen?</h2>
+    </form>`}confirm(){let e=this.waiting,t=this.step==="approving",i=e.home===!1;return d`<h2>Allow this screen?</h2>
       <p class="code">${Rn(e.code??"")}</p>
+      ${i?d`<p class="warning" role="alert">
+            <b>This code came from outside your home network.</b> Only allow it if you can see this code on a
+            screen of your own right now. If someone sent you this code or link, press Cancel.
+          </p>`:m}
       <p>
         A screen at ${e.address} asked ${Ls(e.age??0)}. Check the code matches the one on the screen. It will be
         signed in to Home Assistant as <b>${this.userName||"you"}</b>.
@@ -28,7 +32,7 @@ var nt=globalThis,st=nt.ShadowRoot&&(nt.ShadyCSS===void 0||nt.ShadyCSS.nativeSha
       <div class="actions">
         <button type="button" @click=${()=>this.close()} ?disabled=${t}>Cancel</button>
         <button type="button" class="dark" @click=${()=>void this.approve()} ?disabled=${t}>
-          ${t?"Allowing…":"Allow"}
+          ${t?"Allowing…":i?"Allow anyway":"Allow"}
         </button>
       </div>`}render(){let e;return this.isAdmin?this.step==="done"?e=d`<h2>Screen paired</h2>
         <p>It will open the board in a few seconds.</p>
@@ -89,6 +93,12 @@ var nt=globalThis,st=nt.ShadowRoot&&(nt.ShadyCSS===void 0||nt.ShadyCSS.nativeSha
     .error {
       color: #b42318;
       font-weight: 600;
+    }
+    .warning {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #fdecea;
+      color: #8a1c12;
     }
     .actions {
       display: flex;
