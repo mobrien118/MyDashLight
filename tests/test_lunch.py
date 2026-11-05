@@ -241,3 +241,42 @@ async def test_pack_lunch_follows_the_picks(hass: HomeAssistant, google: FakeGoo
     chores = await call(hass, "get_chores")
     pack = next(c for c in chores["chores"] if c["title"] == "Pack lunch" and c["kid"] == AVA)
     assert pack["for_day"] == "2026-11-06"
+
+
+class _Chunks:
+    """A response whose body arrives in small pieces, as a real feed over the network does."""
+
+    def __init__(self, body: bytes, size: int = 100) -> None:
+        self.status = 200
+        self._pieces = [body[i : i + size] for i in range(0, len(body), size)]
+        self.content = self
+
+    async def iter_chunked(self, _n: int) -> Any:
+        for piece in self._pieces:
+            yield piece
+
+    async def __aenter__(self) -> _Chunks:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        return None
+
+
+class _Session:
+    def __init__(self, response: _Chunks) -> None:
+        self.response = response
+
+    def get(self, _url: str, **_kwargs: Any) -> _Chunks:
+        return self.response
+
+
+async def test_menu_feed_read_whole() -> None:
+    """Every day of a feed is read, not just the first piece of it to arrive."""
+    from custom_components.mydashlight.lunch_coordinator import MenuFeedError, async_read_menu_feed
+
+    whole = await async_read_menu_feed(_Session(_Chunks(FEED.encode())), FEED_URL)  # type: ignore[arg-type]
+    assert len(whole) == len(await async_read_menu_feed(_Session(_Chunks(FEED.encode(), 10**6)), FEED_URL))  # type: ignore[arg-type]
+    assert len(whole) > 1
+    # A feed that stops partway isn't used, so no days go missing.
+    with pytest.raises(MenuFeedError, match="cut short"):
+        await async_read_menu_feed(_Session(_Chunks(FEED.encode()[: len(FEED) // 2])), FEED_URL)  # type: ignore[arg-type]
