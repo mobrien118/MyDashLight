@@ -7,7 +7,7 @@ Lunch tab can show both months and the chore engine knows the school days it pla
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import date, datetime, time, timedelta
 import logging
 from typing import TYPE_CHECKING, Any
@@ -28,7 +28,7 @@ from .google import (
     GoogleConflict,
     GoogleError,
 )
-from .school import LUNCH_TITLES, Lunch, SchoolCalendar, lunch_changes, lunch_payload, read_school
+from .school import LUNCH_TITLES, Lunch, SchoolCalendar, lunch_changes, lunch_payload, menu_changes, read_school
 from .settings import HubSettings
 
 if TYPE_CHECKING:
@@ -123,6 +123,45 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         in Google meanwhile is read again and tried once more.
         """
         days = list(days)
+
+        async def apply(school: SchoolCalendar) -> None:
+            for change in lunch_changes(school, kid, days, lunch):
+                if change.make:
+                    await self.api.async_add_all_day(kid, change.day, LUNCH_TITLES[change.make], LUNCH_NOTE)
+                elif change.retitle:
+                    event_id, etag, to = change.retitle
+                    await self.api.async_set_title(kid, event_id, etag, LUNCH_TITLES[to])
+                elif change.remove:
+                    event_id, etag = change.remove
+                    await self.api.async_delete_event(kid, event_id, etag)
+
+        await self._async_write(apply)
+
+    async def async_set_menu(self, kids: Iterable[str], day: date, dish: str, details: str = "") -> None:
+        """Save the menu on ``day`` for each of ``kids``: a "Lunch: <dish>" event on the kid's
+        calendar, with ``details`` in its notes. An empty ``dish`` removes it."""
+        kids = list(dict.fromkeys(kids))
+
+        async def apply(school: SchoolCalendar) -> None:
+            for kid in kids:
+                for change in menu_changes(school, kid, day, dish, details):
+                    if change.make:
+                        title, notes = change.make
+                        await self.api.async_add_all_day(kid, change.day, title, notes)
+                    elif change.update:
+                        event_id, etag, title, notes = change.update
+                        await self.api.async_set_notes(kid, event_id, etag, notes, title)
+                    elif change.remove:
+                        event_id, etag = change.remove
+                        await self.api.async_delete_event(kid, event_id, etag)
+
+        await self._async_write(apply)
+
+    async def _async_write(self, apply: Callable[[SchoolCalendar], Awaitable[None]]) -> None:
+        """Work out and make changes against what was last read, then read again.
+
+        An event someone changed in Google meanwhile is read again and tried once more.
+        """
         # Holding the lock through the read after keeps a second quick tap from working out
         # its changes from the calendars as they were before this one.
         async with self.write_lock:
@@ -134,15 +173,7 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
                     if school is None or not self.last_update_success:
                         raise GoogleError("The kids' calendars couldn't be read")
                 try:
-                    for change in lunch_changes(school, kid, days, lunch):
-                        if change.make:
-                            await self.api.async_add_all_day(kid, change.day, LUNCH_TITLES[change.make], LUNCH_NOTE)
-                        elif change.retitle:
-                            event_id, etag, to = change.retitle
-                            await self.api.async_set_title(kid, event_id, etag, LUNCH_TITLES[to])
-                        elif change.remove:
-                            event_id, etag = change.remove
-                            await self.api.async_delete_event(kid, event_id, etag)
+                    await apply(school)
                 except GoogleConflict:
                     await self.async_refresh()
                     if attempt:

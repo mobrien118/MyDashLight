@@ -280,3 +280,26 @@ set_lunch:
             - bring
             - buy
             - default
+
+set_lunch_menu:
+  fields:
+    kids:
+      required: true
+      example: ["Ava", "Ben"]
+      selector:
+        text:
+          multiple: true
+    date:
+      required: true
+      example: "2026-11-06"
+      selector:
+        date:
+    menu:
+      example: Pizza, side salad
+      selector:
+        text:
+    details:
+      example: "Or: turkey sandwich. Fruit cup, milk."
+      selector:
+        text:
+          multiline: true

@@ -35,6 +35,9 @@
     },
     "set_lunch": {
       "service": "mdi:food-takeout-box-outline"
+    },
+    "set_lunch_menu": {
+      "service": "mdi:food-variant"
     }
   }
 }

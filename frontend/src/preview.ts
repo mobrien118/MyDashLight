@@ -118,6 +118,20 @@ function sampleLunch(plan: Plan): LunchPayload {
     }
     return out;
   };
+  // Two schools' menus: the first kid's, and the others'. Next month's isn't in yet.
+  const dishes = [
+    ["Chicken tenders", "Cheese pizza", "Beef tacos", "Mac & cheese", "Orange chicken", "Hamburger", "Pancakes & sausage"],
+    ["Pizza dippers", "Corn dog", "Chicken nuggets", "Spaghetti & meatballs", "Grilled cheese & tomato soup", "Walking taco"],
+  ];
+  const menus = (school: number): Record<string, { dish: string; details: string }> => {
+    const out: Record<string, { dish: string; details: string }> = {};
+    const list = dishes[school]!;
+    let n = 0;
+    for (let d = first; d <= addDays(first, 30) && d.slice(0, 7) === first.slice(0, 7); d = addDays(d, 1)) {
+      if (weekday(d) < 5) out[d] = { dish: list[n++ % list.length]!, details: "Or: turkey sandwich or chef salad\nFruit, veggies, milk" };
+    }
+    return out;
+  };
   return {
     today,
     first,
@@ -127,6 +141,7 @@ function sampleLunch(plan: Plan): LunchPayload {
       name: k.name,
       default: i === 1 ? "bring" : "buy",
       picks: picks(i === 0 ? [0, 2] : i === 1 ? [4] : [1, 3], i),
+      menus: menus(i === 0 ? 0 : 1),
       days_off: [{ first: wed, last: addDays(wed, 2), title: "No School – Thanksgiving Break" }],
     })),
     status: { ok: true, error: null },

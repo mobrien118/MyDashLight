@@ -39,6 +39,8 @@ export interface Backend {
   watchLunch(onLunch: (lunch: LunchPayload | null) => void): () => void;
   /** Saves a kid's lunch on some school days; null takes the picks away, back to the kid's default. */
   setLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void>;
+  /** Saves what the school serves on a day, for each of the kids; an empty dish removes it. */
+  setLunchMenu(kids: string[], date: string, dish: string, details: string): Promise<void>;
   /** Changes are saved for real (false in the offline preview). */
   readonly saves: boolean;
   /** Home Assistant pushes each new plan, so the plan on screen is current. */
@@ -298,6 +300,10 @@ export class HassBackend implements Backend {
     await this.choreCall("set_lunch", { kid, dates, lunch: lunch ?? "default" });
   }
 
+  async setLunchMenu(kids: string[], date: string, dish: string, details: string): Promise<void> {
+    await this.choreCall("set_lunch_menu", { kids, date, menu: dish, details });
+  }
+
   async setChoreDone(chore: string, done: boolean, by?: string): Promise<void> {
     await this.choreCall("set_chore_done", { chore, done, ...(done && by ? { by } : {}) });
   }
@@ -358,6 +364,24 @@ export class PreviewBackend implements Backend {
       return { ...k, picks };
     });
     this.lunch = { ...data, kids };
+    const emit = this.onLunch;
+    if (emit) queueMicrotask(() => emit(this.lunch));
+  }
+
+  /** Menus too stay in this page only. */
+  async setLunchMenu(kids: string[], date: string, dish: string, details: string): Promise<void> {
+    const data = this.lunch;
+    if (!data) return this.nope();
+    this.lunch = {
+      ...data,
+      kids: data.kids.map((k) => {
+        if (!kids.includes(k.id)) return k;
+        const menus = { ...k.menus };
+        if (dish.trim()) menus[date] = { dish: dish.trim(), details: details.trim() };
+        else delete menus[date];
+        return { ...k, menus };
+      }),
+    };
     const emit = this.onLunch;
     if (emit) queueMicrotask(() => emit(this.lunch));
   }

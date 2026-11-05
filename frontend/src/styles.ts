@@ -2167,7 +2167,9 @@ export const styles = css`
     min-width: 0;
   }
   .lunch-chip {
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 62%;
     margin-left: auto;
     display: inline-flex;
     align-items: center;
@@ -2258,7 +2260,7 @@ export const styles = css`
     opacity: 0.45;
   }
   .lunch-day {
-    height: 64px;
+    min-height: 64px;
     min-width: 0;
     border-radius: 10px;
     padding: 6px 7px;
@@ -2319,6 +2321,43 @@ export const styles = css`
   }
   .lunch-day.outside {
     background: transparent;
+  }
+  .lunch-menu {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    margin-top: 3px;
+    font-size: 11.5px;
+    line-height: 14px;
+    font-weight: 600;
+    opacity: 0.92;
+  }
+  .lunch-menu.add {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    opacity: 0.75;
+  }
+  .lunch-menu.add svg {
+    width: 11px;
+    height: 11px;
+  }
+  .lunch-day.editing:not(.past) {
+    cursor: pointer;
+  }
+  .lunch-day.sel {
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--c);
+  }
+  .lunch-chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lunch-chip-menu {
+    font-weight: 600;
   }
   .lunch-offs {
     margin: 2px 4px 0;

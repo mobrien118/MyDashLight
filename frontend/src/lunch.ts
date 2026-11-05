@@ -12,6 +12,13 @@ export interface DayOff {
   title: string;
 }
 
+/** What the school serves: a "Lunch: Pizza" all-day event on the kid's calendar. */
+export interface Menu {
+  dish: string;
+  /** The event's notes: the rest of the menu, or empty. */
+  details: string;
+}
+
 export interface KidLunches {
   id: string;
   name: string;
@@ -19,6 +26,8 @@ export interface KidLunches {
   default: Lunch;
   /** Each picked school day: "2026-11-06" to "bring". */
   picks: Record<string, Lunch>;
+  /** Each day with a menu: "2026-11-06" to what's served. Missing before MyDashLight 0.13.0. */
+  menus?: Record<string, Menu>;
   days_off: DayOff[];
 }
 
@@ -69,6 +78,12 @@ export function lunchOn(kid: KidLunches, date: string, drafts: LunchDrafts = new
   return pick ? { lunch: pick, picked: true } : { lunch: kid.default, picked: false };
 }
 
+/** What the school serves the kid that day, or null with no menu or no school. */
+export function menuOn(kid: KidLunches, date: string): Menu | null {
+  if (!isSchoolDay(kid, date)) return null;
+  return kid.menus?.[date] ?? null;
+}
+
 export interface LunchCell {
   date: string;
   day: number;
@@ -78,6 +93,8 @@ export interface LunchCell {
   off: string | null;
   lunch: Lunch | null;
   picked: boolean;
+  /** The day's dish, such as "Pizza". */
+  menu: string | null;
   past: boolean;
   today: boolean;
 }
@@ -127,6 +144,7 @@ export function monthGrid(data: LunchPayload, kid: KidLunches, month: string, dr
         off: off ? off.title : null,
         lunch: l?.lunch ?? null,
         picked: l?.picked ?? false,
+        menu: outside ? null : (menuOn(kid, date)?.dish ?? null),
         past: date < data.today,
         today: date === data.today,
       });
@@ -164,14 +182,19 @@ export function lunchChip(
   today: string,
   minutes: number,
   drafts: LunchDrafts = new Map(),
-): { lunch: Lunch; when: string } | null {
+): { lunch: Lunch; when: string; date: string; menu: string | null } | null {
   const start = minutes < 13 * 60 ? 0 : 1;
   for (let i = start; i < 8; i++) {
     const date = addDays(today, i);
     const l = lunchOn(kid, date, drafts);
     if (!l) continue;
     const ahead = daysBetween(today, date);
-    return { lunch: l.lunch, when: ahead === 0 ? "today" : ahead === 1 ? "tomorrow" : shortDay(date) };
+    return {
+      lunch: l.lunch,
+      when: ahead === 0 ? "today" : ahead === 1 ? "tomorrow" : shortDay(date),
+      date,
+      menu: menuOn(kid, date)?.dish ?? null,
+    };
   }
   return null;
 }

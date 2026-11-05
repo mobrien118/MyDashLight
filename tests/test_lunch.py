@@ -100,6 +100,34 @@ async def test_set_lunch(hass: HomeAssistant, google: FakeGoogle) -> None:
         await call(hass, "set_lunch", kid="Zed", dates=["2026-11-06"], lunch="buy")
 
 
+async def test_menus(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(AVA, **all_day("m1", "Lunch: Pizza", "2026-11-05", "2026-11-06", description="Or: salad bar"))
+    google.add(BEN, **all_day("m2", "Lunch", "2026-11-05", "2026-11-06", description="Fish sticks\nCorn"))
+    await load(hass)
+    ava, ben = (await call(hass, "get_lunches"))["kids"]
+    assert ava["menus"] == {"2026-11-05": {"dish": "Pizza", "details": "Or: salad bar"}}
+    assert ben["menus"] == {"2026-11-05": {"dish": "Fish sticks", "details": "Corn"}}
+    # A menu event isn't a ride or a pick.
+    assert ava["picks"] == {}
+
+    await call(hass, "set_lunch_menu", kids=["Ava", "Ben"], date="2026-11-05", menu="Burgers", details="Or: salad")
+    assert titles(google, AVA) == [("2026-11-05", "Lunch: Burgers")]
+    assert titles(google, BEN) == [("2026-11-05", "Lunch: Burgers")]
+    await call(hass, "set_lunch_menu", kids=["Ben"], date="2026-11-09", menu="Tacos")
+    (cal, made) = google.inserted[-1]
+    assert cal == BEN
+    assert made["summary"] == "Lunch: Tacos"
+    assert made["transparency"] == "transparent"
+    ava, ben = (await call(hass, "get_lunches"))["kids"]
+    assert ava["menus"] == {"2026-11-05": {"dish": "Burgers", "details": "Or: salad"}}
+    assert ben["menus"]["2026-11-09"] == {"dish": "Tacos", "details": ""}
+
+    await call(hass, "set_lunch_menu", kids=["Ava"], date="2026-11-05", menu="")
+    assert titles(google, AVA) == []
+    with pytest.raises(ServiceValidationError):
+        await call(hass, "set_lunch_menu", kids=["Zed"], date="2026-11-05", menu="Pizza")
+
+
 async def test_live_feed(hass: HomeAssistant, google: FakeGoogle, hass_ws_client: WebSocketGenerator) -> None:
     await load(hass)
     client = await hass_ws_client(hass)

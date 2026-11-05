@@ -466,6 +466,28 @@
           "description": "Bring or Buy, or the kid's default to take the pick away."
         }
       }
+    },
+    "set_lunch_menu": {
+      "name": "Set lunch menu",
+      "description": "Saves what the school serves on a day as a \"Lunch: <menu>\" all-day event on each kid's calendar. An empty menu removes it.",
+      "fields": {
+        "kids": {
+          "name": "Kids",
+          "description": "The kids who get this menu, by name."
+        },
+        "date": {
+          "name": "Date",
+          "description": "The school day."
+        },
+        "menu": {
+          "name": "Menu",
+          "description": "The main dish, shown on the board. Leave empty to remove the day's menu."
+        },
+        "details": {
+          "name": "Details",
+          "description": "The rest of the menu, saved in the event's notes."
+        }
+      }
     }
   },
   "exceptions": {

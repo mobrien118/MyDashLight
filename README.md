@@ -360,10 +360,17 @@ nothing to keep in Home Assistant:
   pick gets the kid's default: Buy, unless the kid is picked under **Configure > Lunch** as bringing
   by default.
 
+- An all-day event titled **Lunch: Pizza, side salad** is what the school serves that day. Its
+  notes can hold the rest of the menu (other choices, sides). An event titled just **Lunch** works
+  too, with the dish as the first line of its notes. Each kid has their own, so kids at different
+  schools get different menus. A month of these can be imported into a kid's calendar from a
+  `.ics` file (Google Calendar: **Settings > Import & export**), or added on the Lunch tab.
+
 Tap **Lunch** at the top of the kitchen app for this month and next, a card per kid with Monday to
 Friday like the printed menu. Tap a day to switch it between Buy and Bring, or tap a weekday's name
 to make every one left that month Bring (or Buy, when they all are already). Each tap adds, changes or removes the day's event on
-the kid's calendar. Days off are drawn hatched with their name underneath. Each kid's column on
+the kid's calendar. Days off are drawn hatched with their name underneath. Each day shows its menu; tap
+**Edit menus** to add or change one, for one kid or several at once. Each kid's column on
 the rides and chores boards shows a small Buy or Bring chip: today's until 1 PM, then the next
 school day's, so in the evening it says what to pack.
 
@@ -373,7 +380,8 @@ the kids' calendars can't be read, School days chores are left as they are until
 
 The actions: `mydashlight.get_lunches` returns each kid's school days off, picks and default from
 the 1st of this month to the end of next month; `mydashlight.set_lunch` sets a kid's lunch on one
-or more dates to `bring`, `buy` or `default` (removes the pick). The app subscribes to
+or more dates to `bring`, `buy` or `default` (removes the pick); `mydashlight.set_lunch_menu`
+sets the menu on a date for some kids (an empty `menu` removes it). The app subscribes to
 `{"type": "mydashlight/lunch/subscribe"}`.
 
 ## Reminders

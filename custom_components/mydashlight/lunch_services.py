@@ -14,7 +14,19 @@ from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
 from .chore_rules import kid_for
-from .const import ATTR_DATES, ATTR_KID, ATTR_LUNCH, DOMAIN, SERVICE_GET_LUNCHES, SERVICE_SET_LUNCH
+from .const import (
+    ATTR_DATE,
+    ATTR_DATES,
+    ATTR_DETAILS,
+    ATTR_KID,
+    ATTR_KIDS,
+    ATTR_LUNCH,
+    ATTR_MENU,
+    DOMAIN,
+    SERVICE_GET_LUNCHES,
+    SERVICE_SET_LUNCH,
+    SERVICE_SET_LUNCH_MENU,
+)
 from .google import GoogleAuthError, GoogleConflict, GoogleError
 
 if TYPE_CHECKING:
@@ -28,6 +40,14 @@ SET_LUNCH_SCHEMA = vol.Schema(
         vol.Required(ATTR_LUNCH): vol.In(("bring", "buy", LUNCH_DEFAULT)),
     }
 )
+SET_LUNCH_MENU_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_KIDS): vol.All(cv.ensure_list, [cv.string], vol.Length(min=1)),
+        vol.Required(ATTR_DATE): cv.date,
+        vol.Optional(ATTR_MENU, default=""): vol.All(vol.Any(None, cv.string), lambda v: v or ""),
+        vol.Optional(ATTR_DETAILS, default=""): vol.All(vol.Any(None, cv.string), lambda v: v or ""),
+    }
+)
 
 
 @callback
@@ -36,6 +56,7 @@ def async_setup_lunch_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_GET_LUNCHES, _async_get_lunches, supports_response=SupportsResponse.ONLY
     )
     hass.services.async_register(DOMAIN, SERVICE_SET_LUNCH, _async_set_lunch, schema=SET_LUNCH_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_SET_LUNCH_MENU, _async_set_lunch_menu, schema=SET_LUNCH_MENU_SCHEMA)
 
 
 def _entry(hass: HomeAssistant) -> MyDashLightConfigEntry:
@@ -80,3 +101,29 @@ async def _async_set_lunch(call: ServiceCall) -> None:
         ) from err
     # Pack-lunch chores follow the picks.
     await entry.runtime_data.chores.async_request_refresh()
+
+
+async def _async_set_lunch_menu(call: ServiceCall) -> None:
+    entry = _entry(call.hass)
+    lunch = entry.runtime_data.lunch
+    kids: list[str] = []
+    for name in call.data[ATTR_KIDS]:
+        kid = kid_for(name, lunch.kids)
+        if kid is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_kid",
+                translation_placeholders={"name": name},
+            )
+        kids.append(kid)
+    try:
+        await lunch.async_set_menu(kids, call.data[ATTR_DATE], call.data[ATTR_MENU], call.data[ATTR_DETAILS])
+    except GoogleAuthError as err:
+        entry.async_start_reauth(call.hass)
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="auth_failed") from err
+    except GoogleConflict as err:
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="write_conflict") from err
+    except GoogleError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN, translation_key="lunch_failed", translation_placeholders={"error": str(err)}
+        ) from err
