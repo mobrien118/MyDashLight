@@ -114,6 +114,8 @@ _LABELS: Final[dict[str, str]] = {
     "from": "from",
     "missed": "missed",
     "closed": "closed",
+    "doneby": "done_by",
+    "completedby": "done_by",
 }
 
 
@@ -435,7 +437,7 @@ def template_notes(template: Template, kids: Mapping[str, str]) -> str:
 
 
 def kid_for(name: str, kids: Mapping[str, str]) -> str | None:
-    """The kid id for a kid's name or id, ignoring case and extra spaces."""
+    """The id for a kid's (or anyone's) name or id, ignoring case and extra spaces."""
     key = " ".join(name.split()).casefold()
     for kid, kid_name in kids.items():
         if key in (kid.casefold(), " ".join(kid_name.split()).casefold()):

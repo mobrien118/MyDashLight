@@ -242,3 +242,40 @@ async def test_live_chores(hass: HomeAssistant, hass_ws_client: WebSocketGenerat
     await call(hass, "set_chore_done", chore=today["id"])
     changed = (await client.receive_json())["event"]["chores"]
     assert next(c for c in changed["chores"] if c["id"] == today["id"])["state"] == "done"
+
+
+async def test_check_off_says_who_did_it(hass: HomeAssistant, tasks: FakeTasks) -> None:
+    daily = tasks.add_list(DAILY)
+    tasks.add(daily, "Feed the cat", "--- Chore ---\nId: cat\nWho: Ava\nStarts: 2026-11-01")
+    await load(hass)
+    chores = await call(hass, "get_chores")
+    assert [p["name"] for p in chores["people"]] == ["Ava", "Ben", "Robin", "Sam"]
+    assert [p["role"] for p in chores["people"]] == ["kid", "kid", "parent", "parent"]
+    today = next(c for c in chores["chores"] if c["due"] == "2026-11-04")
+
+    def saved() -> dict[str, Any]:
+        return next(t for t in tasks.items("Chores: Ava") if t["id"] == today["id"])
+
+    def shown(chores: dict[str, Any]) -> dict[str, Any]:
+        return next(c for c in chores["chores"] if c["id"] == today["id"])
+
+    # Left out: the kid it's for.
+    await call(hass, "set_chore_done", chore=today["id"])
+    assert read_block(saved()["notes"]).first("done_by") == "Ava"
+    done = shown(await call(hass, "get_chores"))
+    assert (done["state"], done["done_by"], done["done_by_name"]) == ("done", today["kid"], "Ava")
+
+    # A parent sniped it: changing who, while it stays done.
+    await call(hass, "set_chore_done", chore=today["id"], by="dad")
+    assert read_block(saved()["notes"]).every("done_by") == ["Sam"]
+    assert shown(await call(hass, "get_chores"))["done_by"] == "dad"
+
+    # Opened again: the line goes.
+    await call(hass, "set_chore_done", chore=today["id"], done=False)
+    assert read_block(saved()["notes"]).every("done_by") == []
+    again = shown(await call(hass, "get_chores"))
+    assert (again["state"], again["done_by"]) == ("open", None)
+
+    with pytest.raises(ServiceValidationError) as err:
+        await call(hass, "set_chore_done", chore=today["id"], by="Grandma")
+    assert err.value.translation_key == "unknown_person"

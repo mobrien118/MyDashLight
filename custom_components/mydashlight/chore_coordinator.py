@@ -91,6 +91,16 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         """Each kid's name by kid id, in the kids' order."""
         return {k.calendar_id: k.name for k in self.settings.roles.kids}
 
+    @property
+    def parents(self) -> dict[str, str]:
+        """Each parent's name by driver id (``mom``, ``dad``)."""
+        return dict(self.settings.driver_names)
+
+    @property
+    def people(self) -> dict[str, str]:
+        """Everyone who can check off a chore: the kids, then the parents."""
+        return {**self.kids, **self.parents}
+
     async def _async_update_data(self) -> ChoreData:
         tz = dt_util.get_default_time_zone()
         now = dt_util.now(tz)
@@ -279,8 +289,18 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
             "time_zone": data.time_zone,
             "days_ahead": self.settings.chore_days_ahead,
             "kids": [{"id": kid, "name": name} for kid, name in self.kids.items()],
+            "people": [
+                *({"id": kid, "name": name, "role": "kid"} for kid, name in self.kids.items()),
+                *({"id": pid, "name": name, "role": "parent"} for pid, name in self.parents.items()),
+            ],
             "chores": board_items(
-                data.chores, data.templates, list(self.kids), data.today, self.settings.chore_days_ahead, tz
+                data.chores,
+                data.templates,
+                list(self.kids),
+                data.today,
+                self.settings.chore_days_ahead,
+                tz,
+                self.people,
             ),
             "templates": [template_item(t) for t in data.templates],
             "status": {"ok": self.last_update_success and data.needs is None, "error": error, "needs": data.needs},

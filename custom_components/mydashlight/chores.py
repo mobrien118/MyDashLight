@@ -30,6 +30,7 @@ from typing import Any, Final, Literal
 from .chore_rules import (
     Repeats,
     Template,
+    kid_for,
     read_block,
     schedule,
     split_icon,
@@ -72,6 +73,8 @@ class Chore:
     points: int | None
     missed: tuple[date, ...]
     closed: bool
+    done_by: str | None = None
+    """Who checked it off, as the ``Done by`` line names them, or None when it doesn't say."""
 
     @property
     def done(self) -> bool:
@@ -105,6 +108,7 @@ def read_chore(task: TaskItem, kid: str, list_id: str) -> Chore:
         points=points,
         missed=missed,
         closed=(block.first("closed") or "").strip().casefold() == CLOSED_MISSED,
+        done_by=" ".join((block.first("done_by") or "").split()) or None,
     )
 
 
@@ -116,12 +120,34 @@ def chore_notes(details: str, template: str, scheduled: date, points: int | None
     return write_block(details, lines)
 
 
-def _with_lines(notes: str, extra: Iterable[tuple[str, str]]) -> str:
-    """Notes with lines added at the end of the Chore block."""
+_LINE_LABELS: Final = {
+    "from": "From",
+    "for": "For",
+    "points": "Points",
+    "missed": "Missed",
+    "closed": "Closed",
+    "id": "Id",
+    "done_by": "Done by",
+}
+
+
+def _with_lines(notes: str, extra: Iterable[tuple[str, str]], *, drop: str | None = None) -> str:
+    """Notes with lines added at the end of the Chore block, leaving out ``drop`` lines."""
     block = read_block(notes)
-    labels = {"from": "From", "for": "For", "points": "Points", "missed": "Missed", "closed": "Closed", "id": "Id"}
-    lines = [(labels.get(k, k.title()), v) for k, v in block.lines]
+    lines = [(_LINE_LABELS.get(k, k.title()), v) for k, v in block.lines if k != drop]
     return write_block(block.details, [*lines, *extra])
+
+
+def done_by_notes(notes: str, name: str | None) -> str:
+    """Notes saying who checked the chore off (``Done by``), or with that line taken out when
+    ``name`` is None. Notes with nothing to change come back as they were."""
+    block = read_block(notes)
+    if block.every("done_by") == ([name] if name else []):
+        return notes
+    if name is None and all(k == "done_by" for k, _v in block.lines):
+        # The block only said who did it: a one-off goes back to its own notes.
+        return block.details
+    return _with_lines(notes, [("Done by", name)] if name else [], drop="done_by")
 
 
 # Changes
@@ -281,9 +307,12 @@ def board_items(
     today: date,
     days_ahead: int,
     tz: tzinfo,
+    people: Mapping[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """The chores the board shows, in order: each kid's open and overdue chores, those
-    coming up in the next ``days_ahead`` days, and those done today or still to come."""
+    coming up in the next ``days_ahead`` days, and those done today or still to come.
+
+    ``people`` (each kid's and parent's name by id) turns a ``Done by`` name into an id."""
     last = today + timedelta(days=max(1, days_ahead) - 1)
     by_id = {t.id: t for t in templates}
     shows = {o.key: o.shows_from for o in schedule(templates, today - timedelta(days=62), last + timedelta(days=31))}
@@ -316,6 +345,8 @@ def board_items(
             "shows_from": shows_from.isoformat() if shows_from else None,
             "state": state,
             "done_at": chore.task.completed.isoformat() if chore.task.completed else None,
+            "done_by": kid_for(chore.done_by, people or {}) if chore.done and chore.done_by else None,
+            "done_by_name": chore.done_by if chore.done else None,
             "missed": len(chore.missed),
             "points": chore.points,
             "template": chore.template,
