@@ -32,6 +32,9 @@ _NO_SCHOOL_RE: Final = re.compile(r"\bno[\s-]+school\b", re.IGNORECASE)
 _LUNCH_RE: Final = re.compile(r"^\W*(bring|buy)(?:ing)?\s+lunch\W*$", re.IGNORECASE)
 _MENU_RE: Final = re.compile(r"^\W*lunch(?:\s*$|\s*[:\u2013\u2014-]\s*(.*)$)", re.IGNORECASE)
 MENU_TITLE: Final = "Lunch"
+MENU_MARK: Final = "mydashlight_menu"
+"""Private event property: "feed" on a menu MyDashLight copied from the kid's menu feed."""
+MENU_FROM_FEED: Final = "feed"
 
 
 def lunch_of(title: str) -> Lunch | None:
@@ -89,6 +92,8 @@ class MenuDay:
     """The event's notes: the rest of the menu, or empty."""
     event_id: str
     etag: str
+    from_feed: bool = False
+    """MyDashLight copied it from the kid's menu feed, so it follows the feed."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,7 +176,8 @@ def read_school(
             dish, details = menu_text
             day = ev.start
             while day <= ev_last:
-                menu = MenuDay(kid, day, dish, details, ev.id, ev.etag)
+                from_feed = dict(ev.private).get(MENU_MARK) == MENU_FROM_FEED
+                menu = MenuDay(kid, day, dish, details, ev.id, ev.etag, from_feed)
                 out.menus.setdefault((kid, day), []).append(menu)
                 day += timedelta(days=1)
         out.days_off[kid] = sorted(offs, key=lambda d: (d.first, d.last))
@@ -238,6 +244,8 @@ class MenuChange:
     """(event id, etag, title, notes): change an existing event."""
     remove: tuple[str, str] | None = None
     """(event id, etag): remove an event."""
+    from_feed: bool = False
+    """Mark the event as copied from the menu feed; otherwise a made or changed event isn't."""
 
 
 def menu_changes(school: SchoolCalendar, kid: str, day: date, dish: str, details: str = "") -> list[MenuChange]:
@@ -253,7 +261,8 @@ def menu_changes(school: SchoolCalendar, kid: str, day: date, dish: str, details
             out.append(MenuChange(kid, day, remove=(keep.event_id, keep.etag)))
     elif keep is None:
         out.append(MenuChange(kid, day, make=(menu_title(dish), details)))
-    elif (keep.dish, keep.details) != (dish, details):
+    elif (keep.dish, keep.details) != (dish, details) or keep.from_feed:
+        # Changed by hand, it stops following the feed.
         out.append(MenuChange(kid, day, update=(keep.event_id, keep.etag, menu_title(dish), details)))
     return out
 

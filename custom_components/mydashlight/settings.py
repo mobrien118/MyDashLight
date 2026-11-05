@@ -27,6 +27,7 @@ from .const import (
     CONF_KID_NOTIFY,
     CONF_KIDS,
     CONF_LUNCH_DEFAULTS,
+    CONF_LUNCH_FEEDS,
     CONF_MOM_ALIASES,
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
@@ -82,6 +83,9 @@ class HubSettings:
     """How many days of chores, counting today, to keep on the kids' lists."""
     lunch_defaults: Mapping[str, str] = field(default_factory=dict)
     """Each kid's lunch when nobody picked, ``buy`` or ``bring``, by kid calendar id."""
+    lunch_feeds: Mapping[str, str] = field(default_factory=dict)
+    """Each kid's school menu feed (an iCal address), by kid calendar id. Kids without one
+    aren't listed."""
 
     @property
     def driver_names(self) -> Mapping[str, str]:
@@ -138,6 +142,7 @@ class HubSettings:
             ),
             chore_days_ahead=min(MAX_CHORE_DAYS, max(1, int(options.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)))),
             lunch_defaults=_lunch_defaults(options.get(CONF_LUNCH_DEFAULTS), kids),
+            lunch_feeds=_lunch_feeds(options.get(CONF_LUNCH_FEEDS), kids),
         )
 
 
@@ -145,6 +150,11 @@ def _lunch_defaults(value: object, kids: tuple[KidCalendar, ...]) -> dict[str, s
     """Each kid's default lunch: ``bring`` only when set so, else ``buy``."""
     saved = value if isinstance(value, Mapping) else {}
     return {k.calendar_id: "bring" if saved.get(k.calendar_id) == "bring" else "buy" for k in kids}
+
+
+def _lunch_feeds(value: object, kids: tuple[KidCalendar, ...]) -> dict[str, str]:
+    saved = value if isinstance(value, Mapping) else {}
+    return {k.calendar_id: str(saved[k.calendar_id]) for k in kids if saved.get(k.calendar_id)}
 
 
 def _notifiers(options: Mapping[str, Any], kids: tuple[KidCalendar, ...]) -> dict[str, str]:

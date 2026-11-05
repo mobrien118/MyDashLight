@@ -365,6 +365,13 @@ nothing to keep in Home Assistant:
   too, with the dish as the first line of its notes. Each kid has their own, so kids at different
   schools get different menus. A month of these can be imported into a kid's calendar from a
   `.ics` file (Google Calendar: **Settings > Import & export**), or added on the Lunch tab.
+- **Menu feeds.** Many schools publish their menu as a calendar to subscribe to (look for an
+  ICAL or Subscribe button on the menu page). Paste its address for each kid under **Configure >
+  Lunch**. Every 6 hours MyDashLight reads it and adds each day's lunch from today on to the kid's
+  calendar as a `Lunch: …` event: the first item is the dish, the rest goes in the notes.
+  Breakfast (`B: …`) and `No School` entries are skipped. These events carry a private mark, so
+  only they follow later changes to the feed; a menu typed by hand, imported, or changed on the
+  Lunch tab is left alone.
 
 Tap **Lunch** at the top of the kitchen app for this month and next, a card per kid with Monday to
 Friday like the printed menu. Tap a day to switch it between Buy and Bring, or tap a weekday's name

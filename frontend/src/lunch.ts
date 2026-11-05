@@ -28,6 +28,8 @@ export interface KidLunches {
   picks: Record<string, Lunch>;
   /** Each day with a menu: "2026-11-06" to what's served. Missing before MyDashLight 0.13.0. */
   menus?: Record<string, Menu>;
+  /** Set when the kid has a school menu feed: whether it was read last time. */
+  menu_feed?: { ok: boolean; error: string | null };
   days_off: DayOff[];
 }
 

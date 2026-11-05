@@ -1511,8 +1511,9 @@ export class MyDashLightBoard extends LitElement {
       </div>
       <p class="message-aside">
         Picks are saved as <strong>Bring Lunch</strong> and <strong>Buy Lunch</strong> all-day events on each kid’s calendar.
-        Menus are <strong>Lunch: Pizza</strong> all-day events there, with the rest of the menu in the notes: import a
-        month from a calendar file, or add them here with <strong>Edit menus</strong>.
+        Menus are <strong>Lunch: Pizza</strong> all-day events there, with the rest of the menu in the notes. They can
+        come from the school’s menu feed (set in Home Assistant under MyDashLight’s options, Lunch), a calendar file
+        imported once a month, or <strong>Edit menus</strong> here.
         Days off come from <strong>No School</strong> events there. A day nobody picked gets the kid’s default, set in
         Home Assistant under MyDashLight’s options. For a Pack lunch reminder, add a School days chore set to
         <strong>Only on Bring lunch days</strong>.
@@ -1550,6 +1551,9 @@ export class MyDashLightBoard extends LitElement {
         </span>
         <span class="lunch-default">${LUNCH_WORD[k.default]} unless picked</span>
       </div>
+      ${k.menu_feed && !k.menu_feed.ok
+        ? html`<p class="field-hint bad">Couldn’t read the school menu feed${k.menu_feed.error ? `: ${k.menu_feed.error}` : ""}.</p>`
+        : nothing}
       <div class="lunch-grid" role="grid" aria-label=${`${k.name}, ${monthTitle(month)}`}>
         ${["Mon", "Tue", "Wed", "Thu", "Fri"].map(
           (w, i) => html`<button

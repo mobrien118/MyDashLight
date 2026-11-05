@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -31,6 +32,7 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
     async_get_config_entry_implementation,
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
@@ -43,6 +45,7 @@ from .const import (
     CONF_ROUTES_KEY,
     DEFAULT_ROUTES_DAILY_LIMIT,
     DOMAIN,
+    MENU_FEED_HOURS,
     SIGNAL_CHORES_UPDATED,
     SIGNAL_LUNCH_UPDATED,
     SIGNAL_PLAN_UPDATED,
@@ -124,7 +127,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     await notifier.async_load()
     lock = asyncio.Lock()
     reminders = CalendarReminders(hass, api, lock, settings.reminders)
-    lunch = LunchCoordinator(hass, entry, api, settings, lock)
+    lunch = LunchCoordinator(hass, entry, api, settings, lock, websession)
     chores = ChoreCoordinator(hass, entry, GoogleTasksApi(websession, tokens), settings, lock, lunch.school)
     entry.runtime_data = MyDashLightData(settings, api, coordinator, notifier, reminders, lock, chores, lunch)
 
@@ -161,8 +164,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
         # School days first, so the first chore read already knows them.
         await lunch.async_refresh()
         await chores.async_refresh()
+        await lunch.async_sync_feeds()
 
     entry.async_create_background_task(hass, first_reads(), f"{DOMAIN}_first_reads")
+
+    @callback
+    def sync_feeds(_now: datetime) -> None:
+        entry.async_create_background_task(hass, lunch.async_sync_feeds(), f"{DOMAIN}_menu_feeds")
+
+    if settings.lunch_feeds:
+        entry.async_on_unload(async_track_time_interval(hass, sync_feeds, timedelta(hours=MENU_FEED_HOURS)))
     # The kitchen app: the Rides item in the sidebar, and the kitchen page.
     await async_register_panel(hass)
     entry.async_on_unload(lambda: async_remove_panel(hass))

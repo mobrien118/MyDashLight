@@ -200,12 +200,22 @@
       },
       "lunch": {
         "title": "Lunch",
-        "description": "Each school day a kid hasn't picked Bring or Buy on the Lunch tab, they get their default. Picks are saved as \"Bring Lunch\" and \"Buy Lunch\" all-day events on the kid's calendar, and days off as \"No School\" events.",
+        "description": "Each school day a kid hasn't picked Bring or Buy on the Lunch tab, they get their default. Picks are saved as \"Bring Lunch\" and \"Buy Lunch\" all-day events on the kid's calendar, and days off as \"No School\" events. Next, you can give each kid their school's menu feed.",
         "data": {
           "bring_by_default": "Bring lunch by default"
         },
         "data_description": {
           "bring_by_default": "Kids who bring lunch unless they pick Buy. Everyone else buys unless they pick Bring."
+        }
+      },
+      "lunch_feed": {
+        "title": "Menu feed for {kid} ({number} of {count})",
+        "description": "If {kid}'s school publishes its lunch menu as a calendar to subscribe to, paste its iCal address here (often under the calendar's ICAL or Subscribe button). MyDashLight reads it every few hours and adds each day's lunch to {kid}'s calendar as a \"Lunch: …\" all-day event. Menus changed by hand are left alone. Leave it empty for none; kids at the same school can use the same address.",
+        "data": {
+          "menu_feed": "Menu feed address"
+        },
+        "data_description": {
+          "menu_feed": "An address ending in .ics, or starting with webcal://"
         }
       }
     },
@@ -219,7 +229,9 @@
       "no_home_location": "Set your home's location under Settings > System > General first. Drive times start from there.",
       "routes_key_rejected": "Google turned down this key. Check that the Routes API is turned on for its project and that the key may use it.",
       "routes_quota": "Google says this key's quota for today is used up. Try again tomorrow, or raise the quota in Google Cloud.",
-      "cannot_connect": "Couldn't reach Google. Try again in a few minutes."
+      "cannot_connect": "Couldn't reach Google. Try again in a few minutes.",
+      "feed_not_web": "That isn't a web address. It should start with https:// or webcal://.",
+      "feed_unreadable": "Couldn't read a calendar feed at that address. Check that it opens a calendar file in a browser."
     },
     "abort": {
       "api_disabled": "The Google Calendar API is turned off in your Google Cloud project. Turn it on, then try again.",

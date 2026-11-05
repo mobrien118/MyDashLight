@@ -165,16 +165,24 @@ class GoogleCalendarApi:
         return _notes(body, event_id)
 
     async def async_set_notes(
-        self, calendar_id: str, event_id: str, etag: str, description: str, title: str | None = None
+        self,
+        calendar_id: str,
+        event_id: str,
+        etag: str,
+        description: str,
+        title: str | None = None,
+        private: Mapping[str, str] | None = None,
     ) -> EventNotes:
-        """Save an event's notes, and its title when given, only if it hasn't changed since
-        ``etag`` was read.
+        """Save an event's notes, and its title and private properties when given, only if it
+        hasn't changed since ``etag`` was read.
 
         Raises :class:`GoogleConflict` when it has. Nobody gets an update email.
         """
-        fields: dict[str, str] = {"description": description}
+        fields: dict[str, Any] = {"description": description}
         if title is not None:
             fields["summary"] = title
+        if private is not None:
+            fields["extendedProperties"] = {"private": dict(private)}
         body = await self._request(
             "PATCH",
             _event_path(calendar_id, event_id),
@@ -217,20 +225,30 @@ class GoogleCalendarApi:
         )
         return str(body.get("etag") or "")
 
-    async def async_add_all_day(self, calendar_id: str, day: date, title: str, description: str = "") -> str:
+    async def async_add_all_day(
+        self,
+        calendar_id: str,
+        day: date,
+        title: str,
+        description: str = "",
+        private: Mapping[str, str] | None = None,
+    ) -> str:
         """Add a one-day all-day event marked Free, with no reminders. Returns its id."""
+        event: dict[str, Any] = {
+            "summary": title,
+            "description": description,
+            "start": {"date": day.isoformat()},
+            "end": {"date": (day + timedelta(days=1)).isoformat()},
+            "transparency": "transparent",
+            "reminders": {"useDefault": False},
+        }
+        if private:
+            event["extendedProperties"] = {"private": dict(private)}
         body = await self._request(
             "POST",
             f"/calendars/{quote(calendar_id, safe='')}/events",
             {"fields": "id,etag", "sendUpdates": "none"},
-            json={
-                "summary": title,
-                "description": description,
-                "start": {"date": day.isoformat()},
-                "end": {"date": (day + timedelta(days=1)).isoformat()},
-                "transparency": "transparent",
-                "reminders": {"useDefault": False},
-            },
+            json=event,
         )
         return str(body.get("id") or "")
 
