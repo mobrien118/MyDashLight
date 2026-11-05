@@ -2631,12 +2631,12 @@ function $n(s){return{type:"auth",access_token:s}}function kn(){return{type:"sup
           <span class="avatar" aria-hidden="true">${we(a?.name??"?")}</span>
           <span>${a?.name??"Done"} did it</span>
         </button>
-        ${this.whoOthers?h`<div role="group" aria-label="Somebody else" class="done-by-list">
+        ${this.whoOthers?h`<div role="group" aria-label="Who else did it" class="done-by-list">
               ${d.map(c=>h`<button type="button" class="done-by" style="--c:${f(c)}" @click=${()=>void this.toggleChore(e,c.id)}>
                   <span class="avatar ${c.role==="parent"?"driver":""}" aria-hidden="true">${we(c.name)}</span>
                   <span>${c.name}</span>
                 </button>`)}
-            </div>`:h`<button type="button" class="choice wide" @click=${()=>this.whoOthers=!0}>Somebody else…</button>`}
+            </div>`:h`<button type="button" class="choice wide" @click=${()=>this.whoOthers=!0}>Someone else did</button>`}
       </div>
     `}renderLegend(){return h`<div class="legend">
       <span><span class="sw trip-sw"></span>A driver’s trip out of the house; dots show who’s in the car</span>

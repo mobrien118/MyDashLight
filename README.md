@@ -326,7 +326,7 @@ Tap **Chores** at the top of the kitchen app for a column per kid, in the kids' 
 - Then the days ahead, each under the day it shows, faded until then.
 
 Tap a chore to check it off: the panel asks who did it, with the kid it's for as the big button
-and **Somebody else…** for anyone else, parents included (saved as `Done by` in its notes). Tap a
+and **Someone else did** for anyone else, parents included (saved as `Done by` in its notes). Tap a
 done chore to undo it. Each change is saved to Google Tasks straight away.
 
 **Add a chore** and **Manage chores**, above the columns, open the chore editor in the panel, like a

@@ -204,7 +204,7 @@ export class MyDashLightBoard extends LitElement {
   declare removeArmed: boolean;
   /** A chore being checked off: the panel asks who did it. */
   declare whoFor: Chore | null;
-  /** "Somebody else" was tapped: everyone is listed. */
+  /** "Someone else did" was tapped: everyone is listed. */
   declare whoOthers: boolean;
 
   private stopWatching: (() => void) | null = null;
@@ -1666,7 +1666,7 @@ export class MyDashLightBoard extends LitElement {
           <span>${kid?.name ?? "Done"} did it</span>
         </button>
         ${this.whoOthers
-          ? html`<div role="group" aria-label="Somebody else" class="done-by-list">
+          ? html`<div role="group" aria-label="Who else did it" class="done-by-list">
               ${others.map(
                 (p) => html`<button type="button" class="done-by" style="--c:${personColor(p)}" @click=${() => void this.toggleChore(c, p.id)}>
                   <span class="avatar ${p.role === "parent" ? "driver" : ""}" aria-hidden="true">${initial(p.name)}</span>
@@ -1674,7 +1674,7 @@ export class MyDashLightBoard extends LitElement {
                 </button>`,
               )}
             </div>`
-          : html`<button type="button" class="choice wide" @click=${() => (this.whoOthers = true)}>Somebody else…</button>`}
+          : html`<button type="button" class="choice wide" @click=${() => (this.whoOthers = true)}>Someone else did</button>`}
       </div>
     `;
   }

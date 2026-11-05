@@ -2752,12 +2752,12 @@ var Qe=globalThis,et=Qe.ShadowRoot&&(Qe.ShadyCSS===void 0||Qe.ShadyCSS.nativeSha
           <span class="avatar" aria-hidden="true">${me(a?.name??"?")}</span>
           <span>${a?.name??"Done"} did it</span>
         </button>
-        ${this.whoOthers?d`<div role="group" aria-label="Somebody else" class="done-by-list">
+        ${this.whoOthers?d`<div role="group" aria-label="Who else did it" class="done-by-list">
               ${c.map(h=>d`<button type="button" class="done-by" style="--c:${g(h)}" @click=${()=>void this.toggleChore(e,h.id)}>
                   <span class="avatar ${h.role==="parent"?"driver":""}" aria-hidden="true">${me(h.name)}</span>
                   <span>${h.name}</span>
                 </button>`)}
-            </div>`:d`<button type="button" class="choice wide" @click=${()=>this.whoOthers=!0}>Somebody else…</button>`}
+            </div>`:d`<button type="button" class="choice wide" @click=${()=>this.whoOthers=!0}>Someone else did</button>`}
       </div>
     `}renderLegend(){return d`<div class="legend">
       <span><span class="sw trip-sw"></span>A driver’s trip out of the house; dots show who’s in the car</span>
