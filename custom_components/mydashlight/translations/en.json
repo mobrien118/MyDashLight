@@ -182,12 +182,16 @@
         "title": "Reminders",
         "description": "Pick a notifier for each person who should get reminders on their phone, such as the phone's Home Assistant app. Before each drive, the driver gets a reminder saying where to go, and each kid in the car gets one saying when they leave or get picked up.",
         "data": {
+          "mom_person": "Where the first parent is",
+          "dad_person": "Where the second parent is",
           "remind_before": "Remind before leaving",
           "calendar_reminders": "Also save drop-off reminders in Google Calendar",
           "no_driver_alerts": "Tell the parents about rides with no driver",
           "no_driver_hours": "Warn about rides with no driver this far ahead"
         },
         "data_description": {
+          "mom_person": "This parent's person in Home Assistant, located by their phone. When they drive, their reminder says when to leave from where they really are, and they're told if they haven't left by the arrive-early margin after leave time. Only the driver is told. Leave it empty to skip these checks.",
+          "dad_person": "The same, for the second parent.",
           "remind_before": "Leave time is worked back from when the kid has to be there and the drive time, so the reminder moves with the plan.",
           "calendar_reminders": "Puts the reminder on the kid's event for each drive's first drop-off, so Google Calendar reminds the account MyDashLight signs in with. Google can't remind before a pick-up, since it only reminds before an event starts.",
           "no_driver_alerts": "Once for each ride that nobody is driving yet, sent to both parents' notifiers.",

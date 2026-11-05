@@ -120,7 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     await lookups.async_load()
     coordinator = MyDashLightCoordinator(hass, entry, api, settings, lookups)
     await coordinator.async_config_entry_first_refresh()
-    notifier = Notifier(hass, settings.reminders)
+    notifier = Notifier(hass, settings.reminders, lookups, settings.planner.arrive_early)
     await notifier.async_load()
     lock = asyncio.Lock()
     reminders = CalendarReminders(hass, api, lock, settings.reminders)
@@ -133,7 +133,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
         # Tell the app's live subscriptions and the reminders about every new plan.
         async_dispatcher_send(hass, SIGNAL_PLAN_UPDATED, entry)
         if coordinator.last_update_success:
-            notifier.async_plan_updated(coordinator.data.days)
+            notifier.async_plan_updated(coordinator.data.days, coordinator.data.week)
             reminders.async_plan_updated(coordinator.data.days, coordinator.data.week.days)
 
     # This listener also keeps the coordinator polling, which it only does while something listens.

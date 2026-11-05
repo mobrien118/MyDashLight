@@ -14,7 +14,7 @@ midnight on their day, in the household's time zone.
 
 from __future__ import annotations
 
-from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, tzinfo
 import math
@@ -65,6 +65,16 @@ def at_minutes(day: date, minutes: float, tz: tzinfo) -> datetime:
     return datetime.combine(day + timedelta(days=days), time(rest // 60, rest % 60), tz)
 
 
+def driver_outings(day: Mapping[str, Any], driver: str) -> Iterator[tuple[str, Mapping[str, Any]]]:
+    """Each of a driver's outings on a day, with a key that stays the same while the drive does."""
+    seen: dict[str, int] = {}
+    for o in day["drivers"][driver]["outings"]:
+        base = f"{day['date']}|{driver}|{o.get('target') or ''}"
+        n = seen.get(base, 0)
+        seen[base] = n + 1
+        yield f"{base}|{n}", o
+
+
 def leave_reminders(
     days: Iterable[Mapping[str, Any]],
     drivers: Sequence[str],
@@ -81,12 +91,8 @@ def leave_reminders(
     for day in days:
         d = date.fromisoformat(day["date"])
         for driver in drivers:
-            seen: dict[str, int] = {}
-            for o in day["drivers"][driver]["outings"]:
+            for key, o in driver_outings(day, driver):
                 target = o.get("target")
-                base = f"{day['date']}|{driver}|{target or ''}"
-                n = seen.get(base, 0)
-                seen[base] = n + 1
                 leave = at_minutes(d, o["start"], tz)
                 at = leave - timedelta(minutes=before)
                 title = o.get("title") or "Drive"
@@ -94,7 +100,7 @@ def leave_reminders(
                     out.append(
                         LeaveReminder(
                             who=driver,
-                            key=f"{base}|{n}",
+                            key=key,
                             leave=leave,
                             at=at,
                             title=f"Leave at {fmt12(o['start'])}: {title}",
@@ -107,7 +113,7 @@ def leave_reminders(
                         out.append(
                             LeaveReminder(
                                 who=kid,
-                                key=f"{base}|{n}|{kid}",
+                                key=f"{key}|{kid}",
                                 leave=leave,
                                 at=at,
                                 title=text,

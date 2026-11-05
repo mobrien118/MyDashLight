@@ -26,6 +26,7 @@ from .planner import (
     PlannerSettings,
     RideEvent,
     Segment,
+    Stop,
     TravelFn,
     fmt,
     fmt12,
@@ -101,6 +102,22 @@ class Outing:
     """The first event someone is dropped off at, which holds the calendar reminder."""
     riders: dict[str, str] = field(default_factory=dict)
     """What each kid in the car needs to know, by kid: when they leave or are picked up."""
+    go: Going | None = None
+    """Where the drive starts and the first place it has to be by a set time."""
+
+
+@dataclass(frozen=True, slots=True)
+class Going:
+    """The first stretch of an outing, for checking the driver is on their way."""
+
+    from_loc: str
+    from_name: str
+    to_loc: str
+    to_name: str
+    due: float
+    """When the driver has to be there: the drop-off's Arrive by time or start, or the pick-up's end."""
+    via_home: bool
+    """The drive goes home first to get someone, so a drive straight there isn't the plan."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,7 +316,38 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         o.riders = {x: riders.get(x, f"Ride with {name} at {fmt12(o.start)}") for x in kids}
         o.warn = warn
         o.target = next((g.serves for g in o.legs if g.serves is not None), None)
+        o.go = _going(p.stops, o, first, labels)
     return outings
+
+
+def _going(stops: Sequence[Stop], o: Outing, first: Segment, labels: Labels) -> Going | None:
+    start = first.from_loc or first.loc
+    if start is None:
+        return None
+    fetch = False
+    for idx, s in enumerate(stops):
+        if idx == 0 or s.arrive is None or s.arrive < o.start or s.arrive > o.end:
+            continue
+        if s.kind == "fetch":
+            fetch = True
+        if s.kind not in ("drop", "stay", "pick"):
+            continue
+        if s.kind == "pick":
+            due = s.ready
+        elif s.event is not None:
+            # When they have to be there, without the arrive-early margin: that's the slack.
+            due = s.event.arrive_by if s.event.arrive_by is not None else s.event.start
+        else:
+            due = s.deadline
+        return Going(
+            from_loc=start,
+            from_name="home" if start == HOME else labels.short_place(start),
+            to_loc=s.loc,
+            to_name=labels.short_place(s.loc),
+            due=s.arrive if due is None else due,
+            via_home=fetch,
+        )
+    return None
 
 
 def _outing_title(jobs: list[tuple[str, str, list[str]]]) -> str:

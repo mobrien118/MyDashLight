@@ -198,8 +198,10 @@ class GoogleCalendarApi:
         The reminder is the signed-in person's. Raises :class:`GoogleConflict` when the event
         changed since ``etag``. Returns the new etag.
         """
+        # PATCH merges nested objects, so going back to the default has to empty the overrides
+        # too: Google refuses default reminders and overrides at the same time.
         reminders: dict[str, Any] = (
-            {"useDefault": True}
+            {"useDefault": True, "overrides": []}
             if minutes is None
             else {"useDefault": False, "overrides": [{"method": "popup", "minutes": minutes}]}
         )

@@ -21,6 +21,7 @@ from .const import (
     CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
     CONF_DAD_NOTIFY,
+    CONF_DAD_PERSON,
     CONF_GO_HOME_MARGIN,
     CONF_HOME_ADDRESS,
     CONF_KID_NOTIFY,
@@ -30,6 +31,7 @@ from .const import (
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
     CONF_MOM_NOTIFY,
+    CONF_MOM_PERSON,
     CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
     CONF_NO_DRIVER_ALERTS,
@@ -63,6 +65,8 @@ class ReminderSettings:
     """How far ahead a ride with no driver is worth an alert."""
     calendar: bool = True
     """Also save each drive's reminder on its first drop-off event in Google Calendar."""
+    people: Mapping[str, str] = field(default_factory=dict)
+    """Each parent's person entity, by driver id, for checking they're on their way."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,6 +130,11 @@ class HubSettings:
                 no_driver_alerts=bool(options.get(CONF_NO_DRIVER_ALERTS, True)),
                 no_driver_hours=max(1, int(options.get(CONF_NO_DRIVER_HOURS, DEFAULT_NO_DRIVER_HOURS))),
                 calendar=bool(options.get(CONF_CALENDAR_REMINDERS, True)),
+                people={
+                    who: str(entity)
+                    for who, entity in (("mom", options.get(CONF_MOM_PERSON)), ("dad", options.get(CONF_DAD_PERSON)))
+                    if isinstance(entity, str) and entity.startswith("person.")
+                },
             ),
             chore_days_ahead=min(MAX_CHORE_DAYS, max(1, int(options.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)))),
             lunch_defaults=_lunch_defaults(options.get(CONF_LUNCH_DEFAULTS), kids),

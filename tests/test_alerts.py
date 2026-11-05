@@ -204,7 +204,7 @@ async def test_reminder_comes_off_when_the_drive_goes(
     )
     await hass.async_block_till_done()
     assert reminder_patches(google)[-1][2] == {
-        "reminders": {"useDefault": True},
+        "reminders": {"useDefault": True, "overrides": []},
         "extendedProperties": {"private": {REMINDER_MARK: ""}},
     }
 
@@ -270,6 +270,8 @@ async def test_options(hass: HomeAssistant, google: FakeGoogle, phones: dict[str
         "Sam",
         "Ava",
         "Ben",
+        "mom_person",
+        "dad_person",
         "remind_before",
         "calendar_reminders",
         "no_driver_alerts",
@@ -287,6 +289,7 @@ async def test_options(hass: HomeAssistant, google: FakeGoogle, phones: dict[str
             "Sam": "off",
             "Ava": "mobile_app_avas_phone",
             "Ben": "off",
+            "mom_person": "person.robin",
             "remind_before": 20,
             "calendar_reminders": False,
             "no_driver_alerts": True,
@@ -298,6 +301,9 @@ async def test_options(hass: HomeAssistant, google: FakeGoogle, phones: dict[str
     assert entry.options["mom_notify"] == "robin_phone"
     assert entry.options["dad_notify"] == "off"
     assert entry.options["kid_notify"] == {AVA: "mobile_app_avas_phone", BEN: "off"}
+    assert entry.options["mom_person"] == "person.robin"
+    assert entry.options["dad_person"] is None
+    assert entry.runtime_data.settings.reminders.people == {"mom": "person.robin"}
     assert entry.options["remind_before"] == 20
     assert entry.options["calendar_reminders"] is False
     assert entry.runtime_data.settings.reminders.before == 20

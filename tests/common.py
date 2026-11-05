@@ -127,7 +127,19 @@ class FakeGoogle:
             return AiohttpClientMockResponse(
                 method, url, status=HTTPStatus.PRECONDITION_FAILED, json=_error(412, "conditionNotMet")
             )
-        self.patches.append((cal_id, event_id, headers["If-Match"], dict(data)))
+        sent, data = dict(data), dict(data)
+        if "reminders" in data:
+            # Like Google, PATCH merges the reminders object into the event's.
+            data["reminders"] = {**(item.get("reminders") or {}), **data["reminders"]}
+            if data["reminders"].get("useDefault") and data["reminders"].get("overrides"):
+                message = "Cannot specify both default reminders and overrides at the same time."
+                return AiohttpClientMockResponse(
+                    method,
+                    url,
+                    status=HTTPStatus.BAD_REQUEST,
+                    json=_error(400, "cannotUseDefaultRemindersAndSpecifyOverride", message),
+                )
+        self.patches.append((cal_id, event_id, headers["If-Match"], sent))
         old = item.get("description") or ""
         if event_id in self.series.get(cal_id, {}):
             for occurrence in self.events.get(cal_id, []):
@@ -249,6 +261,10 @@ class FakeRoutes:
         self.default = 22.5
         self.status: int | None = None
         self.error: dict[str, Any] = {}
+        self.spots: dict[str, tuple[float, float]] = {}
+        """Where each address is on the map, sent back as the route's ends."""
+        self.from_points: dict[tuple[float, float], float] = {}
+        """Drive minutes from a point on the map, used before :attr:`minutes`."""
         self.bodies: list[dict[str, Any]] = []
         aioclient_mock.post("https://routes.googleapis.com/directions/v2:computeRoutes", side_effect=self._handle)
 
@@ -257,8 +273,28 @@ class FakeRoutes:
         if self.status is not None:
             return AiohttpClientMockResponse(method, url, status=self.status, json=self.error)
         dest = data["destination"].get("address", "home")
-        minutes = self.minutes.get(dest, self.default)
-        return AiohttpClientMockResponse(method, url, json={"routes": [{"duration": f"{int(minutes * 60)}s"}]})
+        start = self._point(data["origin"])
+        minutes = self.from_points[start] if start in self.from_points else self.minutes.get(dest, self.default)
+        route: dict[str, Any] = {"duration": f"{int(minutes * 60)}s"}
+        end = self._point(data["destination"])
+        if start is not None and end is not None:
+            route["legs"] = [{"startLocation": _lat_lng(start), "endLocation": _lat_lng(end)}]
+        return AiohttpClientMockResponse(method, url, json={"routes": [route]})
+
+    def _point(self, waypoint: dict[str, Any]) -> tuple[float, float] | None:
+        if "address" in waypoint:
+            return self.spots.get(waypoint["address"])
+        point = waypoint["location"]["latLng"]
+        return (point["latitude"], point["longitude"])
+
+    @property
+    def live(self) -> list[dict[str, Any]]:
+        """The lookups made from wherever someone is, in today's traffic."""
+        return [b for b in self.bodies if "departureTime" not in b]
+
+
+def _lat_lng(spot: tuple[float, float]) -> dict[str, Any]:
+    return {"latLng": {"latitude": spot[0], "longitude": spot[1]}}
 
 
 class FakeTasks:
