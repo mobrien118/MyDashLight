@@ -840,7 +840,7 @@ export class MyDashLightBoard extends LitElement {
       ? attention(plan, this.today())
       : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
     const wide = this.wide;
-    const todo = this.chores ? choresNeedingAttention(this.chores).filter((c) => !this.choreDone(c)) : [];
+    const todo = this.chores ? choresNeedingAttention(this.chores, this.today().minutes).filter((c) => !this.choreDone(c)) : [];
     const chorePanel = this.choreEdit ? this.renderChoreEditor(this.choreEdit) : this.whoFor ? this.renderWhoDidIt(this.whoFor) : null;
     const label = this.choreEdit ? (this.choreEdit.template ? "Change a chore" : "Add a chore") : this.whoFor ? "Who did it" : this.sel ? "Change this ride" : "Needs attention";
     const panel = html`<aside class="panel" aria-label=${label}>
@@ -1592,7 +1592,8 @@ export class MyDashLightBoard extends LitElement {
           <div class="setup-list">${setup.map((t) => this.renderTemplateRow(t))}</div>
         </section>`
       : nothing;
-    const cols = choreColumns(data, this.plan ? kidColors(this.plan) : undefined);
+    void this.tick;
+    const cols = choreColumns(data, this.plan ? kidColors(this.plan) : undefined, this.today().minutes);
     return html`<div class="chores-scroll">
       <div class="chores-bar">
         <span class="chores-hint">Tap a chore when it’s done.</span>
@@ -1628,7 +1629,7 @@ export class MyDashLightBoard extends LitElement {
                   ${col.done.map((c) => this.renderChoreRow(c))}`
               : nothing}
             ${col.later.map(
-              (g) => html`<h3 class="chore-group">${dayTagOr(g.date, data.today)}</h3>
+              (g) => html`<h3 class="chore-group">${g.date === data.today ? "Later today" : dayTagOr(g.date, data.today)}</h3>
                 ${g.chores.map((c) => this.renderChoreRow(c))}`,
             )}
             ${!col.overdue.length && !col.now.length && !col.done.length && !col.later.length

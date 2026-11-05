@@ -86,6 +86,22 @@ export function isDone(c: Chore): boolean {
 }
 
 /** Ready to check off now: today's, this week's or this month's, and overdue ones. */
+/** When a night-before chore shows on its day: 1 PM, when the lunch chips turn to the next day too. */
+export const EVENING_FROM = 13 * 60;
+
+/**
+ * A night-before chore (like packing lunch) waits until the afternoon of its day: until then it's
+ * listed as coming up later today, not to do.
+ */
+export function waitsForEvening(c: Chore, today: string, minutes: number): boolean {
+  return c.state === "open" && !!c.for_day && c.due === today && minutes < EVENING_FROM;
+}
+
+/** The chores as they stand at ``minutes`` past midnight: night-before ones not yet showing are coming up. */
+function atTime(data: ChoresPayload, minutes: number): Chore[] {
+  return data.chores.map((c) => (waitsForEvening(c, data.today, minutes) ? { ...c, state: "upcoming" as const, shows_from: data.today } : c));
+}
+
 export function isDoable(c: Chore): boolean {
   return c.state === "open" || c.state === "overdue";
 }
@@ -101,6 +117,7 @@ export function choreNote(c: Chore, today: string, timeZone: string): string {
     return c.due ? `Missed ${dayWord(c.due, today)}` : "Missed";
   }
   if (c.state === "upcoming") {
+    if (c.for_day) return `From 1 PM · for ${dayWord(c.for_day, today)}`;
     // The board lists these under the day they show, so only a later due day needs saying.
     const shows = c.shows_from ?? c.due;
     if (!c.due || !shows || c.due <= shows) return "";
@@ -159,8 +176,8 @@ export interface ChoreColumn {
 }
 
 /** One column per kid, in the order Home Assistant lists them, colored the same as on the rides board. */
-export function choreColumns(data: ChoresPayload, colors?: Map<string, KidColor>): ChoreColumn[] {
-  const sorted = [...data.chores].sort((a, b) => a.order - b.order);
+export function choreColumns(data: ChoresPayload, colors?: Map<string, KidColor>, minutes = 24 * 60): ChoreColumn[] {
+  const sorted = atTime(data, minutes).sort((a, b) => a.order - b.order);
   return data.kids.map((k, i) => {
     const mine = sorted.filter((c) => c.kid === k.id);
     const later = new Map<string, Chore[]>();
@@ -186,10 +203,11 @@ export function choreColumns(data: ChoresPayload, colors?: Map<string, KidColor>
 
 /**
  * The chores Needs attention lists: overdue ones, and ones due today. A chore done sometime this
- * week or month only joins on its last day, so the list stays short.
+ * week or month only joins on its last day, so the list stays short. A night-before chore joins
+ * from 1 PM.
  */
-export function choresNeedingAttention(data: ChoresPayload): Chore[] {
-  return [...data.chores]
+export function choresNeedingAttention(data: ChoresPayload, minutes = 24 * 60): Chore[] {
+  return atTime(data, minutes)
     .filter((c) => c.state === "overdue" || (c.state === "open" && (c.due == null || c.due <= data.today)))
     .sort((a, b) => (a.state === b.state ? a.order - b.order : a.state === "overdue" ? -1 : 1));
 }

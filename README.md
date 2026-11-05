@@ -291,7 +291,7 @@ Points: 1
 | Every | Every this many days, weeks or months, counted from Starts. Monthly with Every 3 is quarterly. |
 | Starts, Ends | The first and last days. Starts is the day the template was made if left out. |
 | Points | Saved on each chore for later. Nothing uses it yet. |
-| When | School days only: `Night before` makes it due the evening before each school day (Sunday for Monday). Left out, it's due that morning. |
+| When | School days only: `Night before` makes it due the day before each school day (Sunday for Monday); the board shows it from 1 PM that day. Left out, it's due that morning. |
 | Only | School days only: `Bring lunch days` makes it only on days the kid brings lunch, for chores like packing it. |
 
 Text above the block is the chore's details, shown when it's tapped. A leading emoji in the title
