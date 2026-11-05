@@ -162,7 +162,7 @@ class ChoreConnection implements HassConnection {
   }
 }
 
-test("chores come live when MyDashLight pushes them, and are checked off through set_chore_done", async () => {
+test("chores come live when MyDashLight pushes them, and change through the chore actions", async () => {
   const conn = new ChoreConnection();
   conn.pushes = true;
   const b = new HassBackend(conn);
@@ -176,12 +176,31 @@ test("chores come live when MyDashLight pushes them, and are checked off through
 
   conn.sent = [];
   await b.setChoreDone("task-1", true);
-  await b.setChoreDone("task-1", false);
+  await b.setChoreDone("task-1", true, "mom");
+  await b.setChoreDone("task-1", false, "mom");
+  await b.saveChoreTemplate({
+    repeats: "weekly",
+    title: "Recycling",
+    icon: "",
+    details: "",
+    who: ["ava"],
+    take_turns: false,
+    days: "Fri",
+    every: 1,
+    paused: false,
+  });
+  await b.removeChoreTemplate("t1");
   assert.deepEqual(
     conn.sent.map((m) => [m["service"], m["service_data"]]),
     [
       ["set_chore_done", { chore: "task-1", done: true }],
+      ["set_chore_done", { chore: "task-1", done: true, by: "mom" }],
       ["set_chore_done", { chore: "task-1", done: false }],
+      [
+        "save_chore_template",
+        { repeats: "weekly", title: "Recycling", icon: "", details: "", who: ["ava"], take_turns: false, days: "Fri", every: 1, paused: false },
+      ],
+      ["remove_chore_template", { template: "t1" }],
     ],
   );
   stop();

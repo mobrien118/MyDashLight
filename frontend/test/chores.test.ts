@@ -1,12 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  NO_DAYS,
   choreColumns,
   choreNote,
   choresNeedingAttention,
+  defaultDays,
+  draftFields,
+  draftOf,
+  draftProblem,
   isDoable,
   isDone,
+  newDraft,
   noChoresYet,
+  ordinal,
+  problemText,
+  scheduleText,
+  weekdaysLabel,
+  weekdaysOf,
+  whoText,
   type Chore,
   type ChoresPayload,
 } from "../src/chores.ts";
@@ -149,4 +161,86 @@ test("no chores yet only when there are no chores and no templates", () => {
   assert.ok(!noChoresYet(payload([chore("ava", "Make bed")])));
   const template = { id: "x", repeats: "daily" as const, title: "Make bed", icon: null, who: ["ava"], paused: true, problems: [] };
   assert.ok(!noChoresYet(payload([], [template])));
+});
+
+test("days of the week read and written like MyDashLight does", () => {
+  assert.deepEqual([...weekdaysOf("Mon-Fri")!].sort(), [0, 1, 2, 3, 4]);
+  assert.deepEqual([...weekdaysOf("Sat, Sun")!].sort(), [5, 6]);
+  assert.deepEqual([...weekdaysOf("Fri-Mon")!].sort(), [0, 4, 5, 6]);
+  assert.equal(weekdaysOf("")!.size, 7);
+  assert.equal(weekdaysOf("Any"), null);
+  assert.equal(weekdaysLabel([0, 1, 2, 3, 4]), "Mon-Fri");
+  assert.equal(weekdaysLabel([5, 6]), "Sat, Sun");
+  assert.equal(weekdaysLabel([0, 2, 4]), "Mon, Wed, Fri");
+  assert.equal(weekdaysLabel([0, 1, 2, 4, 6]), "Mon-Wed, Fri, Sun");
+  assert.equal(weekdaysLabel([0, 1, 2, 3, 4, 5, 6]), "");
+  assert.equal(weekdaysLabel([]), "");
+});
+
+test("a template in words", () => {
+  assert.equal(scheduleText("daily", ""), "Every day");
+  assert.equal(scheduleText("daily", "Mon-Fri"), "Mon–Fri");
+  assert.equal(scheduleText("daily", "", 2), "Every 2 days");
+  assert.equal(scheduleText("weekly", "Any"), "Sometime each week");
+  assert.equal(scheduleText("weekly", "Thu", 2), "Thu every 2 weeks");
+  assert.equal(scheduleText("monthly", "Any"), "Sometime each month");
+  assert.equal(scheduleText("monthly", "15"), "The 15th each month");
+  assert.equal(scheduleText("monthly", "last", 3), "The last day every 3 months");
+  assert.equal(scheduleText("monthly", "1st Sat"), "The 1st Sat each month");
+  const kids = payload([]).kids;
+  assert.equal(whoText(["ava"], kids), "Ava");
+  assert.equal(whoText(["ava", "ben", "cleo"], kids), "Ava, Ben and Cleo");
+  assert.equal(whoText(["ava", "ben"], kids, true), "Ava and Ben take turns");
+  assert.equal(whoText([], kids), "Nobody yet");
+  assert.equal(ordinal(1), "1st");
+  assert.equal(ordinal(2), "2nd");
+  assert.equal(ordinal(3), "3rd");
+  assert.equal(ordinal(11), "11th");
+  assert.equal(ordinal(22), "22nd");
+  assert.equal(problemText("who:"), "Nobody is picked to do it");
+  assert.equal(problemText("who:Zed"), "“Zed” isn’t one of the kids");
+  assert.equal(problemText("days:Funday"), "The days (“Funday”) couldn’t be read");
+});
+
+test("editing a template: what's sent, and what stops a save", () => {
+  const t = {
+    id: "t1",
+    repeats: "weekly" as const,
+    title: "Recycling",
+    icon: "🗑️",
+    details: "By 7 PM",
+    who: ["ava", "ben"],
+    take_turns: true,
+    days: "Fri",
+    every: 1,
+    paused: false,
+    problems: [],
+  };
+  const d = draftOf(t);
+  assert.equal(draftProblem(d), null);
+  assert.deepEqual(draftFields(d), {
+    template: "t1",
+    repeats: "weekly",
+    title: "Recycling",
+    icon: "🗑️",
+    details: "By 7 PM",
+    who: ["ava", "ben"],
+    take_turns: true,
+    days: "Fri",
+    every: 1,
+    paused: false,
+  });
+  // One kid can't take turns; no icon is sent as empty.
+  assert.equal(draftFields({ ...d, who: ["ava"], icon: null }).take_turns, false);
+  assert.equal(draftFields({ ...d, icon: null }).icon, "");
+  const fresh = newDraft();
+  assert.equal(draftFields(fresh).template, undefined);
+  assert.equal(draftProblem(fresh), "Give the chore a name.");
+  assert.equal(draftProblem({ ...fresh, title: "Bins" }), "Pick who does it.");
+  assert.equal(draftProblem({ ...fresh, title: "Bins", who: ["ava"], days: NO_DAYS }), "Pick at least one day.");
+  // A bare task typed into Google: no who yet, days from the payload.
+  const bare = draftOf({ id: "task9", repeats: "daily", title: "Water plants", icon: null, who: [], paused: false, problems: ["who:"] });
+  assert.equal(bare.days, "");
+  assert.equal(bare.every, 1);
+  assert.equal(defaultDays("weekly"), "Any");
 });

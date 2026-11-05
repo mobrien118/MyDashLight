@@ -325,7 +325,16 @@ Tap **Chores** at the top of the kitchen app for a column per kid, in the kids' 
 - **Done**: checked off today, or ahead of their day, with when.
 - Then the days ahead, each under the day it shows, faded until then.
 
-Tap a chore to check it off, and tap it again to undo; it's saved to Google Tasks straight away.
+Tap a chore to check it off: the panel asks who did it, with the kid it's for as the big button
+and **Someone else did** for anyone else, parents included (saved as `Done by` in its notes). Tap a
+done chore to undo it. Each change is saved to Google Tasks straight away.
+
+**Add a chore** and **Manage chores**, above the columns, open the chore editor in the panel, like a
+ride's: its name and picture, who does it (each one, or taking turns), how often (some days of the
+week, weekly or monthly), which days, how many weeks or months apart, and notes. A chore can be
+paused or removed there too. A task typed straight into a Chore templates list in Google Tasks
+shows at the top of the Chores board under **needs setting up**; tap it to pick who does it and
+when.
 The **Needs attention** list starts with a Chores section: every kid's overdue chores and the ones
 due today, with the kid's name, and they can be checked off right there. A chore done sometime this
 week or month joins that list only on its last day, so the list stays short. With no chores yet,

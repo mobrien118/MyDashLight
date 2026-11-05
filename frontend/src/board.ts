@@ -33,9 +33,26 @@ import {
   type Today,
 } from "./layout.ts";
 import {
+  NO_DAYS,
+  WEEKDAYS,
   choreColumns,
   choreNote,
   choresNeedingAttention,
+  defaultDays,
+  draftFields,
+  draftOf,
+  draftProblem,
+  newDraft,
+  ordinal,
+  problemText,
+  scheduleText,
+  weekdaysLabel,
+  weekdaysOf,
+  whoText,
+  type ChoreDraft,
+  type ChoreTemplate,
+  type Person,
+  type Repeats,
   isDone,
   isDoable,
   noChoresYet,
@@ -67,6 +84,19 @@ function localZone(): string {
 }
 
 /** "S" for Sam: the first letter of a name, for its round badge. */
+const PLUS = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>`;
+const PENCIL = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.3V20h2.7l9.9-9.9-2.7-2.7zM19.7 7a1 1 0 0 0 0-1.4l-1.3-1.3a1 1 0 0 0-1.4 0l-1.2 1.2 2.7 2.7z"/></svg>`;
+/** Pictures for a chore; a kitchen screen has no emoji keyboard. */
+const ICONS = ["🛏️", "🍽️", "🧺", "👕", "🧹", "🧽", "🗑️", "♻️", "🐕", "🐈", "🐟", "🌱", "🪥", "🛁", "🧸", "📚", "🎒", "🎻", "🎹", "🚗", "🥪", "💊"];
+
+/** "Every week", "Every other week", "Every 3 months (quarterly)". */
+function everyText(repeats: Repeats, every: number): string {
+  const unit = { daily: "day", weekly: "week", monthly: "month" }[repeats];
+  if (every <= 1) return `Every ${unit}`;
+  if (every === 2) return `Every other ${unit}`;
+  return `Every ${every} ${unit}s${repeats === "monthly" && every === 3 ? " (quarterly)" : ""}`;
+}
+
 function initial(name: string): string {
   const m = /\p{L}|\p{N}/u.exec(name);
   return m ? m[0].toUpperCase() : "?";
@@ -133,6 +163,12 @@ export class MyDashLightBoard extends LitElement {
     page: { state: true },
     chores: { state: true },
     choreDraft: { state: true },
+    manage: { state: true },
+    choreEdit: { state: true },
+    choreBusy: { state: true },
+    removeArmed: { state: true },
+    whoFor: { state: true },
+    whoOthers: { state: true },
   };
 
   declare backend: Backend | null;
@@ -159,6 +195,17 @@ export class MyDashLightBoard extends LitElement {
   declare chores: ChoresPayload | null | undefined;
   /** Check-offs tapped but not confirmed yet: chore id to done. */
   declare choreDraft: ReadonlyMap<string, boolean>;
+  /** The chores page shows the list of chores to change instead of each kid's chores. */
+  declare manage: boolean;
+  /** A chore being added or changed in the panel. */
+  declare choreEdit: ChoreDraft | null;
+  declare choreBusy: boolean;
+  /** Remove was tapped once; a second tap removes. */
+  declare removeArmed: boolean;
+  /** A chore being checked off: the panel asks who did it. */
+  declare whoFor: Chore | null;
+  /** "Someone else did" was tapped: everyone is listed. */
+  declare whoOthers: boolean;
 
   private stopWatching: (() => void) | null = null;
   private resize: ResizeObserver | null = null;
@@ -203,6 +250,12 @@ export class MyDashLightBoard extends LitElement {
     this.page = this.urlPage ?? "rides";
     this.chores = undefined;
     this.choreDraft = new Map();
+    this.manage = false;
+    this.choreEdit = null;
+    this.choreBusy = false;
+    this.removeArmed = false;
+    this.whoFor = null;
+    this.whoOthers = false;
   }
 
   override connectedCallback(): void {
@@ -401,20 +454,38 @@ export class MyDashLightBoard extends LitElement {
   private setPage(p: Page): void {
     if (p === this.page) return;
     this.closeEditor();
+    this.closeChorePanels();
+    this.manage = false;
     this.page = p;
     // Back on rides, start at now again.
     if (p === "rides") this.scrolledOnce = false;
   }
 
+  /**
+   * A chore was tapped. Done ones open again straight away. Otherwise the panel asks who did it,
+   * when MyDashLight can record that; without it, the chore is checked off for its kid.
+   */
+  private tapChore(c: Chore): void {
+    if (this.choreDone(c) || !this.chores?.people?.length) {
+      void this.toggleChore(c);
+      return;
+    }
+    this.closeEditor();
+    this.closeChorePanels();
+    this.whoFor = c;
+  }
+
   /** Checks a chore off, or opens it again. Shown straight away; undone if saving fails. */
-  private async toggleChore(c: Chore): Promise<void> {
+  private async toggleChore(c: Chore, by?: string): Promise<void> {
     if (!this.backend) return;
+    this.whoFor = null;
+    this.whoOthers = false;
     const done = !this.choreDone(c);
     const draft = new Map(this.choreDraft);
     draft.set(c.id, done);
     this.choreDraft = draft;
     try {
-      await this.backend.setChoreDone(c.id, done);
+      await this.backend.setChoreDone(c.id, done, by && by !== c.kid ? by : undefined);
     } catch (err) {
       const back = new Map(this.choreDraft);
       back.delete(c.id);
@@ -426,6 +497,63 @@ export class MyDashLightBoard extends LitElement {
 
   private choreDone(c: Chore): boolean {
     return this.choreDraft.get(c.id) ?? isDone(c);
+  }
+
+  /** Opens the chore editor in the panel: a template to change, or a new chore. */
+  private editChore(t: ChoreTemplate | null): void {
+    this.closeEditor();
+    this.closeChorePanels();
+    const first = this.chores?.kids[0]?.id;
+    this.choreEdit = t ? draftOf(t) : newDraft(this.chores?.kids.length === 1 && first ? [first] : []);
+  }
+
+  private closeChorePanels(): void {
+    this.choreEdit = null;
+    this.choreBusy = false;
+    this.removeArmed = false;
+    this.whoFor = null;
+    this.whoOthers = false;
+  }
+
+  private changeDraft(change: Partial<ChoreDraft>): void {
+    if (!this.choreEdit) return;
+    this.choreEdit = { ...this.choreEdit, ...change };
+    this.removeArmed = false;
+  }
+
+  private async saveChoreEdit(): Promise<void> {
+    const d = this.choreEdit;
+    if (!d || !this.backend || draftProblem(d)) return;
+    this.choreBusy = true;
+    try {
+      await this.backend.saveChoreTemplate(draftFields(d));
+      this.closeChorePanels();
+      this.showToast(d.template ? "Saved." : `Added. ${d.title.trim()} shows on the board in a moment.`);
+    } catch (err) {
+      this.choreBusy = false;
+      const e = err instanceof BackendError ? err : new BackendError("error", String(err));
+      this.showToast(e.code === "preview" ? e.message : `Couldn’t save that. ${e.message}`);
+    }
+  }
+
+  private async removeChoreEdit(): Promise<void> {
+    const d = this.choreEdit;
+    if (!d?.template || !this.backend) return;
+    if (!this.removeArmed) {
+      this.removeArmed = true;
+      return;
+    }
+    this.choreBusy = true;
+    try {
+      await this.backend.removeChoreTemplate(d.template);
+      this.closeChorePanels();
+      this.showToast(`Removed ${d.title.trim() || "the chore"}.`);
+    } catch (err) {
+      this.choreBusy = false;
+      this.removeArmed = false;
+      const e = err instanceof BackendError ? err : new BackendError("error", String(err));
+      this.showToast(e.code === "preview" ? e.message : `Couldn’t remove that. ${e.message}`);
+    }
   }
 
   private setMode(m: Mode): void {
@@ -501,7 +629,8 @@ export class MyDashLightBoard extends LitElement {
 
   private onKey = (e: KeyboardEvent): void => {
     if (e.key !== "Escape") return;
-    if (this.sel) this.closeEditor();
+    if (this.choreEdit || this.whoFor) this.closeChorePanels();
+    else if (this.sel) this.closeEditor();
     else this.sheet = false;
   };
 
@@ -516,6 +645,7 @@ export class MyDashLightBoard extends LitElement {
   private open(t: Target | null, reveal = false): void {
     if (!t) return;
     this.flushArrive();
+    this.closeChorePanels();
     this.sel = t;
     this.scope = "this";
     this.arriveDraft = undefined;
@@ -632,8 +762,10 @@ export class MyDashLightBoard extends LitElement {
       : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
     const wide = this.wide;
     const todo = this.chores ? choresNeedingAttention(this.chores).filter((c) => !this.choreDone(c)) : [];
-    const panel = html`<aside class="panel" aria-label=${this.sel ? "Change this ride" : "Needs attention"}>
-      ${this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att, todo)}
+    const chorePanel = this.choreEdit ? this.renderChoreEditor(this.choreEdit) : this.whoFor ? this.renderWhoDidIt(this.whoFor) : null;
+    const label = this.choreEdit ? (this.choreEdit.template ? "Change a chore" : "Add a chore") : this.whoFor ? "Who did it" : this.sel ? "Change this ride" : "Needs attention";
+    const panel = html`<aside class="panel" aria-label=${label}>
+      ${chorePanel ?? (this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att, todo))}
     </aside>`;
     const rides = this.page === "rides";
     // Wide, the panel runs the full height on the right, beside everything else. Narrower, it
@@ -649,7 +781,7 @@ export class MyDashLightBoard extends LitElement {
                   ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
                 </section>`
               : html`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
-            ${!wide && (this.sheet || this.sel)
+            ${!wide && (this.sheet || this.sel || this.choreEdit || this.whoFor)
               ? html`<div class="backdrop" @click=${() => this.closePanel()}></div>
                   ${panel}`
               : nothing}
@@ -663,6 +795,7 @@ export class MyDashLightBoard extends LitElement {
 
   private closePanel(): void {
     this.closeEditor();
+    this.closeChorePanels();
     this.sheet = false;
   }
 
@@ -1161,7 +1294,8 @@ export class MyDashLightBoard extends LitElement {
     const color = (this.plan ? kidColors(this.plan).get(c.kid) : undefined) ?? kidColor(Math.max(0, kid));
     const name = data.kids[kid]?.name ?? "";
     const shown: Chore = done === isDone(c) ? c : { ...c, state: done ? "done" : "open", done_at: done ? new Date().toISOString() : null };
-    const note = choreNote(shown, data.today, data.time_zone);
+    const by = done && shown.done_by && shown.done_by !== c.kid ? (data.people?.find((p) => p.id === shown.done_by)?.name ?? shown.done_by_name ?? null) : null;
+    const note = `${choreNote(shown, data.today, data.time_zone)}${by ? ` · by ${by}` : ""}`;
     const canTap = done || isDoable(c);
     const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${done ? "Done. Tap to undo." : "Tap when it’s done."}`;
     const body = html`<span class="box" aria-hidden="true"
@@ -1177,7 +1311,7 @@ export class MyDashLightBoard extends LitElement {
     const cls = `chore ${done ? "done" : ""} ${c.state === "overdue" && !done ? "overdue" : ""} ${canTap ? "" : "later"}`;
     const style = `--c:${color.color};--rgb:${color.rgb};--k:${color.ink}`;
     return canTap
-      ? html`<button type="button" class=${cls} style=${style} aria-pressed=${done ? "true" : "false"} aria-label=${label} @click=${() => void this.toggleChore(c)}>
+      ? html`<button type="button" class=${cls} style=${style} aria-pressed=${done ? "true" : "false"} aria-label=${label} @click=${() => this.tapChore(c)}>
           ${body}
         </button>`
       : html`<div class=${cls} style=${style}>${body}</div>`;
@@ -1204,27 +1338,35 @@ export class MyDashLightBoard extends LitElement {
         <p>In Google Cloud, open the MyDashLight project, go to <strong>APIs &amp; Services › Library</strong>, find <strong>Google Tasks API</strong> and choose <strong>Enable</strong>. Chores show up a minute later.</p>
       </div>`;
     }
-    const broken = data.templates.filter((t) => t.problems.length);
-    const problems = broken.length
-      ? html`<div class="banner">
-          ${broken.map((t) => html`<div><strong>${t.title}</strong>: ${t.problems.join("; ")}</div>`)}
-        </div>`
-      : nothing;
+    if (this.manage) return this.renderManage(data);
     if (noChoresYet(data)) {
-      const kid = data.kids[0]?.name ?? "Ava";
       return html`<div class="chores-message">
         <h2>No chores yet</h2>
-        <p>Chores come from Google Tasks, in the Google account MyDashLight signs in with.</p>
-        <ol>
-          <li>Open Google Tasks and pick the list <strong>Chore templates: Daily</strong> (or Weekly or Monthly).</li>
-          <li>Add a task named for the chore, such as <strong>🛏️ Make bed</strong>.</li>
-          <li>In its details, add a line <code>Who: ${kid}</code>. Add <code>Days: Mon-Fri</code> for weekdays only.</li>
-        </ol>
-        <p>Within a minute it shows here, and on ${kid}’s own list in Google Tasks.</p>
+        <p>Add the first one here: give it a name, pick who does it and which days.</p>
+        <button type="button" class="btn dark big-btn" @click=${() => this.editChore(null)}>${PLUS} Add a chore</button>
+        <p class="message-aside">
+          Or add a task to the Google Tasks list <strong>Chore templates: Daily</strong> (or Weekly or Monthly). It
+          shows here to be set up.
+        </p>
       </div>`;
     }
+    const setup = data.templates.filter((t) => t.problems.length);
+    const problems = setup.length
+      ? html`<section class="setup" aria-label="Chores to set up">
+          <h3 class="chore-group setup-head">${setup.length === 1 ? "1 chore needs setting up" : `${setup.length} chores need setting up`}</h3>
+          <div class="setup-list">${setup.map((t) => this.renderTemplateRow(t))}</div>
+        </section>`
+      : nothing;
     const cols = choreColumns(data, this.plan ? kidColors(this.plan) : undefined);
     return html`<div class="chores-scroll">
+      <div class="chores-bar">
+        <span class="chores-hint">Tap a chore when it’s done.</span>
+        <button type="button" class="btn" @click=${() => this.editChore(null)}>${PLUS} Add a chore</button>
+        <button type="button" class="btn" @click=${() => {
+          this.closeChorePanels();
+          this.manage = true;
+        }}>${PENCIL} Manage chores</button>
+      </div>
       ${problems}
       <div class="chore-cols" style="--n:${cols.length}">
         ${cols.map((col) => {
@@ -1260,6 +1402,281 @@ export class MyDashLightBoard extends LitElement {
         })}
       </div>
     </div>`;
+  }
+
+  /** One chore template, as Manage chores and the set-up list show it. Tap to change it. */
+  private renderTemplateRow(t: ChoreTemplate): TemplateResult {
+    const data = this.chores!;
+    const kids = data.kids;
+    const colors = this.plan ? kidColors(this.plan) : undefined;
+    const sel = this.choreEdit?.template === t.id;
+    const status = t.problems.length
+      ? html`<span class="tmpl-note bad">${t.problems.map(problemText).join(" · ")} · tap to set up</span>`
+      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1)}</span>`;
+    return html`<button type="button" class="tmpl ${t.problems.length ? "needs" : ""} ${t.paused ? "paused" : ""} ${sel ? "sel" : ""}" @click=${() => this.editChore(t)}>
+      <span class="tmpl-icon" aria-hidden="true">${t.icon ?? "•"}</span>
+      <span class="chore-text">
+        <span class="chore-title">${t.title || "(no name)"}${t.paused ? html` <span class="tag-paused">Paused</span>` : nothing}</span>
+        ${status}
+      </span>
+      <span class="tmpl-dots" aria-hidden="true">
+        ${t.who.map((id) => {
+          const i = kids.findIndex((k) => k.id === id);
+          const c = colors?.get(id) ?? kidColor(Math.max(0, i));
+          return html`<span class="kid-dot" style="background:${c.color}"></span>`;
+        })}
+      </span>
+    </button>`;
+  }
+
+  /** Manage chores: every chore template by how often it repeats, to add, change, pause or remove. */
+  private renderManage(data: ChoresPayload): TemplateResult {
+    const groups: [Repeats, string][] = [
+      ["daily", "Every day or some days"],
+      ["weekly", "Weekly"],
+      ["monthly", "Monthly"],
+    ];
+    return html`<div class="chores-scroll">
+      <div class="chores-bar">
+        <h2 class="manage-title">Manage chores</h2>
+        <button type="button" class="btn" @click=${() => this.editChore(null)}>${PLUS} Add a chore</button>
+        <button type="button" class="btn dark" @click=${() => {
+          this.closeChorePanels();
+          this.manage = false;
+        }}>Done</button>
+      </div>
+      ${data.templates.length
+        ? groups.map(([r, label]) => {
+            const list = data.templates.filter((t) => t.repeats === r);
+            return list.length
+              ? html`<section class="manage-group" aria-label=${label}>
+                  <h3 class="chore-group">${label}</h3>
+                  <div class="tmpl-list">${list.map((t) => this.renderTemplateRow(t))}</div>
+                </section>`
+              : nothing;
+          })
+        : html`<p class="chore-none">No chores yet. Tap <strong>Add a chore</strong> to make the first one.</p>`}
+      <p class="message-aside">
+        Chores are kept in Google Tasks, on the lists <strong>Chore templates: Daily</strong>, <strong>Weekly</strong> and
+        <strong>Monthly</strong>. A task added there by hand shows up here to be set up.
+      </p>
+    </div>`;
+  }
+
+  /** The chore editor, in the panel like a ride's: name, how often, who, which days. */
+  private renderChoreEditor(d: ChoreDraft): TemplateResult {
+    const data = this.chores;
+    if (!data) return html``;
+    const kids = data.kids;
+    const colors = this.plan ? kidColors(this.plan) : undefined;
+    const busy = this.choreBusy;
+    const t = d.template ? data.templates.find((x) => x.id === d.template) : undefined;
+    const problem = draftProblem(d);
+    // "Nobody is picked" is plain from the Who buttons; say what else is wrong with it.
+    const fixes = (t?.problems ?? []).filter((p) => p !== "who:");
+
+    const choice = (pressed: boolean, label: string, on: () => void, wide = false): TemplateResult =>
+      html`<button type="button" class="choice ${wide ? "wide" : ""}" aria-pressed=${pressed ? "true" : "false"} ?disabled=${busy} @click=${on}>${label}</button>`;
+    const chip = (pressed: boolean, label: string | TemplateResult, on: () => void, aria?: string): TemplateResult =>
+      html`<button type="button" class="chip" aria-pressed=${pressed ? "true" : "false"} aria-label=${aria ?? nothing} ?disabled=${busy} @click=${on}>${label}</button>`;
+
+    const setRepeats = (r: Repeats): void => {
+      if (r === d.repeats) return;
+      this.changeDraft({ repeats: r, days: t && t.repeats === r ? (t.days ?? defaultDays(r)) : defaultDays(r) });
+    };
+    const toggleWho = (id: string): void => {
+      const who = d.who.includes(id) ? d.who.filter((x) => x !== id) : kids.filter((k) => k.id === id || d.who.includes(k.id)).map((k) => k.id);
+      this.changeDraft({ who });
+    };
+
+    // Which days, by how often it repeats.
+    let days: TemplateResult;
+    if (d.repeats === "monthly") {
+      const v = d.days.trim();
+      const n = /^\d+$/.test(v) ? Number(v) : null;
+      const other = v && v.toLowerCase() !== "any" && v.toLowerCase() !== "last" && n === null;
+      days = html`<div class="field">
+        <span class="field-label">When in the month</span>
+        <div role="group" aria-label="When in the month" class="choices" style="grid-template-columns:repeat(${other ? 4 : 3}, minmax(0, 1fr))">
+          ${choice(v === "" || v.toLowerCase() === "any", "Any time", () => this.changeDraft({ days: "Any" }))}
+          ${choice(n !== null, "On a date", () => this.changeDraft({ days: String(n ?? 1) }))}
+          ${choice(v.toLowerCase() === "last", "Last day", () => this.changeDraft({ days: "last" }))}
+          ${other ? choice(true, v, () => undefined) : nothing}
+        </div>
+        ${n !== null
+          ? html`<div class="field arrive">
+              <span class="arrive-text"><span class="field-label">On the</span></span>
+              <span class="stepper">
+                <button type="button" class="step" aria-label="A day earlier" ?disabled=${busy || n <= 1} @click=${() => this.changeDraft({ days: String(n - 1) })}>−</button>
+                <span class="arrive-value">${ordinal(n)}</span>
+                <button type="button" class="step" aria-label="A day later" ?disabled=${busy || n >= 31} @click=${() => this.changeDraft({ days: String(n + 1) })}>+</button>
+              </span>
+            </div>`
+          : html`<p class="field-hint">${v.toLowerCase() === "last" ? "Due on the month’s last day." : other ? "Set in Google Tasks; pick another to change it." : "Shows all month, due on its last day."}</p>`}
+      </div>`;
+    } else {
+      const any = d.repeats === "weekly" && (d.days === "" || d.days.toLowerCase() === "any");
+      const set = d.days === NO_DAYS ? new Set<number>() : any ? new Set<number>() : (weekdaysOf(d.days) ?? new Set<number>());
+      const toggleDay = (i: number): void => {
+        const next = new Set(set);
+        if (next.has(i)) next.delete(i);
+        else next.add(i);
+        if (d.repeats === "weekly") this.changeDraft({ days: next.size ? weekdaysLabel(next) || "Mon-Sun" : "Any" });
+        else this.changeDraft({ days: next.size ? weekdaysLabel(next) : NO_DAYS });
+      };
+      days = html`<div class="field">
+        <span class="field-label">${d.repeats === "weekly" ? "Which day" : "Which days"}</span>
+        ${d.repeats === "weekly"
+          ? html`<div role="group" aria-label="Any day" class="choices" style="grid-template-columns:1fr 1fr">
+              ${choice(any, "Any day that week", () => this.changeDraft({ days: "Any" }))}
+              ${choice(!any, "On a set day", () => this.changeDraft({ days: any ? "Sat" : d.days }))}
+            </div>`
+          : nothing}
+        ${d.repeats === "daily" || !any
+          ? html`<div role="group" aria-label="Days of the week" class="day-chips">
+              ${WEEKDAYS.map((w, i) => chip(set.has(i), w.slice(0, 2), () => toggleDay(i), w))}
+            </div>`
+          : nothing}
+        ${d.repeats === "daily"
+          ? html`<div class="chips">
+              ${chip(d.days === "", "Every day", () => this.changeDraft({ days: "" }))}
+              ${chip(d.days === "Mon-Fri", "Weekdays", () => this.changeDraft({ days: "Mon-Fri" }))}
+              ${chip(d.days === "Sat, Sun", "Weekends", () => this.changeDraft({ days: "Sat, Sun" }))}
+            </div>`
+          : html`<p class="field-hint">${any ? "Shows all week, due on Sunday." : "Due that day."}</p>`}
+      </div>`;
+    }
+
+    return html`
+      <div class="ed-head">
+        <div class="ed-titles">
+          <span class="ed-title">${d.icon ? html`<span class="ed-icon" aria-hidden="true">${d.icon}</span>` : nothing}${d.template ? d.title || "Set up a chore" : "Add a chore"}</span>
+          <span class="ed-meta">${d.who.length ? whoText(d.who, kids, d.take_turns) : "Nobody yet"} · ${d.days === NO_DAYS ? "No days picked" : scheduleText(d.repeats, d.days, d.every)}</span>
+        </div>
+        <button type="button" class="btn" ?disabled=${busy} @click=${() => this.closeChorePanels()}>Cancel</button>
+      </div>
+      ${fixes.length ? html`<p class="field-hint bad">${fixes.map(problemText).join(". ")}. Saving fixes it.</p>` : nothing}
+      <div class="field">
+        <label class="field-label" for="chore-name">Chore</label>
+        <input
+          id="chore-name"
+          class="text-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Make bed"
+          .value=${d.title}
+          ?disabled=${busy}
+          @input=${(ev: Event) => this.changeDraft({ title: (ev.target as HTMLInputElement).value })}
+        />
+        <div role="group" aria-label="Picture" class="icon-chips">
+          ${ICONS.map((i) => chip(d.icon === i, i, () => this.changeDraft({ icon: d.icon === i ? null : i }), `Picture ${i}`))}
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Who does it</span>
+        <div role="group" aria-label="Who does it" class="who-chips">
+          ${kids.map((k, i) => {
+            const c = colors?.get(k.id) ?? kidColor(i);
+            const on = d.who.includes(k.id);
+            return html`<button type="button" class="who-chip" style="--c:${c.color};--rgb:${c.rgb}" aria-pressed=${on ? "true" : "false"} ?disabled=${busy} @click=${() => toggleWho(k.id)}>
+              <span class="avatar" aria-hidden="true">${initial(k.name)}</span>${k.name}
+            </button>`;
+          })}
+        </div>
+        ${d.who.length > 1
+          ? html`<div role="group" aria-label="Each or take turns" class="choices" style="grid-template-columns:1fr 1fr">
+              ${choice(!d.take_turns, "Each does it", () => this.changeDraft({ take_turns: false }))}
+              ${choice(d.take_turns, "They take turns", () => this.changeDraft({ take_turns: true }))}
+            </div>`
+          : nothing}
+      </div>
+      <div class="field">
+        <span class="field-label">How often</span>
+        <div role="group" aria-label="How often" class="choices" style="grid-template-columns:repeat(3, minmax(0, 1fr))">
+          ${choice(d.repeats === "daily", "Days", () => setRepeats("daily"))}
+          ${choice(d.repeats === "weekly", "Weekly", () => setRepeats("weekly"))}
+          ${choice(d.repeats === "monthly", "Monthly", () => setRepeats("monthly"))}
+        </div>
+      </div>
+      ${days}
+      <div class="field arrive">
+        <span class="arrive-text">
+          <span class="field-label">Repeats</span>
+          <span class="field-hint">${everyText(d.repeats, d.every)}</span>
+        </span>
+        <span class="stepper">
+          <button type="button" class="step" aria-label="More often" ?disabled=${busy || d.every <= 1} @click=${() => this.changeDraft({ every: d.every - 1 })}>−</button>
+          <span class="arrive-value">${d.every}</span>
+          <button type="button" class="step" aria-label="Less often" ?disabled=${busy || d.every >= 52} @click=${() => this.changeDraft({ every: d.every + 1 })}>+</button>
+        </span>
+      </div>
+      <div class="field">
+        <label class="field-label" for="chore-details">Notes <span class="field-hint">Optional, shown with the chore</span></label>
+        <textarea
+          id="chore-details"
+          class="text-input"
+          rows="2"
+          .value=${d.details}
+          ?disabled=${busy}
+          @input=${(ev: Event) => this.changeDraft({ details: (ev.target as HTMLTextAreaElement).value })}
+        ></textarea>
+      </div>
+      ${d.template
+        ? html`<div class="field">
+              ${choice(d.paused, d.paused ? "Paused: no new chores until it’s turned back on" : "On: makes chores as set above", () => this.changeDraft({ paused: !d.paused }), true)}
+            </div>
+            <button type="button" class="chip clear remove" ?disabled=${busy} @click=${() => void this.removeChoreEdit()}>
+              ${this.removeArmed ? "Tap again to remove it for good" : "Remove this chore"}
+            </button>`
+        : nothing}
+      <div class="ed-foot">
+        <button type="button" class="btn dark save" ?disabled=${busy || !!problem} @click=${() => void this.saveChoreEdit()}>
+          ${busy ? "Saving to Google Tasks…" : problem ? problem.replace(/\.$/, "") : d.template ? "Save" : "Add this chore"}
+        </button>
+      </div>
+    `;
+  }
+
+  /** Who did it: the kid it's for, big, or somebody else (parents can do kids' chores too). */
+  private renderWhoDidIt(c: Chore): TemplateResult {
+    const data = this.chores;
+    if (!data) return html``;
+    const people: Person[] = data.people?.length ? data.people : data.kids.map((k) => ({ ...k, role: "kid" as const }));
+    const kidIndex = data.kids.findIndex((k) => k.id === c.kid);
+    const kid = data.kids[kidIndex];
+    const colors = this.plan ? kidColors(this.plan) : undefined;
+    const color = colors?.get(c.kid) ?? kidColor(Math.max(0, kidIndex));
+    const others = people.filter((p) => p.id !== c.kid);
+    const personColor = (p: Person): string => {
+      const i = data.kids.findIndex((k) => k.id === p.id);
+      return i >= 0 ? (colors?.get(p.id) ?? kidColor(i)).color : "var(--dark)";
+    };
+    return html`
+      <div class="ed-head">
+        <div class="ed-titles">
+          <span class="ed-title">${c.icon ? html`<span class="ed-icon" aria-hidden="true">${c.icon}</span>` : nothing}${c.title}</span>
+          <span class="ed-meta">${kid?.name ?? ""} · ${choreNote(c, data.today, data.time_zone)}</span>
+        </div>
+        <button type="button" class="btn" @click=${() => this.closeChorePanels()}>Cancel</button>
+      </div>
+      <div class="field">
+        <span class="field-label">Who did it?</span>
+        <button type="button" class="done-by main" style="--c:${color.color};--rgb:${color.rgb}" @click=${() => void this.toggleChore(c)}>
+          <span class="avatar" aria-hidden="true">${initial(kid?.name ?? "?")}</span>
+          <span>${kid?.name ?? "Done"} did it</span>
+        </button>
+        ${this.whoOthers
+          ? html`<div role="group" aria-label="Who else did it" class="done-by-list">
+              ${others.map(
+                (p) => html`<button type="button" class="done-by" style="--c:${personColor(p)}" @click=${() => void this.toggleChore(c, p.id)}>
+                  <span class="avatar ${p.role === "parent" ? "driver" : ""}" aria-hidden="true">${initial(p.name)}</span>
+                  <span>${p.name}</span>
+                </button>`,
+              )}
+            </div>`
+          : html`<button type="button" class="choice wide" @click=${() => (this.whoOthers = true)}>Someone else did</button>`}
+      </div>
+    `;
   }
 
   private renderLegend(): TemplateResult {

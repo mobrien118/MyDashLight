@@ -2,7 +2,7 @@
 
 import { PreviewBackend } from "./backend.ts";
 import "./board.ts";
-import type { Chore, ChoresPayload } from "./chores.ts";
+import type { Chore, ChoresPayload, ChoreTemplate } from "./chores.ts";
 import { nowIn } from "./format.ts";
 import type { Plan } from "./types.ts";
 
@@ -60,9 +60,44 @@ function sampleChores(plan: Plan): ChoresPayload {
     days_ahead: 7,
     kids: kids.map((k) => ({ id: k.id, name: k.name })),
     chores,
-    templates: [],
+    templates: sampleTemplates(kids.map((k) => k.id)),
+    people: [
+      ...kids.map((k) => ({ id: k.id, name: k.name, role: "kid" as const })),
+      ...(plan.people?.drivers ?? []).map((d) => ({ id: d.id, name: d.name, role: "parent" as const })),
+    ],
     status: { ok: true, error: null, needs: null },
   };
+}
+
+/** The templates behind the sample chores, plus one typed into Google Tasks and not set up yet. */
+function sampleTemplates(kids: string[]): ChoreTemplate[] {
+  const [a = "", b = "", c = ""] = kids;
+  const t = (id: string, icon: string, title: string, extra: Partial<ChoreTemplate>): ChoreTemplate => ({
+    id,
+    repeats: "daily",
+    title,
+    icon,
+    details: "",
+    who: [],
+    take_turns: false,
+    days: "",
+    every: 1,
+    paused: false,
+    problems: [],
+    ...extra,
+  });
+  return [
+    t("t-bed", "🛏️", "Make bed", { who: [a, b, c].filter(Boolean) }),
+    t("t-dog", "🐕", "Feed the dog", { who: [a].filter(Boolean) }),
+    t("t-violin", "🎻", "Practice violin", { who: [a].filter(Boolean), days: "Mon-Fri" }),
+    t("t-table", "🍽️", "Clear the table", { who: [b].filter(Boolean) }),
+    t("t-teeth", "🪥", "Brush teeth", { who: [c].filter(Boolean) }),
+    t("t-laundry", "🧺", "Put away laundry", { repeats: "weekly", who: [a].filter(Boolean), days: "Any" }),
+    t("t-recycling", "🗑️", "Take out recycling", { repeats: "weekly", who: [a, b].filter(Boolean), take_turns: true, days: "Fri" }),
+    t("t-room", "🧸", "Tidy room", { repeats: "weekly", who: [c].filter(Boolean), days: "Any" }),
+    t("t-fridge", "🧽", "Wipe out the fridge", { repeats: "monthly", who: [a].filter(Boolean), days: "last", paused: true }),
+    t("t-plants", "", "Water the plants", { icon: null, problems: ["who:"] }),
+  ];
 }
 
 const board = document.querySelector("mydashlight-board");
