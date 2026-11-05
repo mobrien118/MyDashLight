@@ -734,10 +734,13 @@ def suggestions_for(
         delta = p[who].drive - base[who].drive
         if extra:
             note = issue_text(extra[0], labels).note or ""
+        elif delta > 0 and p[who].trips > base[who].trips:
+            # A new trip from home and back. The label already names who drives.
+            note = f"+{driving_text(delta)} round trip"
         elif delta > 0:
-            note = f"+{driving_text(delta)} of driving for {labels.driver(who)}"
+            note = f"+{driving_text(delta)} of driving"
         elif delta < 0:
-            note = f"{driving_text(-delta)} less driving for {labels.driver(who)}"
+            note = f"{driving_text(-delta)} less driving"
         else:
             note = "No new problems"
         good.append(Suggestion(label, change, who, note, p.score))
