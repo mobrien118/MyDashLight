@@ -291,6 +291,14 @@
        "first_drop": "piano",
        "riders": {
         "kid-a@group.calendar.google.com": "Leave home at 3:30 PM with Robin"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "piano studio, 410 elm st",
+        "to_name": "Piano studio",
+        "due": 945,
+        "via_home": false
        }
       },
       {
@@ -310,6 +318,14 @@
        "first_drop": null,
        "riders": {
         "kid-c@group.calendar.google.com": "Robin picks you up at Soccer fields at 6:30 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "soccer fields, 2200 park rd",
+        "to_name": "Soccer fields",
+        "due": 1110,
+        "via_home": false
        }
       }
      ],
@@ -434,6 +450,14 @@
        "riders": {
         "kid-c@group.calendar.google.com": "Leave home at 4:25 PM with Sam",
         "kid-b@group.calendar.google.com": "Sam picks you up at home at 4:55 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "soccer fields, 2200 park rd",
+        "to_name": "Soccer fields",
+        "due": 1020,
+        "via_home": false
        }
       },
       {
@@ -453,6 +477,14 @@
        "first_drop": null,
        "riders": {
         "kid-b@group.calendar.google.com": "Sam picks you up at Football field at 7:00 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "football field, 90 stadium dr",
+        "to_name": "Football field",
+        "due": 1140,
+        "via_home": false
        }
       }
      ],
@@ -904,6 +936,14 @@
        "first_drop": "fri-soccer",
        "riders": {
         "kid-c@group.calendar.google.com": "Leave home at 4:40 PM with Robin"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "soccer fields, 2200 park rd",
+        "to_name": "Soccer fields",
+        "due": 1020,
+        "via_home": false
        }
       },
       {
@@ -923,6 +963,14 @@
        "first_drop": null,
        "riders": {
         "kid-c@group.calendar.google.com": "Robin picks you up at Soccer fields at 6:00 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "soccer fields, 2200 park rd",
+        "to_name": "Soccer fields",
+        "due": 1080,
+        "via_home": false
        }
       }
      ],
@@ -1017,6 +1065,14 @@
        "first_drop": "fri-party",
        "riders": {
         "kid-b@group.calendar.google.com": "Leave home at 5:46 PM with Sam"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "liam's house, 31 oak ct",
+        "to_name": "Liam's house",
+        "due": 1080,
+        "via_home": false
        }
       },
       {
@@ -1036,6 +1092,14 @@
        "first_drop": null,
        "riders": {
         "kid-b@group.calendar.google.com": "Sam picks you up at Liam's house at 8:30 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "liam's house, 31 oak ct",
+        "to_name": "Liam's house",
+        "due": 1230,
+        "via_home": false
        }
       }
      ],
@@ -1340,6 +1404,14 @@
        "first_drop": "sat-football",
        "riders": {
         "kid-b@group.calendar.google.com": "Leave home at 10:20 AM with Robin"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "football field, 90 stadium dr",
+        "to_name": "Football field",
+        "due": 640,
+        "via_home": false
        }
       }
      ],
@@ -1449,6 +1521,14 @@
        "first_drop": "sat-soccer",
        "riders": {
         "kid-c@group.calendar.google.com": "Leave home at 8:30 AM with Sam"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "soccer fields, 2200 park rd",
+        "to_name": "Soccer fields",
+        "due": 525,
+        "via_home": false
        }
       },
       {
@@ -1468,6 +1548,14 @@
        "first_drop": null,
        "riders": {
         "kid-a@group.calendar.google.com": "Sam picks you up at Middle school gym at 3:00 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "middle school gym, 15 school ln",
+        "to_name": "Middle school gym",
+        "due": 900,
+        "via_home": false
        }
       }
      ],
@@ -1699,6 +1787,14 @@
        "first_drop": "sun-youth",
        "riders": {
         "kid-a@group.calendar.google.com": "Leave home at 5:43 PM with Robin"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "church, 7 chapel way",
+        "to_name": "Church",
+        "due": 1080,
+        "via_home": false
        }
       }
      ],
@@ -2005,6 +2101,14 @@
        "riders": {
         "kid-a@group.calendar.google.com": "Leave home at 3:30 PM with Robin",
         "kid-b@group.calendar.google.com": "Leave home at 3:30 PM with Robin"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "piano studio, 410 elm st",
+        "to_name": "Piano studio",
+        "due": 945,
+        "via_home": false
        }
       },
       {
@@ -2024,6 +2128,14 @@
        "first_drop": null,
        "riders": {
         "kid-a@group.calendar.google.com": "Robin picks you up at Piano studio at 4:30 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "piano studio, 410 elm st",
+        "to_name": "Piano studio",
+        "due": 990,
+        "via_home": false
        }
       },
       {
@@ -2039,7 +2151,15 @@
        "warn": null,
        "target": "mon-football",
        "first_drop": "mon-football",
-       "riders": {}
+       "riders": {},
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "football field, 90 stadium dr",
+        "to_name": "Football field",
+        "due": 1050,
+        "via_home": false
+       }
       }
      ],
      "busy": []
@@ -2095,6 +2215,14 @@
        "first_drop": null,
        "riders": {
         "kid-b@group.calendar.google.com": "Sam picks you up at Football field at 7:00 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "football field, 90 stadium dr",
+        "to_name": "Football field",
+        "due": 1140,
+        "via_home": false
        }
       }
      ],
@@ -2414,6 +2542,14 @@
        "first_drop": "tue-soccer",
        "riders": {
         "kid-c@group.calendar.google.com": "Leave home at 4:40 PM with Robin"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "soccer fields, 2200 park rd",
+        "to_name": "Soccer fields",
+        "due": 1020,
+        "via_home": false
        }
       },
       {
@@ -2433,6 +2569,14 @@
        "first_drop": null,
        "riders": {
         "kid-a@group.calendar.google.com": "Robin picks you up at Middle school gym at 8:00 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "middle school gym, 15 school ln",
+        "to_name": "Middle school gym",
+        "due": 1200,
+        "via_home": false
        }
       }
      ],
@@ -2546,6 +2690,14 @@
        "first_drop": "tue-art",
        "riders": {
         "kid-c@group.calendar.google.com": "Leave home at 5:44 PM with Sam. Pick-up at 6:30 PM at Soccer fields. Pick-up at 7:00 PM at Dance studio"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "dance studio, 88 main st",
+        "to_name": "Dance studio",
+        "due": 1080,
+        "via_home": false
        }
       }
      ],
@@ -2873,6 +3025,14 @@
        "first_drop": "wed-dance",
        "riders": {
         "kid-c@group.calendar.google.com": "Leave home at 3:44 PM with Robin"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "dance studio, 88 main st",
+        "to_name": "Dance studio",
+        "due": 960,
+        "via_home": false
        }
       },
       {
@@ -2892,6 +3052,14 @@
        "first_drop": null,
        "riders": {
         "kid-c@group.calendar.google.com": "Robin picks you up at Dance studio at 5:00 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "dance studio, 88 main st",
+        "to_name": "Dance studio",
+        "due": 1020,
+        "via_home": false
        }
       }
      ],
@@ -2992,6 +3160,14 @@
        "first_drop": "wed-football",
        "riders": {
         "kid-b@group.calendar.google.com": "Leave home at 5:05 PM with Sam"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "football field, 90 stadium dr",
+        "to_name": "Football field",
+        "due": 1050,
+        "via_home": false
        }
       },
       {
@@ -3011,6 +3187,14 @@
        "first_drop": null,
        "riders": {
         "kid-b@group.calendar.google.com": "Sam picks you up at Football field at 7:00 PM"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "football field, 90 stadium dr",
+        "to_name": "Football field",
+        "due": 1140,
+        "via_home": false
        }
       }
      ],

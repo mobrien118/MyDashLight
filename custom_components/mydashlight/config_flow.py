@@ -21,6 +21,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import AbstractOAuth2FlowHandler
 from homeassistant.helpers.selector import (
     BooleanSelector,
+    EntitySelector,
+    EntitySelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -48,6 +50,7 @@ from .const import (
     CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
     CONF_DAD_NOTIFY,
+    CONF_DAD_PERSON,
     CONF_GO_HOME_MARGIN,
     CONF_HOME_ADDRESS,
     CONF_KID_NOTIFY,
@@ -57,6 +60,7 @@ from .const import (
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
     CONF_MOM_NOTIFY,
+    CONF_MOM_PERSON,
     CONF_NAME,
     CONF_NO_ADDRESS_TRAVEL,
     CONF_NO_DRIVER_ALERTS,
@@ -502,6 +506,8 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
                     CONF_MOM_NOTIFY: by_driver.get("mom", NOTIFY_OFF),
                     CONF_DAD_NOTIFY: by_driver.get("dad", NOTIFY_OFF),
                     CONF_KID_NOTIFY: kid_notify,
+                    CONF_MOM_PERSON: user_input.get(CONF_MOM_PERSON) or None,
+                    CONF_DAD_PERSON: user_input.get(CONF_DAD_PERSON) or None,
                     CONF_REMIND_BEFORE: int(user_input[CONF_REMIND_BEFORE]),
                     CONF_CALENDAR_REMINDERS: bool(user_input[CONF_CALENDAR_REMINDERS]),
                     CONF_NO_DRIVER_ALERTS: bool(user_input[CONF_NO_DRIVER_ALERTS]),
@@ -526,6 +532,10 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
                     ],
                     mode=SelectSelectorMode.DROPDOWN,
                 )
+            )
+        for key in (CONF_MOM_PERSON, CONF_DAD_PERSON):
+            fields[vol.Optional(key, description={"suggested_value": options.get(key)})] = EntitySelector(
+                EntitySelectorConfig(domain="person")
             )
         fields[vol.Required(CONF_REMIND_BEFORE, default=options.get(CONF_REMIND_BEFORE, DEFAULT_REMIND_BEFORE))] = (
             _minutes(120)

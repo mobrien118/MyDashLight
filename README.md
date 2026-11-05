@@ -43,7 +43,8 @@ the chore templates. See [Chores](#chores).
 | `services.py` | The `mydashlight` actions: get the plan, and change rides. |
 | `websocket.py` | The app's live plan, `mydashlight/rides/subscribe`. |
 | `reminders.py` | Works out the reminders from the plan: when each drive's reminder goes off, the Google Calendar reminder for each drop-off, and the rides with no driver. |
-| `alerts.py` | Sends the reminders through each person's notifier, and saves the Google Calendar reminders. |
+| `location.py` | Checks a driver is on their way: straight-line distances from their phone's location, and what to tell them. |
+| `alerts.py` | Sends the reminders through each person's notifier, checks the driver's location, and saves the Google Calendar reminders. |
 | `frontend.py` | Serves the kitchen app: the Rides sidebar item and the kitchen page. |
 | `pairing.py` | Pairs a kitchen screen: the code it shows, an admin's approval, and the sign-in it collects. |
 | `chore_rules.py` | Reads and writes chore templates and chores in Google Tasks notes, and works out the days each template makes a chore for. |
@@ -53,7 +54,7 @@ the chore templates. See [Chores](#chores).
 | `chore_services.py` | The chore actions: get the chores, check one off, and save or remove a template. |
 
 `planner.py`, `board.py`, `notes.py`, `google.py`, `changes.py`, `week.py`, `payload.py`,
-`routes.py`, `travel.py`, `reminders.py`, `settings.py`, `chore_rules.py`, `chores.py` and
+`routes.py`, `travel.py`, `reminders.py`, `location.py`, `settings.py`, `chore_rules.py`, `chores.py` and
 `tasks_api.py` don't import Home Assistant, so they can be tested and reused on
 their own.
 
@@ -94,6 +95,8 @@ leaving half an hour before it starts, and a trip home as leaving when it ends.
 
 - Only the trips the plan actually uses are looked up, today's first.
 - Each drive time is kept for 30 days, so a weekly activity costs about one lookup a month.
+- Each lookup also says where the trip's ends are on the map, at no extra cost. Those points are
+  kept for 90 days, for checking a driver is on their way (see Reminders).
 - Lookups stop for the day at the daily limit (150 by default, which stays under 5,000 a month).
   Trips over the limit are estimated and looked up the next day.
 - A Travel line in an event's notes always wins for trips to that event.
@@ -394,6 +397,17 @@ the Home Assistant app adds for each phone. Anyone left on **No reminders** gets
 - **Rides with no driver.** A drop-off or pick-up coming up with nobody driving yet is sent once to
   both parents' notifiers, several at a time when there are several. It goes six hours before the
   ride, or whatever **Warn about rides with no driver this far ahead** says.
+- **Is the driver on their way?** Pick each parent's person under **Where the first parent is**
+  and **Where the second parent is**, and their phone's location (from the Home Assistant app) is
+  checked for the drives they're on. Only the driver is told, never the other parent.
+  - At the leave reminder, a driver who isn't at the drive's starting point, and is farther from the
+    first stop than it, gets a reminder that says when to leave from where they really are.
+  - The arrive-early margin after leave time (5 minutes unless **Arrive early, at least** says
+    otherwise), a driver still at the starting point gets "Time to go". One who has left but is
+    farther from the first stop than the starting point is told if they'll now be late.
+  - Distances are straight lines on the map, so they cost nothing. A drive time from where the
+    driver is gets looked up only when the straight lines say they're somewhere unexpected, and it
+    counts toward the daily limit. Locations are only read, never saved anywhere.
 
 What has been sent is kept in Home Assistant, so a restart doesn't send it again.
 

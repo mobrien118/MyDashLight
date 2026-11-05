@@ -10,7 +10,7 @@ from collections.abc import Callable, Sequence
 import math
 from typing import Any
 
-from .board import CardLine, DayBoard, KidItem, Outing, Ride, build_day, event_where
+from .board import CardLine, DayBoard, Going, KidItem, Outing, Ride, build_day, event_where
 from .planner import (
     BusyBlock,
     Change,
@@ -177,6 +177,18 @@ def _outing(o: Outing) -> dict[str, Any]:
         "target": o.target.id if o.target else None,
         "first_drop": o.first_drop.id if o.first_drop else None,
         "riders": dict(o.riders),
+        "go": _go(o.go) if o.go else None,
+    }
+
+
+def _go(g: Going) -> dict[str, Any]:
+    return {
+        "from": g.from_loc,
+        "from_name": g.from_name,
+        "to": g.to_loc,
+        "to_name": g.to_name,
+        "due": _num(g.due),
+        "via_home": g.via_home,
     }
 
 

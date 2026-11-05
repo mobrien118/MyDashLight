@@ -64,8 +64,13 @@ class DriveTimes:
 
     def place(self, key: str, home: Place) -> Place | None:
         """Where a place key is, for asking Google. None for a place with no address."""
-        if key == HOME:
-            return home
-        if key.startswith(NO_ADDRESS):
-            return None
-        return Place(address=self.week.labels.place(key))
+        return place_for(self.week, key, home)
+
+
+def place_for(week: WeekInput, key: str, home: Place) -> Place | None:
+    """Where a place key is, for asking Google. None for a place with no address."""
+    if key == HOME:
+        return home
+    if key.startswith(NO_ADDRESS):
+        return None
+    return Place(address=week.labels.place(key))
