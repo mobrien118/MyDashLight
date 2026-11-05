@@ -29,6 +29,12 @@
     },
     "remove_chore_template": {
       "service": "mdi:clipboard-remove-outline"
+    },
+    "get_lunches": {
+      "service": "mdi:food-apple-outline"
+    },
+    "set_lunch": {
+      "service": "mdi:food-takeout-box-outline"
     }
   }
 }

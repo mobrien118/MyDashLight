@@ -79,6 +79,12 @@ class FakeGoogle:
         base = re.compile(r"^https://www\.googleapis\.com/calendar/v3/")
         aioclient_mock.get(base, side_effect=self._handle)
         aioclient_mock.patch(base, side_effect=self._patch)
+        aioclient_mock.post(base, side_effect=self._insert)
+        aioclient_mock.delete(base, side_effect=self._delete)
+        self.inserted: list[tuple[str, dict[str, Any]]] = []
+        """(calendar id, body) for each event added."""
+        self.deleted: list[tuple[str, str]] = []
+        """(calendar id, event id) for each event deleted."""
         self.tasks = FakeTasks(aioclient_mock)
 
     def add(self, calendar_id: str, **event: Any) -> dict[str, Any]:
@@ -131,6 +137,33 @@ class FakeGoogle:
         item.update(data)
         item["etag"] = self._next_etag()
         return AiohttpClientMockResponse(method, url, json=item)
+
+    async def _insert(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
+        assert url.query.get("sendUpdates") == "none"
+        match = re.search(r"/calendars/(.+)/events$", url.path)
+        assert match, url
+        cal_id = match.group(1)
+        item = {"id": f"made-{len(self.inserted) + 1}", "etag": self._next_etag(), **dict(data)}
+        self.inserted.append((cal_id, dict(data)))
+        self.events.setdefault(cal_id, []).append(item)
+        return AiohttpClientMockResponse(method, url, json=item)
+
+    async def _delete(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
+        headers = self._mock.mock_calls[-1][3] or {}
+        assert url.query.get("sendUpdates") == "none"
+        match = re.search(r"/calendars/(.+)/events/(.+)$", url.path)
+        assert match, url
+        cal_id, event_id = match.groups()
+        item = self.event(cal_id, event_id)
+        if item is None:
+            return AiohttpClientMockResponse(method, url, status=HTTPStatus.GONE, json=_error(410, "deleted"))
+        if headers.get("If-Match") and headers["If-Match"] != item["etag"]:
+            return AiohttpClientMockResponse(
+                method, url, status=HTTPStatus.PRECONDITION_FAILED, json=_error(412, "conditionNotMet")
+            )
+        self.events[cal_id].remove(item)
+        self.deleted.append((cal_id, event_id))
+        return AiohttpClientMockResponse(method, url, status=HTTPStatus.NO_CONTENT)
 
     async def _handle(self, method: str, url: URL, data: Any) -> AiohttpClientMockResponse:
         self.calls.append(url)

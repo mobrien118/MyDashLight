@@ -9,6 +9,10 @@ it changes. Each parent can get a reminder on their phone before each drive leav
 Chores live in Google Tasks: templates on three base lists, and each kid's chores on their own
 list, which MyDashLight keeps filled from the templates. The app subscribes to
 ``mydashlight/chores/subscribe`` for the chores as they change.
+
+Lunches are "Bring Lunch" and "Buy Lunch" all-day events on each kid's calendar, and days off
+are "No School" events there. School-days chores (like Pack lunch) follow them. The app
+subscribes to ``mydashlight/lunch/subscribe``.
 """
 
 from __future__ import annotations
@@ -40,12 +44,15 @@ from .const import (
     DEFAULT_ROUTES_DAILY_LIMIT,
     DOMAIN,
     SIGNAL_CHORES_UPDATED,
+    SIGNAL_LUNCH_UPDATED,
     SIGNAL_PLAN_UPDATED,
 )
 from .coordinator import MyDashLightCoordinator
 from .frontend import async_register_panel, async_remove_panel
 from .google import GoogleAuthError, GoogleCalendarApi, GoogleError
 from .lookups import RoutesLookups
+from .lunch_coordinator import LunchCoordinator
+from .lunch_services import async_setup_lunch_services
 from .routes import RoutesApi
 from .services import async_setup_services
 from .settings import HubSettings
@@ -65,6 +72,7 @@ class MyDashLightData:
     write_lock: asyncio.Lock
     """One change to Google at a time, so two taps don't race each other."""
     chores: ChoreCoordinator
+    lunch: LunchCoordinator
 
 
 type MyDashLightConfigEntry = ConfigEntry[MyDashLightData]
@@ -74,6 +82,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the services and the app's live subscription."""
     async_setup_services(hass)
     async_setup_chore_services(hass)
+    async_setup_lunch_services(hass)
     async_setup_websocket(hass)
     return True
 
@@ -115,8 +124,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     await notifier.async_load()
     lock = asyncio.Lock()
     reminders = CalendarReminders(hass, api, lock, settings.reminders)
-    chores = ChoreCoordinator(hass, entry, GoogleTasksApi(websession, tokens), settings, lock)
-    entry.runtime_data = MyDashLightData(settings, api, coordinator, notifier, reminders, lock, chores)
+    lunch = LunchCoordinator(hass, entry, api, settings, lock)
+    chores = ChoreCoordinator(hass, entry, GoogleTasksApi(websession, tokens), settings, lock, lunch.school)
+    entry.runtime_data = MyDashLightData(settings, api, coordinator, notifier, reminders, lock, chores, lunch)
 
     @callback
     def plan_updated() -> None:
@@ -137,10 +147,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     def chores_updated() -> None:
         async_dispatcher_send(hass, SIGNAL_CHORES_UPDATED, entry)
 
-    # Chores read in the background: a problem with Google Tasks never stops rides.
+    @callback
+    def lunch_updated() -> None:
+        async_dispatcher_send(hass, SIGNAL_LUNCH_UPDATED, entry)
+
+    # Lunches and chores read in the background: a problem with them never stops rides.
     entry.async_on_unload(chores.async_add_listener(chores_updated))
     entry.async_on_unload(lambda: async_dispatcher_send(hass, SIGNAL_CHORES_UPDATED, None))
-    entry.async_create_background_task(hass, chores.async_refresh(), f"{DOMAIN}_chores_first_read")
+    entry.async_on_unload(lunch.async_add_listener(lunch_updated))
+    entry.async_on_unload(lambda: async_dispatcher_send(hass, SIGNAL_LUNCH_UPDATED, None))
+
+    async def first_reads() -> None:
+        # School days first, so the first chore read already knows them.
+        await lunch.async_refresh()
+        await chores.async_refresh()
+
+    entry.async_create_background_task(hass, first_reads(), f"{DOMAIN}_first_reads")
     # The kitchen app: the Rides item in the sidebar, and the kitchen page.
     await async_register_panel(hass)
     entry.async_on_unload(lambda: async_remove_panel(hass))

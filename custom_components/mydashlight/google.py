@@ -1,5 +1,5 @@
-"""A small Google Calendar API client: the calendar list, events in a time window, and
-changes to one event's notes.
+"""A small Google Calendar API client: the calendar list, events in a time window, changes
+to one event's notes, and the all-day events MyDashLight keeps for lunches.
 
 No Home Assistant imports. Access tokens come from a ``TokenSource``, which is Home
 Assistant's OAuth session at runtime and a fixed token during setup.
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import logging
 from typing import Any, Final, Protocol
 from urllib.parse import quote
@@ -39,6 +39,9 @@ _RATE_REASONS: Final = frozenset({"rateLimitExceeded", "userRateLimitExceeded", 
 
 class GoogleError(Exception):
     """Talking to Google Calendar failed. Usually worth trying again later."""
+
+    status: int | None = None
+    """The HTTP status Google answered with, when it answered."""
 
 
 class GoogleAuthError(GoogleError):
@@ -212,6 +215,50 @@ class GoogleCalendarApi:
         )
         return str(body.get("etag") or "")
 
+    async def async_add_all_day(self, calendar_id: str, day: date, title: str, description: str = "") -> str:
+        """Add a one-day all-day event marked Free, with no reminders. Returns its id."""
+        body = await self._request(
+            "POST",
+            f"/calendars/{quote(calendar_id, safe='')}/events",
+            {"fields": "id,etag", "sendUpdates": "none"},
+            json={
+                "summary": title,
+                "description": description,
+                "start": {"date": day.isoformat()},
+                "end": {"date": (day + timedelta(days=1)).isoformat()},
+                "transparency": "transparent",
+                "reminders": {"useDefault": False},
+            },
+        )
+        return str(body.get("id") or "")
+
+    async def async_set_title(self, calendar_id: str, event_id: str, etag: str, title: str) -> str:
+        """Change an event's title, only if it hasn't changed since ``etag``. Returns the new
+        etag. Raises :class:`GoogleConflict` when it has."""
+        body = await self._request(
+            "PATCH",
+            _event_path(calendar_id, event_id),
+            {"fields": "id,etag", "sendUpdates": "none"},
+            json={"summary": title},
+            headers={"If-Match": etag} if etag else None,
+        )
+        return str(body.get("etag") or "")
+
+    async def async_delete_event(self, calendar_id: str, event_id: str, etag: str = "") -> None:
+        """Delete an event, only if it hasn't changed since ``etag`` (when given). One that's
+        already gone counts as deleted."""
+        try:
+            await self._request(
+                "DELETE",
+                _event_path(calendar_id, event_id),
+                {"sendUpdates": "none"},
+                headers={"If-Match": etag} if etag else None,
+            )
+        except GoogleError as err:
+            if getattr(err, "status", None) in (404, 410):
+                return
+            raise
+
     async def _pages(self, path: str, params: dict[str, str]) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
         token: str | None = None
@@ -246,6 +293,8 @@ class GoogleCalendarApi:
                 timeout=_TIMEOUT,
             ) as resp:
                 if resp.status < 400:
+                    if resp.status == 204:
+                        return {}
                     body = await resp.json(content_type=None)
                     return body if isinstance(body, dict) else {}
                 try:
@@ -258,6 +307,12 @@ class GoogleCalendarApi:
 
 
 def _error_for(status: int, body: object, path: str) -> GoogleError:
+    err = _error_kind(status, body, path)
+    err.status = status
+    return err
+
+
+def _error_kind(status: int, body: object, path: str) -> GoogleError:
     error = body.get("error") if isinstance(body, dict) else None
     error = error if isinstance(error, dict) else {}
     message = str(error.get("message") or f"HTTP {status}")

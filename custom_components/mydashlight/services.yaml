@@ -180,6 +180,7 @@ save_chore_template:
             - daily
             - weekly
             - monthly
+            - school
     title:
       required: false
       example: Vacuum the stairs
@@ -237,6 +238,14 @@ save_chore_template:
       required: false
       selector:
         boolean:
+    night_before:
+      required: false
+      selector:
+        boolean:
+    bring_only:
+      required: false
+      selector:
+        boolean:
 
 remove_chore_template:
   fields:
@@ -245,3 +254,29 @@ remove_chore_template:
       example: 3f9a1c22b7
       selector:
         text:
+
+get_lunches:
+
+set_lunch:
+  fields:
+    kid:
+      required: true
+      example: Ava
+      selector:
+        text:
+    dates:
+      required: true
+      example: ["2026-11-06", "2026-11-13"]
+      selector:
+        text:
+          multiple: true
+    lunch:
+      required: true
+      default: bring
+      selector:
+        select:
+          translation_key: lunch
+          options:
+            - bring
+            - buy
+            - default

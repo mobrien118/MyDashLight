@@ -1,5 +1,6 @@
 """Reads the chore templates and the kids' chore lists in Google Tasks every minute, and keeps
-the lists filled from the templates.
+the lists filled from the templates. School-days chores follow the school days and lunches the
+lunch coordinator reads from the kids' calendars.
 
 Nothing about chores is kept in Home Assistant except which Google Tasks lists are the base
 lists and the kids' lists, so a list renamed in Google is still found.
@@ -8,7 +9,7 @@ lists and the kids' lists, so a list renamed in Google is still found.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 import logging
@@ -20,7 +21,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .chore_rules import REPEATS, Repeats, Template, parse_template, read_block, template_notes
+from .chore_rules import REPEATS, Repeats, SchoolDays, Template, parse_template, read_block, template_notes
 from .chores import Chore, Make, Remove, TaskItem, Update, board_items, plan_changes, read_chore, template_item
 from .const import CHORE_UPDATE_SECONDS, DOMAIN, KID_LIST_TITLE, TASKS_SCOPE, TEMPLATE_LIST_TITLES
 from .google import GoogleApiDisabled, GoogleAuthError, GoogleError
@@ -71,6 +72,7 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         api: GoogleTasksApi,
         settings: HubSettings,
         write_lock: asyncio.Lock,
+        school: Callable[[], SchoolDays | None] = lambda: None,
     ) -> None:
         super().__init__(
             hass,
@@ -82,6 +84,8 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         self.api = api
         self.settings = settings
         self.write_lock = write_lock
+        self.school = school
+        """School days and lunches for school-days chores, or None while they can't be read."""
         self._store: Store[dict[str, Any]] = Store(hass, STORE_VERSION, STORE_KEY)
         self._ids: dict[str, Any] | None = None
         self._asked_sign_in = False
@@ -135,9 +139,10 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         template_lists, kid_lists = await self._async_lists()
         templates = await self._async_templates(template_lists, today)
         chores = await self._async_chores(kid_lists, now)
+        school = self.school()
         # A first fill can be more than one batch of changes; keep going, a few batches a read.
         for _batch in range(FILL_BATCHES):
-            plan = plan_changes(templates, chores, kid_lists, today, self.settings.chore_days_ahead)
+            plan = plan_changes(templates, chores, kid_lists, today, self.settings.chore_days_ahead, school)
             if not plan.changes:
                 break
             await self._async_apply(plan.changes)
@@ -301,6 +306,7 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
                 self.settings.chore_days_ahead,
                 tz,
                 self.people,
+                self.school(),
             ),
             "templates": [template_item(t) for t in data.templates],
             "status": {"ok": self.last_update_success and data.needs is None, "error": error, "needs": data.needs},

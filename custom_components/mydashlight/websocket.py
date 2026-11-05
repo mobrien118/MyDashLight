@@ -14,6 +14,9 @@ actually changed, not just the time it was checked.
 Chores work the same way: an event with ``{"chores": ...}``, the same as ``get_chores``
 returns, straight away and after each change, and ``{"chores": null}`` while MyDashLight
 isn't running.
+
+Lunches too, on ``mydashlight/lunch/subscribe``: ``{"lunch": ...}``, the same as
+``get_lunches`` returns.
 """
 
 from __future__ import annotations
@@ -28,7 +31,15 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 import voluptuous as vol
 
-from .const import DOMAIN, SIGNAL_CHORES_UPDATED, SIGNAL_PLAN_UPDATED, WS_CHORES_SUBSCRIBE, WS_SUBSCRIBE
+from .const import (
+    DOMAIN,
+    SIGNAL_CHORES_UPDATED,
+    SIGNAL_LUNCH_UPDATED,
+    SIGNAL_PLAN_UPDATED,
+    WS_CHORES_SUBSCRIBE,
+    WS_LUNCH_SUBSCRIBE,
+    WS_SUBSCRIBE,
+)
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -38,6 +49,7 @@ if TYPE_CHECKING:
 def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_subscribe)
     websocket_api.async_register_command(hass, _ws_chores_subscribe)
+    websocket_api.async_register_command(hass, _ws_lunch_subscribe)
 
 
 def _current(hass: HomeAssistant) -> MyDashLightConfigEntry | None:
@@ -86,5 +98,25 @@ def _ws_chores_subscribe(hass: HomeAssistant, connection: ActiveConnection, msg:
         connection.send_message(event_message(msg_id, {"chores": chores}))
 
     connection.subscriptions[msg_id] = async_dispatcher_connect(hass, SIGNAL_CHORES_UPDATED, send)
+    connection.send_result(msg_id)
+    send(_current(hass))
+
+
+@websocket_command({vol.Required("type"): WS_LUNCH_SUBSCRIBE})
+@callback
+def _ws_lunch_subscribe(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
+    msg_id: int = msg["id"]
+    sent: dict[str, Any] = {}
+
+    @callback
+    def send(entry: MyDashLightConfigEntry | None) -> None:
+        lunch = entry.runtime_data.lunch.payload() if entry is not None else None
+        content = _content(lunch)
+        if "content" in sent and sent["content"] == content:
+            return
+        sent["content"] = content
+        connection.send_message(event_message(msg_id, {"lunch": lunch}))
+
+    connection.subscriptions[msg_id] = async_dispatcher_connect(hass, SIGNAL_LUNCH_UPDATED, send)
     connection.send_result(msg_id)
     send(_current(hass))
