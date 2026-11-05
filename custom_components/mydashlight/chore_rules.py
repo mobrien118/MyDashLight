@@ -1,8 +1,8 @@
 """Chore templates and the chores made from them, as they're stored in Google Tasks.
 
-A template is a task on one of the three base lists ("Chore templates: Daily", "Weekly" and
-"Monthly"). Its title is the chore, the list says how often it repeats, and the rest of the
-rules are lines in a block at the end of its notes::
+A template is a task on one of the four base lists ("Chore templates: Daily", "Weekly",
+"Monthly" and "School days"). Its title is the chore, the list says how often it repeats, and
+the rest of the rules are lines in a block at the end of its notes::
 
     Bins at the curb by 7 PM.
 
@@ -18,6 +18,15 @@ rules are lines in a block at the end of its notes::
 
 Text above the block is the chore's details, shown when it's tapped. A template that's
 checked off in Google is paused.
+
+A school-days chore is made for each day that's a school day for its kid: a weekday with no
+"No School" event on the kid's calendar. Two more lines only mean something there::
+
+    When: Night before
+    Only: Bring lunch days
+
+``When: Night before`` makes it due the evening before the school day (Sunday for Monday).
+``Only: Bring lunch days`` makes it only on days the kid brings lunch.
 
 Each chore made from a template is a task on that kid's list, due on its day, with the same
 title and details and a block linking it back::
@@ -46,12 +55,23 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 import re
-from typing import Final, Literal
+from typing import Final, Literal, Protocol
 
 CHORE_HEADER: Final = "--- Chore ---"
 
-Repeats = Literal["daily", "weekly", "monthly"]
-REPEATS: Final[tuple[Repeats, ...]] = ("daily", "weekly", "monthly")
+Repeats = Literal["daily", "weekly", "monthly", "school"]
+REPEATS: Final[tuple[Repeats, ...]] = ("daily", "weekly", "monthly", "school")
+
+
+class SchoolDays(Protocol):
+    """Which days are school days for each kid, and whether they bring or buy lunch."""
+
+    def is_school_day(self, kid: str, day: date) -> bool: ...
+
+    def lunch(self, kid: str, day: date) -> str | None:
+        """``bring`` or ``buy`` on a school day, None on a day with no school."""
+        ...
+
 
 WEEKDAYS: Final = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 _WEEKDAY_WORDS: Final[dict[str, int]] = {
@@ -79,6 +99,13 @@ _ANY: Final = frozenset({"any", "anytime", "any day", "sometime", "any time"})
 _EVERY_DAY: Final = frozenset({"", "every day", "everyday", "daily", "all", "all days"})
 _EVERYONE: Final = frozenset({"everyone", "everybody", "all", "all kids"})
 _YES: Final = frozenset({"yes", "y", "true", "on"})
+_NIGHT_BEFORE: Final = frozenset(
+    {"night before", "the night before", "evening before", "the evening before", "night", "evening", "before"}
+)
+_MORNING: Final = frozenset({"", "morning", "that morning", "the morning", "same day", "day of"})
+_BRING_ONLY: Final = frozenset(
+    {"bring lunch", "bring lunch days", "bringing lunch", "bring", "bring days", "when bringing lunch"}
+)
 _NO: Final = frozenset({"no", "n", "false", "off", ""})
 
 _HEADER_RE: Final = re.compile(r"^\s*-{2,}\s*chores?\s*-{2,}\s*$", re.IGNORECASE)
@@ -116,6 +143,8 @@ _LABELS: Final[dict[str, str]] = {
     "closed": "closed",
     "doneby": "done_by",
     "completedby": "done_by",
+    "when": "when",
+    "only": "only",
 }
 
 
@@ -245,10 +274,18 @@ class DaysError(ValueError):
 def parse_days(value: str, repeats: Repeats) -> Days:
     """Read a Days value for a chore that repeats ``repeats``. Raises :class:`DaysError`."""
     text = " ".join(value.split()).casefold()
-    if repeats == "daily":
-        if text in _EVERY_DAY or text in _ANY:
+    if repeats in ("daily", "school"):
+        if text in _EVERY_DAY or text in _ANY or (repeats == "school" and text in ("school days", "weekdays")):
             return Days()
-        return Days(weekdays=_weekdays(text))
+        found = _weekdays(text)
+        if repeats == "school":
+            # Only weekdays can be school days; all five is the same as every school day.
+            found = frozenset(d for d in found if d < 5)
+            if not found:
+                raise DaysError(text)
+            if len(found) == 5:
+                return Days()
+        return Days(weekdays=found)
     if text in _ANY or (repeats == "weekly" and text in ("", "this week", "sometime this week")):
         return Days(any=True)
     if repeats == "monthly" and text in ("this month", "sometime this month", ""):
@@ -337,6 +374,10 @@ class Template:
     paused: bool = False
     position: str = ""
     """Google's sort key within the base list."""
+    night_before: bool = False
+    """A school-days chore due the evening before its school day."""
+    bring_only: bool = False
+    """A school-days chore made only on days the kid brings lunch."""
     problems: tuple[str, ...] = ()
     """What couldn't be read, such as "who:Zed". A template with problems makes no chores."""
 
@@ -397,6 +438,13 @@ def parse_template(
         problems.append(f"take_turns:{block.first('turns')}")
     if not " ".join(title.split()):
         problems.append("title:")
+    when = " ".join((block.first("when") or "").split()).casefold()
+    if when not in _NIGHT_BEFORE and when not in _MORNING:
+        problems.append(f"when:{block.first('when')}")
+    only = " ".join((block.first("only") or "").split()).casefold()
+    if only and only not in _BRING_ONLY:
+        problems.append(f"only:{block.first('only')}")
+    school = repeats == "school"
     return Template(
         id=(block.first("id") or "").strip() or task_id,
         task_id=task_id,
@@ -413,6 +461,8 @@ def parse_template(
         paused=completed,
         position=position,
         problems=tuple(problems),
+        night_before=school and when in _NIGHT_BEFORE,
+        bring_only=school and bool(only),
     )
 
 
@@ -433,6 +483,10 @@ def template_notes(template: Template, kids: Mapping[str, str]) -> str:
         lines.append(("Ends", template.ends.isoformat()))
     if template.points is not None:
         lines.append(("Points", str(template.points)))
+    if template.repeats == "school" and template.night_before:
+        lines.append(("When", "Night before"))
+    if template.repeats == "school" and template.bring_only:
+        lines.append(("Only", "Bring lunch days"))
     return write_block(template.details, lines)
 
 
@@ -500,6 +554,14 @@ def _due_days(template: Template, first: date, last: date) -> Iterator[tuple[dat
     if begin > end:
         return
     days = template.days
+    if template.repeats == "school":
+        # Every weekday it could be: whose school day it is gets checked for each kid.
+        weekdays = days.weekdays or frozenset(range(5))
+        for i in range((end - begin).days + 1):
+            d = begin + timedelta(days=i)
+            if d.weekday() in weekdays:
+                yield d, d
+        return
     if template.repeats == "daily":
         for i in range((end - begin).days + 1):
             d = begin + timedelta(days=i)
@@ -545,16 +607,20 @@ def next_month(month: date) -> date:
     return date(month.year + (month.month == 12), month.month % 12 + 1, 1)
 
 
-def occurrences(template: Template, first: date, last: date) -> list[Occurrence]:
+def occurrences(template: Template, first: date, last: date, school: SchoolDays | None = None) -> list[Occurrence]:
     """The chores the template asks for that are due from ``first`` on and show by ``last``.
 
     A "sometime this month" chore shows from the 1st, so it's made then even though it's due
     weeks later. Each kid in Who gets their own, unless they take turns. Turns go in order of
     Who, one per due day, counted from Starts, so whose turn it is never depends on what got
     done.
+
+    A school-days chore needs ``school``, and makes nothing without it.
     """
     if not template.active:
         return []
+    if template.repeats == "school":
+        return _school_occurrences(template, first, last, school)
     # Anything showing by ``last`` is due within a month of it.
     horizon = last + timedelta(days=31)
     if not template.take_turns:
@@ -570,9 +636,36 @@ def occurrences(template: Template, first: date, last: date) -> list[Occurrence]
     return out
 
 
-def schedule(templates: Sequence[Template], first: date, last: date) -> list[Occurrence]:
+def _school_occurrences(template: Template, first: date, last: date, school: SchoolDays | None) -> list[Occurrence]:
+    """A school-days chore's chores due from ``first`` to ``last``.
+
+    Turns count weekdays from Starts, not school days, so a day off added later never changes
+    whose turn the other days are. A kid with no school that day just doesn't get one.
+    """
+    if school is None:
+        return []
+    shift = timedelta(days=1 if template.night_before else 0)
+    starts = template.starts or first
+    out: list[Occurrence] = []
+    for i, (day, _shows) in enumerate(_due_days(template, min(starts, first + shift), last + shift)):
+        due = day - shift
+        if due < first:
+            continue
+        kids = (template.who[i % len(template.who)],) if template.take_turns else template.who
+        for kid in kids:
+            if not school.is_school_day(kid, day):
+                continue
+            if template.bring_only and school.lunch(kid, day) != "bring":
+                continue
+            out.append(Occurrence(template.id, kid, due, due))
+    return out
+
+
+def schedule(
+    templates: Sequence[Template], first: date, last: date, school: SchoolDays | None = None
+) -> list[Occurrence]:
     """Every active template's chores due from ``first`` to ``last``."""
-    return [o for t in templates for o in occurrences(t, first, last)]
+    return [o for t in templates for o in occurrences(t, first, last, school)]
 
 
 def with_changes(template: Template, **changes: object) -> Template:

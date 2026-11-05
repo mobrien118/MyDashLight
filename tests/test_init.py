@@ -72,9 +72,14 @@ async def test_setup_sync_and_unload(hass: HomeAssistant, google: FakeGoogle, fr
     assert data.days[0]["date"] == "2026-11-03"
     assert len(data.days) == 7
     assert data.event_counts == {AVA: 1, BEN: 1, ROBIN: 1, SAM: 0}
-    # One request per calendar, for today until 6 AM a week from today.
-    assert {u.query["timeMin"] for u in google.calls} == {"2026-11-03T00:00:00-06:00"}
-    assert {u.query["timeMax"] for u in google.calls} == {"2026-11-10T06:00:00-06:00"}
+    # One request per calendar, for today until 6 AM a week from today. The kids' calendars
+    # are also read for lunches, from the 1st of this month to the end of next month.
+    rides = [u for u in google.calls if u.query["timeMin"] != "2026-11-01T00:00:00-05:00"]
+    lunch = [u for u in google.calls if u.query["timeMin"] == "2026-11-01T00:00:00-05:00"]
+    assert {u.query["timeMin"] for u in rides} == {"2026-11-03T00:00:00-06:00"}
+    assert {u.query["timeMax"] for u in rides} == {"2026-11-10T06:00:00-06:00"}
+    assert {u.query["timeMax"] for u in lunch} == {"2027-01-01T00:00:00-06:00"}
+    assert len(lunch) == 2
 
     google.add(AVA, **timed("art", "Art", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00"))
     freezer.tick(timedelta(seconds=61))

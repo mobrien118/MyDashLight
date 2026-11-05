@@ -69,6 +69,7 @@ async def test_makes_the_lists(hass: HomeAssistant, tasks: FakeTasks) -> None:
     assert titles == [
         "Chore templates: Daily",
         "Chore templates: Monthly",
+        "Chore templates: School days",
         "Chore templates: Weekly",
         "Chores: Ava",
         "Chores: Ben",
@@ -81,7 +82,7 @@ async def test_finds_lists_by_title_and_keeps_them_when_renamed(hass: HomeAssist
     assert tasks.list_id(WEEKLY) == weekly
     tasks.lists[weekly]["title"] = "Our weekly chores"
     await refresh(hass, entry)
-    assert len(tasks.lists) == 5
+    assert len(tasks.lists) == 6
     assert entry.runtime_data.chores.data.template_lists["weekly"] == weekly
 
 

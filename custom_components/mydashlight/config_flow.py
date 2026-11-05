@@ -52,6 +52,7 @@ from .const import (
     CONF_HOME_ADDRESS,
     CONF_KID_NOTIFY,
     CONF_KIDS,
+    CONF_LUNCH_DEFAULTS,
     CONF_MOM_ALIASES,
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
@@ -83,6 +84,7 @@ from .const import (
 )
 from .google import CalendarInfo, GoogleApiDisabled, GoogleAuthError, GoogleCalendarApi, GoogleError, StaticToken
 from .routes import Place, RoutesApi, RoutesError, RoutesKeyError, RoutesNoRoute, RoutesQuotaError
+from .settings import HubSettings
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -350,6 +352,9 @@ class MyDashLightConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
         return MyDashLightOptionsFlow()
 
 
+CONF_BRING_BY_DEFAULT = "bring_by_default"
+
+
 class MyDashLightOptionsFlow(OptionsFlowWithReload):
     """Names, carpool drivers and planner timing, or which calendars to read."""
 
@@ -361,7 +366,9 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
         self._kid_names: _KidNames | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=["settings", "calendars", "drive_times", "reminders"])
+        return self.async_show_menu(
+            step_id="init", menu_options=["settings", "calendars", "lunch", "drive_times", "reminders"]
+        )
 
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -535,6 +542,34 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
             NumberSelectorConfig(min=1, max=168, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="h")
         )
         return self.async_show_form(step_id="reminders", data_schema=vol.Schema(fields))
+
+    async def async_step_lunch(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Which kids bring lunch on a school day nobody picked for. The rest buy."""
+        options = self.config_entry.options
+        kids = HubSettings.from_options(options).roles.kids
+        if user_input is not None:
+            bring = set(user_input.get(CONF_BRING_BY_DEFAULT) or [])
+            return self.async_create_entry(
+                data={
+                    **options,
+                    CONF_LUNCH_DEFAULTS: {k.calendar_id: "bring" if k.calendar_id in bring else "buy" for k in kids},
+                }
+            )
+        defaults = HubSettings.from_options(options).lunch_defaults
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_BRING_BY_DEFAULT, default=[k for k, v in defaults.items() if v == "bring"]
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[SelectOptionDict(value=k.calendar_id, label=k.name) for k in kids],
+                        multiple=True,
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(step_id="lunch", data_schema=schema)
 
     async def _check_routes_key(self, key: str) -> dict[str, str]:
         """Try the key with one short lookup from home to home."""

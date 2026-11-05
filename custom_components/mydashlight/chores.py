@@ -29,6 +29,7 @@ from typing import Any, Final, Literal
 
 from .chore_rules import (
     Repeats,
+    SchoolDays,
     Template,
     kid_for,
     read_block,
@@ -192,15 +193,20 @@ def plan_changes(
     kid_lists: Mapping[str, str],
     today: date,
     days_ahead: int,
+    school: SchoolDays | None = None,
 ) -> ChangePlan:
     """The changes that bring the kids' lists in line with the templates.
 
     ``kid_lists`` gives each kid's list id. ``days_ahead`` counts today: 7 makes chores that
     show from today through six days from now.
+
+    ``school`` says which days are school days and lunches. Without it (the calendars couldn't
+    be read), school-days chores are left as they are: none made, changed or removed.
     """
     last = today + timedelta(days=max(1, days_ahead) - 1)
     by_id = {t.id: t for t in templates}
-    wanted = {o.key: o for o in schedule(templates, today, last) if o.kid in kid_lists}
+    held = {t.id for t in templates if t.repeats == "school"} if school is None else set()
+    wanted = {o.key: o for o in schedule(templates, today, last, school) if o.kid in kid_lists}
     have: dict[tuple[str, str, str], Chore] = {}
     changes: list[Change] = []
 
@@ -263,7 +269,7 @@ def plan_changes(
                     )
                 )
             continue
-        if chore.scheduled < today or chore.missed:
+        if chore.scheduled < today or chore.missed or chore.template in held:
             continue
         if chore.key not in wanted or t is None:
             changes.append(Remove(chore.list_id, chore.task.id))
@@ -285,7 +291,7 @@ def plan_changes(
 # What the board shows
 
 
-_REPEATS_ORDER: Final[dict[Repeats | None, int]] = {"daily": 0, "weekly": 1, "monthly": 2, None: 3}
+_REPEATS_ORDER: Final[dict[Repeats | None, int]] = {"daily": 0, "school": 1, "weekly": 2, "monthly": 3, None: 4}
 
 
 def chore_state(chore: Chore, today: date, tz: tzinfo, shows_from: date | None) -> State:
@@ -308,14 +314,18 @@ def board_items(
     days_ahead: int,
     tz: tzinfo,
     people: Mapping[str, str] | None = None,
+    school: SchoolDays | None = None,
 ) -> list[dict[str, Any]]:
     """The chores the board shows, in order: each kid's open and overdue chores, those
     coming up in the next ``days_ahead`` days, and those done today or still to come.
 
-    ``people`` (each kid's and parent's name by id) turns a ``Done by`` name into an id."""
+    ``people`` (each kid's and parent's name by id) turns a ``Done by`` name into an id.
+    A night-before chore says which school day it's for (``for_day``)."""
     last = today + timedelta(days=max(1, days_ahead) - 1)
     by_id = {t.id: t for t in templates}
-    shows = {o.key: o.shows_from for o in schedule(templates, today - timedelta(days=62), last + timedelta(days=31))}
+    shows = {
+        o.key: o.shows_from for o in schedule(templates, today - timedelta(days=62), last + timedelta(days=31), school)
+    }
     rows: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
     for chore in chores:
         if chore.closed:
@@ -334,6 +344,7 @@ def board_items(
         if due is not None and due > last and (shows_from is None or shows_from > last):
             continue
         icon, title = split_icon(chore.task.title)
+        night_before = template is not None and template.night_before and chore.scheduled is not None
         row = {
             "id": chore.task.id,
             "kid": chore.kid,
@@ -350,6 +361,7 @@ def board_items(
             "missed": len(chore.missed),
             "points": chore.points,
             "template": chore.template,
+            "for_day": (chore.scheduled + timedelta(days=1)).isoformat() if night_before and chore.scheduled else None,
         }
         order = (
             kid_order.index(chore.kid) if chore.kid in kid_order else len(kid_order),
@@ -383,6 +395,8 @@ def template_item(template: Template) -> dict[str, Any]:
         "ends": template.ends.isoformat() if template.ends else None,
         "points": template.points,
         "paused": template.paused,
+        "night_before": template.night_before,
+        "bring_only": template.bring_only,
         "problems": list(template.problems),
     }
 

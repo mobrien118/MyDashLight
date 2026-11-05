@@ -5,7 +5,7 @@ import { kidColor, type KidColor } from "./colors.ts";
 import { daysBetween, shortDay } from "./format.ts";
 
 export type ChoreState = "upcoming" | "open" | "overdue" | "done" | "late";
-export type Repeats = "daily" | "weekly" | "monthly";
+export type Repeats = "daily" | "weekly" | "monthly" | "school";
 
 export interface Chore {
   /** The Google task's id, for checking it off. */
@@ -32,6 +32,8 @@ export interface Chore {
   points: number | null;
   template: string | null;
   order: number;
+  /** The school day a night-before chore gets ready for, such as Pack lunch (MyDashLight 0.11 and later). */
+  for_day?: string | null;
 }
 
 export interface Person {
@@ -56,6 +58,10 @@ export interface ChoreTemplate {
   ends?: string | null;
   points?: number | null;
   paused: boolean;
+  /** School days: due the evening before each school day. */
+  night_before?: boolean;
+  /** School days: only on days the kid brings lunch. */
+  bring_only?: boolean;
   /** What couldn't be read, such as "who:" or "days:Funday". A template with problems makes no chores. */
   problems: string[];
 }
@@ -101,6 +107,7 @@ export function choreNote(c: Chore, today: string, timeZone: string): string {
     const ahead = daysBetween(today, c.due);
     return `By ${ahead === 1 ? "tomorrow" : ahead < 7 ? shortDay(c.due) : monthDay(c.due)}`;
   }
+  if (c.for_day && c.due === today) return `Tonight · for ${dayWord(c.for_day, today)}`;
   if (c.due && c.due > today) {
     const ahead = daysBetween(today, c.due);
     return ahead === 1 ? "By tomorrow" : `By ${ahead < 7 ? shortDay(c.due) : monthDay(c.due)}`;
@@ -112,6 +119,7 @@ function dayWord(date: string, today: string): string {
   const d = daysBetween(today, date);
   if (d === 0) return "today";
   if (d === -1) return "yesterday";
+  if (d === 1) return "tomorrow";
   return Math.abs(d) < 7 ? shortDay(date) : monthDay(date);
 }
 
@@ -242,6 +250,10 @@ export interface ChoreDraft {
   days: string;
   every: number;
   paused: boolean;
+  /** School days: due the evening before. */
+  night_before: boolean;
+  /** School days: only on Bring lunch days. */
+  bring_only: boolean;
 }
 
 /** What `save_chore_template` is sent. Fields left out keep what the template has. */
@@ -256,15 +268,31 @@ export interface TemplateFields {
   days: string;
   every: number;
   paused: boolean;
+  /** Only sent for school-days chores, so older versions of MyDashLight still take the rest. */
+  night_before?: boolean;
+  bring_only?: boolean;
 }
 
-/** The Days a chore starts with: every day, or sometime that week or month. */
+/** The Days a chore starts with: every day (or school day), or sometime that week or month. */
 export function defaultDays(repeats: Repeats): string {
-  return repeats === "daily" ? "" : "Any";
+  return repeats === "daily" || repeats === "school" ? "" : "Any";
 }
 
 export function newDraft(who: string[] = []): ChoreDraft {
-  return { template: null, repeats: "daily", title: "", icon: null, details: "", who, take_turns: false, days: "", every: 1, paused: false };
+  return {
+    template: null,
+    repeats: "daily",
+    title: "",
+    icon: null,
+    details: "",
+    who,
+    take_turns: false,
+    days: "",
+    every: 1,
+    paused: false,
+    night_before: false,
+    bring_only: false,
+  };
 }
 
 export function draftOf(t: ChoreTemplate): ChoreDraft {
@@ -279,6 +307,8 @@ export function draftOf(t: ChoreTemplate): ChoreDraft {
     days: t.days ?? defaultDays(t.repeats),
     every: t.every && t.every > 0 ? t.every : 1,
     paused: t.paused,
+    night_before: !!t.night_before,
+    bring_only: !!t.bring_only,
   };
 }
 
@@ -300,8 +330,9 @@ export function draftFields(d: ChoreDraft): TemplateFields {
     who: d.who,
     take_turns: d.take_turns && d.who.length > 1,
     days: d.days,
-    every: d.every,
+    every: d.repeats === "school" ? 1 : d.every,
     paused: d.paused,
+    ...(d.repeats === "school" ? { night_before: d.night_before, bring_only: d.bring_only } : {}),
   };
 }
 
@@ -311,8 +342,16 @@ export function ordinal(n: number): string {
   return `${n}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th"}`;
 }
 
-/** "Every day", "Mon-Fri", "Thu every 2 weeks", "Sometime each month", "The 15th each month". */
-export function scheduleText(repeats: Repeats, days: string, every = 1): string {
+/**
+ * "Every day", "Mon-Fri", "Thu every 2 weeks", "Sometime each month", "The 15th each month",
+ * "Every school day, the night before", "Bring lunch days, the night before".
+ */
+export function scheduleText(repeats: Repeats, days: string, every = 1, nightBefore = false, bringOnly = false): string {
+  if (repeats === "school") {
+    const d = days.trim().replace(/-/g, "–");
+    const which = bringOnly ? (d ? `${d} Bring lunch days` : "Bring lunch days") : d ? `${d} school days` : "Every school day";
+    return nightBefore ? `${which}, the night before` : which;
+  }
   const unit = { daily: "day", weekly: "week", monthly: "month" }[repeats];
   const each = every > 1 ? `every ${every} ${unit}s` : `each ${unit}`;
   const d = days.trim();

@@ -1,0 +1,152 @@
+"""Reads each kid's calendar for school days off and lunch picks, and saves picks.
+
+The kids' calendars are read from the first of this month to the end of next month, so the
+Lunch tab can show both months and the chore engine knows the school days it plans for.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Iterable
+from datetime import date, datetime, time, timedelta
+import logging
+from typing import TYPE_CHECKING, Any
+
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
+
+from .chore_rules import next_month
+from .const import DOMAIN, LUNCH_UPDATE_SECONDS
+from .google import (
+    CalendarEvent,
+    GoogleApiDisabled,
+    GoogleAuthError,
+    GoogleCalendarApi,
+    GoogleCalendarUnavailable,
+    GoogleConflict,
+    GoogleError,
+)
+from .school import LUNCH_TITLES, Lunch, SchoolCalendar, lunch_changes, lunch_payload, read_school
+from .settings import HubSettings
+
+if TYPE_CHECKING:
+    from . import MyDashLightConfigEntry
+
+_LOGGER = logging.getLogger(__name__)
+
+LUNCH_NOTE = "Picked on the MyDashLight Lunch tab."
+
+
+def lunch_window(today: date) -> tuple[date, date]:
+    """The first and last day read: the 1st of this month to the end of next month."""
+    first = date(today.year, today.month, 1)
+    return first, next_month(next_month(first)) - timedelta(days=1)
+
+
+class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
+    config_entry: MyDashLightConfigEntry
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: MyDashLightConfigEntry,
+        api: GoogleCalendarApi,
+        settings: HubSettings,
+        write_lock: asyncio.Lock,
+    ) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            config_entry=entry,
+            name=f"{DOMAIN}_lunch",
+            update_interval=timedelta(seconds=LUNCH_UPDATE_SECONDS),
+        )
+        self.api = api
+        self.settings = settings
+        self.write_lock = write_lock
+
+    @property
+    def kids(self) -> dict[str, str]:
+        return {k.calendar_id: k.name for k in self.settings.roles.kids}
+
+    def school(self) -> SchoolCalendar | None:
+        """The school days and lunches, or None when the calendars couldn't be read lately."""
+        return self.data if self.data is not None and self.last_update_success else None
+
+    async def _async_update_data(self) -> SchoolCalendar:
+        tz = dt_util.get_default_time_zone()
+        first, last = lunch_window(dt_util.now(tz).date())
+        start = datetime.combine(first, time.min, tz)
+        end = datetime.combine(last + timedelta(days=1), time.min, tz)
+        kids = list(self.kids)
+        results = await asyncio.gather(
+            *(self.api.async_list_events(kid, start, end) for kid in kids), return_exceptions=True
+        )
+        events: dict[str, list[CalendarEvent]] = {}
+        for kid, result in zip(kids, results, strict=True):
+            if isinstance(result, GoogleAuthError):
+                raise ConfigEntryAuthFailed(translation_domain=DOMAIN, translation_key="auth_failed") from result
+            if isinstance(result, GoogleCalendarUnavailable):
+                # The rides board already says this calendar can't be read; no school info for it.
+                events[kid] = []
+                continue
+            if isinstance(result, GoogleApiDisabled):
+                raise UpdateFailed(translation_domain=DOMAIN, translation_key="api_disabled") from result
+            if isinstance(result, GoogleError):
+                raise UpdateFailed(
+                    translation_domain=DOMAIN,
+                    translation_key="google_error",
+                    translation_placeholders={"error": str(result)},
+                ) from result
+            if isinstance(result, BaseException):
+                raise result
+            events[kid] = result
+        return read_school(events, self.settings.lunch_defaults, first, last)  # type: ignore[arg-type]
+
+    def payload(self) -> dict[str, Any] | None:
+        """The lunches for the app and ``get_lunches``."""
+        data = self.data
+        if data is None:
+            return None
+        error = None if self.last_update_success or self.last_exception is None else str(self.last_exception)
+        return {
+            **lunch_payload(data, self.kids, dt_util.now().date()),
+            "status": {"ok": self.last_update_success, "error": error},
+        }
+
+    async def async_set_lunch(self, kid: str, days: Iterable[date], lunch: Lunch | None) -> None:
+        """Save ``kid``'s lunch on each of ``days``, or take the picks away when None.
+
+        Changes are made one at a time against what was last read. An event someone changed
+        in Google meanwhile is read again and tried once more.
+        """
+        days = list(days)
+        # Holding the lock through the read after keeps a second quick tap from working out
+        # its changes from the calendars as they were before this one.
+        async with self.write_lock:
+            for attempt in range(2):
+                school = self.data
+                if school is None or not self.last_update_success:
+                    await self.async_refresh()
+                    school = self.data
+                    if school is None or not self.last_update_success:
+                        raise GoogleError("The kids' calendars couldn't be read")
+                try:
+                    for change in lunch_changes(school, kid, days, lunch):
+                        if change.make:
+                            await self.api.async_add_all_day(kid, change.day, LUNCH_TITLES[change.make], LUNCH_NOTE)
+                        elif change.retitle:
+                            event_id, etag, to = change.retitle
+                            await self.api.async_set_title(kid, event_id, etag, LUNCH_TITLES[to])
+                        elif change.remove:
+                            event_id, etag = change.remove
+                            await self.api.async_delete_event(kid, event_id, etag)
+                except GoogleConflict:
+                    await self.async_refresh()
+                    if attempt:
+                        raise
+                    continue
+                break
+            await self.async_refresh()

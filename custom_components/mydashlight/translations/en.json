@@ -91,6 +91,7 @@
         "menu_options": {
           "settings": "Names and planner timing",
           "calendars": "Calendars",
+          "lunch": "Lunch",
           "drive_times": "Drive times",
           "reminders": "Reminders"
         }
@@ -191,6 +192,16 @@
           "calendar_reminders": "Puts the reminder on the kid's event for each drive's first drop-off, so Google Calendar reminds the account MyDashLight signs in with. Google can't remind before a pick-up, since it only reminds before an event starts.",
           "no_driver_alerts": "Once for each ride that nobody is driving yet, sent to both parents' notifiers.",
           "no_driver_hours": "Hours before the ride. 6 by default: nobody plans much further out."
+        }
+      },
+      "lunch": {
+        "title": "Lunch",
+        "description": "Each school day a kid hasn't picked Bring or Buy on the Lunch tab, they get their default. Picks are saved as \"Bring Lunch\" and \"Buy Lunch\" all-day events on the kid's calendar, and days off as \"No School\" events.",
+        "data": {
+          "bring_by_default": "Bring lunch by default"
+        },
+        "data_description": {
+          "bring_by_default": "Kids who bring lunch unless they pick Buy. Everyone else buys unless they pick Bring."
         }
       }
     },
@@ -364,7 +375,7 @@
         },
         "repeats": {
           "name": "Repeats",
-          "description": "Daily, weekly or monthly. Use Every for every other week or quarterly."
+          "description": "Daily, weekly, monthly, or school days (each weekday with no No School event on the kid's calendar). Use Every for every other week or quarterly."
         },
         "title": {
           "name": "Title",
@@ -388,7 +399,7 @@
         },
         "days": {
           "name": "Days",
-          "description": "Daily: which days, such as Mon-Fri (empty for every day). Weekly: a day such as Thu, or Any for sometime that week. Monthly: a date such as 15, a day such as 1st Sat, or Any."
+          "description": "Daily: which days, such as Mon-Fri (empty for every day). School days: which weekdays (empty for every school day). Weekly: a day such as Thu, or Any for sometime that week. Monthly: a date such as 15, a day such as 1st Sat, or Any."
         },
         "every": {
           "name": "Every",
@@ -409,6 +420,14 @@
         "paused": {
           "name": "Paused",
           "description": "Stop making this chore without removing it."
+        },
+        "night_before": {
+          "name": "Night before",
+          "description": "School days only: due the evening before each school day (Sunday for Monday) instead of that morning."
+        },
+        "bring_only": {
+          "name": "Only on Bring lunch days",
+          "description": "School days only: made only on days the kid brings lunch, such as Pack lunch."
         }
       }
     },
@@ -419,6 +438,28 @@
         "template": {
           "name": "Template",
           "description": "The template's id."
+        }
+      }
+    },
+    "get_lunches": {
+      "name": "Get lunches",
+      "description": "Returns each kid's lunch picks and days with no school, from the 1st of this month to the end of next month."
+    },
+    "set_lunch": {
+      "name": "Set lunch",
+      "description": "Saves a kid's lunch as \"Bring Lunch\" or \"Buy Lunch\" all-day events on their calendar. Days with no school are skipped.",
+      "fields": {
+        "kid": {
+          "name": "Kid",
+          "description": "The kid, by name."
+        },
+        "dates": {
+          "name": "Dates",
+          "description": "The school days to set."
+        },
+        "lunch": {
+          "name": "Lunch",
+          "description": "Bring or Buy, or the kid's default to take the pick away."
         }
       }
     }
@@ -498,6 +539,12 @@
     },
     "ends_before_starts": {
       "message": "A chore can't end before it starts."
+    },
+    "lunch_unavailable": {
+      "message": "MyDashLight couldn't read the kids' calendars for lunches. Try again in a minute."
+    },
+    "lunch_failed": {
+      "message": "The lunch wasn't saved: {error}"
     }
   },
   "selector": {
@@ -518,7 +565,15 @@
       "options": {
         "daily": "Daily",
         "weekly": "Weekly",
-        "monthly": "Monthly"
+        "monthly": "Monthly",
+        "school": "School days"
+      }
+    },
+    "lunch": {
+      "options": {
+        "bring": "Bring",
+        "buy": "Buy",
+        "default": "The kid's default"
       }
     }
   }

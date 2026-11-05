@@ -2154,4 +2154,180 @@ export const styles = css`
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
+
+  .day-chips.five {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  /* Lunch */
+  .name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .lunch-chip {
+    flex: none;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 11px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .lunch-chip.buy {
+    background: var(--c, var(--dark));
+    color: #fff;
+  }
+  .lunch-chip.bring {
+    background: rgba(var(--rgb, 35, 39, 46), 0.13);
+    color: var(--k, var(--ink));
+    box-shadow: inset 0 0 0 1px rgba(var(--rgb, 35, 39, 46), 0.3);
+  }
+  .lunch-chip.small {
+    margin-left: 0;
+    height: 22px;
+    padding: 0 7px;
+    gap: 3px;
+    font-size: 12px;
+  }
+  .lunch-chip.small svg {
+    width: 13px;
+    height: 13px;
+  }
+  .col-head .lunch-chip.bring {
+    color: var(--ink);
+  }
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .month-nav .icon-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-2);
+  }
+  .month-nav .icon-btn:disabled {
+    opacity: 0.35;
+  }
+  .month-title {
+    margin: 0;
+    min-width: 200px;
+    text-align: center;
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 800;
+  }
+  .lunch-default {
+    flex: none;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 9px;
+    white-space: nowrap;
+  }
+  .lunch-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .lunch-wd {
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .lunch-wd:not(:disabled):active {
+    background: rgba(var(--rgb), 0.12);
+  }
+  .lunch-wd:disabled {
+    opacity: 0.45;
+  }
+  .lunch-day {
+    height: 64px;
+    min-width: 0;
+    border-radius: 10px;
+    padding: 6px 7px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    text-align: left;
+    border: 1px solid transparent;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+  .lunch-num {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 800;
+  }
+  .lunch-word {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .lunch-day.buy {
+    background: var(--c);
+    border-color: var(--c);
+    color: #fff;
+  }
+  .lunch-day.bring {
+    background: rgba(var(--rgb), 0.1);
+    border-color: rgba(var(--rgb), 0.35);
+    color: var(--k);
+  }
+  .lunch-day.unpicked.buy {
+    background: rgba(var(--rgb), 0.72);
+    border-color: transparent;
+  }
+  .lunch-day.unpicked.bring {
+    border-style: dashed;
+  }
+  .lunch-day.past {
+    opacity: 0.4;
+  }
+  .lunch-day.today {
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--ink);
+  }
+  .lunch-day.off {
+    background: repeating-linear-gradient(135deg, var(--line-2) 0 6px, var(--surface-2) 6px 12px);
+    color: var(--muted);
+  }
+  .lunch-day.off .lunch-word {
+    font-size: 11px;
+  }
+  .lunch-day.outside {
+    background: transparent;
+  }
+  .lunch-offs {
+    margin: 2px 4px 0;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted);
+  }
+  .narrow .month-title {
+    min-width: 0;
+    font-size: 19px;
+  }
 `;

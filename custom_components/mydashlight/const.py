@@ -117,7 +117,7 @@ DEFAULT_ROUTES_DAILY_LIMIT: Final = 150
 ROUTES_PER_UPDATE: Final = 25
 ROUTES_AT_ONCE: Final = 4
 
-# Chores, kept in Google Tasks. Templates are tasks on the three base lists; each kid's chores
+# Chores, kept in Google Tasks. Templates are tasks on the four base lists; each kid's chores
 # are tasks on that kid's list, made from the templates this many days ahead.
 CONF_CHORE_DAYS: Final = "chore_days_ahead"
 DEFAULT_CHORE_DAYS: Final = 7
@@ -126,6 +126,7 @@ TEMPLATE_LIST_TITLES: Final = {
     "daily": "Chore templates: Daily",
     "weekly": "Chore templates: Weekly",
     "monthly": "Chore templates: Monthly",
+    "school": "Chore templates: School days",
 }
 KID_LIST_TITLE: Final = "Chores: {name}"
 CHORE_UPDATE_SECONDS: Final = 60
@@ -140,3 +141,17 @@ ATTR_CHORE: Final = "chore"
 ATTR_BY: Final = "by"
 ATTR_DONE: Final = "done"
 ATTR_TEMPLATE: Final = "template"
+
+# Lunch: "Bring Lunch" and "Buy Lunch" all-day events on each kid's calendar, and "No School"
+# events for days off. The only setting is each kid's lunch when nobody picked.
+CONF_LUNCH_DEFAULTS: Final = "lunch_defaults"
+"""Each kid's default lunch, "buy" or "bring", by the kid's calendar id."""
+LUNCH_UPDATE_SECONDS: Final = 120
+SIGNAL_LUNCH_UPDATED: Final = f"{DOMAIN}_lunch_updated"
+"""Sent with the config entry when the lunches change, and with None when they stop."""
+WS_LUNCH_SUBSCRIBE: Final = f"{DOMAIN}/lunch/subscribe"
+SERVICE_GET_LUNCHES: Final = "get_lunches"
+SERVICE_SET_LUNCH: Final = "set_lunch"
+ATTR_KID: Final = "kid"
+ATTR_DATES: Final = "dates"
+ATTR_LUNCH: Final = "lunch"

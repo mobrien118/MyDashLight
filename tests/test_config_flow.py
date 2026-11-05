@@ -255,7 +255,7 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["settings", "calendars", "drive_times", "reminders"]
+    assert result["menu_options"] == ["settings", "calendars", "lunch", "drive_times", "reminders"]
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     assert result["step_id"] == "settings"
 

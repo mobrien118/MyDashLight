@@ -59,6 +59,24 @@ import {
   type Chore,
   type ChoresPayload,
 } from "./chores.ts";
+import {
+  addDays,
+  draftKey,
+  lunchChip,
+  lunchMonths,
+  lunchOn,
+  monthCounts,
+  monthGrid,
+  monthOf,
+  monthTitle,
+  nextMonth,
+  offLabel,
+  weekday,
+  type KidLunches,
+  type Lunch,
+  type LunchCell,
+  type LunchPayload,
+} from "./lunch.ts";
 import { pageOptions, type Page } from "./options.ts";
 import { styles } from "./styles.ts";
 import type { Plan, PlanDay, PlanEvent, Scope, Side } from "./types.ts";
@@ -89,9 +107,15 @@ const PENCIL = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="
 /** Pictures for a chore; a kitchen screen has no emoji keyboard. */
 const ICONS = ["🛏️", "🍽️", "🧺", "👕", "🧹", "🧽", "🗑️", "♻️", "🐕", "🐈", "🐟", "🌱", "🪥", "🛁", "🧸", "📚", "🎒", "🎻", "🎹", "🚗", "🥪", "💊"];
 
+/** A lunch bag, for Bring. */
+const BAG = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 8h12l-1 13H7L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>`;
+/** A fork and knife, for Buy. */
+const TRAY = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/></svg>`;
+const LUNCH_WORD: Record<Lunch, string> = { bring: "Bring", buy: "Buy" };
+
 /** "Every week", "Every other week", "Every 3 months (quarterly)". */
 function everyText(repeats: Repeats, every: number): string {
-  const unit = { daily: "day", weekly: "week", monthly: "month" }[repeats];
+  const unit = { daily: "day", weekly: "week", monthly: "month", school: "school day" }[repeats];
   if (every <= 1) return `Every ${unit}`;
   if (every === 2) return `Every other ${unit}`;
   return `Every ${every} ${unit}s${repeats === "monthly" && every === 3 ? " (quarterly)" : ""}`;
@@ -100,6 +124,12 @@ function everyText(repeats: Repeats, every: number): string {
 function initial(name: string): string {
   const m = /\p{L}|\p{N}/u.exec(name);
   return m ? m[0].toUpperCase() : "?";
+}
+
+/** "Nov 25". */
+function shortDate(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 /** "Tomorrow", or "Sat" for a day later this week. */
@@ -169,6 +199,9 @@ export class MyDashLightBoard extends LitElement {
     removeArmed: { state: true },
     whoFor: { state: true },
     whoOthers: { state: true },
+    lunch: { state: true },
+    lunchDraft: { state: true },
+    lunchMonth: { state: true },
   };
 
   declare backend: Backend | null;
@@ -206,6 +239,12 @@ export class MyDashLightBoard extends LitElement {
   declare whoFor: Chore | null;
   /** "Someone else did" was tapped: everyone is listed. */
   declare whoOthers: boolean;
+  /** Undefined until the first read; null when lunches can't be read (or MyDashLight has none). */
+  declare lunch: LunchPayload | null | undefined;
+  /** Lunch picks tapped but not seen back from Google yet. */
+  declare lunchDraft: ReadonlyMap<string, Lunch | null>;
+  /** The month the Lunch tab shows, "2026-11"; null for this month. */
+  declare lunchMonth: string | null;
 
   private stopWatching: (() => void) | null = null;
   private resize: ResizeObserver | null = null;
@@ -228,6 +267,7 @@ export class MyDashLightBoard extends LitElement {
   /** The page this screen's address asks for, if any. */
   private readonly urlPage = pageOptions(location.search).page;
   private stopChores: (() => void) | null = null;
+  private stopLunch: (() => void) | null = null;
   private scrolledOnce = false;
 
   constructor() {
@@ -256,6 +296,9 @@ export class MyDashLightBoard extends LitElement {
     this.removeArmed = false;
     this.whoFor = null;
     this.whoOthers = false;
+    this.lunch = undefined;
+    this.lunchDraft = new Map();
+    this.lunchMonth = null;
   }
 
   override connectedCallback(): void {
@@ -280,6 +323,8 @@ export class MyDashLightBoard extends LitElement {
     this.stopWatching = null;
     this.stopChores?.();
     this.stopChores = null;
+    this.stopLunch?.();
+    this.stopLunch = null;
     this.resize?.disconnect();
     this.resize = null;
     for (const t of [this.idleTimer, this.toastTimer, this.arriveTimer]) if (t) clearTimeout(t);
@@ -324,7 +369,23 @@ export class MyDashLightBoard extends LitElement {
     this.stopWatching = null;
     this.stopChores?.();
     this.stopChores = null;
+    this.stopLunch?.();
+    this.stopLunch = null;
     if (!this.backend) return;
+    this.stopLunch = this.backend.watchLunch((lunch) => {
+      this.lunch = lunch;
+      // A pick is confirmed once it comes back that way.
+      if (lunch && this.lunchDraft.size) {
+        const left = new Map(this.lunchDraft);
+        for (const [key, want] of this.lunchDraft) {
+          const [kid, date] = key.split("|") as [string, string];
+          const k = lunch.kids.find((x) => x.id === kid);
+          if (!k || (k.picks[date] ?? null) === want || !lunchOn(k, date)) left.delete(key);
+        }
+        this.lunchDraft = left;
+      }
+      if (lunch === null && this.page === "lunch") this.setPage("rides");
+    });
     this.stopChores = this.backend.watchChores((chores) => {
       this.chores = chores;
       // A check-off is confirmed once the chore comes back that way.
@@ -456,6 +517,7 @@ export class MyDashLightBoard extends LitElement {
     this.closeEditor();
     this.closeChorePanels();
     this.manage = false;
+    this.lunchMonth = null;
     this.page = p;
     // Back on rides, start at now again.
     if (p === "rides") this.scrolledOnce = false;
@@ -497,6 +559,23 @@ export class MyDashLightBoard extends LitElement {
 
   private choreDone(c: Chore): boolean {
     return this.choreDraft.get(c.id) ?? isDone(c);
+  }
+
+  /** Saves lunch picks. Shown straight away; undone if saving fails. */
+  private async saveLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void> {
+    if (!this.backend || !dates.length) return;
+    const draft = new Map(this.lunchDraft);
+    for (const d of dates) draft.set(draftKey(kid, d), lunch);
+    this.lunchDraft = draft;
+    try {
+      await this.backend.setLunch(kid, dates, lunch);
+    } catch (err) {
+      const back = new Map(this.lunchDraft);
+      for (const d of dates) back.delete(draftKey(kid, d));
+      this.lunchDraft = back;
+      const e = err instanceof BackendError ? err : new BackendError("error", String(err));
+      this.showToast(e.code === "preview" ? e.message : `Couldn’t save that. ${e.message}`);
+    }
   }
 
   /** Opens the chore editor in the panel: a template to change, or a new chore. */
@@ -780,7 +859,9 @@ export class MyDashLightBoard extends LitElement {
               ? html`<section class="board-area" aria-label="Everyone’s week">
                   ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
                 </section>`
-              : html`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
+              : this.page === "lunch"
+                ? html`<section class="board-area chores-area" aria-label="Lunch">${this.renderLunch()}</section>`
+                : html`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
             ${!wide && (this.sheet || this.sel || this.choreEdit || this.whoFor)
               ? html`<div class="backdrop" @click=${() => this.closePanel()}></div>
                   ${panel}`
@@ -871,6 +952,7 @@ export class MyDashLightBoard extends LitElement {
           <div role="group" aria-label="Page" class="seg pages">
             ${page("rides", "Rides", svg`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2zm2.2 0h9.6l-1.1-3H8.3zM7 15.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`)}
             ${page("chores", "Chores", svg`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 6.5l2 2 3.5-3.5M4 15.5l2 2 3.5-3.5M13 7h7M13 16h7"/></svg>`)}
+            ${this.lunch === null ? nothing : page("lunch", "Lunch", svg`<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M6 8h12l-1 13H7L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>`)}
           </div>
         </div>
       </header>
@@ -1063,7 +1145,7 @@ export class MyDashLightBoard extends LitElement {
             (c) => html`<div class="col-head ${c.kind}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
               <span class="avatar ${c.kind}" aria-hidden="true">${initial(c.name)}</span>
               <span class="ch-text">
-                <span class="name">${c.name}</span>
+                <span class="name-row"><span class="name">${c.name}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true) : nothing}</span>
                 <span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>
               </span>
             </div>`,
@@ -1284,6 +1366,159 @@ export class MyDashLightBoard extends LitElement {
     `;
   }
 
+  // Lunch
+
+  private kidColorOf(kid: string): { color: string; rgb: string; ink: string } {
+    const fromPlan = this.plan ? kidColors(this.plan).get(kid) : undefined;
+    if (fromPlan) return fromPlan;
+    const i = this.lunch?.kids.findIndex((k) => k.id === kid) ?? -1;
+    return kidColor(Math.max(0, i));
+  }
+
+  /** "Buy today" or "Bring tomorrow" on a kid's column: what to pack for, glanceable. */
+  private renderLunchChip(kid: string, small = false): TemplateResult | typeof nothing {
+    const data = this.lunch;
+    const k = data?.kids.find((x) => x.id === kid);
+    if (!data || !k) return nothing;
+    void this.tick;
+    const now = this.today();
+    const chip = lunchChip(k, now.date, now.minutes, this.lunchDraft);
+    if (!chip) return nothing;
+    const word = LUNCH_WORD[chip.lunch];
+    return html`<span class="lunch-chip ${chip.lunch} ${small ? "small" : ""}" title=${`${word} lunch ${chip.when}`}
+      >${chip.lunch === "bring" ? BAG : TRAY}<span class="lunch-chip-text">${word}${small ? nothing : ` ${chip.when}`}</span></span
+    >`;
+  }
+
+  /** The Lunch tab: each kid's month, Monday to Friday like the printed menu. Tap a day to switch. */
+  private renderLunch(): TemplateResult {
+    const data = this.lunch;
+    if (data === undefined) return html`<div class="chores-message"><p>Loading lunches…</p></div>`;
+    if (data === null) {
+      return html`<div class="chores-message">
+        <h2>Lunches aren’t available right now</h2>
+        <p>MyDashLight may be restarting. If this stays, check that MyDashLight is up to date in HACS.</p>
+      </div>`;
+    }
+    const months = lunchMonths(data);
+    const month = this.lunchMonth && months.includes(this.lunchMonth) ? this.lunchMonth : monthOf(data.today);
+    const at = months.indexOf(month);
+    const go = (by: number): void => {
+      const m = months[at + by];
+      if (m) this.lunchMonth = m;
+    };
+    const status =
+      data.status && !data.status.ok
+        ? html`<p class="field-hint bad">Couldn’t read the calendars just now${data.status.error ? `: ${data.status.error}` : ""}. Showing the last read.</p>`
+        : nothing;
+    return html`<div class="chores-scroll lunch-page">
+      <div class="chores-bar">
+        <div class="month-nav" role="group" aria-label="Month">
+          <button type="button" class="icon-btn" aria-label="Previous month" ?disabled=${at <= 0} @click=${() => go(-1)}>
+            ${svg`<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></svg>`}
+          </button>
+          <h2 class="month-title">${monthTitle(month)}</h2>
+          <button type="button" class="icon-btn" aria-label="Next month" ?disabled=${at < 0 || at >= months.length - 1} @click=${() => go(1)}>
+            ${svg`<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg>`}
+          </button>
+        </div>
+        <span class="chores-hint">Tap a day to switch between Buy and Bring. Tap a weekday to set the whole month.</span>
+      </div>
+      ${status}
+      <div class="chore-cols lunch-cols" style="--n:${data.kids.length}">
+        ${data.kids.map((k) => this.renderLunchCard(data, k, month))}
+      </div>
+      <p class="message-aside">
+        Picks are saved as <strong>Bring Lunch</strong> and <strong>Buy Lunch</strong> all-day events on each kid’s calendar.
+        Days off come from <strong>No School</strong> events there. A day nobody picked gets the kid’s default, set in
+        Home Assistant under MyDashLight’s options. For a Pack lunch reminder, add a School days chore set to
+        <strong>Only on Bring lunch days</strong>.
+      </p>
+    </div>`;
+  }
+
+  private renderLunchCard(data: LunchPayload, k: KidLunches, month: string): TemplateResult {
+    const color = this.kidColorOf(k.id);
+    const weeks = monthGrid(data, k, month, this.lunchDraft);
+    const counts = monthCounts(weeks);
+    const cells = weeks.flat();
+    const days = cells.filter((c) => !c.outside && !c.past && c.lunch);
+    const offs = k.days_off.filter((d) => monthOf(d.first) <= month && month <= monthOf(d.last));
+    const column = (wd: number): LunchCell[] => days.filter((c) => weekday(c.date) === wd);
+    const setColumn = (wd: number): void => {
+      const col = column(wd);
+      if (!col.length) return;
+      const to: Lunch = col.every((c) => c.lunch === "bring") ? "buy" : "bring";
+      void this.saveLunch(
+        k.id,
+        col.map((c) => c.date),
+        to,
+      );
+    };
+    const sub = days.length
+      ? `${counts.bring} Bring · ${counts.buy} Buy${month === monthOf(data.today) ? " left this month" : ""}`
+      : "No school days left this month";
+    return html`<section class="chore-col lunch-card" style="--c:${color.color};--rgb:${color.rgb};--k:${color.ink}" aria-label=${`${k.name}’s lunches`}>
+      <div class="chore-head">
+        <span class="avatar" aria-hidden="true">${initial(k.name)}</span>
+        <span class="ch-text">
+          <span class="name">${k.name}</span>
+          <span class="sub">${sub}</span>
+        </span>
+        <span class="lunch-default">${LUNCH_WORD[k.default]} unless picked</span>
+      </div>
+      <div class="lunch-grid" role="grid" aria-label=${`${k.name}, ${monthTitle(month)}`}>
+        ${["Mon", "Tue", "Wed", "Thu", "Fri"].map(
+          (w, i) => html`<button
+            type="button"
+            class="lunch-wd"
+            ?disabled=${!column(i).length}
+            aria-label=${`${column(i).every((c) => c.lunch === "bring") ? "Buy" : "Bring"} every ${w} left in ${monthTitle(month)} for ${k.name}`}
+            @click=${() => setColumn(i)}
+          >
+            ${w}
+          </button>`,
+        )}
+        ${cells.map((c) => this.renderLunchCell(k, c))}
+      </div>
+      ${offs.length
+        ? html`<p class="lunch-offs">
+            No school:
+            ${offs
+              .map((d) => {
+                const a = d.first < `${month}-01` ? `${month}-01` : d.first;
+                const b = monthOf(d.last) > month ? addDays(`${nextMonth(month)}-01`, -1) : d.last;
+                const range = a === b ? shortDate(a) : `${shortDate(a)}–${shortDate(b)}`;
+                return `${range} ${offLabel(d.title)}`;
+              })
+              .join(" · ")}
+          </p>`
+        : nothing}
+    </section>`;
+  }
+
+  private renderLunchCell(k: KidLunches, c: LunchCell): TemplateResult {
+    if (c.outside) return html`<span class="lunch-day outside" aria-hidden="true"></span>`;
+    if (c.off !== null || !c.lunch) {
+      return html`<span class="lunch-day off ${c.today ? "today" : ""}" title=${c.off ?? ""}>
+        <span class="lunch-num">${c.day}</span><span class="lunch-word">No school</span>
+      </span>`;
+    }
+    const lunch = c.lunch;
+    const to: Lunch = lunch === "buy" ? "bring" : "buy";
+    const label = `${k.name}, ${dayLabel(c.date)}: ${LUNCH_WORD[lunch]}${c.picked ? "" : " (not picked yet)"}. Tap to ${LUNCH_WORD[to]}.`;
+    return html`<button
+      type="button"
+      class="lunch-day ${lunch} ${c.picked ? "picked" : "unpicked"} ${c.past ? "past" : ""} ${c.today ? "today" : ""}"
+      ?disabled=${c.past}
+      aria-label=${label}
+      @click=${() => void this.saveLunch(k.id, [c.date], to)}
+    >
+      <span class="lunch-num">${c.day}</span>
+      <span class="lunch-word">${lunch === "bring" ? BAG : TRAY}${LUNCH_WORD[lunch]}</span>
+    </button>`;
+  }
+
   // Chores
 
   /** One chore: tap anywhere on it to check it off, or to open it again. */
@@ -1378,6 +1613,7 @@ export class MyDashLightBoard extends LitElement {
                 <span class="name">${col.name}</span>
                 <span class="sub">${left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span>
               </span>
+              ${this.renderLunchChip(col.kid)}
             </div>
             ${col.overdue.length
               ? html`<h3 class="chore-group overdue">Missed</h3>
@@ -1412,7 +1648,7 @@ export class MyDashLightBoard extends LitElement {
     const sel = this.choreEdit?.template === t.id;
     const status = t.problems.length
       ? html`<span class="tmpl-note bad">${t.problems.map(problemText).join(" · ")} · tap to set up</span>`
-      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1)}</span>`;
+      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1, !!t.night_before, !!t.bring_only)}</span>`;
     return html`<button type="button" class="tmpl ${t.problems.length ? "needs" : ""} ${t.paused ? "paused" : ""} ${sel ? "sel" : ""}" @click=${() => this.editChore(t)}>
       <span class="tmpl-icon" aria-hidden="true">${t.icon ?? "•"}</span>
       <span class="chore-text">
@@ -1433,6 +1669,7 @@ export class MyDashLightBoard extends LitElement {
   private renderManage(data: ChoresPayload): TemplateResult {
     const groups: [Repeats, string][] = [
       ["daily", "Every day or some days"],
+      ["school", "School days"],
       ["weekly", "Weekly"],
       ["monthly", "Monthly"],
     ];
@@ -1457,8 +1694,8 @@ export class MyDashLightBoard extends LitElement {
           })
         : html`<p class="chore-none">No chores yet. Tap <strong>Add a chore</strong> to make the first one.</p>`}
       <p class="message-aside">
-        Chores are kept in Google Tasks, on the lists <strong>Chore templates: Daily</strong>, <strong>Weekly</strong> and
-        <strong>Monthly</strong>. A task added there by hand shows up here to be set up.
+        Chores are kept in Google Tasks, on the lists <strong>Chore templates: Daily</strong>, <strong>Weekly</strong>,
+        <strong>Monthly</strong> and <strong>School days</strong>. A task added there by hand shows up here to be set up.
       </p>
     </div>`;
   }
@@ -1491,7 +1728,39 @@ export class MyDashLightBoard extends LitElement {
 
     // Which days, by how often it repeats.
     let days: TemplateResult;
-    if (d.repeats === "monthly") {
+    if (d.repeats === "school") {
+      const set = d.days === NO_DAYS ? new Set<number>() : d.days === "" ? new Set([0, 1, 2, 3, 4]) : (weekdaysOf(d.days) ?? new Set<number>());
+      const toggleDay = (i: number): void => {
+        const next = new Set(set);
+        if (next.has(i)) next.delete(i);
+        else next.add(i);
+        this.changeDraft({ days: next.size === 5 ? "" : next.size ? weekdaysLabel(next) : NO_DAYS });
+      };
+      days = html`<div class="field">
+          <span class="field-label">Which school days</span>
+          <div role="group" aria-label="School days of the week" class="day-chips five">
+            ${WEEKDAYS.slice(0, 5).map((w, i) => chip(set.has(i), w.slice(0, 2), () => toggleDay(i), w))}
+          </div>
+          <p class="field-hint">Weekdays with no “No School” event on the kid’s calendar.</p>
+        </div>
+        <div class="field">
+          <span class="field-label">When</span>
+          <div role="group" aria-label="When" class="choices" style="grid-template-columns:1fr 1fr">
+            ${choice(!d.night_before, "That morning", () => this.changeDraft({ night_before: false }))}
+            ${choice(d.night_before, "The night before", () => this.changeDraft({ night_before: true }))}
+          </div>
+          <p class="field-hint">${d.night_before ? "Due the evening before each school day: Sunday for Monday." : "Due on the school day itself."}</p>
+        </div>
+        <div class="field">
+          ${choice(
+            d.bring_only,
+            d.bring_only ? "Only on Bring lunch days" : "Every school day, Bring or Buy",
+            () => this.changeDraft({ bring_only: !d.bring_only }),
+            true,
+          )}
+          <p class="field-hint">${d.bring_only ? "Made only when the kid brings lunch, like Pack lunch." : "Tap to make it only on Bring lunch days, like Pack lunch."}</p>
+        </div>`;
+    } else if (d.repeats === "monthly") {
       const v = d.days.trim();
       const n = /^\d+$/.test(v) ? Number(v) : null;
       const other = v && v.toLowerCase() !== "any" && v.toLowerCase() !== "last" && n === null;
@@ -1551,7 +1820,7 @@ export class MyDashLightBoard extends LitElement {
       <div class="ed-head">
         <div class="ed-titles">
           <span class="ed-title">${d.icon ? html`<span class="ed-icon" aria-hidden="true">${d.icon}</span>` : nothing}${d.template ? d.title || "Set up a chore" : "Add a chore"}</span>
-          <span class="ed-meta">${d.who.length ? whoText(d.who, kids, d.take_turns) : "Nobody yet"} · ${d.days === NO_DAYS ? "No days picked" : scheduleText(d.repeats, d.days, d.every)}</span>
+          <span class="ed-meta">${d.who.length ? whoText(d.who, kids, d.take_turns) : "Nobody yet"} · ${d.days === NO_DAYS ? "No days picked" : scheduleText(d.repeats, d.days, d.every, d.night_before, d.bring_only)}</span>
         </div>
         <button type="button" class="btn" ?disabled=${busy} @click=${() => this.closeChorePanels()}>Cancel</button>
       </div>
@@ -1592,14 +1861,15 @@ export class MyDashLightBoard extends LitElement {
       </div>
       <div class="field">
         <span class="field-label">How often</span>
-        <div role="group" aria-label="How often" class="choices" style="grid-template-columns:repeat(3, minmax(0, 1fr))">
+        <div role="group" aria-label="How often" class="choices" style="grid-template-columns:repeat(2, minmax(0, 1fr))">
           ${choice(d.repeats === "daily", "Days", () => setRepeats("daily"))}
+          ${choice(d.repeats === "school", "School days", () => setRepeats("school"))}
           ${choice(d.repeats === "weekly", "Weekly", () => setRepeats("weekly"))}
           ${choice(d.repeats === "monthly", "Monthly", () => setRepeats("monthly"))}
         </div>
       </div>
       ${days}
-      <div class="field arrive">
+      ${d.repeats === "school" ? nothing : html`<div class="field arrive">
         <span class="arrive-text">
           <span class="field-label">Repeats</span>
           <span class="field-hint">${everyText(d.repeats, d.every)}</span>
@@ -1609,7 +1879,7 @@ export class MyDashLightBoard extends LitElement {
           <span class="arrive-value">${d.every}</span>
           <button type="button" class="step" aria-label="Less often" ?disabled=${busy || d.every >= 52} @click=${() => this.changeDraft({ every: d.every + 1 })}>+</button>
         </span>
-      </div>
+      </div>`}
       <div class="field">
         <label class="field-label" for="chore-details">Notes <span class="field-hint">Optional, shown with the chore</span></label>
         <textarea

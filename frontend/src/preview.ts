@@ -3,6 +3,7 @@
 import { PreviewBackend } from "./backend.ts";
 import "./board.ts";
 import type { Chore, ChoresPayload, ChoreTemplate } from "./chores.ts";
+import { addDays, weekday, type LunchPayload } from "./lunch.ts";
 import { nowIn } from "./format.ts";
 import type { Plan } from "./types.ts";
 
@@ -53,6 +54,7 @@ function sampleChores(plan: Plan): ChoresPayload {
   add(2, "🛏️", "Make bed", { state: "done", done_at: doneAt });
   add(2, "🪥", "Brush teeth", { state: "done", done_at: doneAt });
   add(2, "🧸", "Tidy room", { repeats: "weekly", due: day(4), shows_from: day(1), state: "upcoming" });
+  add(1, "🥪", "Pack lunch", { repeats: "school", due: today, for_day: addDays(today, weekday(today) === 4 ? 3 : 1) });
   return {
     updated: new Date(Date.now() - 60_000).toISOString(),
     today,
@@ -100,8 +102,39 @@ function sampleTemplates(kids: string[]): ChoreTemplate[] {
   ];
 }
 
+/** Sample lunches: this month and next, a few Bring days, Thanksgiving-style days off. */
+function sampleLunch(plan: Plan): LunchPayload {
+  const today = nowIn(plan.time_zone).date;
+  const first = `${today.slice(0, 7)}-01`;
+  const [y, m] = today.split("-").map(Number);
+  const last = new Date(Date.UTC(y!, m! + 1, 0)).toISOString().slice(0, 10);
+  const kids = plan.people?.kids ?? [];
+  // The 4th Wednesday to Friday of this month off for everyone, like Thanksgiving.
+  const wed = addDays(first, ((2 - weekday(first) + 7) % 7) + 21);
+  const picks = (every: number[], kid: number): Record<string, "bring" | "buy"> => {
+    const out: Record<string, "bring" | "buy"> = {};
+    for (let d = first; d <= last; d = addDays(d, 1)) {
+      if (weekday(d) < 5 && every.includes(weekday(d))) out[d] = kid === 1 ? "buy" : "bring";
+    }
+    return out;
+  };
+  return {
+    today,
+    first,
+    last,
+    kids: kids.map((k, i) => ({
+      id: k.id,
+      name: k.name,
+      default: i === 1 ? "bring" : "buy",
+      picks: picks(i === 0 ? [0, 2] : i === 1 ? [4] : [1, 3], i),
+      days_off: [{ first: wed, last: addDays(wed, 2), title: "No School – Thanksgiving Break" }],
+    })),
+    status: { ok: true, error: null },
+  };
+}
+
 const board = document.querySelector("mydashlight-board");
 if (board) {
   const plan = shift(PREVIEW_PLAN);
-  board.backend = new PreviewBackend(plan, sampleChores(plan));
+  board.backend = new PreviewBackend(plan, sampleChores(plan), sampleLunch(plan));
 }

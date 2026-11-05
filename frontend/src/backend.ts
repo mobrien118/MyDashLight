@@ -6,6 +6,7 @@
 import { timeField } from "./format.ts";
 import type { Plan, Scope, Side } from "./types.ts";
 import type { ChoresPayload, ChoreTemplate, TemplateFields } from "./chores.ts";
+import type { Lunch, LunchPayload } from "./lunch.ts";
 
 export interface Backend {
   /** Calls `onPlan` with the plan now and whenever it changes. Returns a function that stops it. */
@@ -31,6 +32,13 @@ export interface Backend {
   saveChoreTemplate(fields: TemplateFields): Promise<void>;
   /** Removes a chore template; its chores that aren't done yet go too. */
   removeChoreTemplate(template: string): Promise<void>;
+  /**
+   * Calls `onLunch` with the lunches now and whenever they change; null while they can't be
+   * read (MyDashLight not running, or a version without lunches). Returns a function that stops it.
+   */
+  watchLunch(onLunch: (lunch: LunchPayload | null) => void): () => void;
+  /** Saves a kid's lunch on some school days; null takes the picks away, back to the kid's default. */
+  setLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void>;
   /** Changes are saved for real (false in the offline preview). */
   readonly saves: boolean;
   /** Home Assistant pushes each new plan, so the plan on screen is current. */
@@ -261,6 +269,35 @@ export class HassBackend implements Backend {
     };
   }
 
+  watchLunch(onLunch: (lunch: LunchPayload | null) => void): () => void {
+    let stopped = false;
+    let unsub: (() => Promise<void>) | null = null;
+    void (async () => {
+      try {
+        const u = await this.conn.subscribeMessage<{ lunch: LunchPayload | null }>(
+          (msg) => {
+            if (!stopped) onLunch(msg.lunch);
+          },
+          { type: `${DOMAIN}/lunch/subscribe` },
+          { resubscribe: true },
+        );
+        if (stopped) void u().catch(() => undefined);
+        else unsub = u;
+      } catch {
+        // A version of MyDashLight without lunches.
+        if (!stopped) onLunch(null);
+      }
+    })();
+    return () => {
+      stopped = true;
+      if (unsub) void unsub().catch(() => undefined);
+    };
+  }
+
+  async setLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void> {
+    await this.choreCall("set_lunch", { kid, dates, lunch: lunch ?? "default" });
+  }
+
   async setChoreDone(chore: string, done: boolean, by?: string): Promise<void> {
     await this.choreCall("set_chore_done", { chore, done, ...(done && by ? { by } : {}) });
   }
@@ -290,10 +327,39 @@ export class PreviewBackend implements Backend {
   private readonly plan: Plan;
   private chores: ChoresPayload | null;
   private onChores: ((chores: ChoresPayload | null) => void) | null = null;
+  private lunch: LunchPayload | null;
+  private onLunch: ((lunch: LunchPayload | null) => void) | null = null;
 
-  constructor(plan: Plan, chores: ChoresPayload | null = null) {
+  constructor(plan: Plan, chores: ChoresPayload | null = null, lunch: LunchPayload | null = null) {
     this.plan = plan;
     this.chores = chores;
+    this.lunch = lunch;
+  }
+
+  watchLunch(onLunch: (lunch: LunchPayload | null) => void): () => void {
+    this.onLunch = onLunch;
+    queueMicrotask(() => onLunch(this.lunch));
+    return () => {
+      this.onLunch = null;
+    };
+  }
+
+  /** Lunch picks stay in this page only, so the preview can be tried out. */
+  async setLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void> {
+    const data = this.lunch;
+    if (!data) return this.nope();
+    const kids = data.kids.map((k) => {
+      if (k.id !== kid) return k;
+      const picks = { ...k.picks };
+      for (const d of dates) {
+        if (lunch) picks[d] = lunch;
+        else delete picks[d];
+      }
+      return { ...k, picks };
+    });
+    this.lunch = { ...data, kids };
+    const emit = this.onLunch;
+    if (emit) queueMicrotask(() => emit(this.lunch));
   }
 
   watchChores(onChores: (chores: ChoresPayload | null) => void): () => void {
