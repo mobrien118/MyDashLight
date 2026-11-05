@@ -3,7 +3,7 @@
 
 import type { Mode } from "./layout.ts";
 
-export type Page = "rides" | "chores";
+export type Page = "rides" | "chores" | "lunch";
 
 export interface PageOptions {
   /** The view to open in. Unset means the one last picked in this browser. */
@@ -31,7 +31,7 @@ export function pageOptions(search: string): PageOptions {
   if (["off", "no", "false", "0"].includes((q.get("keyboard") ?? "").trim().toLowerCase())) opts.keyboard = false;
   if ((q.get("cursor") ?? "").trim().toLowerCase() === "show") opts.cursor = "show";
   const page = (q.get("page") ?? "").trim().toLowerCase();
-  if (page === "rides" || page === "chores") opts.page = page;
+  if (page === "rides" || page === "chores" || page === "lunch") opts.page = page;
   return opts;
 }
 

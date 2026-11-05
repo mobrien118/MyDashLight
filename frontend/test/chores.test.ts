@@ -96,6 +96,8 @@ test("the line under a chore", () => {
   // Coming up: the board shows the day, so only a later due day is said.
   assert.equal(note({ state: "upcoming", due: "2026-11-06" }), "");
   assert.equal(note({ state: "upcoming", due: "2026-11-08", shows_from: "2026-11-05", repeats: "weekly" }), "By Sun");
+  // A night-before school chore says which school day it's for.
+  assert.equal(note({ repeats: "school", for_day: "2026-11-05" }), "Tonight · for tomorrow");
 });
 
 test("one column per kid, grouped and in order", () => {
@@ -187,6 +189,11 @@ test("a template in words", () => {
   assert.equal(scheduleText("monthly", "15"), "The 15th each month");
   assert.equal(scheduleText("monthly", "last", 3), "The last day every 3 months");
   assert.equal(scheduleText("monthly", "1st Sat"), "The 1st Sat each month");
+  assert.equal(scheduleText("school", ""), "Every school day");
+  assert.equal(scheduleText("school", "Mon-Thu"), "Mon–Thu school days");
+  assert.equal(scheduleText("school", "", 1, true), "Every school day, the night before");
+  assert.equal(scheduleText("school", "", 1, true, true), "Bring lunch days, the night before");
+  assert.equal(scheduleText("school", "Mon, Wed", 1, false, true), "Mon, Wed Bring lunch days");
   const kids = payload([]).kids;
   assert.equal(whoText(["ava"], kids), "Ava");
   assert.equal(whoText(["ava", "ben", "cleo"], kids), "Ava, Ben and Cleo");
@@ -243,4 +250,5 @@ test("editing a template: what's sent, and what stops a save", () => {
   assert.equal(bare.days, "");
   assert.equal(bare.every, 1);
   assert.equal(defaultDays("weekly"), "Any");
+  assert.equal(defaultDays("school"), "");
 });

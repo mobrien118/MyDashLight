@@ -228,6 +228,7 @@ Either address can pick the view it opens in, so each screen can have its own:
 | `?view=timeline` (or `?view=full`) | Timeline |
 | `?view=compact` | Compact |
 | `?page=chores` | The chores board instead of rides |
+| `?page=lunch` | The Lunch tab instead of rides |
 
 For example, `<your Home Assistant URL>/mydashlight-kitchen?view=compact`, or
 `?page=chores&view=compact` for both. You can still switch by tapping; the kitchen screen goes back
@@ -258,8 +259,9 @@ restarts. A plan follows when it's back.
 Chores live in Google Tasks, under the Google account MyDashLight signs in with. MyDashLight makes
 these lists the first time it runs:
 
-- **Chore templates: Daily**, **Weekly** and **Monthly**, the base lists. Each task on one is a
-  chore's template: its title is the chore, the list says how often, and its notes say the rest.
+- **Chore templates: Daily**, **School days**, **Weekly** and **Monthly**, the base lists. Each
+  task on one is a chore's template: its title is the chore, the list says how often, and its notes
+  say the rest. A School days chore comes only on the kid's school days (see [Lunch](#lunch)).
 - **Chores: \<kid\>**, one per kid. These are the real chores, each due on its day.
   MyDashLight fills them from the templates, 7 days ahead (**Configure > Names and planner timing
   > Chore days ahead**). Tasks added to a kid's list by hand are one-off chores: they show, and
@@ -285,10 +287,12 @@ Points: 1
 | --- | --- |
 | Who | The kids who do it, by name, or Everyone. Each gets their own, unless they take turns. |
 | Take turns | The kids in Who take turns, one each time, in order from Starts. |
-| Days | Daily: which days, such as `Mon-Fri` (none for every day). Weekly: a day such as `Thu`, or `Any` for sometime that week (shows from Monday, due Sunday). Monthly: a date such as `15` or `last`, a day such as `1st Sat`, or `Any` for sometime that month. Several are separated by commas. |
+| Days | Daily or School days: which days, such as `Mon-Fri` (none for every day). Weekly: a day such as `Thu`, or `Any` for sometime that week (shows from Monday, due Sunday). Monthly: a date such as `15` or `last`, a day such as `1st Sat`, or `Any` for sometime that month. Several are separated by commas. |
 | Every | Every this many days, weeks or months, counted from Starts. Monthly with Every 3 is quarterly. |
 | Starts, Ends | The first and last days. Starts is the day the template was made if left out. |
 | Points | Saved on each chore for later. Nothing uses it yet. |
+| When | School days only: `Night before` makes it due the evening before each school day (Sunday for Monday). Left out, it's due that morning. |
+| Only | School days only: `Bring lunch days` makes it only on days the kid brings lunch, for chores like packing it. |
 
 Text above the block is the chore's details, shown when it's tapped. A leading emoji in the title
 is its icon. Checking a template off in Google pauses it. A template typed into Google by hand works
@@ -339,6 +343,33 @@ The **Needs attention** list starts with a Chores section: every kid's overdue c
 due today, with the kid's name, and they can be checked off right there. A chore done sometime this
 week or month joins that list only on its last day, so the list stays short. With no chores yet,
 the Chores board says how to add the first one.
+
+## Lunch
+
+School days and lunches are read from all-day events on each kid's own calendar, so there's
+nothing to keep in Home Assistant:
+
+- An all-day event with **No School** in its title (such as "No School – Thanksgiving Break") means
+  no school those days, for that kid. Every other weekday is a school day.
+- An all-day event titled **Bring Lunch** or **Buy Lunch** is that day's pick. A school day with no
+  pick gets the kid's default: Buy, unless the kid is picked under **Configure > Lunch** as bringing
+  by default.
+
+Tap **Lunch** at the top of the kitchen app for this month and next, a card per kid with Monday to
+Friday like the printed menu. Tap a day to switch it between Buy and Bring, or tap a weekday's name
+to make every one left that month Bring (or Buy, when they all are already). Each tap adds, changes or removes the day's event on
+the kid's calendar. Days off are drawn hatched with their name underneath. Each kid's column on
+the rides and chores boards shows a small Buy or Bring chip: today's until 1 PM, then the next
+school day's, so in the evening it says what to pack.
+
+The School days chores list uses the same school days: a chore there is made only on a kid's
+school days, and its turns count school days, so a day off doesn't change whose turn it is. When
+the kids' calendars can't be read, School days chores are left as they are until they can.
+
+The actions: `mydashlight.get_lunches` returns each kid's school days off, picks and default from
+the 1st of this month to the end of next month; `mydashlight.set_lunch` sets a kid's lunch on one
+or more dates to `bring`, `buy` or `default` (removes the pick). The app subscribes to
+`{"type": "mydashlight/lunch/subscribe"}`.
 
 ## Reminders
 

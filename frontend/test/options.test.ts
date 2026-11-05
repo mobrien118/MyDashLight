@@ -25,7 +25,8 @@ test("the mouse pointer can be kept on screen in the address", () => {
 test("the page can be set in the address", () => {
   assert.deepEqual(pageOptions("?page=chores"), { page: "chores" });
   assert.deepEqual(pageOptions("?page=Rides&view=compact"), { page: "rides", view: "compact" });
-  assert.deepEqual(pageOptions("?page=lunch"), {});
+  assert.deepEqual(pageOptions("?page=lunch"), { page: "lunch" });
+  assert.deepEqual(pageOptions("?page=menu"), {});
 });
 
 test("unknown or missing settings leave the defaults", () => {
