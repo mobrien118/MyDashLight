@@ -127,7 +127,19 @@ class FakeGoogle:
             return AiohttpClientMockResponse(
                 method, url, status=HTTPStatus.PRECONDITION_FAILED, json=_error(412, "conditionNotMet")
             )
-        self.patches.append((cal_id, event_id, headers["If-Match"], dict(data)))
+        sent, data = dict(data), dict(data)
+        if "reminders" in data:
+            # Like Google, PATCH merges the reminders object into the event's.
+            data["reminders"] = {**(item.get("reminders") or {}), **data["reminders"]}
+            if data["reminders"].get("useDefault") and data["reminders"].get("overrides"):
+                message = "Cannot specify both default reminders and overrides at the same time."
+                return AiohttpClientMockResponse(
+                    method,
+                    url,
+                    status=HTTPStatus.BAD_REQUEST,
+                    json=_error(400, "cannotUseDefaultRemindersAndSpecifyOverride", message),
+                )
+        self.patches.append((cal_id, event_id, headers["If-Match"], sent))
         old = item.get("description") or ""
         if event_id in self.series.get(cal_id, {}):
             for occurrence in self.events.get(cal_id, []):

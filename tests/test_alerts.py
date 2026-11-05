@@ -204,7 +204,7 @@ async def test_reminder_comes_off_when_the_drive_goes(
     )
     await hass.async_block_till_done()
     assert reminder_patches(google)[-1][2] == {
-        "reminders": {"useDefault": True},
+        "reminders": {"useDefault": True, "overrides": []},
         "extendedProperties": {"private": {REMINDER_MARK: ""}},
     }
 
