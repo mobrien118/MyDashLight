@@ -149,11 +149,9 @@ async def test_default_setting(hass: HomeAssistant, google: FakeGoogle) -> None:
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "lunch"})
     assert result["step_id"] == "lunch"
     assert result["data_schema"]({}) == {"bring_by_default": []}
+    # A menu feed box for each kid, on the same form, which can be left empty.
+    assert [str(k) for k in result["data_schema"].schema] == ["bring_by_default", "Ava's menu feed", "Ben's menu feed"]
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"bring_by_default": [BEN]})
-    # Then a menu feed for each kid, which can be left empty.
-    for _kid in (AVA, BEN):
-        assert result["step_id"] == "lunch_feed"
-        result = await hass.config_entries.options.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["lunch_defaults"] == {AVA: "buy", BEN: "bring"}
     assert entry.options["lunch_feeds"] == {}
@@ -170,20 +168,15 @@ async def test_menu_feed(hass: HomeAssistant, google: FakeGoogle, aioclient_mock
     entry = await load(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "lunch"})
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {"bring_by_default": []})
-    assert result["step_id"] == "lunch_feed"
-    assert result["description_placeholders"] == {"kid": "Ava", "number": "1", "count": "2"}
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {"menu_feed": "not a link"})
-    assert result["errors"] == {"menu_feed": "feed_not_web"}
+    ava, ben = "Ava's menu feed", "Ben's menu feed"
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"menu_feed": "https://school.example/missing.ics"}
+        result["flow_id"], {"bring_by_default": [], ava: "not a link", ben: "https://school.example/missing.ics"}
     )
-    assert result["errors"] == {"menu_feed": "feed_unreadable"}
+    assert result["step_id"] == "lunch"
+    assert result["errors"] == {ava: "feed_not_web", ben: "feed_unreadable"}
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"menu_feed": "webcal://school.example/calendar/menus.ics"}
+        result["flow_id"], {"bring_by_default": [], ava: "webcal://school.example/calendar/menus.ics", ben: FEED_URL}
     )
-    assert result["description_placeholders"]["kid"] == "Ben"
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {"menu_feed": FEED_URL})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["lunch_feeds"] == {AVA: FEED_URL, BEN: FEED_URL}
     # Saving reloads MyDashLight, which reads the feeds after its first read of the calendars.
@@ -248,3 +241,42 @@ async def test_pack_lunch_follows_the_picks(hass: HomeAssistant, google: FakeGoo
     chores = await call(hass, "get_chores")
     pack = next(c for c in chores["chores"] if c["title"] == "Pack lunch" and c["kid"] == AVA)
     assert pack["for_day"] == "2026-11-06"
+
+
+class _Chunks:
+    """A response whose body arrives in small pieces, as a real feed over the network does."""
+
+    def __init__(self, body: bytes, size: int = 100) -> None:
+        self.status = 200
+        self._pieces = [body[i : i + size] for i in range(0, len(body), size)]
+        self.content = self
+
+    async def iter_chunked(self, _n: int) -> Any:
+        for piece in self._pieces:
+            yield piece
+
+    async def __aenter__(self) -> _Chunks:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        return None
+
+
+class _Session:
+    def __init__(self, response: _Chunks) -> None:
+        self.response = response
+
+    def get(self, _url: str, **_kwargs: Any) -> _Chunks:
+        return self.response
+
+
+async def test_menu_feed_read_whole() -> None:
+    """Every day of a feed is read, not just the first piece of it to arrive."""
+    from custom_components.mydashlight.lunch_coordinator import MenuFeedError, async_read_menu_feed
+
+    whole = await async_read_menu_feed(_Session(_Chunks(FEED.encode())), FEED_URL)  # type: ignore[arg-type]
+    assert len(whole) == len(await async_read_menu_feed(_Session(_Chunks(FEED.encode(), 10**6)), FEED_URL))  # type: ignore[arg-type]
+    assert len(whole) > 1
+    # A feed that stops partway isn't used, so no days go missing.
+    with pytest.raises(MenuFeedError, match="cut short"):
+        await async_read_menu_feed(_Session(_Chunks(FEED.encode()[: len(FEED) // 2])), FEED_URL)  # type: ignore[arg-type]

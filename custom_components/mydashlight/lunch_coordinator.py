@@ -64,14 +64,20 @@ async def async_read_menu_feed(session: ClientSession, url: str) -> dict[date, F
         async with session.get(webcal_to_https(url), timeout=_FEED_TIMEOUT) as resp:
             if resp.status >= 400:
                 raise MenuFeedError(f"The feed answered with HTTP {resp.status}")
-            raw = await resp.content.read(_FEED_MAX_BYTES + 1)
+            # The whole feed, as it arrives in pieces: one read gets only what has come so far.
+            raw = bytearray()
+            async for chunk in resp.content.iter_chunked(64 * 1024):
+                raw += chunk
+                if len(raw) > _FEED_MAX_BYTES:
+                    raise MenuFeedError("The feed is too big to be a menu")
     except (ClientError, TimeoutError, ValueError) as err:
         raise MenuFeedError(f"The feed couldn't be read: {err}") from err
-    if len(raw) > _FEED_MAX_BYTES:
-        raise MenuFeedError("The feed is too big to be a menu")
     text = raw.decode("utf-8", errors="replace")
     if "BEGIN:VCALENDAR" not in text:
         raise MenuFeedError("That address isn't a calendar feed")
+    # A feed cut short would drop the days after the cut, so it isn't used.
+    if "END:VCALENDAR" not in text:
+        raise MenuFeedError("The feed was cut short")
     return feed_menus(read_feed(text))
 
 
