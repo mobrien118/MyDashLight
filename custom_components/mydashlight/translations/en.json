@@ -338,7 +338,7 @@
     },
     "set_chore_done": {
       "name": "Check off a chore",
-      "description": "Checks a chore off in Google Tasks, or opens it again.",
+      "description": "Checks a chore off in Google Tasks and saves who did it, or opens it again.",
       "fields": {
         "chore": {
           "name": "Chore",
@@ -347,6 +347,10 @@
         "done": {
           "name": "Done",
           "description": "On to check it off, off to open it again."
+        },
+        "by": {
+          "name": "Done by",
+          "description": "Who did it: a kid or a parent, by name or id. Leave it out for the kid the chore is for."
         }
       }
     },
@@ -485,6 +489,9 @@
     },
     "unknown_kid": {
       "message": "{name} isn't one of the kids in MyDashLight."
+    },
+    "unknown_person": {
+      "message": "{name} isn't one of the kids or parents in MyDashLight."
     },
     "bad_days": {
       "message": "MyDashLight can't read the days \"{days}\". Try Mon-Fri, Thu, 15, 1st Sat or Any."

@@ -14,6 +14,7 @@ from custom_components.mydashlight.chores import (
     Update,
     board_items,
     chore_notes,
+    done_by_notes,
     plan_changes,
     read_chore,
 )
@@ -234,3 +235,36 @@ def test_done_after_the_due_day_is_late() -> None:
     assert states(board_items([late], [t], ["ava"], date(2026, 11, 3), 7, CENTRAL)) == [("a", "late")]
     on_time = chore("b", TODAY, done=datetime(2026, 11, 5, 3, tzinfo=UTC))  # 9 PM on the 4th in Chicago
     assert states(board_items([on_time], [t], ["ava"], TODAY, 7, CENTRAL)) == [("b", "done")]
+
+
+def test_done_by_notes_add_change_and_remove_the_line() -> None:
+    notes = chore_notes("Details.", "t1", TODAY, None)
+    by_ava = done_by_notes(notes, "Ava")
+    assert by_ava == "Details.\n\n--- Chore ---\nFrom: t1\nFor: 2026-11-04\nDone by: Ava"
+    assert done_by_notes(by_ava, "Ava") is by_ava
+    assert done_by_notes(by_ava, "Robin").endswith("For: 2026-11-04\nDone by: Robin")
+    assert done_by_notes(by_ava, None) == notes
+    # A one-off's notes go back to how they were.
+    assert done_by_notes(done_by_notes("Before Grandma comes", "Ben"), None) == "Before Grandma comes"
+    assert done_by_notes("", None) == ""
+
+
+def test_done_by_on_the_board_and_ignored_by_the_engine() -> None:
+    t = template("daily", "Who: Ava\nStarts: 2026-11-01")
+    done = datetime(2026, 11, 4, 14, tzinfo=UTC)
+    people = {**LISTS, "ava": "Ava", "ben": "Ben", "dad": "Robin"}
+    sniped = chore("a", TODAY, done=done, extra="\nDone by: robin")
+    assert sniped.done_by == "robin"
+    [item] = [i for i in board_items([sniped], [t], ["ava"], TODAY, 1, CENTRAL, people) if i["id"] == "a"]
+    assert (item["done_by"], item["done_by_name"]) == ("dad", "robin")
+    # Someone who isn't set up any more: the name still shows.
+    stranger = chore("b", TODAY, done=done, extra="\nDone by: Grandma")
+    assert board_items([stranger], [t], ["ava"], TODAY, 1, CENTRAL, people)[0]["done_by"] is None
+    # Opened again in the Google Tasks app: the line is ignored while it's open, and the engine
+    # takes it out of a coming chore.
+    reopened = chore("c", TODAY + timedelta(days=1), extra="\nDone by: Ava")
+    assert board_items([reopened], [t], ["ava"], TODAY, 7, CENTRAL, people)[0]["done_by"] is None
+    changes = plan([t], [reopened])
+    assert Update("list-ava", "c", notes=chore_notes("Details.", "t1", TODAY + timedelta(days=1), None)) in changes
+    # A done chore's line is never touched.
+    assert not any(getattr(c, "task_id", None) == "a" for c in plan([t], [sniped]))

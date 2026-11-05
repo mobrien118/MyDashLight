@@ -157,6 +157,11 @@ set_chore_done:
       default: true
       selector:
         boolean:
+    by:
+      required: false
+      example: Audrey
+      selector:
+        text:
 
 save_chore_template:
   fields:

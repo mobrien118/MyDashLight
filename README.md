@@ -299,7 +299,9 @@ Each chore on a kid's list has the template's title and details, and a Chore blo
 (the template's Id) and `For` (the day it was made for). From then on:
 
 - **Checked off** on the board, on a phone or in the Google Tasks app: Google records when. Done
-  after its due day counts as late.
+  after its due day counts as late. Checked off through MyDashLight, it also records who did it
+  with a `Done by: <name>` line: the kid it's for, or anyone else picked, parents included.
+  Opening it again takes that line out.
 - **Still open after its due day:** MyDashLight adds `Missed: <day>` to its notes, once for each
   day it missed. When the next one of that chore shows (or its template is paused), the missed one
   is checked off with `Closed: missed`, so the board shows one, not a pile, and the miss stays
@@ -309,7 +311,8 @@ Each chore on a kid's list has the template's title and details, and a Chore blo
 
 The actions: `mydashlight.get_chores` returns the chores the board shows (each kid's open and
 overdue chores, those coming up, and those done today) and the templates;
-`mydashlight.set_chore_done` checks one off or opens it again; `mydashlight.save_chore_template`
+`mydashlight.set_chore_done` checks one off (with `by` for someone other than the kid it's for)
+or opens it again; `mydashlight.save_chore_template`
 adds or changes a template; `mydashlight.remove_chore_template` removes one. The app subscribes
 to `{"type": "mydashlight/chores/subscribe"}` for the same chores as they change.
 

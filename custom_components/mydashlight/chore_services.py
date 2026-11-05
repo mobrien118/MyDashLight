@@ -18,7 +18,9 @@ from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
 from .chore_rules import REPEATS, DaysError, Repeats, Template, kid_for, parse_days, split_icon, template_notes
+from .chores import done_by_notes
 from .const import (
+    ATTR_BY,
     ATTR_CHORE,
     ATTR_DONE,
     ATTR_TEMPLATE,
@@ -36,7 +38,11 @@ if TYPE_CHECKING:
     from .chore_coordinator import ChoreCoordinator
 
 SET_CHORE_DONE_SCHEMA = vol.Schema(
-    {vol.Required(ATTR_CHORE): cv.string, vol.Optional(ATTR_DONE, default=True): cv.boolean}
+    {
+        vol.Required(ATTR_CHORE): cv.string,
+        vol.Optional(ATTR_DONE, default=True): cv.boolean,
+        vol.Optional(ATTR_BY): cv.string,
+    }
 )
 SAVE_TEMPLATE_SCHEMA = vol.Schema(
     {
@@ -102,9 +108,31 @@ async def _async_set_chore_done(call: ServiceCall) -> None:
             translation_placeholders={"chore": call.data[ATTR_CHORE]},
         )
     done: bool = call.data[ATTR_DONE]
-    if done != chore.done:
+    people = coordinator.people
+    by = chore.kid
+    if ATTR_BY in call.data:
+        found = kid_for(call.data[ATTR_BY], people)
+        if found is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_person",
+                translation_placeholders={"name": call.data[ATTR_BY]},
+            )
+        by = found
+    # Who did it is saved on the chore itself, so the history stays in Google Tasks.
+    notes = done_by_notes(chore.task.notes, people.get(by, by) if done else None)
+    if done != chore.done or notes != chore.task.notes:
         async with coordinator.write_lock:
-            await _async_google(entry, call, coordinator.api.async_update(chore.list_id, chore.task.id, done=done))
+            await _async_google(
+                entry,
+                call,
+                coordinator.api.async_update(
+                    chore.list_id,
+                    chore.task.id,
+                    notes=notes if notes != chore.task.notes else None,
+                    done=done if done != chore.done else None,
+                ),
+            )
     await coordinator.async_refresh()
 
 
