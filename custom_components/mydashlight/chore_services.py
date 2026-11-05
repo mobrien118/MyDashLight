@@ -7,6 +7,7 @@ same on the board, in the Google Tasks app and on phones.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 import secrets
 from typing import TYPE_CHECKING, Any
@@ -123,19 +124,21 @@ async def _async_set_chore_done(call: ServiceCall) -> None:
         by = found
     # Who did it is saved on the chore itself, so the history stays in Google Tasks.
     notes = done_by_notes(chore.task.notes, people.get(by, by) if done else None)
-    if done != chore.done or notes != chore.task.notes:
-        async with coordinator.write_lock:
-            await _async_google(
-                entry,
-                call,
-                coordinator.api.async_update(
-                    chore.list_id,
-                    chore.task.id,
-                    notes=notes if notes != chore.task.notes else None,
-                    done=done if done != chore.done else None,
-                ),
-            )
-    await coordinator.async_refresh()
+    if done == chore.done and notes == chore.task.notes:
+        return
+    async with coordinator.write_lock:
+        saved = await _async_google(
+            entry,
+            call,
+            coordinator.api.async_update(
+                chore.list_id,
+                chore.task.id,
+                notes=notes if notes != chore.task.notes else None,
+                done=done if done != chore.done else None,
+            ),
+        )
+    # Every board shows it now; nothing else changes with a check-off, so the next read is soon enough.
+    coordinator.async_saved_task(chore, saved)
 
 
 async def _async_save_template(call: ServiceCall) -> ServiceResponse:
@@ -170,9 +173,12 @@ async def _async_save_template(call: ServiceCall) -> ServiceResponse:
             made = await _async_google(entry, call, api.async_insert(lists[template.repeats], template.title, notes))
             if template.paused:
                 await _async_google(entry, call, api.async_update(lists[template.repeats], made.id, done=True))
+            template = replace(template, task_id=made.id)
             if old is not None:
                 # Moved to another base list: the Id line goes with it, so its chores stay linked.
                 await _async_google(entry, call, api.async_delete(lists[old.repeats], old.task_id))
+    # The editor and every board show the template now, and its chores once they're made.
+    coordinator.async_saved_template(replace(template, position=old.position) if old else template)
     await coordinator.async_refresh()
     return {"template": template.id} if call.return_response else None
 
@@ -191,6 +197,7 @@ async def _async_remove_template(call: ServiceCall) -> None:
         await _async_google(
             entry, call, coordinator.api.async_delete(data.template_lists[template.repeats], template.task_id)
         )
+    coordinator.async_saved_template(None, removed=template.id)
     # The next read removes the chores it made that aren't done yet.
     await coordinator.async_refresh()
 

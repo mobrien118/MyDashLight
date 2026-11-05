@@ -280,3 +280,66 @@ async def test_check_off_says_who_did_it(hass: HomeAssistant, tasks: FakeTasks) 
     with pytest.raises(ServiceValidationError) as err:
         await call(hass, "set_chore_done", chore=today["id"], by="Grandma")
     assert err.value.translation_key == "unknown_person"
+
+
+async def test_check_off_shows_at_once_with_one_save(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, tasks: FakeTasks
+) -> None:
+    daily = tasks.add_list(DAILY)
+    tasks.add(daily, "Feed the cat", "--- Chore ---\nId: cat\nWho: Ben\nStarts: 2026-11-01")
+    await load(hass)
+    # Two boards watching.
+    boards = [await hass_ws_client(hass) for _ in range(2)]
+    for board in boards:
+        await board.send_json_auto_id({"type": "mydashlight/chores/subscribe"})
+        assert (await board.receive_json())["success"]
+        first = (await board.receive_json())["event"]["chores"]
+    today = next(c for c in first["chores"] if c["due"] == "2026-11-04")
+
+    calls = len(tasks.calls)
+    await call(hass, "set_chore_done", chore=today["id"])
+    # Only the save itself: no read of every list before the boards hear of it.
+    assert [method for method, _url in tasks.calls[calls:]] == ["PATCH"]
+    for board in boards:
+        shown = (await board.receive_json())["event"]["chores"]
+        assert next(c for c in shown["chores"] if c["id"] == today["id"])["state"] == "done"
+
+    # Nothing to save: nothing sent to Google.
+    await call(hass, "set_chore_done", chore=today["id"])
+    assert [method for method, _url in tasks.calls[calls:]] == ["PATCH"]
+
+
+async def test_saved_template_shows_before_its_chores(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, tasks: FakeTasks
+) -> None:
+    await load(hass)
+    board = await hass_ws_client(hass)
+    await board.send_json_auto_id({"type": "mydashlight/chores/subscribe"})
+    assert (await board.receive_json())["success"]
+    assert (await board.receive_json())["event"]["chores"]["templates"] == []
+    saved = await call(hass, "save_chore_template", repeats="weekly", title="Mow", who=["Ava"], days="Thu")
+    template = (await board.receive_json())["event"]["chores"]
+    assert [t["id"] for t in template["templates"]] == [saved["template"]]
+    made = (await board.receive_json())["event"]["chores"]
+    assert [c["title"] for c in made["chores"]] == ["Mow"]
+
+    await call(hass, "remove_chore_template", template=saved["template"])
+    assert (await board.receive_json())["event"]["chores"]["templates"] == []
+
+
+async def test_a_read_under_way_during_a_save_reads_again(hass: HomeAssistant, tasks: FakeTasks) -> None:
+    entry = await load(hass)
+    coordinator = entry.runtime_data.chores
+    reads = 0
+    read = coordinator._async_read_and_fill
+
+    async def saved_meanwhile(data: Any, now: Any) -> Any:
+        nonlocal reads
+        reads += 1
+        if reads == 1:
+            coordinator._saves += 1  # what a check-off on a board does
+        return await read(data, now)
+
+    coordinator._async_read_and_fill = saved_meanwhile  # type: ignore[method-assign]
+    await refresh(hass, entry)
+    assert reads == 2
