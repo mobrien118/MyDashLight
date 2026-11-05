@@ -334,7 +334,9 @@ Tap **Chores** at the top of the kitchen app for a column per kid, in the kids' 
 
 Tap a chore to check it off: the panel asks who did it, with the kid it's for as the big button
 and **Someone else did** for anyone else, parents included (saved as `Done by` in its notes). Tap a
-done chore to undo it. Each change is saved to Google Tasks straight away.
+done chore to undo it. Each change is saved to Google Tasks straight away and shows on every board
+(the kitchen screen, a PC, a phone) at once. A change made in the Google Tasks app instead shows
+within a minute, when MyDashLight next reads the lists.
 
 **Add a chore** and **Manage chores**, above the columns, open the chore editor in the panel, like a
 ride's: its name and picture, who does it (each one, or taking turns), how often (some days of the
