@@ -89,6 +89,8 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         self._store: Store[dict[str, Any]] = Store(hass, STORE_VERSION, STORE_KEY)
         self._ids: dict[str, Any] | None = None
         self._asked_sign_in = False
+        self._saves = 0
+        """Counts changes saved from the board, so a read that started before one is done again."""
 
     @property
     def kids(self) -> dict[str, str]:
@@ -113,7 +115,14 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         if not tasks_granted(self.config_entry.data.get("token") or {}):
             return self._needs_sign_in(empty)
         try:
-            return await self._async_read_and_fill(empty, now)
+            # A change saved from the board while this read was under way would be undone by
+            # it until the next read, so read once more: every board shows the change at once.
+            for _attempt in range(2):
+                saves = self._saves
+                data = await self._async_read_and_fill(replace(empty), now)
+                if saves == self._saves:
+                    break
+            return data
         except TasksNeedSignIn:
             return self._needs_sign_in(empty)
         except GoogleApiDisabled:
@@ -273,6 +282,30 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
                 item = TaskItem(t.id, t.title, t.notes, t.due, t.completed, t.position)
                 chores.append(read_chore(item, kid, kid_lists[kid]))
         return chores
+
+    def async_saved_task(self, chore: Chore, task: TaskRecord | None) -> None:
+        """Show a chore as Google saved it, on every board straight away, without waiting for
+        the next read."""
+        if self.data is None or task is None:
+            return
+        item = TaskItem(task.id, task.title, task.notes, task.due, task.completed, task.position or chore.task.position)
+        saved = read_chore(item, chore.kid, chore.list_id)
+        self._saves += 1
+        chores = [saved if c.task.id == chore.task.id else c for c in self.data.chores]
+        self.async_set_updated_data(replace(self.data, chores=chores, updated=dt_util.utcnow()))
+
+    def async_saved_template(self, template: Template | None, *, removed: str | None = None) -> None:
+        """Show a template as saved (or gone, by its id in ``removed``) straight away. Its chores
+        follow on the read that comes next."""
+        if self.data is None:
+            return
+        self._saves += 1
+        gone = {removed, template.id if template else None} - {None}
+        templates = [t for t in self.data.templates if t.id not in gone]
+        if template is not None:
+            old = next((i for i, t in enumerate(self.data.templates) if t.id == template.id), None)
+            templates.insert(len(templates) if old is None else old, template)
+        self.async_set_updated_data(replace(self.data, templates=templates, updated=dt_util.utcnow()))
 
     def find_chore(self, task_id: str) -> Chore | None:
         return next((c for c in (self.data.chores if self.data else []) if c.task.id == task_id), None)
