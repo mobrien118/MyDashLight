@@ -1804,6 +1804,710 @@
           }
         ]
       }
+    },
+    {
+      "name": "Sunday with Sam's own soccer game, Ben and Robin along",
+      "day": 3,
+      "input": {
+        "events": [
+          {
+            "id": "sun-youth",
+            "day": 3,
+            "kid": "ava",
+            "title": "Youth group",
+            "loc": "church",
+            "start": 1080,
+            "end": 1170,
+            "drop": "mom",
+            "pick": "",
+            "stay": false,
+            "arriveBy": null
+          },
+          {
+            "id": "sun-league",
+            "day": 3,
+            "kid": "dad",
+            "own": "dad",
+            "title": "Soccer league",
+            "loc": "soccer",
+            "start": 840,
+            "end": 960,
+            "drop": "dad",
+            "pick": "dad",
+            "stay": true,
+            "arriveBy": null,
+            "along": [
+              "ben"
+            ],
+            "parents": [
+              "mom"
+            ]
+          }
+        ],
+        "busy": {}
+      },
+      "expected": {
+        "mom": {
+          "first_leave": "5:41 PM",
+          "drive_min": 24,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "5:41 PM",
+              "end": "5:53 PM",
+              "from": "home",
+              "to": "church",
+              "kids": [
+                "ava"
+              ],
+              "serves": "sun-youth"
+            },
+            {
+              "type": "drive",
+              "start": "5:53 PM",
+              "end": "6:05 PM",
+              "from": "church",
+              "to": "home",
+              "kids": [],
+              "serves": "sun-youth"
+            }
+          ]
+        },
+        "dad": {
+          "first_leave": "1:38 PM",
+          "drive_min": 30,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "1:38 PM",
+              "end": "1:53 PM",
+              "from": "home",
+              "to": "soccer",
+              "kids": [
+                "ben"
+              ],
+              "serves": "sun-league"
+            },
+            {
+              "type": "stay",
+              "start": "1:53 PM",
+              "end": "4:00 PM",
+              "loc": "soccer",
+              "kids": [],
+              "serves": "sun-league"
+            },
+            {
+              "type": "drive",
+              "start": "4:00 PM",
+              "end": "4:15 PM",
+              "from": "soccer",
+              "to": "home",
+              "kids": [
+                "ben"
+              ],
+              "serves": "sun-league"
+            }
+          ]
+        },
+        "issues": [
+          {
+            "kind": "unassigned",
+            "event": "sun-youth",
+            "side": "pick"
+          }
+        ],
+        "heads_ups": [],
+        "suggestions": [
+          {
+            "for": "unassigned||sun-youth|pick|",
+            "options": [
+              {
+                "label": "Robin picks up",
+                "change": {
+                  "id": "sun-youth",
+                  "field": "pick",
+                  "value": "mom"
+                },
+                "note": "+24 min round trip"
+              },
+              {
+                "label": "Sam picks up",
+                "change": {
+                  "id": "sun-youth",
+                  "field": "pick",
+                  "value": "dad"
+                },
+                "note": "+24 min round trip"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Thursday with Robin's own errand between piano and soccer",
+      "day": 0,
+      "input": {
+        "events": [
+          {
+            "id": "piano",
+            "day": 0,
+            "kid": "ava",
+            "title": "Piano",
+            "loc": "piano",
+            "start": 945,
+            "end": 990,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": null
+          },
+          {
+            "id": "soccer",
+            "day": 0,
+            "kid": "cleo",
+            "title": "Soccer",
+            "loc": "soccer",
+            "start": 1020,
+            "end": 1110,
+            "drop": "dad",
+            "pick": "mom",
+            "stay": false,
+            "arriveBy": null
+          },
+          {
+            "id": "football",
+            "day": 0,
+            "kid": "ben",
+            "title": "Football",
+            "loc": "football",
+            "start": 1050,
+            "end": 1140,
+            "drop": "dad",
+            "pick": "dad",
+            "stay": false,
+            "arriveBy": 1035
+          },
+          {
+            "id": "volley",
+            "day": 0,
+            "kid": "ava",
+            "title": "Volleyball",
+            "loc": "gym",
+            "start": 1095,
+            "end": 1200,
+            "drop": "the Lees",
+            "pick": "",
+            "stay": false,
+            "arriveBy": null
+          },
+          {
+            "id": "thu-errand",
+            "day": 0,
+            "kid": "mom",
+            "own": "mom",
+            "title": "Jersey pick-up",
+            "loc": "gym",
+            "start": 990,
+            "end": 1050,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": null,
+            "along": []
+          }
+        ],
+        "busy": {
+          "dad": [
+            {
+              "start": 780,
+              "end": 1000,
+              "title": "Work"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "mom": {
+          "first_leave": "3:29 PM",
+          "drive_min": 58,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "3:29 PM",
+              "end": "3:39 PM",
+              "from": "home",
+              "to": "piano",
+              "kids": [
+                "ava"
+              ],
+              "serves": "piano"
+            },
+            {
+              "type": "stay",
+              "start": "3:39 PM",
+              "end": "4:30 PM",
+              "loc": "piano",
+              "kids": [],
+              "serves": "piano"
+            },
+            {
+              "type": "drive",
+              "start": "4:30 PM",
+              "end": "4:40 PM",
+              "from": "piano",
+              "to": "gym",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-errand"
+            },
+            {
+              "type": "stay",
+              "start": "4:40 PM",
+              "end": "5:30 PM",
+              "loc": "gym",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-errand"
+            },
+            {
+              "type": "drive",
+              "start": "5:30 PM",
+              "end": "5:38 PM",
+              "from": "gym",
+              "to": "home",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-errand"
+            },
+            {
+              "type": "home",
+              "start": "5:38 PM",
+              "end": "6:15 PM"
+            },
+            {
+              "type": "drive",
+              "start": "6:15 PM",
+              "end": "6:30 PM",
+              "from": "home",
+              "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "drive",
+              "start": "6:30 PM",
+              "end": "6:45 PM",
+              "from": "soccer",
+              "to": "home",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "soccer"
+            }
+          ]
+        },
+        "dad": {
+          "first_leave": "4:25 PM",
+          "drive_min": 110,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "4:25 PM",
+              "end": "4:40 PM",
+              "from": "home",
+              "to": "soccer",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "soccer",
+              "overlaps_busy": true
+            },
+            {
+              "type": "drive",
+              "start": "4:40 PM",
+              "end": "4:55 PM",
+              "from": "soccer",
+              "to": "home",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "drive",
+              "start": "4:55 PM",
+              "end": "5:15 PM",
+              "from": "home",
+              "to": "football",
+              "kids": [
+                "ben"
+              ],
+              "serves": "football"
+            },
+            {
+              "type": "drive",
+              "start": "5:15 PM",
+              "end": "5:35 PM",
+              "from": "football",
+              "to": "home",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "home",
+              "start": "5:35 PM",
+              "end": "6:40 PM"
+            },
+            {
+              "type": "drive",
+              "start": "6:40 PM",
+              "end": "7:00 PM",
+              "from": "home",
+              "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "drive",
+              "start": "7:00 PM",
+              "end": "7:20 PM",
+              "from": "football",
+              "to": "home",
+              "kids": [
+                "ben"
+              ],
+              "serves": "football"
+            }
+          ]
+        },
+        "issues": [
+          {
+            "kind": "late",
+            "driver": "mom",
+            "event": "thu-errand",
+            "min": 16
+          },
+          {
+            "kind": "busy",
+            "driver": "dad",
+            "event": "soccer",
+            "min": 15
+          },
+          {
+            "kind": "unassigned",
+            "event": "volley",
+            "side": "pick"
+          }
+        ],
+        "heads_ups": [],
+        "suggestions": [
+          {
+            "for": "unassigned||volley|pick|",
+            "options": [
+              {
+                "label": "Robin picks up",
+                "change": {
+                  "id": "volley",
+                  "field": "pick",
+                  "value": "mom"
+                },
+                "note": "+16 min round trip"
+              },
+              {
+                "label": "Sam picks up",
+                "change": {
+                  "id": "volley",
+                  "field": "pick",
+                  "value": "dad"
+                },
+                "note": "+16 min round trip"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Thursday with Robin's 10-minute jersey pick-up any time from 2:30 to 5:30",
+      "day": 0,
+      "input": {
+        "events": [
+          {
+            "id": "piano",
+            "day": 0,
+            "kid": "ava",
+            "title": "Piano",
+            "loc": "piano",
+            "start": 945,
+            "end": 990,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": null
+          },
+          {
+            "id": "soccer",
+            "day": 0,
+            "kid": "cleo",
+            "title": "Soccer",
+            "loc": "soccer",
+            "start": 1020,
+            "end": 1110,
+            "drop": "dad",
+            "pick": "mom",
+            "stay": false,
+            "arriveBy": null
+          },
+          {
+            "id": "football",
+            "day": 0,
+            "kid": "ben",
+            "title": "Football",
+            "loc": "football",
+            "start": 1050,
+            "end": 1140,
+            "drop": "dad",
+            "pick": "dad",
+            "stay": false,
+            "arriveBy": 1035
+          },
+          {
+            "id": "volley",
+            "day": 0,
+            "kid": "ava",
+            "title": "Volleyball",
+            "loc": "gym",
+            "start": 1095,
+            "end": 1200,
+            "drop": "the Lees",
+            "pick": "",
+            "stay": false,
+            "arriveBy": null
+          },
+          {
+            "id": "thu-jersey",
+            "day": 0,
+            "kid": "mom",
+            "own": "mom",
+            "title": "Jersey pick-up",
+            "loc": "gym",
+            "start": 870,
+            "end": 1050,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": null,
+            "along": [],
+            "takes": 10
+          }
+        ],
+        "busy": {
+          "dad": [
+            {
+              "start": 780,
+              "end": 1000,
+              "title": "Work"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "mom": {
+          "first_leave": "3:29 PM",
+          "drive_min": 58,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "3:29 PM",
+              "end": "3:39 PM",
+              "from": "home",
+              "to": "piano",
+              "kids": [
+                "ava"
+              ],
+              "serves": "piano"
+            },
+            {
+              "type": "stay",
+              "start": "3:39 PM",
+              "end": "4:30 PM",
+              "loc": "piano",
+              "kids": [],
+              "serves": "piano"
+            },
+            {
+              "type": "drive",
+              "start": "4:30 PM",
+              "end": "4:40 PM",
+              "from": "piano",
+              "to": "gym",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-jersey"
+            },
+            {
+              "type": "stay",
+              "start": "4:40 PM",
+              "end": "4:50 PM",
+              "loc": "gym",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-jersey"
+            },
+            {
+              "type": "drive",
+              "start": "4:50 PM",
+              "end": "4:58 PM",
+              "from": "gym",
+              "to": "home",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-jersey"
+            },
+            {
+              "type": "home",
+              "start": "4:58 PM",
+              "end": "6:15 PM"
+            },
+            {
+              "type": "drive",
+              "start": "6:15 PM",
+              "end": "6:30 PM",
+              "from": "home",
+              "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "drive",
+              "start": "6:30 PM",
+              "end": "6:45 PM",
+              "from": "soccer",
+              "to": "home",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "soccer"
+            }
+          ]
+        },
+        "dad": {
+          "first_leave": "4:25 PM",
+          "drive_min": 110,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "4:25 PM",
+              "end": "4:40 PM",
+              "from": "home",
+              "to": "soccer",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "soccer",
+              "overlaps_busy": true
+            },
+            {
+              "type": "drive",
+              "start": "4:40 PM",
+              "end": "4:55 PM",
+              "from": "soccer",
+              "to": "home",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "drive",
+              "start": "4:55 PM",
+              "end": "5:15 PM",
+              "from": "home",
+              "to": "football",
+              "kids": [
+                "ben"
+              ],
+              "serves": "football"
+            },
+            {
+              "type": "drive",
+              "start": "5:15 PM",
+              "end": "5:35 PM",
+              "from": "football",
+              "to": "home",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "home",
+              "start": "5:35 PM",
+              "end": "6:40 PM"
+            },
+            {
+              "type": "drive",
+              "start": "6:40 PM",
+              "end": "7:00 PM",
+              "from": "home",
+              "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "drive",
+              "start": "7:00 PM",
+              "end": "7:20 PM",
+              "from": "football",
+              "to": "home",
+              "kids": [
+                "ben"
+              ],
+              "serves": "football"
+            }
+          ]
+        },
+        "issues": [
+          {
+            "kind": "busy",
+            "driver": "dad",
+            "event": "soccer",
+            "min": 15
+          },
+          {
+            "kind": "unassigned",
+            "event": "volley",
+            "side": "pick"
+          }
+        ],
+        "heads_ups": [],
+        "suggestions": [
+          {
+            "for": "unassigned||volley|pick|",
+            "options": [
+              {
+                "label": "Robin picks up",
+                "change": {
+                  "id": "volley",
+                  "field": "pick",
+                  "value": "mom"
+                },
+                "note": "+16 min round trip"
+              },
+              {
+                "label": "Sam picks up",
+                "change": {
+                  "id": "volley",
+                  "field": "pick",
+                  "value": "dad"
+                },
+                "note": "+16 min round trip"
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

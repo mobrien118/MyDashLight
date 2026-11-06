@@ -323,7 +323,7 @@
     },
     "set_take_along": {
       "name": "Set take-along",
-      "description": "Sets which kids ride along on this drop-off, so the driver can go on to their own drop-offs without coming home for them.",
+      "description": "Sets who rides along: on a kid's drop-off, the other kids, so the driver can go on to their drop-offs without coming home for them. On a parent's own event, the kids or the other parent going too.",
       "fields": {
         "event": {
           "name": "Event",
@@ -331,7 +331,7 @@
         },
         "kids": {
           "name": "Kids",
-          "description": "The kids taken along, by name. Leave empty to take nobody along."
+          "description": "Who is taken along, by name. A parent can go along only to the other parent's own event. Leave empty to take nobody along."
         },
         "scope": {
           "name": "Repeating events",
@@ -531,6 +531,9 @@
     },
     "at_home": {
       "message": "{title} is at home, so it doesn't need a ride."
+    },
+    "own_event": {
+      "message": "{title} is {driver}'s own event, so {driver} drives there."
     },
     "tasks_error": {
       "message": "Couldn't read Google Tasks: {error}"

@@ -11,7 +11,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed, async_mock_service
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from .common import AVA, BEN, OPTIONS, ROUTES_KEY, FakeGoogle, FakeRoutes, make_entry, setup_credentials, timed
+from .common import AVA, BEN, OPTIONS, ROBIN, ROUTES_KEY, FakeGoogle, FakeRoutes, make_entry, setup_credentials, timed
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time, a Tuesday
 PIANO = "Piano studio, 1 Elm St"
@@ -223,3 +223,51 @@ async def test_without_drive_times_home_still_counts(
     await at(hass, freezer, "2026-11-03T21:44:00+00:00")
     assert phones["robin"][-1].data["title"] == "Time to go: Drive Ava to Piano studio"
     assert routes.bodies == []
+
+
+async def test_own_trips(
+    hass: HomeAssistant,
+    google: FakeGoogle,
+    routes: FakeRoutes,
+    phones: dict[str, list[ServiceCall]],
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    google.add(
+        ROBIN,
+        **timed(
+            "dentist",
+            "Dentist",
+            "2026-11-03T18:00:00-06:00",
+            "2026-11-03T19:00:00-06:00",
+            location="Smile Dental",
+            description="Travel: 10 min",
+        ),
+    )
+    google.add(
+        ROBIN,
+        **timed(
+            "game",
+            "Game",
+            "2026-11-03T20:00:00-06:00",
+            "2026-11-03T21:00:00-06:00",
+            location="City park",
+            description="Take along: Sam\nTravel: 10 min",
+        ),
+    )
+    robin_is(hass, "home", HOME)
+    entry = await load(hass)
+    robin = entry.runtime_data.coordinator.data.days[0]["drivers"]["mom"]
+    dentist, game = robin["outings"][-2:]
+    assert (dentist["title"], dentist["solo"], dentist["lead"]) == ("Dentist at Smile Dental", True, "Leave 5:44")
+    assert (game["title"], game["solo"], game["lead"]) == ("Game at City park", False, "Leave 7:44")
+
+    # Robin's trip alone to the dentist: Robin knows, so nothing is sent, even with Robin
+    # still home after leave time.
+    await at(hass, freezer, "2026-11-03T23:30:00+00:00")
+    await at(hass, freezer, "2026-11-03T23:50:00+00:00")
+    assert phones["robin"] == []
+
+    # Sam goes to the game with Robin, so both hear when to leave.
+    await at(hass, freezer, "2026-11-04T01:30:00+00:00")
+    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 7:44 PM: Game at City park"]
+    assert [c.data["title"] for c in phones["sam"]] == ["Leave home at 7:44 PM with Robin"]

@@ -10,7 +10,7 @@ from collections.abc import Callable, Sequence
 import math
 from typing import Any
 
-from .board import CardLine, DayBoard, Going, KidItem, Outing, Ride, build_day, event_where
+from .board import CardLine, DayBoard, Going, KidItem, Outing, Ride, build_day, event_where, planned_at
 from .planner import (
     BusyBlock,
     Change,
@@ -98,7 +98,7 @@ def plan_day(
                 "trips": board.plan[d].trips,
                 "segments": [_segment(g) for g in board.plan[d].segments],
                 "outings": [_outing(o) for o in board.outings[d]],
-                "busy": [_busy(b) for b in day.busy.get(d, ())],
+                "busy": _busy_for(d, day.events, board),
             }
             for d in drivers
         },
@@ -137,7 +137,10 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "pick": e.pick,
         "stay": e.stay,
         "arrive_by": e.arrive_by,
-        "along": list(e.along),
+        "along": [*e.along, *e.parents],
+        "own": e.own,
+        "takes": e.takes,
+        "planned": _num(planned_at(e, board.plan)),
         "sides": list(ref.sides),
         "calendar_id": ref.calendar_id,
         "event_id": ref.event_id,
@@ -178,6 +181,8 @@ def _outing(o: Outing) -> dict[str, Any]:
         "first_drop": o.first_drop.id if o.first_drop else None,
         "riders": dict(o.riders),
         "go": _go(o.go) if o.go else None,
+        "parents": dict(o.parents),
+        "solo": o.solo,
     }
 
 
@@ -213,8 +218,23 @@ def _item(it: KidItem, rides: list[Ride]) -> dict[str, Any]:
     return out
 
 
-def _busy(b: BusyBlock) -> dict[str, Any]:
-    return {"start": b.start, "end": b.end, "title": b.title}
+def _busy_for(driver: str, events: Sequence[RideEvent], board: DayBoard) -> list[dict[str, Any]]:
+    """A driver's busy times: their calendar, the trips they ride along on, and their own
+    events, which carry the event's id."""
+    out = [_busy(b) for b in board.plan.busy.get(driver, ())]
+    for e in events:
+        if e.own != driver or not e.attending:
+            continue
+        if e.takes is None:
+            out.append(_busy(BusyBlock(e.start, e.end, e.title), e.id))
+        elif (at := planned_at(e, board.plan)) is not None:
+            out.append(_busy(BusyBlock(math.floor(at), math.ceil(at + e.takes), e.title), e.id))
+    out.sort(key=lambda b: (b["start"], b["end"], b["title"]))
+    return out
+
+
+def _busy(b: BusyBlock, event: str | None = None) -> dict[str, Any]:
+    return {"start": b.start, "end": b.end, "title": b.title, "event": event}
 
 
 def _line(line: CardLine | None) -> dict[str, str] | None:

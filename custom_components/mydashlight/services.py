@@ -44,7 +44,7 @@ from .const import (
 )
 from .coordinator import target_for
 from .google import GoogleAuthError, GoogleCalendarUnavailable, GoogleConflict, GoogleError
-from .notes import KEEP
+from .notes import KEEP, Keep
 from .planner import HOME
 
 if TYPE_CHECKING:
@@ -180,6 +180,12 @@ async def _async_change_event(
     if ride.loc == HOME and change.rides:
         raise ServiceValidationError(
             translation_domain=DOMAIN, translation_key="at_home", translation_placeholders={"title": ride.title}
+        )
+    if ride.own is not None and not all(isinstance(v, Keep) for v in (change.drop, change.pick, change.stay)):
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="own_event",
+            translation_placeholders={"title": ride.title, "driver": coordinator.settings.directory.display(ride.own)},
         )
     target = target_for(ride, ref)
     series = ref.recurring_id if call.data.get(ATTR_SCOPE) == SCOPE_SERIES else None

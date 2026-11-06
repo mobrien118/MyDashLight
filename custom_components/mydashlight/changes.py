@@ -31,7 +31,8 @@ class RideChange:
     pick: str | Keep = KEEP
     stay: bool | Keep = KEEP
     along: tuple[str, ...] | Keep = KEEP
-    """The kids taken along on the drop-off, by name or kid id. Empty takes nobody."""
+    """Who is taken along, by name or id: kids, or on a parent's own event the other parent
+    too. Empty takes nobody."""
     arrive_by: int | Keep | None = KEEP
     """Minutes after midnight, or None to go back to the default."""
     attending: bool | Keep = KEEP

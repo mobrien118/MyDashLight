@@ -200,6 +200,29 @@ async def test_an_event_at_home_takes_no_ride(hass: HomeAssistant, google: FakeG
     assert google.patches == []
 
 
+async def test_a_parents_own_event(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        ROBIN,
+        **timed(
+            "dentist", "Dentist", "2026-11-03T14:00:00-06:00", "2026-11-03T15:00:00-06:00", location="Smile Dental"
+        ),
+    )
+    entry = await load(hass)
+    assert planned(entry, "dentist")["own"] == "mom"
+    # Robin drives to Robin's own event, so the drivers and Stay can't be changed.
+    for service, data in (("set_ride", {"side": "drop", "driver": "dad"}), ("set_stay", {"stay": False})):
+        with pytest.raises(ServiceValidationError) as err:
+            await call(hass, service, event="dentist", **data)
+        assert err.value.translation_key == "own_event"
+        assert err.value.translation_placeholders == {"title": "Dentist", "driver": "Robin"}
+    assert google.patches == []
+
+    # Ben and Sam can go too.
+    await call(hass, "set_take_along", event="dentist", kids=["Ben", "Sam"])
+    assert google.patches[-1][3]["description"] == "--- Rides ---\nTake along: Ben, Sam"
+    assert planned(entry, "dentist")["along"] == [BEN, "dad"]
+
+
 @pytest.mark.parametrize(
     ("status", "reason", "key"),
     [

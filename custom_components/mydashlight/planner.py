@@ -58,6 +58,19 @@ class RideEvent:
     attending: bool = True
     """False when the kid isn't going this time. Its rides are then not needed, so the
     planner never routes it, and the board doesn't count it as a clash."""
+    own: str | None = None
+    """The driver whose own event this is, from their own calendar. They drive themselves
+    there and stay, so ``kid``, ``drop`` and ``pick`` are that driver too and ``stay`` is set.
+    The kids in ``along`` go too, leaving home in the car."""
+    parents: tuple[str, ...] = ()
+    """Other drivers riding along to a parent's own event. They're busy for the whole trip."""
+    takes: int | None = None
+    """A parent's errand: the minutes it takes, any time from ``start`` to ``end``. The planner
+    picks the time, fitting it into the parent's other trips where it can."""
+
+    def attends(self, kid: str) -> bool:
+        """Whether ``kid`` is at this event: their own activity, or a parent's they go along to."""
+        return self.kid == kid or (self.own is not None and kid in self.along)
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +144,11 @@ class Stop:
     """When the kid is ready to be collected (pick-up)."""
     after: float | None = None
     """When a stay ends."""
+    dwell: float = 0
+    """Minutes spent there, for an errand: from arriving, or from ``ready`` if that's later."""
+    late: bool = False
+    """An errand done as late as still works, on the way to the next stop. Otherwise it's done
+    as early as it can be: at ``ready``, or straight from the stop before."""
     arrive: float | None = None
     legs: list[Segment] = field(default_factory=list)
     """The drives and waits that serve this stop."""
@@ -213,6 +231,8 @@ class DayPlan:
     hard: list[Issue]
     soft: list[Issue]
     score: float
+    busy: Mapping[str, Sequence[BusyBlock]] = field(default_factory=dict)
+    """The parents' busy times as planned: their calendars, plus trips they ride along on."""
 
     def __getitem__(self, driver: str) -> DriverPlan:
         return self.drivers[driver]
@@ -286,6 +306,8 @@ class _Task:
     type: Literal["drop", "stay", "pick"]
     event: RideEvent
     t: int
+    late: bool = False
+    """For an errand: as late as still works, instead of as early as it can be."""
 
 
 def plan_driver(
@@ -295,10 +317,18 @@ def plan_driver(
     travel: TravelFn,
     settings: PlannerSettings = DEFAULT_SETTINGS,
 ) -> DriverPlan:
-    """String one parent's drop-offs and pick-ups into a route and time it."""
+    """String one parent's drop-offs and pick-ups into a route and time it.
+
+    Errands come last: each goes wherever in the route it costs least, so it's tacked onto a
+    trip that's out already when that fits its window.
+    """
     tasks: list[_Task] = []
+    errands: list[_Task] = []
     for e in events:
-        if e.stay and e.drop == driver and e.pick == driver:
+        if e.takes is not None:
+            if e.own == driver and e.drop == driver:
+                errands.append(_Task("stay", e, e.end - e.takes))
+        elif e.stay and e.drop == driver and e.pick == driver:
             tasks.append(_Task("stay", e, arrive_at(e, settings, travel)))
         else:
             if e.drop == driver:
@@ -307,6 +337,32 @@ def plan_driver(
                 tasks.append(_Task("pick", e, e.end))
     tasks.sort(key=lambda k: k.t)
     _same_place_first(tasks, settings)
+    errands.sort(key=lambda k: (k.t, k.event.id))
+    for k in errands:
+        best: tuple[float, list[_Task]] | None = None
+        for i in range(len(tasks) + 1):
+            for late in (False, True):
+                trial = [*tasks[:i], replace(k, late=late), *tasks[i:]]
+                cost = _cost(_route(driver, trial, busy, travel, settings))
+                if best is None or cost < best[0] - 1e-9:
+                    best = (cost, trial)
+        assert best is not None
+        tasks = best[1]
+    return _route(driver, tasks, busy, travel, settings)
+
+
+def _cost(p: DriverPlan) -> float:
+    return len(p.issues) * 1000 + sum(x.minutes or 0 for x in p.issues) * 10 + p.drive
+
+
+def _route(
+    driver: str,
+    tasks: list[_Task],
+    busy: Mapping[str, Sequence[BusyBlock]],
+    travel: TravelFn,
+    settings: PlannerSettings,
+) -> DriverPlan:
+    """Time the tasks in this order."""
     out = DriverPlan(driver)
     if not tasks:
         return out
@@ -319,12 +375,12 @@ def plan_driver(
     latest_depart = [INF] * n
     for i in range(n - 1, 0, -1):
         latest_depart[i - 1] = min(latest_depart[i - 1], latest_arrive[i] - travel(stops[i - 1].loc, stops[i].loc))
-        latest_arrive[i - 1] = min(latest_arrive[i - 1], latest_depart[i - 1])
+        latest_arrive[i - 1] = min(latest_arrive[i - 1], latest_depart[i - 1] - stops[i - 1].dwell)
 
     def target(j: int) -> float:
         v = latest_depart[j]
         nxt = stops[j + 1] if j + 1 < n else None
-        if nxt is not None and nxt.ready is not None:
+        if nxt is not None and nxt.ready is not None and not nxt.late:
             v = min(v, nxt.ready - travel(stops[j].loc, nxt.loc))
         return v
 
@@ -392,6 +448,7 @@ def plan_driver(
         ready = arr
         if s.ready is not None:
             ready = max(ready, s.ready)
+        ready += s.dwell
         if s.after is not None:
             ready = max(ready, s.after)
         if s.kind != "stay" and ready > arr:
@@ -414,7 +471,6 @@ def plan_driver(
                     out.soft.append(Issue("tight", driver, s.event, s, at=ready))
                 dep = max(ready, tg)
         if s.kind == "stay" and ready > arr and s.event is not None:
-            kid = s.event.kid
             tag(
                 Segment(
                     "stay",
@@ -422,7 +478,7 @@ def plan_driver(
                     ready,
                     loc=s.loc,
                     event=s.event,
-                    kids=[k for k in s.car if k != kid and k not in dropped_home],
+                    kids=[k for k in s.car if not s.event.attends(k) and k not in dropped_home],
                 ),
                 s,
             )
@@ -515,6 +571,23 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
     car: list[str] = []
     for k in tasks:
         kid = k.event.kid
+        if k.event.own is not None:
+            # A parent's own event: the kids going too leave home with them.
+            riders = list(k.event.along)
+            if any(r not in car for r in riders):
+                if stops[-1].loc != HOME:
+                    stops.append(Stop(HOME, "fetch"))
+                car = riders
+                stops[-1].car = list(car)
+            stop = Stop(k.event.loc, "stay", list(car), event=k.event, deadline=k.t)
+            if k.event.takes is not None:
+                stop.ready = k.event.start
+                stop.dwell = k.event.takes
+                stop.late = k.late
+            else:
+                stop.after = k.event.end
+            stops.append(stop)
+            continue
         if k.type != "pick":
             if kid not in car:
                 # Dropping off a kid who isn't in the car means collecting them from home first.
@@ -547,6 +620,7 @@ def plan_all(
     drivers: Sequence[str] = DEFAULT_DRIVERS,
 ) -> DayPlan:
     """Plan every routed driver's day and collect the issues across them."""
+    busy = with_rides_along(events, busy, travel, settings, drivers)
     plans = {d: plan_driver(d, events, busy, travel, settings) for d in drivers}
     hard = [x for d in drivers for x in plans[d].issues]
     for e in events:
@@ -557,13 +631,41 @@ def plan_all(
     soft = [x for d in drivers for x in plans[d].soft]
     late_minutes = sum(x.minutes or 0 for x in hard)
     score = len(hard) * 1000 + late_minutes * 10 + sum(p.drive for p in plans.values())
-    return DayPlan(plans, hard, soft, score)
+    return DayPlan(plans, hard, soft, score, busy)
+
+
+def with_rides_along(
+    events: Sequence[RideEvent],
+    busy: Mapping[str, Sequence[BusyBlock]],
+    travel: TravelFn,
+    settings: PlannerSettings = DEFAULT_SETTINGS,
+    drivers: Sequence[str] = DEFAULT_DRIVERS,
+) -> dict[str, list[BusyBlock]]:
+    """The parents' busy times, plus each trip to the other parent's own event they ride along
+    on: from leaving home until back home."""
+    out = {d: list(blocks) for d, blocks in busy.items()}
+    for e in events:
+        if e.own is None or e.takes is not None:
+            continue
+        for p in e.parents:
+            if p in drivers and p != e.own:
+                leave = math.floor(arrive_at(e, settings, travel) - travel(HOME, e.loc))
+                home = math.ceil(e.end + travel(e.loc, HOME))
+                out.setdefault(p, []).append(BusyBlock(leave, home, e.title))
+    for blocks in out.values():
+        blocks.sort(key=lambda b: (b.start, b.end, b.title))
+    return out
+
+
+def who_of(e: RideEvent, labels: Labels) -> str:
+    """The name of whoever an event is for: the kid, or the parent for their own event."""
+    return labels.driver(e.own) if e.own is not None else labels.kid(e.kid)
 
 
 def issue_text(issue: Issue, labels: Labels) -> IssueText:
     """The words shown for an issue. ``note`` is the short form used under a suggestion."""
     e = issue.event
-    kid = labels.kid(e.kid) if e else ""
+    kid = who_of(e, labels) if e else ""
     who = labels.driver(issue.driver) if issue.driver else ""
     s = issue.stop
     match issue.kind:
@@ -691,6 +793,8 @@ def suggestions_for(
         d = issue.driver
         others = [o for o in drivers if o != d]
         for e in events:
+            if e.own is not None:
+                continue  # A parent's own event is always theirs to drive.
             for side in ("drop", "pick"):
                 if getattr(e, side) != d:
                     continue
@@ -705,11 +809,13 @@ def suggestions_for(
                     )
         # Take a kid along on an earlier drop-off by the same driver, if it's close enough.
         for e in events:
-            if e.drop != d:
+            if e.drop != d or e.own is not None:
                 continue
             for f in events:
                 gap = arrive_at(e, settings, travel) - arrive_at(f, settings, travel)
                 if f is e or f.drop != d or f.kid == e.kid or not 0 <= gap <= settings.take_along_window:
+                    continue
+                if f.own is not None:
                     continue
                 if e.kid in f.along:
                     continue

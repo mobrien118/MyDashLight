@@ -43,8 +43,8 @@ from .planner import NOT_NEEDED, UNASSIGNED, fmt12
 
 RIDES_HEADER: Final = "--- Rides ---"
 
-Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "travel"]
-FIELDS: Final[tuple[Field, ...]] = ("attending", "drop", "pick", "stay", "along", "arrive_by", "travel")
+Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "travel", "takes"]
+FIELDS: Final[tuple[Field, ...]] = ("attending", "drop", "pick", "stay", "along", "arrive_by", "travel", "takes")
 
 
 _LABELS: Final[dict[str, Field]] = {
@@ -58,6 +58,8 @@ _LABELS: Final[dict[str, Field]] = {
     "arriveby": "arrive_by",
     "travel": "travel",
     "traveltime": "travel",
+    "takes": "takes",
+    "duration": "takes",
 }
 _WRITE_LABELS: Final[dict[Field, str]] = {
     "attending": "Attending",
@@ -67,6 +69,7 @@ _WRITE_LABELS: Final[dict[Field, str]] = {
     "along": "Take along",
     "arrive_by": "Arrive by",
     "travel": "Travel",
+    "takes": "Takes",
 }
 _NOT_NEEDED_WORDS: Final = frozenset({"not needed", "none", "no", "n/a", "na", "no ride", "not required"})
 _YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying"})
@@ -126,6 +129,14 @@ class DriverDirectory:
                 return kid
         return None
 
+    def rider(self, value: str) -> str | None:
+        """Who a name in Take along means: a kid id, a routed driver id (who can ride along to
+        the other parent's own event), or None."""
+        if (kid := self.kid(value)) is not None:
+            return kid
+        found = self.resolve(value)
+        return found if found in self.names else None
+
     def resolve(self, value: str) -> str:
         """The driver id, :data:`NOT_NEEDED`, :data:`UNASSIGNED`, or a carpool name."""
         value = " ".join(value.split())
@@ -161,12 +172,15 @@ class RideNotes:
     """False when the kid isn't going this time, so the event needs no rides."""
     stay: bool = False
     along: tuple[str, ...] = ()
-    """Kid ids taken along on this drop-off, so the driver can go on to their own drop-offs
-    without coming home for them."""
+    """Who is taken along: kid ids, and on a parent's own event the other parent's driver id
+    too. On a kid's drop-off, the driver can go on to the other kids' drop-offs without coming
+    home for them."""
     arrive_by: int | None = None
     """Minutes after midnight."""
     travel: int | None = None
     """A manual drive time in minutes, overriding the computed one."""
+    takes: int | None = None
+    """For an errand on a parent's calendar: the minutes it takes, any time in the event."""
     has_block: bool = False
     problems: tuple[str, ...] = ()
     """Lines that couldn't be read, worded for people."""
@@ -225,6 +239,7 @@ def write_notes(
     arrive_by: int | Keep | None = KEEP,
     travel: int | Keep | None = KEEP,
     attending: bool | Keep = KEEP,
+    takes: int | Keep | None = KEEP,
     event_start: int | None = None,
 ) -> str:
     """Return the description with ride settings changed.
@@ -244,6 +259,7 @@ def write_notes(
         "along": along,
         "arrive_by": arrive_by,
         "travel": travel,
+        "takes": takes,
     }
     changed = {
         f: _norm(f, v, directory)
@@ -375,6 +391,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     along: list[str] = []
     arrive_by: int | None = None
     travel: int | None = None
+    takes: int | None = None
     problems: list[str] = []
     found = _locate(doc)
     for fld in FIELDS:
@@ -396,8 +413,8 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         elif fld == "along":
             if raw.casefold() not in _NOBODY:
                 for name in filter(None, _LIST_SPLIT_RE.split(raw)):
-                    if (kid := directory.kid(name)) is None:
-                        problems.append(f"{label}: “{name}” isn’t one of the kids")
+                    if (kid := directory.rider(name)) is None:
+                        problems.append(f"{label}: “{name}” isn’t one of the family")
                     elif kid not in along:
                         along.append(kid)
         elif fld == "stay":
@@ -409,6 +426,10 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         elif fld == "arrive_by":
             if raw and (arrive_by := parse_clock(raw, event_start)) is None:
                 problems.append(f"{label}: “{raw}” isn’t a time")
+        elif fld == "takes":
+            if raw and not (takes := parse_duration(raw)):
+                takes = None
+                problems.append(f"{label}: “{raw}” isn’t a number of minutes")
         elif raw and (travel := parse_duration(raw)) is None:
             problems.append(f"{label}: “{raw}” isn’t a number of minutes")
     return RideNotes(
@@ -419,6 +440,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         along=tuple(along),
         arrive_by=arrive_by,
         travel=travel,
+        takes=takes,
         has_block=doc.header is not None,
         problems=tuple(problems),
     )
@@ -431,7 +453,7 @@ def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
         return bool(value)
     if fld == "along":
         names = [value] if isinstance(value, str) else list(value) if isinstance(value, Iterable) else []
-        kids = [directory.kid(str(v)) for v in names]
+        kids = [directory.rider(str(v)) for v in names]
         return tuple(dict.fromkeys(k for k in kids if k is not None))
     if isinstance(value, (int, float)):
         return int(value)
@@ -450,7 +472,8 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
         return None if value else f"{label}: no"
     if fld == "along":
         assert isinstance(value, tuple)
-        return f"{label}: {', '.join(directory.kids[k] for k in value)}" if value else None
+        names = (directory.kids.get(k) or directory.names.get(k, k) for k in value)
+        return f"{label}: {', '.join(names)}" if value else None
     if not isinstance(value, int):
         return None
     if fld == "arrive_by":

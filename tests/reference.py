@@ -87,6 +87,9 @@ def event_from_json(e: Mapping[str, Any]) -> RideEvent:
         stay=e["stay"],
         arrive_by=e["arriveBy"],
         along=tuple(e.get("along") or ()),
+        own=e.get("own"),
+        parents=tuple(e.get("parents") or ()),
+        takes=e.get("takes"),
     )
 
 

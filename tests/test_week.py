@@ -280,7 +280,7 @@ def test_plan_payload() -> None:
     assert piano["lines"]["drop"]["tone"] in ("normal", "problem")
     robin = tue["drivers"]["mom"]
     assert robin["name"] == "Robin"
-    assert robin["busy"] == [{"start": 480, "end": 955, "title": "Work"}]
+    assert robin["busy"] == [{"start": 480, "end": 955, "title": "Work", "event": None}]
     assert robin["segments"]
     assert robin["outings"][0]["lead"].startswith("Leave ")
     kinds = {(x["level"], x["kind"]) for x in tue["issues"]}
@@ -437,3 +437,215 @@ def test_events_not_attended() -> None:
     assert {(x["kind"], x["event"]) for x in tue["issues"]} == {("unassigned", "tap")}
     assert tue["drivers"]["mom"]["segments"] == []
     assert tue["drivers"]["dad"]["segments"] == []
+
+
+DENTIST = "Smile Dental, 5 Elm St, Springfield"
+
+
+def test_parents_own_events_get_rides() -> None:
+    w = week(
+        {
+            ROBIN: [
+                timed(
+                    "dentist",
+                    "Dentist",
+                    at(3, "14:00"),
+                    at(3, "15:00"),
+                    location=DENTIST,
+                    description="Take along: Ben, Sam\nTravel: 25 min",
+                ),
+                timed("call", "Call", at(3, "09:00"), at(3, "10:00"), location="Zoom"),
+                timed("chores", "Chores", at(3, "10:00"), at(3, "11:00"), location="Home"),
+                timed("shift", "Night shift", at(4, "22:00"), at(5, "07:00"), location="Hospital"),
+                all_day("trip", "Denver", "2026-11-06", "2026-11-07", location="Denver", transparency="opaque"),
+            ],
+        }
+    )
+    tue = w.days[0]
+    [dentist] = tue.events
+    assert dentist.kid == "mom"
+    assert dentist.own == "mom"
+    assert (dentist.drop, dentist.pick, dentist.stay) == ("mom", "mom", True)
+    assert dentist.along == (BEN,)
+    assert dentist.parents == ("dad",)
+    assert (dentist.start, dentist.end, dentist.loc) == (840, 900, "smile dental, 5 elm st, springfield")
+    assert tue.refs["dentist"] == EventRef(ROBIN, "dentist", "", None, ("drop", "pick"))
+    assert w.labels.short_places[dentist.loc] == "Smile Dental"
+    assert w.travel_overrides == {dentist.loc: 25}
+    # Online, at home, overnight and all day are only busy time, as before.
+    assert tue.busy["mom"] == [BusyBlock(540, 600, "Call"), BusyBlock(600, 660, "Chores")]
+    assert w.days[1].busy["mom"] == [BusyBlock(1320, 1800, "Night shift")]
+    assert w.days[3].busy["mom"] == [BusyBlock(0, 1440, "Denver")]
+    assert all(not d.events for d in w.days[1:])
+
+
+def test_an_event_on_both_parents_calendars_is_one_trip() -> None:
+    game = timed("game", "Soccer game", at(3, "18:00"), at(3, "20:00"), location="City park")
+    w = week({ROBIN: [game], SAM: [game]})
+    [e] = w.days[0].events
+    assert (e.own, e.parents) == ("mom", ("dad",))
+    assert w.days[0].busy == {}
+
+
+def test_a_parents_event_not_attended() -> None:
+    w = week(
+        {
+            ROBIN: [
+                timed("gym", "NO: Gym", at(3, "06:00"), at(3, "07:00"), location="Gym", description="Take along: Sam"),
+                timed(
+                    "book", "Book club", at(3, "19:00"), at(3, "21:00"), location="Library", description="Attending: no"
+                ),
+            ],
+            SAM: [timed("gym", "NO: Gym", at(3, "06:00"), at(3, "07:00"), location="Gym")],
+        }
+    )
+    gym, book = w.days[0].events
+    assert gym.title == "Gym"
+    for e in (gym, book):
+        assert (e.attending, e.drop, e.pick, e.stay, e.along, e.parents) == (
+            False,
+            NOT_NEEDED,
+            NOT_NEEDED,
+            False,
+            (),
+            (),
+        )
+    # Not going, so not busy either.
+    assert w.days[0].busy == {}
+
+
+def test_a_kids_event_on_a_parents_calendar_stays_busy_time() -> None:
+    piano = timed("piano", "Piano", at(3, "16:00"), at(3, "17:00"), location=SCHOOL)
+    w = week({AVA: [piano], ROBIN: [piano]})
+    [e] = w.days[0].events
+    assert (e.kid, e.own) == (AVA, None)
+    assert w.days[0].busy["mom"] == [BusyBlock(960, 1020, "Piano")]
+
+
+def test_parents_only_go_along_to_a_parents_event() -> None:
+    w = week(
+        {
+            AVA: [
+                timed(
+                    "piano",
+                    "Piano",
+                    at(3, "16:00"),
+                    at(3, "17:00"),
+                    location=SCHOOL,
+                    description="Take along: Ben, Sam",
+                )
+            ]
+        }
+    )
+    [e] = w.days[0].events
+    assert e.along == (BEN,)
+    assert w.days[0].problems["piano"] == ("Take along: “Sam” can only go along to a parent’s own event",)
+
+
+def test_own_event_payload() -> None:
+    w = week(
+        {
+            ROBIN: [
+                timed(
+                    "dentist",
+                    "Dentist",
+                    at(3, "14:00"),
+                    at(3, "15:00"),
+                    location=DENTIST,
+                    description="Take along: Ben, Sam",
+                )
+            ]
+        },
+        days=1,
+    )
+    [tue] = plan_week(w, lambda _day: make_travel({}, 15), PlannerSettings(), ("mom", "dad"))
+    [e] = tue["events"]
+    assert (e["own"], e["kid"], e["along"]) == ("mom", "mom", [BEN, "dad"])
+    assert e["lines"]["drop"] == {"text": "Leaves 1:38", "tone": "normal"}
+    assert e["lines"]["pick"] == {"text": "Home 3:15", "tone": "normal"}
+    robin, sam = tue["drivers"]["mom"], tue["drivers"]["dad"]
+    assert robin["busy"] == [{"start": 840, "end": 900, "title": "Dentist", "event": "dentist"}]
+    # Sam rides along, so Sam is busy for the whole trip.
+    assert sam["busy"] == [{"start": 818, "end": 915, "title": "Dentist", "event": None}]
+    [outing] = robin["outings"]
+    assert outing["title"] == "Dentist at Smile Dental"
+    assert outing["first_drop"] is None
+    assert outing["parents"] == {"dad": "Leave home at 1:38 PM with Robin"}
+    assert not outing["solo"]
+    assert tue["kids"][BEN]["items"]
+    assert tue["issues"] == []
+
+
+def test_a_trip_alone_to_a_parents_own_event_is_solo() -> None:
+    w = week({ROBIN: [timed("dentist", "Dentist", at(3, "14:00"), at(3, "15:00"), location=DENTIST)]}, days=1)
+    [tue] = plan_week(w, lambda _day: make_travel({}, 15), PlannerSettings(), ("mom", "dad"))
+    [outing] = tue["drivers"]["mom"]["outings"]
+    assert outing["solo"]
+    assert (outing["kids"], outing["parents"], outing["riders"]) == ([], {}, {})
+    assert tue["drivers"]["dad"]["busy"] == []
+
+
+GYM = "Middle school gym, 15 School Ln"
+
+
+def test_an_errand_fits_into_another_trip() -> None:
+    w = week(
+        {
+            ROBIN: [
+                # Marked Free, since it only takes a few minutes of the time.
+                timed(
+                    "jersey",
+                    "Jersey pick-up",
+                    at(3, "14:30"),
+                    at(3, "17:30"),
+                    location=GYM,
+                    description="Takes: 10 min\nTake along: Ben",
+                    transparency="transparent",
+                ),
+                timed("free", "Coffee", at(3, "09:00"), at(3, "10:00"), location="Cafe", transparency="transparent"),
+            ],
+            AVA: [
+                timed(
+                    "piano",
+                    "Piano",
+                    at(3, "16:00"),
+                    at(3, "17:00"),
+                    location=SCHOOL,
+                    description="Pick-up: Robin\nDrop-off: Not needed",
+                )
+            ],
+        },
+        days=1,
+    )
+    jersey = next(e for e in w.days[0].events if e.id == "jersey")
+    assert (jersey.takes, jersey.start, jersey.end, jersey.along) == (10, 870, 1050, ())
+    assert [e.id for e in w.days[0].events] == ["jersey", "piano"]
+
+    def base(a: str, b: str) -> float | None:
+        return (
+            6 if {a, b} == {"lincoln elementary, 100 main st, springfield", "middle school gym, 15 school ln"} else None
+        )
+
+    [tue] = plan_week(w, lambda _day: make_travel({}, 15, base), PlannerSettings(), ("mom", "dad"))
+    robin = tue["drivers"]["mom"]
+    # Robin picks Ava up at 5 and stops at the gym on the way home.
+    [outing] = robin["outings"]
+    assert outing["title"] == "Pick up Ava at Lincoln Elementary, Jersey pick-up at Middle school gym"
+    assert outing["lines"] == [
+        "5:00  Lincoln Elementary, pick up Ava",
+        "5:06  Middle school gym, Jersey pick-up",
+        "5:31  Home",
+    ]
+    assert not outing["solo"]
+    e = next(e for e in tue["events"] if e["id"] == "jersey")
+    assert (e["takes"], e["planned"]) == (10, 1026)
+    assert e["lines"]["drop"] == {"text": "Stop at 5:06", "tone": "normal"}
+    assert robin["busy"] == [{"start": 1026, "end": 1036, "title": "Jersey pick-up", "event": "jersey"}]
+    assert tue["issues"] == []
+
+
+def test_an_errand_goes_on_a_parents_calendar() -> None:
+    w = week({AVA: [timed("jersey", "Jersey", at(3, "14:30"), at(3, "17:30"), location=GYM, description="Takes: 10")]})
+    [e] = w.days[0].events
+    assert e.takes is None
+    assert w.days[0].problems["jersey"] == ("Takes: errands go on a parent’s own calendar",)

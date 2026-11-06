@@ -68,6 +68,20 @@ Setup asks which of your Google calendars to use:
   Events marked Free and events they declined don't count. All-day events count only when marked
   Busy, which Google doesn't do by default.
 
+A parent's own event at a set time and a real address, such as a dentist visit or a soccer game,
+gets a ride too: that parent drives there, stays, and drives back, and the drive counts as busy
+time. Kids or the other parent can go along (see Take along below). The same event on both
+parents' calendars is one trip, with the second parent along. Online events, events at home,
+all-day events and ones running past 6 AM the next day are just busy time, as before. A trip
+alone to your own event gets no leave reminder, since you know your own day; one with someone
+along reminds the driver and tells each rider when they leave.
+
+An errand is a parent's own event with a `Takes` line, such as `Takes: 10 min` on "Pick up the
+jersey" from 2:30 to 5:30 PM. The event's start and end are the window, and the planner picks
+when to go, stopping on the way to or from another trip when that fits. The card then says when
+("Stop at 4:40"), and the driver gets the usual leave reminder. An errand counts even when the
+event is marked Free, and it takes nobody along.
+
 Calendars you don't pick are never read. An event that ends by 6 AM the next day stays on the day
 it starts. A longer one, such as a weekend trip, is planned as a drop-off on its first day and a
 pick-up on its last. Change the calendars later under the integration's **Configure** button.
@@ -126,10 +140,11 @@ Travel: 25 min
 | --- | --- | --- |
 | Drop-off, Pick-up | A parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver) | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
-| Take along | Kids' names, such as Ben, Cleo | Nobody else rides along. Kids named here leave home in the same car on this drop-off, so the driver can go on to their own drop-offs without coming home for them |
+| Take along | Kids' names, such as Ben, Cleo, and on a parent's own event the other parent | Nobody else rides along. Kids named here leave home in the same car on this drop-off, so the driver can go on to their own drop-offs without coming home for them. On a parent's own event, everyone named goes there and back with that parent |
 | Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive early by a margin that grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
+| Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
 
 An event the kid isn't going to stays on the board, marked "Not attending", but needs no rides,
 raises no problems or reminders, and never clashes with anything. Besides `Attending: no`, the old
@@ -150,11 +165,11 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 
 | Action | What it changes |
 | --- | --- |
-| `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet |
+| `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet. A parent always drives to their own event, so this and `set_stay` turn it down |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_attending` | Whether the kid is going (`attending`). Going again also takes an old `NO` off the start of the title |
 | `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to the usual margin before the start |
-| `mydashlight.set_take_along` | Which kids ride along on this drop-off (`kids`, by name), so the driver can go on to their own drop-offs without coming home for them. No kids takes nobody along |
+| `mydashlight.set_take_along` | Who rides along (`kids`, by name): on a kid's drop-off the other kids, so the driver can go on to their drop-offs without coming home for them; on a parent's own event, kids or the other parent. Empty takes nobody along |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
 
 The event actions take the event's `id` from `get_plan`. For a repeating event, `scope: this`

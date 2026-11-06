@@ -104,6 +104,11 @@ class Outing:
     """What each kid in the car needs to know, by kid: when they leave or are picked up."""
     go: Going | None = None
     """Where the drive starts and the first place it has to be by a set time."""
+    parents: dict[str, str] = field(default_factory=dict)
+    """The other parent riding along to this driver's own event, by driver id: when they leave."""
+    solo: bool = False
+    """Only this driver going to their own events, with nobody along. They know their own day,
+    so it gets no reminder."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,7 +167,7 @@ def build_day(
         rides=rides,
         kid_items=kid_items,
         clashes=_clashes(kid_items),
-        outings={d: _outings(plan, d, busy, labels) for d in drivers},
+        outings={d: _outings(plan, d, plan.busy, labels) for d in drivers},
         lines=_card_lines(events, plan, rides, labels, drivers),
     )
 
@@ -183,7 +188,7 @@ def _rides(plan: DayPlan, drivers: Sequence[str]) -> list[Ride]:
                 # A ride belongs to a kid when it serves their own stop.
                 own = prev.own if prev else True
                 if g.serves is not None:
-                    own = g.serves.kid == k
+                    own = g.serves.attends(k)
                 if prev is not None and prev.own == own:
                     prev.end = g.end
                     prev.legs.append(g)
@@ -197,12 +202,14 @@ def _kid_items(events: Sequence[RideEvent], rides: list[Ride], kids: Sequence[st
     # that's lateness, not a clash.
     items: dict[str, list[KidItem]] = {k: [] for k in kids}
     for e in events:
-        items.setdefault(e.kid, []).append(KidItem("act", e.start, e.end, event=e))
+        # A parent's own event is in the column of each kid going along, not a kid's of its own.
+        for k in e.along if e.own is not None else (e.kid,):
+            items.setdefault(k, []).append(KidItem("act", e.start, e.end, event=e))
     for r in rides:
         s, en = r.start, r.end
         for g in r.legs:
             served = g.serves
-            if served is None or served.kid != r.kid:
+            if served is None or not served.attends(r.kid):
                 continue
             if r.start < served.start < en:
                 en = served.start
@@ -269,8 +276,10 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 continue
             at = fmt(s.arrive)
             place = labels.short_place(s.loc)
-            k = labels.kid(s.event.kid) if s.event else ""
-            if s.kind in ("drop", "stay") and o.first_drop is None:
+            own = s.event is not None and s.event.own is not None
+            k = labels.kid(s.event.kid) if s.event and not own else ""
+            if s.kind in ("drop", "stay") and o.first_drop is None and not own:
+                # A parent's own event gets no Google reminder: it would be the signed-in account's.
                 o.first_drop = s.event
             if s.kind == "pick" and s.event is not None:
                 when = fmt12(max(s.arrive, s.ready or 0))
@@ -286,7 +295,12 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                     jobs[-1][2].append(k)
                 else:
                     jobs.append((s.kind, place, [k]))
-            if s.kind == "drop":
+            if own and s.event is not None:
+                for x in s.event.parents:
+                    o.parents.setdefault(x, f"Leave home at {fmt12(o.start)} with {name}")
+                jobs.append(("errand" if s.event.takes is not None else "go", place, [s.event.title]))
+                lines.append(f"{fmt(max(s.arrive, s.ready or 0))}  {place}, {s.event.title}")
+            elif s.kind == "drop":
                 lines.append(f"{at}  {place}, drop off {k}")
             elif s.kind == "stay":
                 lines.append(f"{at}  {place}, stay with {k}")
@@ -317,6 +331,8 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         o.warn = warn
         o.target = next((g.serves for g in o.legs if g.serves is not None), None)
         o.go = _going(p.stops, o, first, labels)
+        # An errand's time is the planner's pick, so the driver hears about it.
+        o.solo = bool(jobs) and all(j[0] == "go" for j in jobs) and not kids and not o.parents
     return outings
 
 
@@ -334,6 +350,8 @@ def _going(stops: Sequence[Stop], o: Outing, first: Segment, labels: Labels) -> 
             continue
         if s.kind == "pick":
             due = s.ready
+        elif s.event is not None and s.event.takes is not None:
+            due = s.deadline
         elif s.event is not None:
             # When they have to be there, without the arrive-early margin: that's the slack.
             due = s.event.arrive_by if s.event.arrive_by is not None else s.event.start
@@ -361,8 +379,16 @@ def _outing_title(jobs: list[tuple[str, str, list[str]]]) -> str:
             return f"Drive {who} to {place}"
         if kind == "stay":
             return f"Drive {who} to {place} and stay"
+        if kind in ("go", "errand"):
+            return f"{who} at {place}"
         return f"Pick up {who} at {place}"
-    verbs = {"drop": "drop off {} at {}", "stay": "take {} to {} and stay", "pick": "pick up {} at {}"}
+    verbs = {
+        "drop": "drop off {} at {}",
+        "stay": "take {} to {} and stay",
+        "pick": "pick up {} at {}",
+        "go": "{} at {}",
+        "errand": "{} at {}",
+    }
     text = ", ".join(verbs[kind].format(_and(names), place) for kind, place, names in jobs)
     return text[0].upper() + text[1:]
 
@@ -427,6 +453,9 @@ def _card_lines(
         if not e.attending:
             out[e.id] = CardLines(CardLine("Not attending", "muted"), None)
             continue
+        if e.own is not None and e.own in drivers:
+            out[e.id] = _own_lines(e, plan, labels)
+            continue
         if e.loc == HOME:
             out[e.id] = CardLines(CardLine("At home", "muted"), None)
             continue
@@ -439,3 +468,45 @@ def _card_lines(
             pick = line("pick", back)
         out[e.id] = CardLines(line("drop", there), pick)
     return out
+
+
+def planned_at(e: RideEvent, plan: DayPlan) -> float | None:
+    """When a parent's errand is planned to start, or None when it isn't planned."""
+    if e.own is None or e.own not in plan.drivers:
+        return None
+    for s in plan[e.own].stops:
+        if s.event is not None and s.event.id == e.id and s.arrive is not None:
+            return max(s.arrive, s.ready or 0)
+    return None
+
+
+def _own_lines(e: RideEvent, plan: DayPlan, labels: Labels) -> CardLines:
+    """A parent's own event: when they leave for it, and when they're home or off again."""
+    assert e.own is not None
+    p = plan[e.own]
+    late = next(
+        (x for x in p.issues if x.kind == "late" and x.event is not None and x.event.id == e.id),
+        None,
+    )
+    extra = f", {minutes_text(late.minutes)} min late" if late else ""
+    tone: Tone = "problem" if late else "normal"
+    stop = next((st for st in p.stops if st.event is not None and st.event.id == e.id), None)
+    there = next((g for g in stop.legs if g.type == "drive"), None) if stop else None
+    drop: CardLine | None = None
+    when = planned_at(e, plan)
+    if e.takes is not None and when is not None:
+        drop = CardLine(f"Stop at {fmt(when)}{extra}", tone)
+    elif there is not None:
+        start = there.from_loc or HOME
+        lead = "Leaves" if start == HOME else f"From {labels.short_place(start)}"
+        drop = CardLine(f"{lead} {fmt(there.start)}{extra}", tone)
+    pick: CardLine | None = None
+    at = next(
+        (i for i, g in enumerate(p.segments) if g.type == "stay" and g.event is not None and g.event.id == e.id), None
+    )
+    if at is not None:
+        after = next((g for g in p.segments[at + 1 :] if g.type == "drive"), None)
+        if after is not None:
+            text = f"Home {fmt(after.end)}" if after.to_loc == HOME else f"Leaves {fmt(after.start)}"
+            pick = CardLine(text, "normal")
+    return CardLines(drop, pick)

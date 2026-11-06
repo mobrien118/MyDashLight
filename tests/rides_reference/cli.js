@@ -81,6 +81,15 @@ function scenarios() {
   var t3 = day(0);
   t3.forEach(function (e) { if (e.id === 'volley') { e.start = 960; e.end = 1050; } });
   out.push(scenario('Thursday with volleyball moved on top of piano (double-booked)', 0, t3));
+  var t4 = day(3);
+  t4.push({ id: 'sun-league', day: 3, kid: 'dad', own: 'dad', title: 'Soccer league', loc: 'soccer', start: 840, end: 960, drop: 'dad', pick: 'dad', stay: true, arriveBy: null, along: ['ben'], parents: ['mom'] });
+  out.push(scenario("Sunday with Sam's own soccer game, Ben and Robin along", 3, t4));
+  var t5 = day(0);
+  t5.push({ id: 'thu-errand', day: 0, kid: 'mom', own: 'mom', title: 'Jersey pick-up', loc: 'gym', start: 990, end: 1050, drop: 'mom', pick: 'mom', stay: true, arriveBy: null, along: [] });
+  out.push(scenario("Thursday with Robin's own errand between piano and soccer", 0, t5));
+  var t6 = day(0);
+  t6.push({ id: 'thu-jersey', day: 0, kid: 'mom', own: 'mom', title: 'Jersey pick-up', loc: 'gym', start: 870, end: 1050, drop: 'mom', pick: 'mom', stay: true, arriveBy: null, along: [], takes: 10 });
+  out.push(scenario("Thursday with Robin's 10-minute jersey pick-up any time from 2:30 to 5:30", 0, t6));
   return {
     note: "Expected planner output for the reference data in planner-reference.js. Times use the event day's local time. Travel times come from the DRIVE table there.",
     scenarios: out
