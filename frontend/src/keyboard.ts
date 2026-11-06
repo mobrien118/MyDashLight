@@ -298,13 +298,22 @@ function deepActive(): Element | null {
   return el;
 }
 
-/** Shows the keyboard whenever a text box anywhere on the page, even inside the board, gets focus. */
+/**
+ * Shows the keyboard whenever a text box anywhere on the page, even inside the board, gets focus.
+ *
+ * Focus moving between two things inside the same shadow root (from a button in the board to a text
+ * box in its panel) never reaches the document: the browser trims the event where both ends look
+ * like the board itself. So each shadow root a tap or focus passes through gets its own listeners.
+ */
 export function useKeyboard(keyboard: MyDashLightKeyboard): void {
-  document.addEventListener("focusin", (ev) => {
-    const el = ev.composedPath()[0];
+  const watched = new WeakSet<Document | ShadowRoot>();
+  const onFocusIn = (ev: Event): void => {
+    const path = ev.composedPath();
+    watchRoots(path);
+    const el = path[0];
     if (isTextField(el)) keyboard.attach(el);
-  });
-  document.addEventListener("focusout", () => {
+  };
+  const onFocusOut = (): void => {
     // Focus moves after focusout; look once it has landed.
     setTimeout(() => {
       const el = deepActive();
@@ -312,7 +321,19 @@ export function useKeyboard(keyboard: MyDashLightKeyboard): void {
       if (isTextField(el)) keyboard.attach(el);
       else keyboard.detach();
     }, 0);
-  });
+  };
+  const watch = (root: Document | ShadowRoot): void => {
+    if (watched.has(root)) return;
+    watched.add(root);
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("focusout", onFocusOut);
+  };
+  const watchRoots = (path: EventTarget[]): void => {
+    for (const node of path) if (node instanceof ShadowRoot) watch(node);
+  };
+  watch(document);
+  // A tap always reaches the document, and comes before the focus it causes.
+  document.addEventListener("pointerdown", (ev) => watchRoots(ev.composedPath()), { capture: true });
   // A text box that disappears while focused (its panel closed) may not say it lost focus.
   setInterval(() => {
     if (keyboard.target && !keyboard.target.isConnected) keyboard.detach();
