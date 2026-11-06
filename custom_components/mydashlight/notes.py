@@ -126,6 +126,14 @@ class DriverDirectory:
                 return kid
         return None
 
+    def rider(self, value: str) -> str | None:
+        """Who a name in Take along means: a kid id, a routed driver id (who can ride along to
+        the other parent's own event), or None."""
+        if (kid := self.kid(value)) is not None:
+            return kid
+        found = self.resolve(value)
+        return found if found in self.names else None
+
     def resolve(self, value: str) -> str:
         """The driver id, :data:`NOT_NEEDED`, :data:`UNASSIGNED`, or a carpool name."""
         value = " ".join(value.split())
@@ -161,8 +169,9 @@ class RideNotes:
     """False when the kid isn't going this time, so the event needs no rides."""
     stay: bool = False
     along: tuple[str, ...] = ()
-    """Kid ids taken along on this drop-off, so the driver can go on to their own drop-offs
-    without coming home for them."""
+    """Who is taken along: kid ids, and on a parent's own event the other parent's driver id
+    too. On a kid's drop-off, the driver can go on to the other kids' drop-offs without coming
+    home for them."""
     arrive_by: int | None = None
     """Minutes after midnight."""
     travel: int | None = None
@@ -396,8 +405,8 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         elif fld == "along":
             if raw.casefold() not in _NOBODY:
                 for name in filter(None, _LIST_SPLIT_RE.split(raw)):
-                    if (kid := directory.kid(name)) is None:
-                        problems.append(f"{label}: “{name}” isn’t one of the kids")
+                    if (kid := directory.rider(name)) is None:
+                        problems.append(f"{label}: “{name}” isn’t one of the family")
                     elif kid not in along:
                         along.append(kid)
         elif fld == "stay":
@@ -431,7 +440,7 @@ def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
         return bool(value)
     if fld == "along":
         names = [value] if isinstance(value, str) else list(value) if isinstance(value, Iterable) else []
-        kids = [directory.kid(str(v)) for v in names]
+        kids = [directory.rider(str(v)) for v in names]
         return tuple(dict.fromkeys(k for k in kids if k is not None))
     if isinstance(value, (int, float)):
         return int(value)
@@ -450,7 +459,8 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
         return None if value else f"{label}: no"
     if fld == "along":
         assert isinstance(value, tuple)
-        return f"{label}: {', '.join(directory.kids[k] for k in value)}" if value else None
+        names = (directory.kids.get(k) or directory.names.get(k, k) for k in value)
+        return f"{label}: {', '.join(names)}" if value else None
     if not isinstance(value, int):
         return None
     if fld == "arrive_by":

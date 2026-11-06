@@ -103,7 +103,7 @@ def goings(
                 continue
             for key, o in driver_outings(day, driver):
                 go = o.get("go")
-                if not go:
+                if not go or o.get("solo"):
                     continue
                 out.append(
                     Going(

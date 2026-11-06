@@ -194,6 +194,7 @@ def build_week(
             notes = parse_notes(ev.description, directory, start)
             if skipped:
                 notes = replace(notes, attending=False)
+            notes = _kids_only(notes, directory)
             base_id = ev.id
             kind = where(ev.location or "", home_address)
             if kind == "home":
@@ -282,13 +283,47 @@ def build_week(
                 if notes.travel is not None and "drop" in sides:
                     overrides[ride.loc] = max(overrides.get(ride.loc, 0), notes.travel)
 
+    # A parent's own event at a place, at a set time on one day: they drive themselves there,
+    # stay, and drive back, maybe with kids or the other parent along. Anything else on their
+    # calendar is just time they can't drive.
+    kid_event_ids = {ev.id for kid in roles.kids for ev in events.get(kid.calendar_id, ())}
+    owned: dict[tuple[str, str], tuple[DayInput, str]] = {}
     for driver, cal_ids in roles.busy.items():
         seen: set[tuple[str, str]] = set()
         for cal_id in cal_ids:
-            for ev in events.get(cal_id, ()):
-                if not ev.busy or ev.declined or (ev.id, str(ev.start)) in seen:
+            for ev in sorted(events.get(cal_id, ()), key=_sort_key):
+                seen_key = (ev.id, str(ev.start))
+                if not ev.busy or ev.declined or seen_key in seen:
                     continue
-                seen.add((ev.id, str(ev.start)))
+                seen.add(seen_key)
+                if seen_key in owned:
+                    # On both parents' calendars: the second one goes along.
+                    target, ride_id = owned[seen_key]
+                    i = next(i for i, e in enumerate(target.events) if e.id == ride_id)
+                    e = target.events[i]
+                    if e.attending and driver != e.own and driver not in e.parents:
+                        target.events[i] = replace(e, parents=(*e.parents, driver))
+                    continue
+                own = None if ev.id in kid_event_ids else _own_event(ev, driver, directory, tz, home_address)
+                if own is not None:
+                    first, ride, notes = own
+                    target = by_day.get(first)
+                    if target is None:
+                        continue
+                    ride_id = _unique_id(ev.id, target.refs)
+                    ride = replace(ride, id=ride_id)
+                    owned[seen_key] = (target, ride_id)
+                    places.setdefault(ride.loc, ev.location or "")
+                    short.setdefault(ride.loc, short_place(ev.location or ""))
+                    target.events.append(ride)
+                    target.refs[ride_id] = EventRef(
+                        ev.calendar_id, ev.id, ev.etag, ev.recurring_id, ("drop", "pick"), ev.popups, ev.private
+                    )
+                    if notes.problems:
+                        target.problems[ride_id] = notes.problems
+                    if notes.travel is not None and ride.attending:
+                        overrides[ride.loc] = max(overrides.get(ride.loc, 0), notes.travel)
+                    continue
                 for d in day_list:
                     block = _busy_on(ev, d, tz)
                     if block is not None:
@@ -372,6 +407,59 @@ def _sides(notes: RideNotes) -> dict[str, Any]:
         "along": notes.along,
         "attending": notes.attending,
     }
+
+
+def _own_event(
+    ev: CalendarEvent, driver: str, directory: DriverDirectory, tz: tzinfo, home_address: str
+) -> tuple[date, RideEvent, RideNotes] | None:
+    """A parent's own event as a ride they drive themselves, with its day and notes, or None
+    when it's only busy time: all day, over more than a day, at home, or anywhere."""
+    if ev.all_day or where(ev.location or "", home_address) != "place":
+        return None
+    assert isinstance(ev.start, datetime)
+    assert isinstance(ev.end, datetime)
+    first = ev.start.astimezone(tz).date()
+    start = _minutes(ev.start, first, tz)
+    end = max(_minutes(ev.end, first, tz), start)
+    if end > NEXT_MORNING:
+        return None
+    title, skipped = skip_prefix(ev.title or NO_TITLE)
+    notes = parse_notes(ev.description, directory, start)
+    attending = notes.attending and not skipped
+    kids = tuple(a for a in notes.along if a in directory.kids) if attending else ()
+    parents = tuple(a for a in notes.along if a in directory.names and a != driver) if attending else ()
+    side = driver if attending else NOT_NEEDED
+    ride = RideEvent(
+        ev.id,
+        driver,
+        title,
+        place_key(ev.location or ""),
+        start,
+        end,
+        drop=side,
+        pick=side,
+        stay=attending,
+        arrive_by=notes.arrive_by if attending else None,
+        along=kids,
+        attending=attending,
+        own=driver,
+        parents=parents,
+    )
+    return first, ride, notes
+
+
+def _kids_only(notes: RideNotes, directory: DriverDirectory) -> RideNotes:
+    """A kid's event takes only kids along. A parent can only go along to the other parent's
+    own event."""
+    kids = tuple(a for a in notes.along if a in directory.kids)
+    if kids == notes.along:
+        return notes
+    extra = tuple(
+        f"Take along: “{directory.names.get(a, a)}” can only go along to a parent’s own event"
+        for a in notes.along
+        if a not in directory.kids
+    )
+    return replace(notes, along=kids, problems=notes.problems + extra)
 
 
 def _sort_key(ev: CalendarEvent) -> tuple[str, str]:

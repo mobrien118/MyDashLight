@@ -29,6 +29,7 @@
      "stay": true,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -64,6 +65,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -99,6 +101,7 @@
      "stay": false,
      "arrive_by": 1035,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -134,6 +137,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -169,6 +173,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -299,7 +304,9 @@
         "to_name": "Piano studio",
         "due": 945,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1095,
@@ -326,7 +333,9 @@
         "to_name": "Soccer fields",
         "due": 1110,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": []
@@ -458,7 +467,9 @@
         "to_name": "Soccer fields",
         "due": 1020,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1120,
@@ -485,14 +496,17 @@
         "to_name": "Football field",
         "due": 1140,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": [
       {
        "start": 780,
        "end": 1000,
-       "title": "Work"
+       "title": "Work",
+       "event": null
       }
      ]
     }
@@ -759,6 +773,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -794,6 +809,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -829,6 +845,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -944,7 +961,9 @@
         "to_name": "Soccer fields",
         "due": 1020,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1065,
@@ -971,7 +990,9 @@
         "to_name": "Soccer fields",
         "due": 1080,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": []
@@ -1073,7 +1094,9 @@
         "to_name": "Liam's house",
         "due": 1080,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1221,
@@ -1100,14 +1123,17 @@
         "to_name": "Liam's house",
         "due": 1230,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": [
       {
        "start": 540,
        "end": 960,
-       "title": "Work"
+       "title": "Work",
+       "event": null
       }
      ]
     }
@@ -1247,6 +1273,7 @@
      "stay": false,
      "arrive_by": 465,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -1282,6 +1309,7 @@
      "stay": true,
      "arrive_by": 525,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -1317,6 +1345,7 @@
      "stay": true,
      "arrive_by": 640,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -1412,7 +1441,9 @@
         "to_name": "Football field",
         "due": 640,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": []
@@ -1529,7 +1560,9 @@
         "to_name": "Soccer fields",
         "due": 525,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 892,
@@ -1556,7 +1589,9 @@
         "to_name": "Middle school gym",
         "due": 900,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": []
@@ -1715,6 +1750,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -1795,7 +1831,9 @@
         "to_name": "Church",
         "due": 1080,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": []
@@ -1915,6 +1953,7 @@
      "along": [
       "kid-b@group.calendar.google.com"
      ],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -1950,6 +1989,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -2109,7 +2149,9 @@
         "to_name": "Piano studio",
         "due": 945,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 980,
@@ -2136,7 +2178,9 @@
         "to_name": "Piano studio",
         "due": 990,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1025,
@@ -2159,7 +2203,9 @@
         "to_name": "Football field",
         "due": 1050,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": []
@@ -2223,14 +2269,17 @@
         "to_name": "Football field",
         "due": 1140,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": [
       {
        "start": 540,
        "end": 1020,
-       "title": "Work"
+       "title": "Work",
+       "event": null
       }
      ]
     }
@@ -2362,6 +2411,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -2397,6 +2447,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -2432,6 +2483,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -2550,7 +2602,9 @@
         "to_name": "Soccer fields",
         "due": 1020,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1192,
@@ -2577,7 +2631,9 @@
         "to_name": "Middle school gym",
         "due": 1200,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": []
@@ -2698,14 +2754,17 @@
         "to_name": "Dance studio",
         "due": 1080,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": [
       {
        "start": 540,
        "end": 1020,
-       "title": "Work"
+       "title": "Work",
+       "event": null
       }
      ]
     }
@@ -2880,6 +2939,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -2915,6 +2975,7 @@
      "stay": false,
      "arrive_by": null,
      "along": [],
+     "own": null,
      "sides": [
       "drop",
       "pick"
@@ -3033,7 +3094,9 @@
         "to_name": "Dance studio",
         "due": 960,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1009,
@@ -3060,14 +3123,17 @@
         "to_name": "Dance studio",
         "due": 1020,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": [
       {
        "start": 720,
        "end": 780,
-       "title": "Dentist"
+       "title": "Dentist",
+       "event": null
       }
      ]
     },
@@ -3168,7 +3234,9 @@
         "to_name": "Football field",
         "due": 1050,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       },
       {
        "start": 1120,
@@ -3195,14 +3263,17 @@
         "to_name": "Football field",
         "due": 1140,
         "via_home": false
-       }
+       },
+       "parents": {},
+       "solo": false
       }
      ],
      "busy": [
       {
        "start": 540,
        "end": 1020,
-       "title": "Work"
+       "title": "Work",
+       "event": null
       }
      ]
     }

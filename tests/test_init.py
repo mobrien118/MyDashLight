@@ -103,7 +103,7 @@ async def test_get_plan(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert piano["kid"] == AVA
     assert piano["drop"] == "mom"
     assert today["kids"][AVA]["name"] == "Ava"
-    assert today["drivers"]["mom"]["busy"] == [{"start": 480, "end": 900, "title": "Work"}]
+    assert today["drivers"]["mom"]["busy"] == [{"start": 480, "end": 900, "title": "Work", "event": None}]
     assert today["drivers"]["mom"]["leave"] is not None
 
     plan = await get_plan(hass, date="2026-11-04", days=2)

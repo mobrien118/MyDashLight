@@ -85,7 +85,9 @@ def leave_reminders(
     """A reminder ``before`` minutes before every drive leaves, for each of ``recipients``.
 
     A recipient is a driver id (the driver's reminder says where to go) or a kid's calendar
-    id (the kid's says when they leave, or when they're picked up).
+    id (the kid's says when they leave, or when they're picked up). The other parent riding
+    along to a driver's own event is told when they leave too. A drive that's only the driver
+    going to their own events gets no reminder.
     """
     out: list[LeaveReminder] = []
     for day in days:
@@ -96,7 +98,7 @@ def leave_reminders(
                 leave = at_minutes(d, o["start"], tz)
                 at = leave - timedelta(minutes=before)
                 title = o.get("title") or "Drive"
-                if driver in recipients:
+                if driver in recipients and not o.get("solo"):
                     out.append(
                         LeaveReminder(
                             who=driver,
@@ -108,7 +110,8 @@ def leave_reminders(
                             target=target,
                         )
                     )
-                for kid, text in (o.get("riders") or {}).items():
+                riders = {**(o.get("riders") or {}), **(o.get("parents") or {})}
+                for kid, text in riders.items():
                     if kid in recipients:
                         out.append(
                             LeaveReminder(

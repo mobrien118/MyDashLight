@@ -149,7 +149,15 @@ def test_take_along_lists(value: str, along: tuple[str, ...]) -> None:
 def test_take_along_names_someone_who_is_not_a_kid() -> None:
     notes = parse_notes("Take along: Ben, Zed", KIDS)
     assert notes.along == ("k2",)
-    assert notes.problems == ("Take along: “Zed” isn’t one of the kids",)
+    assert notes.problems == ("Take along: “Zed” isn’t one of the family",)
+
+
+def test_take_along_a_parent() -> None:
+    # A parent can go along to the other parent's own event.
+    notes = parse_notes("Take along: Ben, Sam, robin", KIDS)
+    assert notes.along == ("k2", "dad", "mom")
+    assert notes.problems == ()
+    assert write_notes("", KIDS, along=("k2", "dad")) == "--- Rides ---\nTake along: Ben, Sam"
 
 
 def test_write_take_along() -> None:

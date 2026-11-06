@@ -7,6 +7,9 @@
 // An event's along lists the kids taken along on its drop-off: they leave home in the same car, so the
 // driver can go on to their own drop-offs without coming home for them (piggybacking). Changed
 // 2026-11-03 from a per-driver, per-day toggle, after Marty explained take-along is per event.
+// A parent's own event (Marty, 2026-11-06) has own set to that driver, and kid, drop and pick are that
+// driver too, with stay: they drive themselves there and stay. The kids in its along go too and leave
+// home in the car. Its parents lists the other driver when they ride along: busy for the whole trip.
 // The example data, place names and travel table below stand in for the Google calendars
 // and the Routes API.
 'use strict';
@@ -62,6 +65,9 @@ var INITIAL = [
   { id: 'wed-football', day: 6, kid: 'ben', title: 'Football', loc: 'football', start: 1050, end: 1140, drop: 'dad', pick: 'dad', stay: false, arriveBy: null }
 ];
 var isDriver = function (v) { return v === 'mom' || v === 'dad'; };
+// Whether a kid is at an event: their own activity, or a parent's own event they go along to.
+var attends = function (e, k) { return e.kid === k || (!!e.own && (e.along || []).indexOf(k) >= 0); };
+var nameOf = function (e) { return e.own ? PEOPLE[e.own] : K[e.kid].name; };
 // When the driver aims to have the kid there: the Arrive by time if one is set, otherwise a margin
 // before the start that grows with the drive from home: 5 + 1 minute per 6 minutes of driving, rounded
 // down, from 5 to 20. So 5 early for a 5-minute drive, 10 for 30, 15 for an hour (Marty, 2026-11-04).
@@ -119,6 +125,17 @@ function planDriver(d, events, busy) {
   var cur = function () { return stops[stops.length - 1]; };
   tasks.forEach(function (k, i) {
     var kid = k.e.kid;
+    if (k.e.own) {
+      // A parent's own event: the kids going too leave home with them.
+      var rs = (k.e.along || []).slice();
+      if (rs.some(function (r) { return car.indexOf(r) < 0; })) {
+        if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
+        car = rs.slice();
+        cur().car = car.slice();
+      }
+      stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, after: k.e.end, car: car.slice() });
+      return;
+    }
     if (k.type !== 'pick') {
       if (car.indexOf(kid) < 0) {
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
@@ -190,7 +207,7 @@ function planDriver(d, events, busy) {
         dep = Math.max(ready, tg);
       }
     }
-    if (s2.kind === 'stay' && ready > arr) tag({ type: 'stay', loc: s2.loc, start: arr, end: ready, e: s2.e, kids: s2.car.filter(function (k) { return k !== s2.e.kid && droppedHome.indexOf(k) < 0; }) }, s2);
+    if (s2.kind === 'stay' && ready > arr) tag({ type: 'stay', loc: s2.loc, start: arr, end: ready, e: s2.e, kids: s2.car.filter(function (k) { return !attends(s2.e, k) && droppedHome.indexOf(k) < 0; }) }, s2);
     if (s2.kind === 'fetch') droppedHome = [];
     carNow = s2.car.filter(function (k) { return droppedHome.indexOf(k) < 0; });
     from = s2.loc;
@@ -233,7 +250,26 @@ function planDriver(d, events, busy) {
   return out;
 }
 
+// The parents' busy times, plus each trip to the other parent's own event they ride along on: from
+// leaving home until back home.
+function withRidesAlong(events, busy) {
+  var out = {};
+  Object.keys(busy).forEach(function (d) { out[d] = busy[d].slice(); });
+  events.forEach(function (e) {
+    if (!e.own) return;
+    (e.parents || []).forEach(function (p) {
+      if (!isDriver(p) || p === e.own) return;
+      (out[p] = out[p] || []).push({ start: Math.floor(arriveAt(e) - travel('home', e.loc)), end: Math.ceil(e.end + travel(e.loc, 'home')), title: e.title });
+    });
+  });
+  Object.keys(out).forEach(function (d) {
+    out[d].sort(function (a, b) { return a.start - b.start || a.end - b.end || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0); });
+  });
+  return out;
+}
+
 function planAll(events, busy) {
+  busy = withRidesAlong(events, busy);
   var mom = planDriver('mom', events, busy), dad = planDriver('dad', events, busy);
   var hard = mom.issues.concat(dad.issues);
   events.forEach(function (e) {
@@ -242,7 +278,7 @@ function planAll(events, busy) {
   });
   var soft = mom.soft.concat(dad.soft);
   var mins = hard.reduce(function (a, x) { return a + (x.min || 0); }, 0);
-  return { mom: mom, dad: dad, hard: hard, soft: soft, score: hard.length * 1000 + mins * 10 + mom.drive + dad.drive };
+  return { mom: mom, dad: dad, hard: hard, soft: soft, score: hard.length * 1000 + mins * 10 + mom.drive + dad.drive, busy: busy };
 }
 
 function issueKey(x) {
@@ -250,7 +286,7 @@ function issueKey(x) {
 }
 
 function issueText(x) {
-  var e = x.e, kid = e ? K[e.kid].name : '';
+  var e = x.e, kid = e ? nameOf(e) : '';
   var who = x.d ? PEOPLE[x.d] : '';
   if (x.kind === 'busy') return { title: who + ' is still at ' + x.b.title, body: 'Leaving at ' + fmt(x.seg.start) + (e ? ' for ' + kid + '’s ' + e.title.toLowerCase() : '') + ' overlaps ' + x.b.title + ' until ' + fmt(x.b.end) + '.' };
   if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + (e.arriveBy != null ? 'the ' + fmt(e.arriveBy) + ' arrive-by time.' : 'the ' + fmt(x.s.deadline) + ' target.') };
@@ -285,16 +321,18 @@ function suggestionsFor(issue, events, base, busy) {
   } else if (issue.d) {
     var d = issue.d, o = d === 'mom' ? 'dad' : 'mom';
     events.forEach(function (e) {
+      if (e.own) return; // A parent's own event is always theirs to drive.
       ['drop', 'pick'].forEach(function (f) {
         if (e[f] === d) cands.push({ label: PEOPLE[o] + ' does ' + K[e.kid].name + '’s ' + (f === 'drop' ? 'drop-off' : 'pick-up'), change: { id: e.id, field: f, value: o }, who: o });
       });
     });
     // Take a kid along on an earlier drop-off by the same driver, at most 45 minutes before theirs.
     events.forEach(function (e) {
-      if (e.drop !== d) return;
+      if (e.drop !== d || e.own) return;
       events.forEach(function (f) {
         var gap = arriveAt(e) - arriveAt(f);
         if (f === e || f.drop !== d || f.kid === e.kid || gap < 0 || gap > 45) return;
+        if (f.own) return;
         if ((f.along || []).indexOf(e.kid) >= 0) return;
         cands.push({ label: null, change: { id: f.id, field: 'along', value: (f.along || []).concat([e.kid]) }, who: d, kid: e.kid });
       });
@@ -385,7 +423,7 @@ function buildDay(i, evs) {
       (g.kids || []).forEach(function (k) {
         var prev = null;
         rideList.forEach(function (r) { if (r.kid === k && r.d === d && r.en === g.start) prev = r; });
-        var own = g.anchor && g.anchor.e ? g.anchor.e.kid === k : (prev ? prev.own : true);
+        var own = g.anchor && g.anchor.e ? attends(g.anchor.e, k) : (prev ? prev.own : true);
         if (prev && prev.own === own) { prev.en = g.end; prev.legs.push(g); }
         else rideList.push({ kid: k, d: d, s: g.start, en: g.end, legs: [g], own: own });
       });
@@ -395,12 +433,13 @@ function buildDay(i, evs) {
   // Kid items: activities plus time in a car. A late arrival is trimmed at the start time: that's lateness, not a clash.
   var kidItems = {};
   KIDS.forEach(function (k) { kidItems[k] = []; });
-  evs.forEach(function (e) { kidItems[e.kid].push({ type: 'act', e: e, s: e.start, en: e.end }); });
+  // A parent's own event is in the column of each kid going along.
+  evs.forEach(function (e) { (e.own ? (e.along || []) : [e.kid]).forEach(function (k) { kidItems[k].push({ type: 'act', e: e, s: e.start, en: e.end }); }); });
   rideList.forEach(function (r) {
     var s = r.s, en = r.en;
     r.legs.forEach(function (g) {
       var e = g.anchor && g.anchor.e;
-      if (!e || e.kid !== r.kid) return;
+      if (!e || !attends(e, r.kid)) return;
       if (r.s < e.start && en > e.start) en = e.start;
       if (r.en > e.end && s < e.end) s = e.end;
     });
@@ -438,8 +477,9 @@ function buildDay(i, evs) {
       o.legs.forEach(function (g) { (g.kids || []).forEach(function (x) { if (kids.indexOf(x) < 0) kids.push(x); }); });
       p.stops.forEach(function (s, idx) {
         if (idx === 0 || s.arr == null || s.arr < o.s || s.arr > o.en) return;
-        var at = fmt(s.arr), place = SHORT[s.loc], k = s.e ? K[s.e.kid].name : '';
-        if (s.kind === 'drop') lines.push(at + '  ' + place + ', drop off ' + k);
+        var at = fmt(s.arr), place = SHORT[s.loc], k = s.e && !s.e.own ? K[s.e.kid].name : '';
+        if (s.e && s.e.own) lines.push(at + '  ' + place + ', ' + s.e.title);
+        else if (s.kind === 'drop') lines.push(at + '  ' + place + ', drop off ' + k);
         else if (s.kind === 'stay') lines.push(at + '  ' + place + ', stay with ' + k);
         else if (s.kind === 'pick') lines.push(fmt(Math.max(s.arr, s.ready)) + '  ' + place + ', pick up ' + k);
         else if (s.kind === 'fetch') lines.push(at + '  Home, get ' + s.car.map(function (x) { return K[x].name; }).join(' and '));
@@ -449,7 +489,7 @@ function buildDay(i, evs) {
       var last = o.legs[o.legs.length - 1];
       if (last.type === 'drive' && last.to === 'home' && lines[lines.length - 1] !== fmt(o.en) + '  Home') lines.push(fmt(o.en) + '  Home');
       var warn = '';
-      (busy[d] || []).forEach(function (b) { if (b.start < o.en && b.end > o.s) warn = 'Still at ' + b.title + ' until ' + fmt(b.end); });
+      (plan.busy[d] || []).forEach(function (b) { if (b.start < o.en && b.end > o.s) warn = 'Still at ' + b.title + ' until ' + fmt(b.end); });
       var first = o.legs[0];
       o.lead = first.type === 'drive' && first.from === 'home' ? 'Leave ' + fmt(o.s) : 'From ' + SHORT[first.from || first.loc] + ' ' + fmt(o.s);
       o.lines = lines; o.kids = kids; o.warn = warn;
@@ -490,6 +530,7 @@ function buildDay(i, evs) {
       var last = r.legs[r.legs.length - 1];
       return { text: (last.type === 'drive' && last.to === 'home' ? 'Home ' + fmt(r.en) + ' with ' : 'Picked up ' + fmt(r.s) + ' by ') + PEOPLE[v] + extra, ink: ink };
     };
+    if (e.own && isDriver(e.own)) { lines[e.id] = ownLines(e, plan); return; }
     if (e.drop === 'none' && e.pick === 'none') { lines[e.id] = { drop: { text: 'No ride needed', ink: '#6B717A' }, pick: null }; return; }
     lines[e.id] = { drop: line('drop', there), pick: e.stay && isDriver(e.drop) ? (back ? line('pick', back) : null) : line('pick', back) };
   });
@@ -501,6 +542,28 @@ function buildDay(i, evs) {
   return { i: i, evs: evs, busy: busy, plan: plan, rideList: rideList, kidItems: kidItems, clashes: clashes, outings: outings, drv: drv, lines: lines, r0: r0, r1: r1 };
 }
 
+
+// A parent's own event: when they leave for it, and when they're home or off again.
+function ownLines(e, plan) {
+  var p = plan[e.own];
+  var late = p.issues.filter(function (x) { return x.kind === 'late' && x.e && x.e.id === e.id; })[0];
+  var extra = late ? ', ' + wholeMin(late.min) + ' min late' : '';
+  var ink = late ? '#B42318' : '#3D434B';
+  var stop = p.stops.filter(function (s) { return s.e && s.e.id === e.id; })[0];
+  var there = stop ? (stop.legs || []).filter(function (g) { return g.type === 'drive'; })[0] : null;
+  var drop = null;
+  if (there) {
+    var start = there.from || 'home';
+    drop = { text: (start === 'home' ? 'Leaves' : 'From ' + SHORT[start]) + ' ' + fmt(there.start) + extra, ink: ink };
+  }
+  var pick = null, at = -1;
+  p.segs.forEach(function (g, i) { if (at < 0 && g.type === 'stay' && g.e && g.e.id === e.id) at = i; });
+  if (at >= 0) {
+    var after = p.segs.slice(at + 1).filter(function (g) { return g.type === 'drive'; })[0];
+    if (after) pick = { text: after.to === 'home' ? 'Home ' + fmt(after.end) : 'Leaves ' + fmt(after.start), ink: '#3D434B' };
+  }
+  return { drop: drop, pick: pick };
+}
 
 module.exports = { K, PLACES, SHORT, DRIVE, PEOPLE, DAYS, BUSY_BY_DAY, NOW, INITIAL, travel, fmt, arriveAt, arriveEarly, isDriver,
   planDriver, planAll, issueKey, issueText, applyChange, suggestionsFor, pack, cloneEvents, buildDay };

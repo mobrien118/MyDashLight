@@ -58,6 +58,16 @@ class RideEvent:
     attending: bool = True
     """False when the kid isn't going this time. Its rides are then not needed, so the
     planner never routes it, and the board doesn't count it as a clash."""
+    own: str | None = None
+    """The driver whose own event this is, from their own calendar. They drive themselves
+    there and stay, so ``kid``, ``drop`` and ``pick`` are that driver too and ``stay`` is set.
+    The kids in ``along`` go too, leaving home in the car."""
+    parents: tuple[str, ...] = ()
+    """Other drivers riding along to a parent's own event. They're busy for the whole trip."""
+
+    def attends(self, kid: str) -> bool:
+        """Whether ``kid`` is at this event: their own activity, or a parent's they go along to."""
+        return self.kid == kid or (self.own is not None and kid in self.along)
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,6 +223,8 @@ class DayPlan:
     hard: list[Issue]
     soft: list[Issue]
     score: float
+    busy: Mapping[str, Sequence[BusyBlock]] = field(default_factory=dict)
+    """The parents' busy times as planned: their calendars, plus trips they ride along on."""
 
     def __getitem__(self, driver: str) -> DriverPlan:
         return self.drivers[driver]
@@ -414,7 +426,6 @@ def plan_driver(
                     out.soft.append(Issue("tight", driver, s.event, s, at=ready))
                 dep = max(ready, tg)
         if s.kind == "stay" and ready > arr and s.event is not None:
-            kid = s.event.kid
             tag(
                 Segment(
                     "stay",
@@ -422,7 +433,7 @@ def plan_driver(
                     ready,
                     loc=s.loc,
                     event=s.event,
-                    kids=[k for k in s.car if k != kid and k not in dropped_home],
+                    kids=[k for k in s.car if not s.event.attends(k) and k not in dropped_home],
                 ),
                 s,
             )
@@ -515,6 +526,18 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
     car: list[str] = []
     for k in tasks:
         kid = k.event.kid
+        if k.event.own is not None:
+            # A parent's own event: the kids going too leave home with them.
+            riders = list(k.event.along)
+            if any(r not in car for r in riders):
+                if stops[-1].loc != HOME:
+                    stops.append(Stop(HOME, "fetch"))
+                car = riders
+                stops[-1].car = list(car)
+            stop = Stop(k.event.loc, "stay", list(car), event=k.event, deadline=k.t)
+            stop.after = k.event.end
+            stops.append(stop)
+            continue
         if k.type != "pick":
             if kid not in car:
                 # Dropping off a kid who isn't in the car means collecting them from home first.
@@ -547,6 +570,7 @@ def plan_all(
     drivers: Sequence[str] = DEFAULT_DRIVERS,
 ) -> DayPlan:
     """Plan every routed driver's day and collect the issues across them."""
+    busy = with_rides_along(events, busy, travel, settings, drivers)
     plans = {d: plan_driver(d, events, busy, travel, settings) for d in drivers}
     hard = [x for d in drivers for x in plans[d].issues]
     for e in events:
@@ -557,13 +581,41 @@ def plan_all(
     soft = [x for d in drivers for x in plans[d].soft]
     late_minutes = sum(x.minutes or 0 for x in hard)
     score = len(hard) * 1000 + late_minutes * 10 + sum(p.drive for p in plans.values())
-    return DayPlan(plans, hard, soft, score)
+    return DayPlan(plans, hard, soft, score, busy)
+
+
+def with_rides_along(
+    events: Sequence[RideEvent],
+    busy: Mapping[str, Sequence[BusyBlock]],
+    travel: TravelFn,
+    settings: PlannerSettings = DEFAULT_SETTINGS,
+    drivers: Sequence[str] = DEFAULT_DRIVERS,
+) -> dict[str, list[BusyBlock]]:
+    """The parents' busy times, plus each trip to the other parent's own event they ride along
+    on: from leaving home until back home."""
+    out = {d: list(blocks) for d, blocks in busy.items()}
+    for e in events:
+        if e.own is None:
+            continue
+        for p in e.parents:
+            if p in drivers and p != e.own:
+                leave = math.floor(arrive_at(e, settings, travel) - travel(HOME, e.loc))
+                home = math.ceil(e.end + travel(e.loc, HOME))
+                out.setdefault(p, []).append(BusyBlock(leave, home, e.title))
+    for blocks in out.values():
+        blocks.sort(key=lambda b: (b.start, b.end, b.title))
+    return out
+
+
+def who_of(e: RideEvent, labels: Labels) -> str:
+    """The name of whoever an event is for: the kid, or the parent for their own event."""
+    return labels.driver(e.own) if e.own is not None else labels.kid(e.kid)
 
 
 def issue_text(issue: Issue, labels: Labels) -> IssueText:
     """The words shown for an issue. ``note`` is the short form used under a suggestion."""
     e = issue.event
-    kid = labels.kid(e.kid) if e else ""
+    kid = who_of(e, labels) if e else ""
     who = labels.driver(issue.driver) if issue.driver else ""
     s = issue.stop
     match issue.kind:
@@ -691,6 +743,8 @@ def suggestions_for(
         d = issue.driver
         others = [o for o in drivers if o != d]
         for e in events:
+            if e.own is not None:
+                continue  # A parent's own event is always theirs to drive.
             for side in ("drop", "pick"):
                 if getattr(e, side) != d:
                     continue
@@ -705,11 +759,13 @@ def suggestions_for(
                     )
         # Take a kid along on an earlier drop-off by the same driver, if it's close enough.
         for e in events:
-            if e.drop != d:
+            if e.drop != d or e.own is not None:
                 continue
             for f in events:
                 gap = arrive_at(e, settings, travel) - arrive_at(f, settings, travel)
                 if f is e or f.drop != d or f.kid == e.kid or not 0 <= gap <= settings.take_along_window:
+                    continue
+                if f.own is not None:
                     continue
                 if e.kid in f.along:
                     continue
