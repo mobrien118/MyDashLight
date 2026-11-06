@@ -1278,11 +1278,21 @@ export class MyDashLightBoard extends LitElement {
               </div>`,
           )}
           ${repeat(
+            b.links,
+            (x) => x.key,
+            (x) =>
+              html`<div
+                class="link"
+                aria-hidden="true"
+                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;border-color:${x.color.color};background:rgba(${x.color.rgb},0.07)"
+              ></div>`,
+          )}
+          ${repeat(
             b.preps,
             (x) => x.key,
             (x) =>
               html`<div
-                class="prep"
+                class="prep ${x.joinTop ? "join-top" : ""}"
                 aria-hidden="true"
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;border-color:${x.color.color};background:rgba(${x.color.rgb},0.07);color:${x.color.ink}"
               >
@@ -1321,7 +1331,7 @@ export class MyDashLightBoard extends LitElement {
             (x) =>
               html`<button
                 type="button"
-                class="ride ${x.dashed ? "dashed" : ""} ${x.clash ? "clash" : ""}"
+                class="ride ${x.dashed ? "dashed" : ""} ${x.clash ? "clash" : ""} ${x.joinTop ? "join-top" : ""} ${x.joinBottom ? "join-bottom" : ""}"
                 aria-label=${x.aria}
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px"
                 @click=${() => this.open(x.target)}

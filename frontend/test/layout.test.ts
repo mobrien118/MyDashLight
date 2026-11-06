@@ -321,7 +321,7 @@ test("compact: a long block reaches down past what starts during it in other col
   for (const c of b.cards.filter((x) => x.key.startsWith(`${date}|`))) assert.ok(block.y + block.h >= c.y + c.h, c.key);
 });
 
-test("timeline: a car box joins the event it's heading to, with no gap", () => {
+test("timeline: a car box is built onto what it's heading to, with a seam, not stretched", () => {
   const b = layout(plan, "timeline", 1160, today);
   const JOIN = 30 * 3; // 30 minutes at 3px a minute
   const next = [...b.cards, ...b.preps, ...b.rides];
@@ -329,17 +329,26 @@ test("timeline: a car box joins the event it's heading to, with no gap", () => {
   for (const r of b.rides) {
     const day = r.key.split("|")[0]!;
     const bottom = r.y + r.h;
-    const after = next.filter(
-      (q) => q !== r && q.key.startsWith(`${day}|`) && q.x < r.x + r.w && r.x < q.x + q.w && q.y >= bottom - 0.5,
-    );
-    const first = after.sort((p, q) => p.y - q.y)[0];
-    if (!first) continue;
-    // What comes next in the column either touches the car box or is well apart from it.
-    const gap = first.y - bottom;
-    assert.ok(gap < 0.5 || gap > JOIN, `${r.key} → ${first.key}`);
-    if (gap < 0.5) joined++;
+    const first = next
+      .filter((q) => q !== r && q.key.startsWith(`${day}|`) && q.x < r.x + r.w && r.x < q.x + q.w && q.y >= bottom - 0.5)
+      .sort((p, q) => p.y - q.y)[0];
+    if (!first || first.y - bottom > JOIN) {
+      assert.ok(!r.joinBottom, r.key);
+      continue;
+    }
+    joined++;
+    // Square, flush seam: the car box keeps its own size, and the time between is its own block.
+    assert.ok(r.joinBottom, r.key);
+    if (first.y - bottom > 0.5) {
+      const link = b.links.find((l) => l.key === `${r.key}|link`)!;
+      assert.equal(link.y, bottom);
+      assert.ok(link.y + link.h >= first.y, r.key);
+    }
+    if ("joinTop" in first && b.rides.includes(first as never)) assert.ok((first as { joinTop?: boolean }).joinTop);
   }
   assert.ok(joined > 0);
+  // The arrive-by strip after a car takes the seam on its top edge.
+  assert.ok(b.preps.some((p) => p.joinTop));
 });
 
 // A parent's own events: they drive themselves, with kids or the other parent along.

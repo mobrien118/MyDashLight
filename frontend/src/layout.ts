@@ -16,8 +16,10 @@ export const PPM = 3;
 export const DAY_HEAD = 36;
 const PAD = 12;
 const GAP = 8;
-/** A car box joins what comes next in the kid's column when it starts within this many minutes. */
+/** A car box is joined to what comes next in the kid's column when that starts within this many minutes. */
 const JOIN_MINUTES = 30;
+/** How far a joining block runs under the card it leads into, to fill its rounded corners. */
+const LINK_TUCK = 6;
 /** Left gutter for the hour labels. */
 export const GUTTER = 60;
 const KID_GAP = 10;
@@ -85,6 +87,9 @@ export interface RideBox extends Box {
   dashed: boolean;
   clash: boolean;
   aria: string;
+  /** Built onto the piece above or below: square corners and no shadow on that edge. */
+  joinTop?: boolean;
+  joinBottom?: boolean;
 }
 
 export interface BandBox extends Box {
@@ -129,6 +134,13 @@ export interface WindowBox extends Box {
 export interface PrepBox extends Box {
   color: KidColor;
   label: string;
+  /** Built onto the bottom of a car box: square top corners. */
+  joinTop: boolean;
+}
+
+/** The time between a car box and what it's heading to, built on as one piece: no label. */
+export interface LinkBox extends Box {
+  color: KidColor;
 }
 
 export interface Mark {
@@ -169,6 +181,7 @@ export interface Board {
   stays: StayBox[];
   busy: BusyBox[];
   windows: WindowBox[];
+  links: LinkBox[];
   preps: PrepBox[];
   overlaps: Box[];
   marks: Mark[];
@@ -538,6 +551,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     stays: [],
     busy: [],
     windows: [],
+    links: [],
     preps: [],
     overlaps: [],
     marks: [],
@@ -691,7 +705,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           .filter((it) => it.start != null && it.end != null)
           .map((it) => ({ item: it, s: n(it.start), en: n(it.end) }));
         // What's drawn in this column, to join each car box to whatever it's going to.
-        const pieces: { s: number; en: number; top: number; ride?: { box: RideBox; band: BandBox | null } }[] = [];
+        const pieces: { s: number; en: number; top: number; ride?: RideBox; prep?: PrepBox }[] = [];
         for (const p of pack(items)) {
           const cw = c.w / p.cols;
           const ix = Math.round(c.x + p.col * cw);
@@ -703,11 +717,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             if (!e) continue;
             const h = Math.max(30, Y(p.en) - y0);
             board.cards.push(cardFor(e, ix, y0, iw, h, it.clash, false, kid));
-            pieces.push({ s: e.arrive_by != null && e.start - e.arrive_by >= 5 ? e.arrive_by : p.s, en: p.en, top: y0 });
             if (e.arrive_by != null && e.start - e.arrive_by >= 5) {
               const py = Y(e.arrive_by);
-              pieces[pieces.length - 1]!.top = py;
-              board.preps.push({
+              const prep: PrepBox = {
                 key: `${day.date}|prep|${e.id}`,
                 x: ix,
                 y: py,
@@ -715,7 +727,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
                 h: y0 - py + 6,
                 color,
                 label: `Arrive by ${clock(e.arrive_by)}`,
-              });
+                joinTop: false,
+              };
+              board.preps.push(prep);
+              pieces.push({ s: e.arrive_by, en: p.en, top: py, prep });
+            } else {
+              pieces.push({ s: p.s, en: p.en, top: y0 });
             }
             const late = issueMarks.get(e.id);
             if (late) board.marks.push({ key: `${day.date}|late|${e.id}`, x: ix + iw - 4, y: y0 + 4, text: late, right: true });
@@ -757,21 +774,27 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             };
             board.bands.push(band);
           }
-          pieces.push({ s: p.s, en: p.en, top: y0, ride: { box: rideBox, band } });
+          pieces.push({ s: p.s, en: p.en, top: y0, ride: rideBox });
         }
-        // A car box runs on down to what it's taking the kid to (the next car, the arrive-by time
-        // or the activity), so the trip and where it goes read as one piece.
+        // A car box is built onto what it's taking the kid to (the next car, the arrive-by time or
+        // the activity): the time between is an unlabeled block, like the arrive-by strip, so the
+        // pieces read as one with a seam between them, not as boxes floating apart.
         for (const r of pieces) {
-          if (!r.ride) continue;
+          const ride = r.ride;
+          if (!ride) continue;
           const next = pieces
             .filter((q) => q !== r && q.s >= r.en && q.s - r.en <= JOIN_MINUTES)
             .sort((a, b) => a.s - b.s || a.top - b.top)[0];
-          if (!next || next.top <= r.ride.box.y + r.ride.box.h) continue;
-          const h = next.top - r.ride.box.y;
-          r.ride.box.h = h;
-          r.ride.box.lines2 = rideLines(h);
-          r.ride.box.show2 = r.ride.box.lines2 > 0;
-          if (r.ride.band) r.ride.band.h = h;
+          const bottom = ride.y + ride.h;
+          if (!next || next.top < bottom) continue;
+          // It tucks under the car box above; under the box below too, unless that's the see-through
+          // arrive-by strip, which takes the seam on its top edge instead.
+          ride.joinBottom = true;
+          if (next.ride) next.ride.joinTop = true;
+          if (next.prep) next.prep.joinTop = true;
+          // A card keeps its rounded top with the block running under it, like the arrive-by strip.
+          const y1 = next.ride || next.prep ? next.top : next.top + LINK_TUCK;
+          if (y1 > bottom) board.links.push({ key: `${ride.key}|link`, x: ride.x, y: bottom, w: ride.w, h: y1 - bottom, color });
         }
       }
 
