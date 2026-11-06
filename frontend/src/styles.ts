@@ -810,15 +810,11 @@ export const styles = css`
     font-weight: 700;
     white-space: nowrap;
   }
-  .prep.join-top {
-    border-radius: 0;
-  }
-  /* The time between a car box and what it's heading to: the arrive-by strip's look, no label,
-     built onto the car box so they read as one piece. */
+  /* The time between a car box and its activity: the arrive-by strip's look, no label. Like
+     every add-on it sits behind the piece it's built onto, rounded corners showing. */
   .link {
     border: 1.5px dashed;
-    border-top: 0;
-    border-bottom: 0;
+    border-radius: 10px;
   }
   .card {
     padding: 6px 9px 6px 13px;
@@ -908,20 +904,6 @@ export const styles = css`
   }
   .ride.dashed {
     border-style: dashed;
-  }
-  /* Built onto what's above or below it: one piece with a seam, not a box floating on top. */
-  .ride.join-top,
-  .ride.join-bottom {
-    box-shadow: none;
-  }
-  .ride.join-top {
-    border-top-width: 0;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-  }
-  .ride.join-bottom {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
   }
   .ride.clash {
     box-shadow: 0 0 0 2px var(--bad);
