@@ -43,6 +43,9 @@ PLACES = {
     "party": ("Liam's house, 31 Oak Ct", "Liam's house"),
     "dance": ("Dance studio, 88 Main St", "Dance studio"),
     "nextdoor": ("Next door, 12 Maple Ave", "Next door"),
+    "golf": ("Golf course, 500 Fairway Dr", "Golf course"),
+    "library": ("Library, 3 Book Ln", "Library"),
+    "cleaners": ("Dry cleaners, 40 Main St", "Dry cleaners"),
 }
 DRIVE = {
     "home|piano": 10,
@@ -60,6 +63,11 @@ DRIVE = {
     "home|dance": 11,
     "dance|football": 14,
     "dance|soccer": 9,
+    "home|golf": 18,
+    "football|golf": 12,
+    "home|library": 10,
+    "home|cleaners": 7,
+    "cleaners|football": 9,
 }
 
 # day, kid (0-2), id, title, place, start, end, drop, pick, stay, arrive_by, along, recurring
@@ -111,6 +119,14 @@ WEEK: list[tuple[int, int, str, str, str, str, str, str, str, bool, str | None, 
     (5, 0, "tue-volley", "Volleyball", "gym", "6:15 PM", "8:00 PM", "the Smiths", "mom", False, None, (), False),
     (6, 2, "wed-dance", "Dance", "dance", "4:00 PM", "5:00 PM", "mom", "mom", False, None, (), True),
     (6, 1, "wed-football", "Football", "football", "5:30 PM", "7:00 PM", "dad", "dad", False, None, (), True),
+]
+# A parent's own events at a place: they drive themselves, maybe with kids (0-2) or the other
+# parent along. With takes it's an errand: that many minutes any time in the window.
+# day, driver, id, title, place, start, end, kids along, parents along, takes
+OWN: list[tuple[int, str, str, str, str, str, str, tuple[int, ...], tuple[str, ...], int | None]] = [
+    (3, "dad", "sun-golf", "Golf", "golf", "1:00 PM", "4:00 PM", (1,), ("mom",), None),
+    (5, "mom", "tue-book", "Book club", "library", "10:00 AM", "11:30 AM", (), (), None),
+    (4, "dad", "mon-cleaners", "Pick up dry cleaning", "cleaners", "5:00 PM", "7:30 PM", (), (), 10),
 ]
 # Each driver's own calendar, by day.
 BUSY: dict[int, dict[str, list[tuple[str, str, str]]]] = {
@@ -189,6 +205,27 @@ def main() -> None:
             day.refs[ev_id] = EventRef(
                 KIDS[kid], f"{ev_id}-google", "etag", f"{ev_id}-series" if recurring else None, ("drop", "pick")
             )
+        for d, driver, ev_id, title, place, start, end, kids, parents, takes in OWN:
+            if d != offset:
+                continue
+            day.events.append(
+                RideEvent(
+                    id=ev_id,
+                    kid=driver,
+                    title=title,
+                    loc=key(place),
+                    start=minutes(start),
+                    end=minutes(end),
+                    drop=driver,
+                    pick=driver,
+                    stay=True,
+                    along=tuple(KIDS[k] for k in kids),
+                    own=driver,
+                    parents=parents,
+                    takes=takes,
+                )
+            )
+            day.refs[ev_id] = EventRef(f"{driver}-calendar", f"{ev_id}-google", "etag", None, ("drop", "pick"))
         for driver, blocks in BUSY.get(offset, {}).items():
             day.busy[driver] = [BusyBlock(minutes(s), minutes(e), t) for s, e, t in blocks]
         days.append(plan_day(day, labels, KIDS, travel, settings, DRIVERS))

@@ -1793,6 +1793,47 @@
        "tone": "pending"
       }
      }
+    },
+    {
+     "id": "sun-golf",
+     "kid": "dad",
+     "title": "Golf",
+     "place": "golf course, 500 fairway dr",
+     "place_name": "Golf course, 500 Fairway Dr",
+     "short_place": "Golf course",
+     "where": "place",
+     "attending": true,
+     "start": 780,
+     "end": 960,
+     "drop": "dad",
+     "pick": "dad",
+     "stay": true,
+     "arrive_by": null,
+     "along": [
+      "kid-b@group.calendar.google.com",
+      "mom"
+     ],
+     "own": "dad",
+     "takes": null,
+     "planned": 775,
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "dad-calendar",
+     "event_id": "sun-golf-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 12:37",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 4:18",
+       "tone": "normal"
+      }
+     }
     }
    ],
    "drivers": {
@@ -1860,16 +1901,104 @@
        "solo": false
       }
      ],
-     "busy": []
+     "busy": [
+      {
+       "start": 757,
+       "end": 978,
+       "title": "Golf",
+       "event": null
+      }
+     ]
     },
     "dad": {
      "name": "Sam",
-     "leave": null,
-     "drive": 0,
-     "trips": 0,
-     "segments": [],
-     "outings": [],
-     "busy": []
+     "leave": 757,
+     "drive": 36,
+     "trips": 1,
+     "segments": [
+      {
+       "type": "drive",
+       "start": 757,
+       "end": 775,
+       "from": "home",
+       "to": "golf course, 500 fairway dr",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sun-golf",
+       "overlaps_busy": false
+      },
+      {
+       "type": "stay",
+       "start": 775,
+       "end": 960,
+       "from": null,
+       "to": null,
+       "place": "golf course, 500 fairway dr",
+       "kids": [],
+       "event": "sun-golf",
+       "serves": "sun-golf",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 960,
+       "end": 978,
+       "from": "golf course, 500 fairway dr",
+       "to": "home",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "sun-golf",
+       "overlaps_busy": false
+      }
+     ],
+     "outings": [
+      {
+       "start": 757,
+       "end": 978,
+       "lead": "Leave 12:37",
+       "title": "Golf at Golf course",
+       "lines": [
+        "12:55  Golf course, Golf",
+        "4:00  Leave Golf course",
+        "4:18  Home"
+       ],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "warn": null,
+       "target": "sun-golf",
+       "first_drop": null,
+       "riders": {
+        "kid-b@group.calendar.google.com": "Leave home at 12:37 PM with Sam"
+       },
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "golf course, 500 fairway dr",
+        "to_name": "Golf course",
+        "due": 780,
+        "via_home": false
+       },
+       "parents": {
+        "mom": "Leave home at 12:37 PM with Sam"
+       },
+       "solo": false
+      }
+     ],
+     "busy": [
+      {
+       "start": 780,
+       "end": 960,
+       "title": "Golf",
+       "event": "sun-golf"
+      }
+     ]
     }
    },
    "rides": [
@@ -1882,6 +2011,28 @@
      "own": true,
      "serves": [
       "sun-youth"
+     ]
+    },
+    {
+     "index": 1,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 757,
+     "end": 775,
+     "own": true,
+     "serves": [
+      "sun-golf"
+     ]
+    },
+    {
+     "index": 2,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "dad",
+     "start": 960,
+     "end": 978,
+     "own": true,
+     "serves": [
+      "sun-golf"
      ]
     }
    ],
@@ -1907,7 +2058,29 @@
     },
     "kid-b@group.calendar.google.com": {
      "name": "Ben",
-     "items": []
+     "items": [
+      {
+       "type": "act",
+       "start": 780,
+       "end": 960,
+       "clash": false,
+       "event": "sun-golf"
+      },
+      {
+       "type": "ride",
+       "start": 757,
+       "end": 775,
+       "clash": false,
+       "ride": 1
+      },
+      {
+       "type": "ride",
+       "start": 960,
+       "end": 978,
+       "clash": false,
+       "ride": 2
+      }
+     ]
     },
     "kid-c@group.calendar.google.com": {
      "name": "Cleo",
@@ -1954,7 +2127,7 @@
      ]
     }
    ],
-   "score": 1024
+   "score": 1060
   },
   {
    "date": "2026-11-09",
@@ -2032,7 +2205,45 @@
        "tone": "normal"
       },
       "pick": {
-       "text": "Home 7:20 with Sam",
+       "text": "Pick-up: Sam",
+       "tone": "normal"
+      }
+     }
+    },
+    {
+     "id": "mon-cleaners",
+     "kid": "dad",
+     "title": "Pick up dry cleaning",
+     "place": "dry cleaners, 40 main st",
+     "place_name": "Dry cleaners, 40 Main St",
+     "short_place": "Dry cleaners",
+     "where": "place",
+     "attending": true,
+     "start": 1020,
+     "end": 1170,
+     "drop": "dad",
+     "pick": "dad",
+     "stay": true,
+     "arrive_by": null,
+     "along": [],
+     "own": "dad",
+     "takes": 10,
+     "planned": 1149,
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "dad-calendar",
+     "event_id": "mon-cleaners-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Stop at 7:09",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 7:26",
        "tone": "normal"
       }
      }
@@ -2241,7 +2452,7 @@
     "dad": {
      "name": "Sam",
      "leave": 1120,
-     "drive": 40,
+     "drive": 36,
      "trips": 1,
      "segments": [
       {
@@ -2259,27 +2470,56 @@
       {
        "type": "drive",
        "start": 1140,
-       "end": 1160,
+       "end": 1149,
        "from": "football field, 90 stadium dr",
+       "to": "dry cleaners, 40 main st",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "mon-cleaners",
+       "overlaps_busy": false
+      },
+      {
+       "type": "stay",
+       "start": 1149,
+       "end": 1159,
+       "from": null,
+       "to": null,
+       "place": "dry cleaners, 40 main st",
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": "mon-cleaners",
+       "serves": "mon-cleaners",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1159,
+       "end": 1166,
+       "from": "dry cleaners, 40 main st",
        "to": "home",
        "place": null,
        "kids": [
         "kid-b@group.calendar.google.com"
        ],
        "event": null,
-       "serves": "mon-football",
+       "serves": "mon-cleaners",
        "overlaps_busy": false
       }
      ],
      "outings": [
       {
        "start": 1120,
-       "end": 1160,
+       "end": 1166,
        "lead": "Leave 6:40",
-       "title": "Pick up Ben at Football field",
+       "title": "Pick up Ben at Football field, Pick up dry cleaning at Dry cleaners",
        "lines": [
         "7:00  Football field, pick up Ben",
-        "7:20  Home"
+        "7:09  Dry cleaners, Pick up dry cleaning",
+        "7:26  Home"
        ],
        "kids": [
         "kid-b@group.calendar.google.com"
@@ -2308,6 +2548,12 @@
        "end": 1020,
        "title": "Work",
        "event": null
+      },
+      {
+       "start": 1149,
+       "end": 1159,
+       "title": "Pick up dry cleaning",
+       "event": "mon-cleaners"
       }
      ]
     }
@@ -2351,10 +2597,10 @@
      "kid": "kid-b@group.calendar.google.com",
      "driver": "dad",
      "start": 1140,
-     "end": 1160,
-     "own": true,
+     "end": 1166,
+     "own": false,
      "serves": [
-      "mon-football"
+      "mon-cleaners"
      ]
     }
    ],
@@ -2405,7 +2651,7 @@
       {
        "type": "ride",
        "start": 1140,
-       "end": 1160,
+       "end": 1166,
        "clash": false,
        "ride": 3
       }
@@ -2418,7 +2664,7 @@
    },
    "clashes": [],
    "issues": [],
-   "score": 120
+   "score": 116
   },
   {
    "date": "2026-11-10",
@@ -2536,15 +2782,101 @@
        "tone": "normal"
       }
      }
+    },
+    {
+     "id": "tue-book",
+     "kid": "mom",
+     "title": "Book club",
+     "place": "library, 3 book ln",
+     "place_name": "Library, 3 Book Ln",
+     "short_place": "Library",
+     "where": "place",
+     "attending": true,
+     "start": 600,
+     "end": 690,
+     "drop": "mom",
+     "pick": "mom",
+     "stay": true,
+     "arrive_by": null,
+     "along": [],
+     "own": "mom",
+     "takes": null,
+     "planned": 595,
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "mom-calendar",
+     "event_id": "tue-book-google",
+     "recurring": false,
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Leaves 9:45",
+       "tone": "normal"
+      },
+      "pick": {
+       "text": "Home 11:40",
+       "tone": "normal"
+      }
+     }
     }
    ],
    "drivers": {
     "mom": {
      "name": "Robin",
-     "leave": 1000,
-     "drive": 46,
-     "trips": 2,
+     "leave": 585,
+     "drive": 66,
+     "trips": 3,
      "segments": [
+      {
+       "type": "drive",
+       "start": 585,
+       "end": 595,
+       "from": "home",
+       "to": "library, 3 book ln",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "tue-book",
+       "overlaps_busy": false
+      },
+      {
+       "type": "stay",
+       "start": 595,
+       "end": 690,
+       "from": null,
+       "to": null,
+       "place": "library, 3 book ln",
+       "kids": [],
+       "event": "tue-book",
+       "serves": "tue-book",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 690,
+       "end": 700,
+       "from": "library, 3 book ln",
+       "to": "home",
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "tue-book",
+       "overlaps_busy": false
+      },
+      {
+       "type": "home",
+       "start": 700,
+       "end": 1000,
+       "from": null,
+       "to": null,
+       "place": null,
+       "kids": [],
+       "event": null,
+       "serves": null,
+       "overlaps_busy": false
+      },
       {
        "type": "drive",
        "start": 1000,
@@ -2612,11 +2944,38 @@
      ],
      "outings": [
       {
+       "start": 585,
+       "end": 700,
+       "lead": "Leave 9:45",
+       "title": "Book club at Library",
+       "lines": [
+        "9:55  Library, Book club",
+        "11:30  Leave Library",
+        "11:40  Home"
+       ],
+       "kids": [],
+       "warn": null,
+       "target": "tue-book",
+       "first_drop": null,
+       "riders": {},
+       "go": {
+        "from": "home",
+        "from_name": "home",
+        "to": "library, 3 book ln",
+        "to_name": "Library",
+        "due": 600,
+        "via_home": false
+       },
+       "parents": {},
+       "solo": true
+      },
+      {
        "start": 1000,
        "end": 1030,
        "lead": "Leave 4:40",
        "title": "Drive Cleo to Soccer fields",
        "lines": [
+        "4:40  Home, get Cleo",
         "4:55  Soccer fields, drop off Cleo",
         "5:10  Home"
        ],
@@ -2635,7 +2994,7 @@
         "to": "soccer fields, 2200 park rd",
         "to_name": "Soccer fields",
         "due": 1020,
-        "via_home": false
+        "via_home": true
        },
        "parents": {},
        "solo": false
@@ -2670,7 +3029,14 @@
        "solo": false
       }
      ],
-     "busy": []
+     "busy": [
+      {
+       "start": 600,
+       "end": 690,
+       "title": "Book club",
+       "event": "tue-book"
+      }
+     ]
     },
     "dad": {
      "name": "Sam",
@@ -2952,7 +3318,7 @@
     }
    ],
    "issues": [],
-   "score": 86
+   "score": 106
   },
   {
    "date": "2026-11-11",
