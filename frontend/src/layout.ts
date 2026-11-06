@@ -16,6 +16,8 @@ export const PPM = 3;
 export const DAY_HEAD = 36;
 const PAD = 12;
 const GAP = 8;
+/** A car box joins what comes next in the kid's column when it starts within this many minutes. */
+const JOIN_MINUTES = 30;
 /** Left gutter for the hour labels. */
 export const GUTTER = 60;
 const KID_GAP = 10;
@@ -619,6 +621,8 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         const items: { item: KidItem; s: number; en: number }[] = (day.kids[kid]?.items ?? [])
           .filter((it) => it.start != null && it.end != null)
           .map((it) => ({ item: it, s: n(it.start), en: n(it.end) }));
+        // What's drawn in this column, to join each car box to whatever it's going to.
+        const pieces: { s: number; en: number; top: number; ride?: { box: RideBox; band: BandBox | null } }[] = [];
         for (const p of pack(items)) {
           const cw = c.w / p.cols;
           const ix = Math.round(c.x + p.col * cw);
@@ -630,8 +634,10 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             if (!e) continue;
             const h = Math.max(30, Y(p.en) - y0);
             board.cards.push(cardFor(e, ix, y0, iw, h, it.clash, false));
+            pieces.push({ s: e.arrive_by != null && e.start - e.arrive_by >= 5 ? e.arrive_by : p.s, en: p.en, top: y0 });
             if (e.arrive_by != null && e.start - e.arrive_by >= 5) {
               const py = Y(e.arrive_by);
+              pieces[pieces.length - 1]!.top = py;
               board.preps.push({
                 key: `${day.date}|prep|${e.id}`,
                 x: ix,
@@ -653,7 +659,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           const rh = Math.max(22, Y(p.en) - y0);
           const route = routeOf(legsOf(ride.index), names);
           const who = nameOfDriver(ride.driver);
-          board.rides.push({
+          const rideBox: RideBox = {
             key: `${day.date}|ride|${ride.index}`,
             x: ix,
             y: y0,
@@ -667,18 +673,36 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             dashed: !ride.own,
             clash: it.clash,
             aria: `${nameOfKid(kid)} ${ride.own ? "in" : "riding along in"} ${who}’s car, ${clock(n(ride.start))} to ${clock(n(ride.end))}: ${route.join(" to ")}`,
-          });
+          };
+          board.rides.push(rideBox);
           const dc = col.get(ride.driver);
+          let band: BandBox | null = null;
           if (dc) {
-            board.bands.push({
+            band = {
               key: `${day.date}|band|${ride.index}`,
               x: ix + iw,
               y: y0,
               w: Math.max(0, dc.x + 8 - (ix + iw)),
               h: rh,
               color,
-            });
+            };
+            board.bands.push(band);
           }
+          pieces.push({ s: p.s, en: p.en, top: y0, ride: { box: rideBox, band } });
+        }
+        // A car box runs on down to what it's taking the kid to (the next car, the arrive-by time
+        // or the activity), so the trip and where it goes read as one piece.
+        for (const r of pieces) {
+          if (!r.ride) continue;
+          const next = pieces
+            .filter((q) => q !== r && q.s >= r.en && q.s - r.en <= JOIN_MINUTES)
+            .sort((a, b) => a.s - b.s || a.top - b.top)[0];
+          if (!next || next.top <= r.ride.box.y + r.ride.box.h) continue;
+          const h = next.top - r.ride.box.y;
+          r.ride.box.h = h;
+          r.ride.box.lines2 = rideLines(h);
+          r.ride.box.show2 = r.ride.box.lines2 > 0;
+          if (r.ride.band) r.ride.band.h = h;
         }
       }
 
@@ -836,16 +860,20 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     }
     items.sort((a, b) => a.s - b.s || order.indexOf(a.col) - order.indexOf(b.col));
     const bottom = new Map<string, number>();
+    // Where each box landed, and the box itself when a long event can stretch to fill its time.
+    const placed: { col: string; s: number; end: number | null; y: number; h: number; box: { h: number } | null }[] = [];
     let prevY = top;
     items.forEach((m, i) => {
       const below = bottom.get(m.col);
       const iy = Math.max(below != null ? below + GAP : top, prevY);
       bottom.set(m.col, iy + m.h);
       prevY = iy;
+      const end = m.kind === "busy" ? m.busy.end : m.kind === "act" ? (events.get(m.item.event ?? "")?.end ?? null) : null;
+      placed.push({ col: m.col, s: m.s, end, y: iy, h: m.h, box: null });
       board.anchors.push({ t: base + m.s, y: iy });
       const c = col.get(m.col)!;
       if (m.kind === "busy") {
-        board.busy.push({
+        const box: BusyBox = {
           key: `${day.date}|busy|${m.col}|${i}`,
           x: c.x + 1,
           y: iy,
@@ -853,7 +881,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           h: m.h,
           labelY: 8,
           label: busyLabel(m.busy, true),
-        });
+        };
+        board.busy.push(box);
+        placed[placed.length - 1]!.box = box;
       } else if (m.kind === "out") {
         const o = m.out;
         board.trips.push({
@@ -875,7 +905,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         });
       } else if (m.kind === "act") {
         const e = events.get(m.item.event ?? "")!;
-        board.cards.push(cardFor(e, c.x, iy, c.w, m.h, m.item.clash, true));
+        const card = cardFor(e, c.x, iy, c.w, m.h, m.item.clash, true);
+        board.cards.push(card);
+        placed[placed.length - 1]!.box = card;
       } else {
         const ride = day.rides[m.item.ride ?? -1]!;
         const route = routeOf(legsOf(ride.index), names);
@@ -899,6 +931,20 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     });
     let maxB = top;
     for (const b of bottom.values()) maxB = Math.max(maxB, b);
+    // An event that runs past others (a day away, a long activity) stretches down across the
+    // things that start while it's on, to show that time is taken. It never makes the day
+    // taller, and stops short of the next thing in its own column.
+    for (const p of placed) {
+      if (!p.box || p.end == null) continue;
+      let reach = p.y + p.h;
+      for (const q of placed) {
+        if (q.col !== p.col && q.s >= p.s && q.s < p.end) reach = Math.max(reach, q.y + q.h);
+      }
+      if (p.end >= 1440) reach = maxB;
+      for (const q of placed) if (q.col === p.col && q.y > p.y) reach = Math.min(reach, q.y - GAP);
+      reach = Math.min(reach, maxB);
+      if (reach > p.y + p.h) p.box.h = reach - p.y;
+    }
     y = maxB + PAD + 6;
     board.anchors.push({ t: base + 1439, y });
   });
