@@ -710,7 +710,18 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           .filter((it) => it.start != null && it.end != null)
           .map((it) => ({ item: it, s: n(it.start), en: n(it.end) }));
         // What's drawn in this column, to join each car box to whatever it's going to.
-        type Piece = { s: number; en: number; top: number; bottom: number; ride?: RideBox; prep?: PrepBox; card?: CardBox };
+        type Piece = {
+          s: number;
+          en: number;
+          top: number;
+          bottom: number;
+          x: number;
+          w: number;
+          ride?: RideBox;
+          band?: BandBox | null;
+          prep?: PrepBox;
+          card?: CardBox;
+        };
         const pieces: Piece[] = [];
         for (const p of pack(items)) {
           const cw = c.w / p.cols;
@@ -738,9 +749,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
                 layer: MAIN_LAYER - 1,
               };
               board.preps.push(prep);
-              pieces.push({ s: e.arrive_by, en: p.en, top: py, bottom: y0 + h, prep, card });
+              pieces.push({ s: e.arrive_by, en: p.en, top: py, bottom: y0 + h, x: ix, w: iw, prep, card });
             } else {
-              pieces.push({ s: p.s, en: p.en, top: y0, bottom: y0 + h, card });
+              pieces.push({ s: p.s, en: p.en, top: y0, bottom: y0 + h, x: ix, w: iw, card });
             }
             const late = issueMarks.get(e.id);
             if (late) board.marks.push({ key: `${day.date}|late|${e.id}`, x: ix + iw - 4, y: y0 + 4, text: late, right: true });
@@ -782,7 +793,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             };
             board.bands.push(band);
           }
-          pieces.push({ s: p.s, en: p.en, top: y0, bottom: y0 + rh, ride: rideBox });
+          pieces.push({ s: p.s, en: p.en, top: y0, bottom: y0 + rh, x: ix, w: iw, ride: rideBox, band });
         }
         // Car boxes are add-ons to the activity they're for, stacked like cards: the drive there
         // (and any ride before it) tucks behind what comes next, the drive home tucks behind the
@@ -791,6 +802,20 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         const front = (q: Piece): number => q.ride?.layer ?? (q.prep ? MAIN_LAYER - 1 : MAIN_LAYER);
         const link = (ride: RideBox, y: number, h: number, layer: number): void => {
           if (h > LINK_TUCK) board.links.push({ key: `${ride.key}|link`, x: ride.x, y, w: ride.w, h, color, layer });
+        };
+        // A built-on piece is as wide as what it's built onto; its link to the driver follows its edge.
+        // It only ever narrows into its own lane, so it can't spread over a box beside it.
+        const fit = (r: Piece, to: Piece): void => {
+          if (to.x < r.x || to.x + to.w > r.x + r.w) return;
+          r.x = to.x;
+          r.w = to.w;
+          r.ride!.x = to.x;
+          r.ride!.w = to.w;
+          if (r.band) {
+            const right = r.band.x + r.band.w;
+            r.band.x = to.x + to.w;
+            r.band.w = Math.max(0, right - r.band.x);
+          }
         };
         const going = new Set<Piece>();
         // Latest first, so each piece's own place in its stack is known before what's behind it.
@@ -802,6 +827,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             .sort((a, b) => a.s - b.s || a.top - b.top)[0];
           if (!next) continue;
           going.add(r);
+          fit(r, next);
           const layer = front(next);
           const gap = next.top - r.bottom;
           link(ride, r.bottom, gap + LINK_TUCK, layer - 1);
@@ -816,6 +842,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             .filter((q) => q !== r && q.en <= r.s && r.s - q.en <= JOIN_MINUTES && q.bottom <= r.top && (q.card || q.ride?.layer != null))
             .sort((a, b) => b.en - a.en || b.bottom - a.bottom)[0];
           if (!prev) continue;
+          fit(r, prev);
           const layer = prev.ride?.layer ?? MAIN_LAYER;
           const gap = r.top - prev.bottom;
           link(ride, prev.bottom - LINK_TUCK, gap + LINK_TUCK, layer - 1);
