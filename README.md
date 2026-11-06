@@ -76,6 +76,12 @@ all-day events and ones running past 6 AM the next day are just busy time, as be
 alone to your own event gets no leave reminder, since you know your own day; one with someone
 along reminds the driver and tells each rider when they leave.
 
+An errand is a parent's own event with a `Takes` line, such as `Takes: 10 min` on "Pick up the
+jersey" from 2:30 to 5:30 PM. The event's start and end are the window, and the planner picks
+when to go, stopping on the way to or from another trip when that fits. The card then says when
+("Stop at 4:40"), and the driver gets the usual leave reminder. An errand counts even when the
+event is marked Free, and it takes nobody along.
+
 Calendars you don't pick are never read. An event that ends by 6 AM the next day stays on the day
 it starts. A longer one, such as a weekend trip, is planned as a drop-off on its first day and a
 pick-up on its last. Change the calendars later under the integration's **Configure** button.
@@ -138,6 +144,7 @@ Travel: 25 min
 | Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive early by a margin that grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
+| Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
 
 An event the kid isn't going to stays on the board, marked "Not attending", but needs no rides,
 raises no problems or reminders, and never clashes with anything. Besides `Attending: no`, the old

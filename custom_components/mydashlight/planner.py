@@ -64,6 +64,9 @@ class RideEvent:
     The kids in ``along`` go too, leaving home in the car."""
     parents: tuple[str, ...] = ()
     """Other drivers riding along to a parent's own event. They're busy for the whole trip."""
+    takes: int | None = None
+    """A parent's errand: the minutes it takes, any time from ``start`` to ``end``. The planner
+    picks the time, fitting it into the parent's other trips where it can."""
 
     def attends(self, kid: str) -> bool:
         """Whether ``kid`` is at this event: their own activity, or a parent's they go along to."""
@@ -141,6 +144,11 @@ class Stop:
     """When the kid is ready to be collected (pick-up)."""
     after: float | None = None
     """When a stay ends."""
+    dwell: float = 0
+    """Minutes spent there, for an errand: from arriving, or from ``ready`` if that's later."""
+    late: bool = False
+    """An errand done as late as still works, on the way to the next stop. Otherwise it's done
+    as early as it can be: at ``ready``, or straight from the stop before."""
     arrive: float | None = None
     legs: list[Segment] = field(default_factory=list)
     """The drives and waits that serve this stop."""
@@ -298,6 +306,8 @@ class _Task:
     type: Literal["drop", "stay", "pick"]
     event: RideEvent
     t: int
+    late: bool = False
+    """For an errand: as late as still works, instead of as early as it can be."""
 
 
 def plan_driver(
@@ -307,10 +317,18 @@ def plan_driver(
     travel: TravelFn,
     settings: PlannerSettings = DEFAULT_SETTINGS,
 ) -> DriverPlan:
-    """String one parent's drop-offs and pick-ups into a route and time it."""
+    """String one parent's drop-offs and pick-ups into a route and time it.
+
+    Errands come last: each goes wherever in the route it costs least, so it's tacked onto a
+    trip that's out already when that fits its window.
+    """
     tasks: list[_Task] = []
+    errands: list[_Task] = []
     for e in events:
-        if e.stay and e.drop == driver and e.pick == driver:
+        if e.takes is not None:
+            if e.own == driver and e.drop == driver:
+                errands.append(_Task("stay", e, e.end - e.takes))
+        elif e.stay and e.drop == driver and e.pick == driver:
             tasks.append(_Task("stay", e, arrive_at(e, settings, travel)))
         else:
             if e.drop == driver:
@@ -319,6 +337,32 @@ def plan_driver(
                 tasks.append(_Task("pick", e, e.end))
     tasks.sort(key=lambda k: k.t)
     _same_place_first(tasks, settings)
+    errands.sort(key=lambda k: (k.t, k.event.id))
+    for k in errands:
+        best: tuple[float, list[_Task]] | None = None
+        for i in range(len(tasks) + 1):
+            for late in (False, True):
+                trial = [*tasks[:i], replace(k, late=late), *tasks[i:]]
+                cost = _cost(_route(driver, trial, busy, travel, settings))
+                if best is None or cost < best[0] - 1e-9:
+                    best = (cost, trial)
+        assert best is not None
+        tasks = best[1]
+    return _route(driver, tasks, busy, travel, settings)
+
+
+def _cost(p: DriverPlan) -> float:
+    return len(p.issues) * 1000 + sum(x.minutes or 0 for x in p.issues) * 10 + p.drive
+
+
+def _route(
+    driver: str,
+    tasks: list[_Task],
+    busy: Mapping[str, Sequence[BusyBlock]],
+    travel: TravelFn,
+    settings: PlannerSettings,
+) -> DriverPlan:
+    """Time the tasks in this order."""
     out = DriverPlan(driver)
     if not tasks:
         return out
@@ -331,12 +375,12 @@ def plan_driver(
     latest_depart = [INF] * n
     for i in range(n - 1, 0, -1):
         latest_depart[i - 1] = min(latest_depart[i - 1], latest_arrive[i] - travel(stops[i - 1].loc, stops[i].loc))
-        latest_arrive[i - 1] = min(latest_arrive[i - 1], latest_depart[i - 1])
+        latest_arrive[i - 1] = min(latest_arrive[i - 1], latest_depart[i - 1] - stops[i - 1].dwell)
 
     def target(j: int) -> float:
         v = latest_depart[j]
         nxt = stops[j + 1] if j + 1 < n else None
-        if nxt is not None and nxt.ready is not None:
+        if nxt is not None and nxt.ready is not None and not nxt.late:
             v = min(v, nxt.ready - travel(stops[j].loc, nxt.loc))
         return v
 
@@ -404,6 +448,7 @@ def plan_driver(
         ready = arr
         if s.ready is not None:
             ready = max(ready, s.ready)
+        ready += s.dwell
         if s.after is not None:
             ready = max(ready, s.after)
         if s.kind != "stay" and ready > arr:
@@ -535,7 +580,12 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
                 car = riders
                 stops[-1].car = list(car)
             stop = Stop(k.event.loc, "stay", list(car), event=k.event, deadline=k.t)
-            stop.after = k.event.end
+            if k.event.takes is not None:
+                stop.ready = k.event.start
+                stop.dwell = k.event.takes
+                stop.late = k.late
+            else:
+                stop.after = k.event.end
             stops.append(stop)
             continue
         if k.type != "pick":
@@ -595,7 +645,7 @@ def with_rides_along(
     on: from leaving home until back home."""
     out = {d: list(blocks) for d, blocks in busy.items()}
     for e in events:
-        if e.own is None:
+        if e.own is None or e.takes is not None:
             continue
         for p in e.parents:
             if p in drivers and p != e.own:

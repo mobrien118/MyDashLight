@@ -62,6 +62,10 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
         start = rng.randrange(lo, hi, 5)
         along = rng.sample(list(KIDS), rng.randint(0, 2))
         parents = ["dad" if own == "mom" else "mom"] if rng.random() < 0.3 else []
+        # Sometimes an errand: a few minutes any time in a window of an hour or more.
+        takes = rng.choice([5, 10, 15]) if rng.random() < 0.4 else None
+        if takes is not None:
+            along, parents = [], []
         events.append(
             {
                 "id": f"d{n}own",
@@ -71,13 +75,14 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
                 "title": rng.choice(["Errand", "Book club", "Soccer league"]),
                 "loc": rng.choice(PLACES[1:]),
                 "start": start,
-                "end": start + rng.choice([30, 60, 90]),
+                "end": start + (rng.choice([60, 120, 180]) if takes else rng.choice([30, 60, 90])),
                 "drop": own,
                 "pick": own,
                 "stay": True,
                 "arriveBy": None,
                 "along": along,
                 "parents": parents,
+                "takes": takes,
             }
         )
     busy: dict[str, list[dict[str, Any]]] = {}

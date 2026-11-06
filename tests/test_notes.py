@@ -160,6 +160,18 @@ def test_take_along_a_parent() -> None:
     assert write_notes("", KIDS, along=("k2", "dad")) == "--- Rides ---\nTake along: Ben, Sam"
 
 
+@pytest.mark.parametrize(("value", "takes"), [("10 min", 10), ("15", 15), ("1 hr", 60)])
+def test_takes(value: str, takes: int) -> None:
+    assert parse(f"Takes: {value}").takes == takes
+    assert parse(f"Duration: {value}").takes == takes
+
+
+def test_takes_needs_minutes() -> None:
+    notes = parse("Takes: a while")
+    assert notes.takes is None
+    assert notes.problems == ("Takes: “a while” isn’t a number of minutes",)
+
+
 def test_write_take_along() -> None:
     text = write_notes("Bring water.\n\n--- Rides ---\nDrop-off: Sam", KIDS, along=["ben", "k3"])
     assert text == "Bring water.\n\n--- Rides ---\nDrop-off: Sam\nTake along: Ben, Cleo"

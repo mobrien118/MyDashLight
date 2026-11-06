@@ -293,7 +293,7 @@ def build_week(
         for cal_id in cal_ids:
             for ev in sorted(events.get(cal_id, ()), key=_sort_key):
                 seen_key = (ev.id, str(ev.start))
-                if not ev.busy or ev.declined or seen_key in seen:
+                if ev.declined or seen_key in seen:
                     continue
                 seen.add(seen_key)
                 if seen_key in owned:
@@ -301,10 +301,13 @@ def build_week(
                     target, ride_id = owned[seen_key]
                     i = next(i for i, e in enumerate(target.events) if e.id == ride_id)
                     e = target.events[i]
-                    if e.attending and driver != e.own and driver not in e.parents:
+                    if e.attending and e.takes is None and driver != e.own and driver not in e.parents:
                         target.events[i] = replace(e, parents=(*e.parents, driver))
                     continue
                 own = None if ev.id in kid_event_ids else _own_event(ev, driver, directory, tz, home_address)
+                # An errand counts even when marked Free: it only takes a few minutes of the time.
+                if not ev.busy and (own is None or own[1].takes is None):
+                    continue
                 if own is not None:
                     first, ride, notes = own
                     target = by_day.get(first)
@@ -413,7 +416,11 @@ def _own_event(
     ev: CalendarEvent, driver: str, directory: DriverDirectory, tz: tzinfo, home_address: str
 ) -> tuple[date, RideEvent, RideNotes] | None:
     """A parent's own event as a ride they drive themselves, with its day and notes, or None
-    when it's only busy time: all day, over more than a day, at home, or anywhere."""
+    when it's only busy time: all day, over more than a day, at home, or anywhere.
+
+    With a Takes line it's an errand: that many minutes any time from its start to its end,
+    which the planner picks. An errand goes alone, so it takes nobody along.
+    """
     if ev.all_day or where(ev.location or "", home_address) != "place":
         return None
     assert isinstance(ev.start, datetime)
@@ -426,8 +433,10 @@ def _own_event(
     title, skipped = skip_prefix(ev.title or NO_TITLE)
     notes = parse_notes(ev.description, directory, start)
     attending = notes.attending and not skipped
-    kids = tuple(a for a in notes.along if a in directory.kids) if attending else ()
-    parents = tuple(a for a in notes.along if a in directory.names and a != driver) if attending else ()
+    errand = notes.takes is not None
+    takes = min(notes.takes, end - start) if notes.takes is not None else None
+    kids = tuple(a for a in notes.along if a in directory.kids) if attending and not errand else ()
+    parents = tuple(a for a in notes.along if a in directory.names and a != driver) if attending and not errand else ()
     side = driver if attending else NOT_NEEDED
     ride = RideEvent(
         ev.id,
@@ -439,18 +448,21 @@ def _own_event(
         drop=side,
         pick=side,
         stay=attending,
-        arrive_by=notes.arrive_by if attending else None,
+        arrive_by=notes.arrive_by if attending and not errand else None,
         along=kids,
         attending=attending,
         own=driver,
         parents=parents,
+        takes=takes,
     )
     return first, ride, notes
 
 
 def _kids_only(notes: RideNotes, directory: DriverDirectory) -> RideNotes:
     """A kid's event takes only kids along. A parent can only go along to the other parent's
-    own event."""
+    own event. An errand goes on a parent's calendar."""
+    if notes.takes is not None:
+        notes = replace(notes, takes=None, problems=(*notes.problems, "Takes: errands go on a parent’s own calendar"))
     kids = tuple(a for a in notes.along if a in directory.kids)
     if kids == notes.along:
         return notes

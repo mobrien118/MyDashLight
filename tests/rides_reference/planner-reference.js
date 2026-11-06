@@ -99,10 +99,14 @@ function fmt(m) {
 }
 
 // One parent's day: string their drop-offs and pick-ups into a route and time it.
+// Errands come last: each goes wherever in the route it costs least, done as early as it can be
+// or as late as still works, so it's tacked onto a trip that's out already when that fits.
 function planDriver(d, events, busy) {
-  var tasks = [];
+  var tasks = [], errands = [];
   events.forEach(function (e) {
-    if (e.stay && e.drop === d && e.pick === d) tasks.push({ type: 'stay', e: e, t: arriveAt(e) });
+    if (e.takes != null) {
+      if (e.own === d && e.drop === d) errands.push({ type: 'stay', e: e, t: e.end - e.takes, late: false });
+    } else if (e.stay && e.drop === d && e.pick === d) tasks.push({ type: 'stay', e: e, t: arriveAt(e) });
     else {
       if (e.drop === d) tasks.push({ type: 'drop', e: e, t: arriveAt(e) });
       if (e.pick === d) tasks.push({ type: 'pick', e: e, t: e.end });
@@ -117,6 +121,24 @@ function planDriver(d, events, busy) {
       tasks[q] = tb; tasks[q + 1] = ta; q++;
     }
   }
+  errands.sort(function (a, b) { return a.t - b.t || (a.e.id < b.e.id ? -1 : a.e.id > b.e.id ? 1 : 0); });
+  errands.forEach(function (k) {
+    var best = null;
+    for (var i = 0; i <= tasks.length; i++) {
+      [false, true].forEach(function (late) {
+        var trial = tasks.slice(0, i).concat([Object.assign({}, k, { late: late })], tasks.slice(i));
+        var p = route(d, trial, busy);
+        var cost = p.issues.length * 1000 + p.issues.reduce(function (a, x) { return a + (x.min || 0); }, 0) * 10 + p.drive;
+        if (!best || cost < best.cost - 1e-9) best = { cost: cost, tasks: trial };
+      });
+    }
+    tasks = best.tasks;
+  });
+  return route(d, tasks, busy);
+}
+
+// Time the tasks in this order.
+function route(d, tasks, busy) {
   var out = { d: d, segs: [], stops: [], issues: [], soft: [], overlaps: [], drive: 0, leave: null, trips: 0 };
   if (!tasks.length) return out;
 
@@ -133,7 +155,8 @@ function planDriver(d, events, busy) {
         car = rs.slice();
         cur().car = car.slice();
       }
-      stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, after: k.e.end, car: car.slice() });
+      if (k.e.takes != null) stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, ready: k.e.start, dwell: k.e.takes, late: k.late, car: car.slice() });
+      else stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, after: k.e.end, car: car.slice() });
       return;
     }
     if (k.type !== 'pick') {
@@ -162,11 +185,11 @@ function planDriver(d, events, busy) {
   var LD = stops.map(function () { return Infinity; });
   for (var i = n - 1; i >= 1; i--) {
     LD[i - 1] = Math.min(LD[i - 1], LA[i] - travel(stops[i - 1].loc, stops[i].loc));
-    LA[i - 1] = Math.min(LA[i - 1], LD[i - 1]);
+    LA[i - 1] = Math.min(LA[i - 1], LD[i - 1] - (stops[i - 1].dwell || 0));
   }
   var target = function (j) {
     var v = LD[j], nx = stops[j + 1];
-    if (nx && nx.ready != null) v = Math.min(v, nx.ready - travel(stops[j].loc, nx.loc));
+    if (nx && nx.ready != null && !nx.late) v = Math.min(v, nx.ready - travel(stops[j].loc, nx.loc));
     return v;
   };
 
@@ -194,6 +217,7 @@ function planDriver(d, events, busy) {
     if (s2.kind === 'drop' && s2.deadline - arr > 15) out.soft.push({ kind: 'early', d: d, s: s2, e: s2.e, min: s2.e.start - arr });
     var ready = arr;
     if (s2.ready != null) ready = Math.max(ready, s2.ready);
+    ready += s2.dwell || 0;
     if (s2.after != null) ready = Math.max(ready, s2.after);
     if (s2.kind !== 'stay' && ready > arr) {
       if (s2.loc === 'home') out.segs.push({ type: 'home', start: arr, end: ready });
@@ -256,7 +280,7 @@ function withRidesAlong(events, busy) {
   var out = {};
   Object.keys(busy).forEach(function (d) { out[d] = busy[d].slice(); });
   events.forEach(function (e) {
-    if (!e.own) return;
+    if (!e.own || e.takes != null) return;
     (e.parents || []).forEach(function (p) {
       if (!isDriver(p) || p === e.own) return;
       (out[p] = out[p] || []).push({ start: Math.floor(arriveAt(e) - travel('home', e.loc)), end: Math.ceil(e.end + travel(e.loc, 'home')), title: e.title });
@@ -478,7 +502,7 @@ function buildDay(i, evs) {
       p.stops.forEach(function (s, idx) {
         if (idx === 0 || s.arr == null || s.arr < o.s || s.arr > o.en) return;
         var at = fmt(s.arr), place = SHORT[s.loc], k = s.e && !s.e.own ? K[s.e.kid].name : '';
-        if (s.e && s.e.own) lines.push(at + '  ' + place + ', ' + s.e.title);
+        if (s.e && s.e.own) lines.push(fmt(Math.max(s.arr, s.ready || 0)) + '  ' + place + ', ' + s.e.title);
         else if (s.kind === 'drop') lines.push(at + '  ' + place + ', drop off ' + k);
         else if (s.kind === 'stay') lines.push(at + '  ' + place + ', stay with ' + k);
         else if (s.kind === 'pick') lines.push(fmt(Math.max(s.arr, s.ready)) + '  ' + place + ', pick up ' + k);
@@ -552,7 +576,9 @@ function ownLines(e, plan) {
   var stop = p.stops.filter(function (s) { return s.e && s.e.id === e.id; })[0];
   var there = stop ? (stop.legs || []).filter(function (g) { return g.type === 'drive'; })[0] : null;
   var drop = null;
-  if (there) {
+  if (e.takes != null && stop && stop.arr != null) {
+    drop = { text: 'Stop at ' + fmt(Math.max(stop.arr, stop.ready || 0)) + extra, ink: ink };
+  } else if (there) {
     var start = there.from || 'home';
     drop = { text: (start === 'home' ? 'Leaves' : 'From ' + SHORT[start]) + ' ' + fmt(there.start) + extra, ink: ink };
   }

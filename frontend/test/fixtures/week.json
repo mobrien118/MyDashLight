@@ -30,6 +30,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -66,6 +68,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -102,6 +106,8 @@
      "arrive_by": 1035,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -138,6 +144,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -174,6 +182,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -774,6 +784,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -810,6 +822,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -846,6 +860,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -1274,6 +1290,8 @@
      "arrive_by": 465,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -1310,6 +1328,8 @@
      "arrive_by": 525,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -1346,6 +1366,8 @@
      "arrive_by": 640,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -1751,6 +1773,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -1954,6 +1978,8 @@
       "kid-b@group.calendar.google.com"
      ],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -1990,6 +2016,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -2412,6 +2440,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -2448,6 +2478,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -2484,6 +2516,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -2940,6 +2974,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"
@@ -2976,6 +3012,8 @@
      "arrive_by": null,
      "along": [],
      "own": null,
+     "takes": null,
+     "planned": null,
      "sides": [
       "drop",
       "pick"

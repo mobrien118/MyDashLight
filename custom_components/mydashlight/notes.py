@@ -43,8 +43,8 @@ from .planner import NOT_NEEDED, UNASSIGNED, fmt12
 
 RIDES_HEADER: Final = "--- Rides ---"
 
-Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "travel"]
-FIELDS: Final[tuple[Field, ...]] = ("attending", "drop", "pick", "stay", "along", "arrive_by", "travel")
+Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "travel", "takes"]
+FIELDS: Final[tuple[Field, ...]] = ("attending", "drop", "pick", "stay", "along", "arrive_by", "travel", "takes")
 
 
 _LABELS: Final[dict[str, Field]] = {
@@ -58,6 +58,8 @@ _LABELS: Final[dict[str, Field]] = {
     "arriveby": "arrive_by",
     "travel": "travel",
     "traveltime": "travel",
+    "takes": "takes",
+    "duration": "takes",
 }
 _WRITE_LABELS: Final[dict[Field, str]] = {
     "attending": "Attending",
@@ -67,6 +69,7 @@ _WRITE_LABELS: Final[dict[Field, str]] = {
     "along": "Take along",
     "arrive_by": "Arrive by",
     "travel": "Travel",
+    "takes": "Takes",
 }
 _NOT_NEEDED_WORDS: Final = frozenset({"not needed", "none", "no", "n/a", "na", "no ride", "not required"})
 _YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying"})
@@ -176,6 +179,8 @@ class RideNotes:
     """Minutes after midnight."""
     travel: int | None = None
     """A manual drive time in minutes, overriding the computed one."""
+    takes: int | None = None
+    """For an errand on a parent's calendar: the minutes it takes, any time in the event."""
     has_block: bool = False
     problems: tuple[str, ...] = ()
     """Lines that couldn't be read, worded for people."""
@@ -234,6 +239,7 @@ def write_notes(
     arrive_by: int | Keep | None = KEEP,
     travel: int | Keep | None = KEEP,
     attending: bool | Keep = KEEP,
+    takes: int | Keep | None = KEEP,
     event_start: int | None = None,
 ) -> str:
     """Return the description with ride settings changed.
@@ -253,6 +259,7 @@ def write_notes(
         "along": along,
         "arrive_by": arrive_by,
         "travel": travel,
+        "takes": takes,
     }
     changed = {
         f: _norm(f, v, directory)
@@ -384,6 +391,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     along: list[str] = []
     arrive_by: int | None = None
     travel: int | None = None
+    takes: int | None = None
     problems: list[str] = []
     found = _locate(doc)
     for fld in FIELDS:
@@ -418,6 +426,10 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         elif fld == "arrive_by":
             if raw and (arrive_by := parse_clock(raw, event_start)) is None:
                 problems.append(f"{label}: “{raw}” isn’t a time")
+        elif fld == "takes":
+            if raw and not (takes := parse_duration(raw)):
+                takes = None
+                problems.append(f"{label}: “{raw}” isn’t a number of minutes")
         elif raw and (travel := parse_duration(raw)) is None:
             problems.append(f"{label}: “{raw}” isn’t a number of minutes")
     return RideNotes(
@@ -428,6 +440,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         along=tuple(along),
         arrive_by=arrive_by,
         travel=travel,
+        takes=takes,
         has_block=doc.header is not None,
         problems=tuple(problems),
     )

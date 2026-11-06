@@ -298,8 +298,8 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
             if own and s.event is not None:
                 for x in s.event.parents:
                     o.parents.setdefault(x, f"Leave home at {fmt12(o.start)} with {name}")
-                jobs.append(("go", place, [s.event.title]))
-                lines.append(f"{at}  {place}, {s.event.title}")
+                jobs.append(("errand" if s.event.takes is not None else "go", place, [s.event.title]))
+                lines.append(f"{fmt(max(s.arrive, s.ready or 0))}  {place}, {s.event.title}")
             elif s.kind == "drop":
                 lines.append(f"{at}  {place}, drop off {k}")
             elif s.kind == "stay":
@@ -331,6 +331,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         o.warn = warn
         o.target = next((g.serves for g in o.legs if g.serves is not None), None)
         o.go = _going(p.stops, o, first, labels)
+        # An errand's time is the planner's pick, so the driver hears about it.
         o.solo = bool(jobs) and all(j[0] == "go" for j in jobs) and not kids and not o.parents
     return outings
 
@@ -349,6 +350,8 @@ def _going(stops: Sequence[Stop], o: Outing, first: Segment, labels: Labels) -> 
             continue
         if s.kind == "pick":
             due = s.ready
+        elif s.event is not None and s.event.takes is not None:
+            due = s.deadline
         elif s.event is not None:
             # When they have to be there, without the arrive-early margin: that's the slack.
             due = s.event.arrive_by if s.event.arrive_by is not None else s.event.start
@@ -376,7 +379,7 @@ def _outing_title(jobs: list[tuple[str, str, list[str]]]) -> str:
             return f"Drive {who} to {place}"
         if kind == "stay":
             return f"Drive {who} to {place} and stay"
-        if kind == "go":
+        if kind in ("go", "errand"):
             return f"{who} at {place}"
         return f"Pick up {who} at {place}"
     verbs = {
@@ -384,6 +387,7 @@ def _outing_title(jobs: list[tuple[str, str, list[str]]]) -> str:
         "stay": "take {} to {} and stay",
         "pick": "pick up {} at {}",
         "go": "{} at {}",
+        "errand": "{} at {}",
     }
     text = ", ".join(verbs[kind].format(_and(names), place) for kind, place, names in jobs)
     return text[0].upper() + text[1:]
@@ -466,6 +470,16 @@ def _card_lines(
     return out
 
 
+def planned_at(e: RideEvent, plan: DayPlan) -> float | None:
+    """When a parent's errand is planned to start, or None when it isn't planned."""
+    if e.own is None or e.own not in plan.drivers:
+        return None
+    for s in plan[e.own].stops:
+        if s.event is not None and s.event.id == e.id and s.arrive is not None:
+            return max(s.arrive, s.ready or 0)
+    return None
+
+
 def _own_lines(e: RideEvent, plan: DayPlan, labels: Labels) -> CardLines:
     """A parent's own event: when they leave for it, and when they're home or off again."""
     assert e.own is not None
@@ -479,7 +493,10 @@ def _own_lines(e: RideEvent, plan: DayPlan, labels: Labels) -> CardLines:
     stop = next((st for st in p.stops if st.event is not None and st.event.id == e.id), None)
     there = next((g for g in stop.legs if g.type == "drive"), None) if stop else None
     drop: CardLine | None = None
-    if there is not None:
+    when = planned_at(e, plan)
+    if e.takes is not None and when is not None:
+        drop = CardLine(f"Stop at {fmt(when)}{extra}", tone)
+    elif there is not None:
         start = there.from_loc or HOME
         lead = "Leaves" if start == HOME else f"From {labels.short_place(start)}"
         drop = CardLine(f"{lead} {fmt(there.start)}{extra}", tone)

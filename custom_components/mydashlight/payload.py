@@ -10,7 +10,7 @@ from collections.abc import Callable, Sequence
 import math
 from typing import Any
 
-from .board import CardLine, DayBoard, Going, KidItem, Outing, Ride, build_day, event_where
+from .board import CardLine, DayBoard, Going, KidItem, Outing, Ride, build_day, event_where, planned_at
 from .planner import (
     BusyBlock,
     Change,
@@ -139,6 +139,8 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "arrive_by": e.arrive_by,
         "along": [*e.along, *e.parents],
         "own": e.own,
+        "takes": e.takes,
+        "planned": _num(planned_at(e, board.plan)),
         "sides": list(ref.sides),
         "calendar_id": ref.calendar_id,
         "event_id": ref.event_id,
@@ -220,7 +222,13 @@ def _busy_for(driver: str, events: Sequence[RideEvent], board: DayBoard) -> list
     """A driver's busy times: their calendar, the trips they ride along on, and their own
     events, which carry the event's id."""
     out = [_busy(b) for b in board.plan.busy.get(driver, ())]
-    out += [_busy(BusyBlock(e.start, e.end, e.title), e.id) for e in events if e.own == driver and e.attending]
+    for e in events:
+        if e.own != driver or not e.attending:
+            continue
+        if e.takes is None:
+            out.append(_busy(BusyBlock(e.start, e.end, e.title), e.id))
+        elif (at := planned_at(e, board.plan)) is not None:
+            out.append(_busy(BusyBlock(math.floor(at), math.ceil(at + e.takes), e.title), e.id))
     out.sort(key=lambda b: (b["start"], b["end"], b["title"]))
     return out
 
