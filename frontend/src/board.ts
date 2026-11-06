@@ -1206,6 +1206,19 @@ export class MyDashLightBoard extends LitElement {
     const isSel = (t: Target | null): boolean => !!t && !!sel && t.day === sel.day && t.event === sel.event;
     const first = b.dayHeads[0];
     const W = b.width;
+    // Cards and the add-ons built onto them, drawn back to front so each add-on tucks behind.
+    type Piece =
+      | { t: "link"; x: Board["links"][number]; z: number }
+      | { t: "prep"; x: Board["preps"][number]; z: number }
+      | { t: "card"; x: Board["cards"][number]; z: number }
+      | { t: "ride"; x: Board["rides"][number]; z: number };
+    const MAIN = 100;
+    const stack: Piece[] = [
+      ...b.links.map((x): Piece => ({ t: "link", x, z: x.layer ?? 0 })),
+      ...b.preps.map((x): Piece => ({ t: "prep", x, z: x.layer ?? MAIN - 1 })),
+      ...b.cards.map((x): Piece => ({ t: "card", x, z: x.layer ?? MAIN })),
+      ...b.rides.map((x): Piece => ({ t: "ride", x, z: x.layer ?? MAIN + 1 })),
+    ].sort((p, q) => p.z - q.z);
     return html`
       <div
         class="scroller"
@@ -1278,21 +1291,42 @@ export class MyDashLightBoard extends LitElement {
               </div>`,
           )}
           ${repeat(
-            b.preps,
-            (x) => x.key,
-            (x) =>
-              html`<div
-                class="prep"
-                aria-hidden="true"
-                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;border-color:${x.color.color};background:rgba(${x.color.rgb},0.07);color:${x.color.ink}"
-              >
-                ${x.label}
-              </div>`,
-          )}
-          ${repeat(
-            b.cards,
-            (x) => x.key,
-            (x) => {
+            stack,
+            (p) => p.x.key,
+            (p) => {
+              if (p.t === "link") {
+                const x = p.x;
+                return html`<div
+                  class="link"
+                  aria-hidden="true"
+                  style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;border-color:${x.color.color};background:linear-gradient(rgba(${x.color.rgb},0.11), rgba(${x.color.rgb},0.11)), var(--surface)"
+                ></div>`;
+              }
+              if (p.t === "prep") {
+                const x = p.x;
+                return html`<div
+                  class="prep"
+                  aria-hidden="true"
+                  style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;border-color:${x.color.color};background:linear-gradient(rgba(${x.color.rgb},0.11), rgba(${x.color.rgb},0.11)), var(--surface);color:${x.color.ink}"
+                >
+                  ${x.label}
+                </div>`;
+              }
+              if (p.t === "ride") {
+                const x = p.x;
+                return html`<button
+                  type="button"
+                  class="ride ${x.dashed ? "dashed" : ""} ${x.clash ? "clash" : ""}"
+                  aria-label=${x.aria}
+                  style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;padding-top:${3 + (x.tuckTop ?? 0)}px;padding-bottom:${3 + (x.tuckBottom ?? 0)}px"
+                  @click=${() => this.open(x.target)}
+                >
+                  <span class="l1">${x.l1}</span>${x.show2
+                    ? html`<span class="l2" style="-webkit-line-clamp:${x.lines2}">${x.l2}</span>`
+                    : nothing}
+                </button>`;
+              }
+              const x = p.x;
               const k = x.color;
               const bg = x.skipped
                 ? `repeating-linear-gradient(135deg, rgba(${k.rgb},0.10) 0px, rgba(${k.rgb},0.10) 6px, transparent 6px, transparent 12px), var(--surface)`
@@ -1314,22 +1348,6 @@ export class MyDashLightBoard extends LitElement {
                 ${x.showPick && x.pick ? html`<span class="line tone-${x.pick.tone}">${x.pick.text}</span>` : nothing}
               </button>`;
             },
-          )}
-          ${repeat(
-            b.rides,
-            (x) => x.key,
-            (x) =>
-              html`<button
-                type="button"
-                class="ride ${x.dashed ? "dashed" : ""} ${x.clash ? "clash" : ""}"
-                aria-label=${x.aria}
-                style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px"
-                @click=${() => this.open(x.target)}
-              >
-                <span class="l1">${x.l1}</span>${x.show2
-                  ? html`<span class="l2" style="-webkit-line-clamp:${x.lines2}">${x.l2}</span>`
-                  : nothing}
-              </button>`,
           )}
           ${repeat(
             b.stays,

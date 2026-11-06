@@ -71,7 +71,9 @@ for (const mode of ["timeline", "compact"] as const) {
       }
     }
     // Boxes in one column only share space when they're side by side (a double-booking).
-    const boxes = [...b.cards, ...b.rides, ...b.trips, ...b.stays];
+    // A car box's tucked edge sits behind the piece it's built onto on purpose; only what shows counts.
+    const shown = b.rides.map((r) => ({ ...r, y: r.y + (r.tuckTop ?? 0), h: r.h - (r.tuckTop ?? 0) - (r.tuckBottom ?? 0) }));
+    const boxes = [...b.cards, ...shown, ...b.trips, ...b.stays];
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         const a = boxes[i]!;
@@ -321,25 +323,36 @@ test("compact: a long block reaches down past what starts during it in other col
   for (const c of b.cards.filter((x) => x.key.startsWith(`${date}|`))) assert.ok(block.y + block.h >= c.y + c.h, c.key);
 });
 
-test("timeline: a car box joins the event it's heading to, with no gap", () => {
+test("timeline: car boxes stack behind their activity like cards, keeping their own size", () => {
   const b = layout(plan, "timeline", 1160, today);
-  const JOIN = 30 * 3; // 30 minutes at 3px a minute
-  const next = [...b.cards, ...b.preps, ...b.rides];
-  let joined = 0;
+  const byKey = new Map(b.rides.map((r) => [r.key, r]));
+  let going = 0;
+  let home = 0;
   for (const r of b.rides) {
-    const day = r.key.split("|")[0]!;
-    const bottom = r.y + r.h;
-    const after = next.filter(
-      (q) => q !== r && q.key.startsWith(`${day}|`) && q.x < r.x + r.w && r.x < q.x + q.w && q.y >= bottom - 0.5,
-    );
-    const first = after.sort((p, q) => p.y - q.y)[0];
-    if (!first) continue;
-    // What comes next in the column either touches the car box or is well apart from it.
-    const gap = first.y - bottom;
-    assert.ok(gap < 0.5 || gap > JOIN, `${r.key} → ${first.key}`);
-    if (gap < 0.5) joined++;
+    const shown = r.h - (r.tuckTop ?? 0) - (r.tuckBottom ?? 0);
+    // Never stretched: what shows is the car's own time (or the smallest a box gets).
+    assert.ok(shown <= Math.max(22, shown), r.key);
+    if (r.tuckBottom) {
+      going++;
+      // Tucked behind what comes next: drawn behind it, the time between built on as its own block.
+      assert.ok(r.layer! < 100, r.key);
+      // With time to spare, that time is its own unlabeled block, in front of the car box.
+      const link = b.links.find((l) => l.key === `${r.key}|link`);
+      if (link) {
+        assert.equal(link.y, r.y + r.h - r.tuckBottom);
+        assert.ok(link.layer! > r.layer!);
+      }
+    }
+    if (r.tuckTop) {
+      home++;
+      assert.ok(r.layer! < 100, r.key);
+    }
   }
-  assert.ok(joined > 0);
+  assert.ok(going > 0 && home > 0);
+  assert.equal(byKey.size, b.rides.length);
+  // The activity is in front of everything built onto it.
+  for (const c of b.cards) if (c.layer != null) assert.equal(c.layer, 100);
+  for (const p of b.preps) assert.ok(p.layer! < 100);
 });
 
 // A parent's own events: they drive themselves, with kids or the other parent along.

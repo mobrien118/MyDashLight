@@ -810,6 +810,12 @@ export const styles = css`
     font-weight: 700;
     white-space: nowrap;
   }
+  /* The time between a car box and its activity: the arrive-by strip's look, no label. Like
+     every add-on it sits behind the piece it's built onto, rounded corners showing. */
+  .link {
+    border: 1.5px dashed;
+    border-radius: 10px;
+  }
   .card {
     padding: 6px 9px 6px 13px;
     border-radius: 10px;
