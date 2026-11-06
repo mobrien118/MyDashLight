@@ -7,7 +7,7 @@
 
 import { DRIVER_DOT, DRIVER_RGB, kidColor, type KidColor } from "./colors.ts";
 import { clock, dayLabel, daysBetween, duration, hourLabel, shortDay } from "./format.ts";
-import type { CardLine, KidItem, Plan, PlanDay, PlanEvent, Segment } from "./types.ts";
+import type { BusyBlock, CardLine, KidItem, Plan, PlanDay, PlanEvent, Segment } from "./types.ts";
 
 export type Mode = "timeline" | "compact";
 
@@ -121,6 +121,11 @@ export interface BusyBox extends Box {
   labelY: number;
 }
 
+/** The time an errand can be done in, drawn faintly behind the driver's trips. */
+export interface WindowBox extends Box {
+  label: string;
+}
+
 export interface PrepBox extends Box {
   color: KidColor;
   label: string;
@@ -163,6 +168,7 @@ export interface Board {
   trips: TripBox[];
   stays: StayBox[];
   busy: BusyBox[];
+  windows: WindowBox[];
   preps: PrepBox[];
   overlaps: Box[];
   marks: Mark[];
@@ -220,6 +226,31 @@ export function driverName(plan: Plan, driver: string): string {
 export function whoName(plan: Plan, value: string): string {
   if (value === "none") return "Not needed";
   return driverIds(plan).includes(value) ? driverName(plan, value) : value;
+}
+
+/** Whose event it is: the kid's name, or the parent's on their own event. */
+export function ownerName(plan: Plan, e: PlanEvent): string {
+  return e.own ? driverName(plan, e.own) : kidName(plan, e.kid);
+}
+
+/** A parent's own event is drawn in the drivers' dark ink, not a kid's color. */
+export const OWN_COLOR: KidColor = { color: DRIVER_DOT, rgb: DRIVER_RGB, ink: DRIVER_DOT };
+
+/** The color for an event: its kid's, or the drivers' ink on a parent's own event. */
+export function eventColor(plan: Plan, e: PlanEvent): KidColor {
+  return e.own ? OWN_COLOR : (kidColors(plan).get(e.kid) ?? kidColor(0));
+}
+
+/** "Golf with Ben and Robin": everyone going along to a parent's own event. */
+function alongNames(plan: Plan, e: PlanEvent): string[] {
+  const kids = kidIds(plan);
+  return e.along.map((a) => (kids.includes(a) ? kidName(plan, a) : driverName(plan, a)));
+}
+
+/** "Ben and Robin", "Ava, Ben and Robin". */
+export function andList(names: string[]): string {
+  if (names.length < 2) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 /** Short names for every place in the plan, by place key. */
@@ -331,10 +362,12 @@ export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX
   const weekEvents = new Map<string, PlanEvent[]>();
   for (const d of plan.days) {
     for (const e of d.events) {
-      const list = weekEvents.get(e.kid) ?? [];
-      // A long event shows on two days: count it once.
-      if (!list.some((x) => x.event_id === e.event_id && x.calendar_id === e.calendar_id)) list.push(e);
-      weekEvents.set(e.kid, list);
+      for (const who of e.own ? e.along : [e.kid]) {
+        const list = weekEvents.get(who) ?? [];
+        // A long event shows on two days: count it once.
+        if (!list.some((x) => x.event_id === e.event_id && x.calendar_id === e.calendar_id)) list.push(e);
+        weekEvents.set(who, list);
+      }
     }
   }
   const colors = kidColors(plan);
@@ -504,6 +537,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     trips: [],
     stays: [],
     busy: [],
+    windows: [],
     preps: [],
     overlaps: [],
     marks: [],
@@ -540,11 +574,33 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       return;
     }
 
-    const cardFor = (e: PlanEvent, x: number, cy: number, cw: number, h: number, clash: boolean, wrap: boolean): CardBox => {
-      const c = colors.get(e.kid) ?? kidColor(0);
-      const ln = e.lines;
+    // A card in one column: a kid's activity, a parent's own event in their column, or that
+    // event again in the column of each kid who goes along.
+    const cardFor = (
+      e: PlanEvent,
+      x: number,
+      cy: number,
+      cw: number,
+      h: number,
+      clash: boolean,
+      wrap: boolean,
+      colId: string = e.kid,
+    ): CardBox => {
+      const mine = !!e.own && colId === e.own;
+      const along = !!e.own && colId !== e.own;
+      const c = mine ? OWN_COLOR : (colors.get(colId) ?? kidColor(0));
+      const who = mine ? nameOfDriver(colId) : nameOfKid(colId);
+      const ln: { drop: CardLine | null; pick: CardLine | null } = along
+        ? { drop: { text: `With ${nameOfDriver(e.own!)}`, tone: e.attending === false ? "muted" : "normal" }, pick: null }
+        : e.lines;
+      const going = mine ? alongNames(plan, e) : [];
+      const time =
+        (e.takes != null
+          ? `${e.takes} min, any time ${clock(e.start)}–${clock(e.end)}`
+          : `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "")) +
+        (going.length ? ` · with ${andList(going)}` : "");
       return {
-        key: `${day.date}|card|${e.id}`,
+        key: `${day.date}|card|${e.id}` + (e.own ? `|${colId}` : ""),
         x,
         y: cy,
         w: cw,
@@ -552,19 +608,19 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         target: { day: day.date, event: e.id },
         event: e,
         color: c,
-        kidName: nameOfKid(e.kid),
+        kidName: who,
         clash,
-        stayed: e.stay && drivers.includes(e.drop),
+        stayed: !e.own && e.stay && drivers.includes(e.drop),
         skipped: e.attending === false,
-        title: shortTitle(e.title, nameOfKid(e.kid)),
-        time: `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : ""),
+        title: shortTitle(e.title, who),
+        time,
         drop: ln.drop,
         pick: ln.pick,
         showDrop: !!ln.drop && (wrap || h >= 56),
         showPick: !!ln.pick && (wrap || h >= 74),
         wrap,
         aria:
-          `${nameOfKid(e.kid)}, ${e.title} ${clock(e.start)} to ${clock(e.end)}. ` +
+          `${who}, ${e.title} ${e.takes != null ? `any time from ${clock(e.start)} to ${clock(e.end)}` : `${clock(e.start)} to ${clock(e.end)}`}. ` +
           (e.attending === false && !ln.drop ? "Not attending. " : "") +
           [ln.drop, ln.pick]
             .filter((l): l is CardLine => !!l)
@@ -587,6 +643,19 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       if (!r) return null;
       const own = r.serves.find((id) => events.get(id)?.kid === r.kid);
       return target(own ?? r.serves[0]);
+    };
+
+    // A busy block that's a ride along to the other parent's own event says whose it is.
+    const busyOf = (d: string, b: BusyBlock): BusyBlock => {
+      if (b.event) return b;
+      const host = day.events.find((e) => e.own && e.own !== d && e.along.includes(d) && e.title === b.title);
+      return host ? { ...b, title: `${b.title} with ${nameOfDriver(host.own!)}` } : b;
+    };
+    // A parent's own event: a card in their column. An errand sits at the time it was fitted in.
+    const ownSpan = (e: PlanEvent): [number, number] => {
+      if (e.takes == null) return [e.start, e.end];
+      const at = e.planned ?? e.start;
+      return [at, at + e.takes];
     };
 
     const issueMarks = new Map<string, string>();
@@ -633,7 +702,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             const e = events.get(it.event ?? "");
             if (!e) continue;
             const h = Math.max(30, Y(p.en) - y0);
-            board.cards.push(cardFor(e, ix, y0, iw, h, it.clash, false));
+            board.cards.push(cardFor(e, ix, y0, iw, h, it.clash, false, kid));
             pieces.push({ s: e.arrive_by != null && e.start - e.arrive_by >= 5 ? e.arrive_by : p.s, en: p.en, top: y0 });
             if (e.arrive_by != null && e.start - e.arrive_by >= 5) {
               const py = Y(e.arrive_by);
@@ -733,11 +802,28 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             pieces.push(cur);
           }
         }
+        const drawn = new Set<string>();
+        const ownCard = (e: PlanEvent, s: number, en: number, onTrip: boolean): void => {
+          drawn.add(e.id);
+          const y0 = Y(s);
+          const card = cardFor(e, c.x + 8, y0, c.w - 16, Math.max(30, Y(en) - y0), false, false, d);
+          // The trip box just above already says when they leave.
+          if (onTrip && card.drop?.tone === "normal") {
+            card.drop = null;
+            card.showDrop = false;
+          }
+          board.cards.push(card);
+        };
         for (const piece of pieces) {
           const y0 = Y(piece.s);
           const h = Math.max(24, Y(piece.en) - y0);
           if (piece.type === "stay") {
             const e = events.get(piece.g.event ?? piece.g.serves ?? "");
+            if (e?.own === d) {
+              // Their own event: the trip there and back attach to its card.
+              ownCard(e, piece.s, piece.en, true);
+              continue;
+            }
             const color = e ? colors.get(e.kid) ?? kidColor(0) : kidColor(0);
             const others = piece.g.kids.map(nameOfKid);
             board.stays.push({
@@ -795,8 +881,26 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             });
           }
         }
-        for (const b of dd.busy) {
-          if (b.end <= r0 || b.start >= r1) continue;
+        for (const e of day.events) {
+          if (e.own !== d) continue;
+          // Not going, or an errand that didn't fit: still on the board, to change it.
+          if (!drawn.has(e.id)) ownCard(e, ...ownSpan(e), false);
+          if (e.takes != null && e.attending !== false) {
+            const wy = Y(e.start);
+            board.windows.push({
+              key: `${day.date}|window|${e.id}`,
+              x: c.x + 4,
+              y: wy,
+              w: c.w - 8,
+              h: Math.max(24, Y(e.end) - wy),
+              label: `${e.title} · any time ${clock(e.start)}–${clock(e.end)}`,
+            });
+          }
+        }
+        for (const raw of dd.busy) {
+          // A parent's own event is drawn as its trip and card.
+          if (raw.event || raw.end <= r0 || raw.start >= r1) continue;
+          const b = busyOf(d, raw);
           const y0 = Y(b.start);
           const y1 = Y(b.end);
           board.busy.push({
@@ -831,7 +935,8 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     type Item =
       | { col: string; s: number; h: number; kind: "act"; item: KidItem }
       | { col: string; s: number; h: number; kind: "along"; item: KidItem }
-      | { col: string; s: number; h: number; kind: "busy"; busy: { start: number; end: number; title: string } }
+      | { col: string; s: number; h: number; kind: "busy"; busy: BusyBlock }
+      | { col: string; s: number; h: number; kind: "own"; event: PlanEvent }
       | { col: string; s: number; h: number; kind: "out"; out: (typeof outings)[number] };
     const items: Item[] = [];
     for (const kid of kids) {
@@ -852,7 +957,14 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     for (const d of drivers) {
       const dd = day.drivers[d];
       if (!dd) continue;
-      for (const b of dd.busy) items.push({ col: d, s: b.start, h: 32, kind: "busy", busy: b });
+      for (const b of dd.busy) if (!b.event) items.push({ col: d, s: b.start, h: 32, kind: "busy", busy: busyOf(d, b) });
+      // A parent's own event shows in their trip's stops. One with no trip (not going, or an
+      // errand that didn't fit) gets a card, so it can still be changed.
+      const cw = col.get(d)!.w;
+      for (const e of day.events) {
+        if (e.own !== d || (e.attending !== false && (e.takes == null || e.planned != null))) continue;
+        items.push({ col: d, s: ownSpan(e)[0], h: compactCardHeight(e, cw), kind: "own", event: e });
+      }
       for (const o of dd.outings) {
         if (o.start == null) continue;
         items.push({ col: d, s: o.start, h: 30 + o.lines.length * 16 + (o.warn ? 16 : 0), kind: "out", out: o });
@@ -868,7 +980,14 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       const iy = Math.max(below != null ? below + GAP : top, prevY);
       bottom.set(m.col, iy + m.h);
       prevY = iy;
-      const end = m.kind === "busy" ? m.busy.end : m.kind === "act" ? (events.get(m.item.event ?? "")?.end ?? null) : null;
+      const end =
+        m.kind === "busy"
+          ? m.busy.end
+          : m.kind === "act"
+            ? (events.get(m.item.event ?? "")?.end ?? null)
+            : m.kind === "own"
+              ? ownSpan(m.event)[1]
+              : null;
       placed.push({ col: m.col, s: m.s, end, y: iy, h: m.h, box: null });
       board.anchors.push({ t: base + m.s, y: iy });
       const c = col.get(m.col)!;
@@ -903,9 +1022,13 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           bad: !!o.warn,
           aria: `${nameOfDriver(m.col)}: ${o.lead}. ${o.lines.join(". ")}${o.warn ? `. ${o.warn}` : ""}`,
         });
+      } else if (m.kind === "own") {
+        const card = cardFor(m.event, c.x + 8, iy, c.w - 16, m.h, false, true, m.col);
+        board.cards.push(card);
+        placed[placed.length - 1]!.box = card;
       } else if (m.kind === "act") {
         const e = events.get(m.item.event ?? "")!;
-        const card = cardFor(e, c.x, iy, c.w, m.h, m.item.clash, true);
+        const card = cardFor(e, c.x, iy, c.w, m.h, m.item.clash, true, m.col);
         board.cards.push(card);
         placed[placed.length - 1]!.box = card;
       } else {
@@ -1141,7 +1264,7 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
       items.push({
         key: `${day.date}|notes|${e.id}`,
         tone: "heads_up",
-        title: `${pre}Check the notes on ${kidName(plan, e.kid)}’s ${e.title}`,
+        title: `${pre}Check the notes on ${ownerName(plan, e)}’s ${e.title}`,
         body: `These lines couldn’t be read: ${e.problems.join("; ")}`,
         target: target(e.id),
         suggestions: [],

@@ -25,7 +25,7 @@ export interface PlanEvent {
   pick: string;
   stay: boolean;
   arrive_by: number | null;
-  /** Kids taken along on this drop-off. */
+  /** Kids taken along on this drop-off. On a parent's own event, the other parent can go too (their driver id). */
   along: string[];
   sides: Side[];
   calendar_id: string;
@@ -36,6 +36,15 @@ export interface PlanEvent {
   lines: { drop: CardLine | null; pick: CardLine | null };
   /** False when the kid is skipping this one: no rides, no issues, no clashes. Older plans leave it out. */
   attending?: boolean;
+  /**
+   * A parent's own event: their driver id. They drive themselves and stay, so `kid`, `drop` and
+   * `pick` are that driver too. Null on a kid's event; older plans leave it out.
+   */
+  own?: string | null;
+  /** A parent's errand: the minutes it takes, any time from `start` to `end`. */
+  takes?: number | null;
+  /** When the planner fitted an errand in, or null when it couldn't. */
+  planned?: number | null;
 }
 
 export interface Segment {
@@ -61,12 +70,18 @@ export interface Outing {
   kids: string[];
   warn: string | null;
   target: string | null;
+  /** The other parent riding along to this parent's own event, with when they leave. */
+  parents?: Record<string, string>;
+  /** The driver goes alone to their own event. */
+  solo?: boolean;
 }
 
 export interface BusyBlock {
   start: number;
   end: number;
   title: string;
+  /** The driver's own event this is the time of; the board draws that as a trip instead. */
+  event?: string | null;
 }
 
 export interface DriverDay {

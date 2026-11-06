@@ -781,6 +781,24 @@ export const styles = css`
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .window {
+    border: 1.5px dashed rgba(35, 39, 46, 0.22);
+    border-radius: 10px;
+    background: rgba(35, 39, 46, 0.035);
+  }
+  .window span {
+    position: absolute;
+    left: 10px;
+    right: 6px;
+    top: 6px;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 600;
+    color: #6a707a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .prep {
     border: 1.5px dashed;
     border-bottom: 0;

@@ -10,7 +10,11 @@ import { kidColor } from "./colors.ts";
 import { ago, clock, clockAmPm, dayLabel, duration, nowIn, shortDay } from "./format.ts";
 import {
   DAY_HEAD,
+  OWN_COLOR,
+  andList,
   attention,
+  eventColor,
+  ownerName,
   dayTag,
   driverIds,
   driverName,
@@ -1092,7 +1096,7 @@ export class MyDashLightBoard extends LitElement {
       ${plan.days.map((d) => {
         const problems = problemCount(d);
         const n = d.events.length;
-        const dots = d.events.slice(0, 6).map((e) => colors.get(e.kid)?.color ?? kidColor(0).color);
+        const dots = d.events.slice(0, 6).map((e) => (e.own ? OWN_COLOR.color : (colors.get(e.kid)?.color ?? kidColor(0).color)));
         const label = `${dayLabel(d.date)}: ${n ? `${n} ${n === 1 ? "activity" : "activities"}` : "nothing planned"}${problems ? `, ${problems} to sort out` : ""}`;
         return html`<button
           type="button"
@@ -1263,6 +1267,14 @@ export class MyDashLightBoard extends LitElement {
             (x) =>
               html`<div class="busy" style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px">
                 <span style="top:${x.labelY}px">${x.label}</span>
+              </div>`,
+          )}
+          ${repeat(
+            b.windows,
+            (x) => x.key,
+            (x) =>
+              html`<div class="window" aria-hidden="true" style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px">
+                <span>${x.label}</span>
               </div>`,
           )}
           ${repeat(
@@ -2153,13 +2165,24 @@ export class MyDashLightBoard extends LitElement {
     </div>`;
   }
 
+  /** What happens on a parent's own event: they drive themselves, or fit an errand in. */
+  private ownHint(plan: Plan, e: PlanEvent): string {
+    const who = ownerName(plan, e);
+    if (e.takes != null) {
+      const when = e.planned != null ? `It’s fitted in at ${clock(e.planned)}` : "It doesn’t fit anywhere yet";
+      return `An errand: about ${e.takes} min any time from ${clock(e.start)} to ${clock(e.end)}. ${when}, around ${who}’s other trips. Errands go alone.`;
+    }
+    const going = e.along.map((a) => (driverIds(plan).includes(a) ? driverName(plan, a) : kidName(plan, a)));
+    return `${who} drives there and back${going.length ? `, with ${andList(going)}` : ""}.`;
+  }
+
   private renderEditor(plan: Plan): TemplateResult {
     const found = this.findEvent(this.sel!);
     if (!found) return html``;
     const { day, event: e } = found;
     const drivers = driverIds(plan);
-    const colors = kidColors(plan);
-    const color = colors.get(e.kid) ?? kidColor(0);
+    const color = eventColor(plan, e);
+    const owner = ownerName(plan, e);
     const busy = !!this.pending;
     const pendingValue = (key: string): unknown => (this.pending?.key === key ? this.pending.value : undefined);
 
@@ -2219,17 +2242,21 @@ export class MyDashLightBoard extends LitElement {
     const canStay = e.drop === e.pick && drivers.includes(e.drop);
     const alongPend = pendingValue("along");
     const along = alongPend !== undefined ? (alongPend as string[]) : e.along;
-    const otherKids = kidIds(plan).filter((k) => k !== e.kid);
-    const canTake = drivers.includes(e.drop) && e.sides.includes("drop");
+    // On a parent's own event the other parent can go along too.
+    const otherKids = e.own ? [...kidIds(plan), ...drivers.filter((d) => d !== e.own)] : kidIds(plan).filter((k) => k !== e.kid);
+    const errand = e.own != null && e.takes != null;
+    const canTake = drivers.includes(e.drop) && e.sides.includes("drop") && !errand;
     const arrivePend = pendingValue("arrive");
     const arrive = this.arriveDraft !== undefined ? this.arriveDraft : arrivePend !== undefined ? (arrivePend as number | null) : e.arrive_by;
 
     const notes: string[] = [];
     const noteVal = (v: string): string => (v === "none" ? "Not needed" : whoName(plan, v));
-    if (e.drop !== "") notes.push(`Drop-off: ${noteVal(e.drop)}`);
-    if (e.pick !== "") notes.push(`Pick-up: ${noteVal(e.pick)}`);
-    if (e.stay) notes.push("Stay: yes");
-    if (e.along.length) notes.push(`Take along: ${e.along.map((k) => kidName(plan, k)).join(", ")}`);
+    // A parent's own event drives itself: only who goes along and when to arrive are written.
+    if (!e.own && e.drop !== "") notes.push(`Drop-off: ${noteVal(e.drop)}`);
+    if (!e.own && e.pick !== "") notes.push(`Pick-up: ${noteVal(e.pick)}`);
+    if (!e.own && e.stay) notes.push("Stay: yes");
+    if (errand) notes.push(`Takes: ${e.takes} min`);
+    if (e.along.length) notes.push(`Take along: ${e.along.map((k) => (drivers.includes(k) ? driverName(plan, k) : kidName(plan, k))).join(", ")}`);
     if (e.arrive_by != null) notes.push(`Arrive by: ${clockAmPm(e.arrive_by)}`);
     const attendPend = pendingValue("attending");
     const attending = attendPend !== undefined ? Boolean(attendPend) : e.attending !== false;
@@ -2238,14 +2265,14 @@ export class MyDashLightBoard extends LitElement {
     const ahead = day.date === this.today().date ? "" : `${shortDay(day.date)} · `;
     const head = html`<div class="ed-head">
         <div class="ed-titles">
-          <span class="ed-title"><span class="dot" style="background:${color.color}"></span>${kidName(plan, e.kid)} · ${e.title}</span>
-          <span class="ed-meta">${ahead}${clock(e.start)}–${clock(e.end)}${e.place_name && !e.place.startsWith("?") ? ` · ${e.place_name}` : ""}</span>
+          <span class="ed-title"><span class="dot" style="background:${color.color}"></span>${owner} · ${e.title}</span>
+          <span class="ed-meta">${ahead}${errand ? "any time " : ""}${clock(e.start)}–${clock(e.end)}${e.place_name && !e.place.startsWith("?") ? ` · ${e.place_name}` : ""}</span>
         </div>
         <button type="button" class="btn dark" @click=${() => this.closeEditor()}>Done</button>
       </div>`;
     if (e.where === "home") {
       return html`${head}
-        <p class="field-hint">It’s at home, so it doesn’t need a ride. If ${kidName(plan, e.kid)} can’t get home in time, the board shows it as a clash.</p>`;
+        <p class="field-hint">It’s at home, so it doesn’t need a ride. If ${owner} can’t get home in time, the board shows it as a clash.</p>`;
     }
     return html`
       ${head}
@@ -2264,7 +2291,7 @@ export class MyDashLightBoard extends LitElement {
           </div>`
         : nothing}
       <div class="field">
-        <span class="field-label">${kidName(plan, e.kid)} is</span>
+        <span class="field-label">${owner} is</span>
         <div role="group" aria-label="Going or not" class="choices" style="grid-template-columns:1fr 1fr">
           <button type="button" class="choice" aria-pressed=${attending ? "true" : "false"} ?disabled=${busy} @click=${() => this.setAttending(e, true)}>
             Going
@@ -2278,25 +2305,29 @@ export class MyDashLightBoard extends LitElement {
         ? html`${e.where === "anywhere"
               ? html`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`
               : nothing}
-            ${side("drop")} ${side("pick")}
-      <div class="field">
-        <button type="button" class="choice wide" aria-pressed=${stay ? "true" : "false"} ?disabled=${!canStay || busy} @click=${() => this.toggleStay(e)}>
-          ${canStay ? (stay ? "Driver stays the whole time" : "Driver leaves and comes back") : "Staying needs the same driver both ways"}
-        </button>
-      </div>
+            ${e.own
+              ? html`<p class="field-hint">${this.ownHint(plan, e)}</p>`
+              : html`${side("drop")} ${side("pick")}
+                  <div class="field">
+                    <button type="button" class="choice wide" aria-pressed=${stay ? "true" : "false"} ?disabled=${!canStay || busy} @click=${() => this.toggleStay(e)}>
+                      ${canStay ? (stay ? "Driver stays the whole time" : "Driver leaves and comes back") : "Staying needs the same driver both ways"}
+                    </button>
+                  </div>`}
       ${canTake && otherKids.length
         ? html`<div class="field">
             <span class="field-label">Take along <span class="field-hint">They leave home in the same car</span></span>
-            <div role="group" aria-label="Kids taken along" class="chips">
+            <div role="group" aria-label=${e.own ? "Who goes along" : "Kids taken along"} class="chips">
               ${otherKids.map(
                 (k) => html`<button type="button" class="chip" aria-pressed=${along.includes(k) ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleAlong(e, k)}>
-                  ${kidName(plan, k)}
+                  ${drivers.includes(k) ? driverName(plan, k) : kidName(plan, k)}
                 </button>`,
               )}
             </div>
           </div>`
         : nothing}
-      <div class="field arrive">
+      ${errand
+        ? nothing
+        : html`<div class="field arrive">
         <span class="arrive-text">
           <span class="field-label">Arrive by</span>
           <span class="field-hint">${arrive != null ? `${e.start - arrive} min before it starts` : `Aims for a few minutes before ${clock(e.start)}`}</span>
@@ -2309,7 +2340,7 @@ export class MyDashLightBoard extends LitElement {
       </div>
       ${arrive != null
         ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => this.clearArrive()}>Clear arrive-by time</button>`
-        : nothing}
+        : nothing}`}
 `
         : html`<p class="field-hint">
             Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.
@@ -2322,7 +2353,7 @@ export class MyDashLightBoard extends LitElement {
       ${e.problems.length
         ? html`<p class="field-hint bad">These lines in the notes couldn’t be read: ${e.problems.join("; ")}</p>`
         : nothing}
-      ${attending
+      ${attending && !e.own
         ? html`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`
         : nothing}
     `;

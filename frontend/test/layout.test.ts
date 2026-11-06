@@ -21,6 +21,7 @@ import {
   yAt,
   type Board,
 } from "../src/layout.ts";
+import { OWN_COLOR, andList, eventColor, ownerName } from "../src/layout.ts";
 import { sampleWeek } from "./helpers.ts";
 
 const plan = sampleWeek();
@@ -63,7 +64,10 @@ for (const mode of ["timeline", "compact"] as const) {
     const b = layout(plan, mode, 1160, today);
     for (const day of plan.days) {
       for (const e of day.events) {
-        assert.ok(b.cards.some((c) => c.target.day === day.date && c.target.event === e.id), `${day.date} ${e.id}`);
+        const card = b.cards.some((c) => c.target.day === day.date && c.target.event === e.id);
+        // In Compact, a parent's own event is a stop on their trip.
+        const stop = mode === "compact" && !!e.own && b.trips.some((t) => t.key.startsWith(day.date) && t.stops?.some((x) => x.text.includes(e.title)));
+        assert.ok(card || stop, `${day.date} ${e.id}`);
       }
     }
     // Boxes in one column only share space when they're side by side (a double-booking).
@@ -289,6 +293,8 @@ test("an event the kid isn't going to stays on the board, marked", () => {
 test("compact: a trip away fills the parent's column for the day, without making the day taller", () => {
   const withBusy = (end: number): Board => {
     const p = sampleWeek();
+    // A day the driver has nothing else on.
+    p.days[3]!.drivers["dad"]!.outings = [];
     p.days[3]!.drivers["dad"]!.busy = [{ start: 0, end, title: "Trip to the lake" }];
     return layout(p, "compact", 1160, today);
   };
@@ -307,6 +313,7 @@ test("compact: a trip away fills the parent's column for the day, without making
 
 test("compact: a long block reaches down past what starts during it in other columns", () => {
   const p = sampleWeek();
+  p.days[3]!.drivers["dad"]!.outings = [];
   p.days[3]!.drivers["dad"]!.busy = [{ start: 0, end: 1439, title: "Conference" }];
   const b = layout(p, "compact", 1160, today);
   const date = p.days[3]!.date;
@@ -333,4 +340,105 @@ test("timeline: a car box joins the event it's heading to, with no gap", () => {
     if (gap < 0.5) joined++;
   }
   assert.ok(joined > 0);
+});
+
+// A parent's own events: they drive themselves, with kids or the other parent along.
+
+const dayOf = (id: string) => plan.days.find((d) => d.events.some((e) => e.id === id))!;
+const colOf = (b: Board, name: string) => b.columns.find((c) => c.name === name)!;
+const inCol = (x: { x: number; w: number }, c: { x: number; w: number }) => x.x >= c.x && x.x + x.w <= c.x + c.w;
+
+test("timeline: a parent's own event is a card in their column, joined to the trip there and back", () => {
+  const b = layout(plan, "timeline", 1160, today);
+  const date = dayOf("sun-golf").date;
+  const sam = colOf(b, "Sam");
+  const golf = b.cards.filter((c) => c.target.day === date && c.target.event === "sun-golf");
+  const mine = golf.find((c) => inCol(c, sam))!;
+  assert.equal(mine.kidName, "Sam");
+  assert.equal(mine.color, OWN_COLOR);
+  assert.equal(mine.time, "1:00–4:00 · with Ben and Robin");
+  assert.equal(mine.stayed, false);
+  // The trips there and back touch the card.
+  const trips = b.trips.filter((t) => t.key.startsWith(date) && inCol(t, sam));
+  assert.ok(trips.some((t) => t.y + t.h === mine.y));
+  assert.ok(trips.some((t) => t.y === mine.y + mine.h));
+  // Not drawn a second time as busy time, or as a stay.
+  assert.ok(!b.busy.some((x) => x.key.startsWith(date) && inCol(x, sam)));
+  assert.ok(!b.stays.some((x) => x.key.startsWith(date) && x.target?.event === "sun-golf"));
+  // Ben goes along: it's in his column, in his color.
+  const ben = colOf(b, "Ben");
+  const his = golf.find((c) => inCol(c, ben))!;
+  assert.equal(his.drop?.text, "With Sam");
+  assert.equal(his.pick, null);
+  assert.equal(his.color.color, ben.dot);
+  assert.ok(b.rides.some((r) => r.key.startsWith(date) && inCol(r, ben) && r.l1 === "In Sam’s car"));
+  // Robin rides along too, so she's busy, and it says with whom.
+  const robin = colOf(b, "Robin");
+  assert.ok(b.busy.some((x) => x.key.startsWith(date) && inCol(x, robin) && x.label.startsWith("Golf with Sam")));
+  // Every card has its own key, even an event shown in two columns.
+  assert.equal(new Set(b.cards.map((c) => c.key)).size, b.cards.length);
+});
+
+test("timeline: an errand sits at the time it was fitted in, with its window behind it", () => {
+  const b = layout(plan, "timeline", 1160, today);
+  const day = dayOf("mon-cleaners");
+  const e = day.events.find((x) => x.id === "mon-cleaners")!;
+  assert.equal(e.takes, 10);
+  assert.ok(e.planned != null);
+  const sam = colOf(b, "Sam");
+  const card = b.cards.find((c) => c.target.day === day.date && c.target.event === e.id)!;
+  assert.ok(inCol(card, sam));
+  assert.equal(card.time, "10 min, any time 5:00–7:30");
+  const win = b.windows.find((w) => w.key === `${day.date}|window|${e.id}`)!;
+  assert.equal(win.label, "Pick up dry cleaning · any time 5:00–7:30");
+  assert.ok(win.y < card.y && card.y + card.h <= win.y + win.h);
+  // Its busy time is the card, not a hatched block.
+  assert.ok(!b.busy.some((x) => x.key.startsWith(day.date) && inCol(x, sam) && x.label.startsWith("Pick up")));
+});
+
+test("a parent's own event they're not going to stays on the board, to change it back", () => {
+  const p = sampleWeek();
+  const day = p.days.find((d) => d.events.some((e) => e.id === "tue-book"))!;
+  const e = day.events.find((x) => x.id === "tue-book")!;
+  e.attending = false;
+  day.drivers["mom"]!.outings = day.drivers["mom"]!.outings.filter((o) => o.target !== "tue-book");
+  day.drivers["mom"]!.segments = day.drivers["mom"]!.segments.filter((g) => g.serves !== "tue-book");
+  day.drivers["mom"]!.busy = day.drivers["mom"]!.busy.filter((x) => x.event !== "tue-book");
+  for (const mode of ["timeline", "compact"] as const) {
+    const b = layout(p, mode, 1160, today);
+    const card = b.cards.find((c) => c.target.day === day.date && c.target.event === "tue-book");
+    assert.ok(card, mode);
+    assert.ok(card.skipped);
+    assert.ok(inCol(card, colOf(b, "Robin")));
+  }
+});
+
+test("compact: a parent's own event is a stop on their trip, and kids along get a card", () => {
+  const b = layout(plan, "compact", 1160, today);
+  const date = dayOf("sun-golf").date;
+  assert.ok(b.trips.some((t) => t.key.startsWith(date) && t.target?.event === "sun-golf" && t.stops!.some((x) => x.text.includes("Golf"))));
+  const cards = b.cards.filter((c) => c.target.day === date && c.target.event === "sun-golf");
+  assert.equal(cards.length, 1);
+  assert.ok(inCol(cards[0]!, colOf(b, "Ben")));
+  assert.equal(cards[0]!.drop?.text, "With Sam");
+  assert.ok(!b.busy.some((x) => x.key.startsWith(date) && x.label.startsWith("Golf 1:00")));
+  assert.ok(b.busy.some((x) => x.key.startsWith(date) && x.label.startsWith("Golf with Sam")));
+});
+
+test("whose event it is, by name and color", () => {
+  const golf = dayOf("sun-golf").events.find((e) => e.id === "sun-golf")!;
+  const soccer = plan.days[0]!.events.find((e) => e.id === "soccer")!;
+  assert.equal(ownerName(plan, golf), "Sam");
+  assert.equal(ownerName(plan, soccer), "Cleo");
+  assert.equal(eventColor(plan, golf), OWN_COLOR);
+  assert.notEqual(eventColor(plan, soccer), OWN_COLOR);
+  assert.equal(andList([]), "");
+  assert.equal(andList(["Ben"]), "Ben");
+  assert.equal(andList(["Ava", "Ben", "Robin"]), "Ava, Ben and Robin");
+  // Notes on a parent's own event name the parent.
+  const p = sampleWeek();
+  const e = p.days.find((d) => d.events.some((x) => x.id === "sun-golf"))!.events.find((x) => x.id === "sun-golf")!;
+  e.problems = ["Take along: “Nobody”"];
+  const all = attention(p, { date: FIRST, minutes: 0 }, 24 * 8);
+  assert.ok(all.items.some((i) => i.title === "Sun · Check the notes on Sam’s Golf"));
 });
