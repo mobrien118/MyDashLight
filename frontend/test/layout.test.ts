@@ -285,3 +285,52 @@ test("an event the kid isn't going to stays on the board, marked", () => {
   assert.equal(card.skipped, true);
   assert.equal(b.cards.filter((c) => c.skipped).length, 1);
 });
+
+test("compact: a trip away fills the parent's column for the day, without making the day taller", () => {
+  const withBusy = (end: number): Board => {
+    const p = sampleWeek();
+    p.days[3]!.drivers["dad"]!.busy = [{ start: 0, end, title: "Trip to the lake" }];
+    return layout(p, "compact", 1160, today);
+  };
+  const date = plan.days[3]!.date;
+  const short = withBusy(60);
+  const away = withBusy(1800);
+  // Tethered: the long block only fills space the day already has.
+  assert.equal(away.height, short.height);
+  const box = (b: Board) => b.busy.find((x) => x.key.startsWith(`${date}|busy|`))!;
+  assert.ok(box(away).h > box(short).h);
+  const bottom = Math.max(
+    ...[...away.cards, ...away.rides, ...away.trips].filter((x) => x.key.startsWith(`${date}|`)).map((x) => x.y + x.h),
+  );
+  assert.equal(box(away).y + box(away).h, bottom);
+});
+
+test("compact: a long block reaches down past what starts during it in other columns", () => {
+  const p = sampleWeek();
+  p.days[3]!.drivers["dad"]!.busy = [{ start: 0, end: 1439, title: "Conference" }];
+  const b = layout(p, "compact", 1160, today);
+  const date = p.days[3]!.date;
+  const block = b.busy.find((x) => x.key.startsWith(`${date}|busy|`))!;
+  for (const c of b.cards.filter((x) => x.key.startsWith(`${date}|`))) assert.ok(block.y + block.h >= c.y + c.h, c.key);
+});
+
+test("timeline: a car box joins the event it's heading to, with no gap", () => {
+  const b = layout(plan, "timeline", 1160, today);
+  const JOIN = 30 * 3; // 30 minutes at 3px a minute
+  const next = [...b.cards, ...b.preps, ...b.rides];
+  let joined = 0;
+  for (const r of b.rides) {
+    const day = r.key.split("|")[0]!;
+    const bottom = r.y + r.h;
+    const after = next.filter(
+      (q) => q !== r && q.key.startsWith(`${day}|`) && q.x < r.x + r.w && r.x < q.x + q.w && q.y >= bottom - 0.5,
+    );
+    const first = after.sort((p, q) => p.y - q.y)[0];
+    if (!first) continue;
+    // What comes next in the column either touches the car box or is well apart from it.
+    const gap = first.y - bottom;
+    assert.ok(gap < 0.5 || gap > JOIN, `${r.key} → ${first.key}`);
+    if (gap < 0.5) joined++;
+  }
+  assert.ok(joined > 0);
+});
