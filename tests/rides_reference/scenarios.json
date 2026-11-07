@@ -2315,14 +2315,35 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:29 PM",
+          "first_leave": "3:11 PM",
           "drive_min": 58,
           "segments": [
             {
               "type": "drive",
+              "start": "3:11 PM",
+              "end": "3:19 PM",
+              "from": "home",
+              "to": "gym",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-jersey"
+            },
+            {
+              "type": "stay",
+              "start": "3:19 PM",
+              "end": "3:29 PM",
+              "loc": "gym",
+              "kids": [
+                "ava"
+              ],
+              "serves": "thu-jersey"
+            },
+            {
+              "type": "drive",
               "start": "3:29 PM",
               "end": "3:39 PM",
-              "from": "home",
+              "from": "gym",
               "to": "piano",
               "kids": [
                 "ava"
@@ -2342,36 +2363,15 @@
               "start": "4:30 PM",
               "end": "4:40 PM",
               "from": "piano",
-              "to": "gym",
-              "kids": [
-                "ava"
-              ],
-              "serves": "thu-jersey"
-            },
-            {
-              "type": "stay",
-              "start": "4:40 PM",
-              "end": "4:50 PM",
-              "loc": "gym",
-              "kids": [
-                "ava"
-              ],
-              "serves": "thu-jersey"
-            },
-            {
-              "type": "drive",
-              "start": "4:50 PM",
-              "end": "4:58 PM",
-              "from": "gym",
               "to": "home",
               "kids": [
                 "ava"
               ],
-              "serves": "thu-jersey"
+              "serves": "piano"
             },
             {
               "type": "home",
-              "start": "4:58 PM",
+              "start": "4:40 PM",
               "end": "6:15 PM"
             },
             {

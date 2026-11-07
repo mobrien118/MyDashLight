@@ -19,7 +19,7 @@ const GAP = 8;
 /** A car box is joined to what comes next in the kid's column when that starts within this many minutes. */
 const JOIN_MINUTES = 30;
 /** How far an add-on runs behind the piece in front of it, so its rounded corners show behind. */
-const LINK_TUCK = 6;
+const LINK_TUCK = 16;
 /** The stacking layer of an activity card; the add-ons around it sit below this. */
 const MAIN_LAYER = 100;
 /** Left gutter for the hour labels. */
@@ -688,8 +688,13 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       let lo = Infinity;
       let hi = -Infinity;
       for (const e of day.events) {
-        lo = Math.min(lo, e.start - 20, e.arrive_by != null ? e.arrive_by - 10 : Infinity);
-        hi = Math.max(hi, e.end + 20);
+        // Something running in from the day before or on past midnight (a sleepover, say) only
+        // shows its edge inside the day, so the hours shown don't stretch to midnight for it.
+        if (e.start <= 0 && e.end >= 1440) continue;
+        if (e.start > 0) lo = Math.min(lo, e.start - 20, e.arrive_by != null ? e.arrive_by - 10 : Infinity);
+        else lo = Math.min(lo, e.end - 30);
+        if (e.end < 1440) hi = Math.max(hi, e.end + 20);
+        else hi = Math.max(hi, e.start + 30);
       }
       for (const o of outings) {
         if (o.start != null) lo = Math.min(lo, o.start);
@@ -743,7 +748,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
                 x: ix,
                 y: py,
                 w: iw,
-                h: y0 - py + 6,
+                h: y0 - py + LINK_TUCK,
                 color,
                 label: `Arrive by ${clock(e.arrive_by)}`,
                 layer: MAIN_LAYER - 1,

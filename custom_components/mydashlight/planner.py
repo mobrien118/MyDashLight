@@ -339,15 +339,18 @@ def plan_driver(
     _same_place_first(tasks, settings)
     errands.sort(key=lambda k: (k.t, k.event.id))
     for k in errands:
-        best: tuple[float, list[_Task]] | None = None
+        # The cheapest; on a tie, the least time away from home, so the stop sits right next to
+        # the trip it joins instead of stretching it.
+        best: tuple[float, float, list[_Task]] | None = None
         for i in range(len(tasks) + 1):
             for late in (False, True):
                 trial = [*tasks[:i], replace(k, late=late), *tasks[i:]]
-                cost = _cost(_route(driver, trial, busy, travel, settings))
-                if best is None or cost < best[0] - 1e-9:
-                    best = (cost, trial)
+                p = _route(driver, trial, busy, travel, settings)
+                cost, away = _cost(p), sum(g.end - g.start for g in p.segments if g.type != "home")
+                if best is None or cost < best[0] - 1e-9 or (cost < best[0] + 1e-9 and away < best[1] - 1e-9):
+                    best = (cost, away, trial)
         assert best is not None
-        tasks = best[1]
+        tasks = best[2]
     return _route(driver, tasks, busy, travel, settings)
 
 
@@ -465,6 +468,7 @@ def _route(
             if math.isfinite(tg):
                 if (
                     s.kind in ("stay", "pick")
+                    and not s.late
                     and 0 <= tg - ready < settings.tight_slack
                     and math.isfinite(latest_depart[j])
                 ):
@@ -501,10 +505,12 @@ def _route(
                 out.drive += back
                 leave_home = dep + direct - out_again
                 out.segments.append(Segment("home", ready + back, leave_home))
-                dropped_home = dropped_home + car_now
+                # Kids with somewhere to be later leave home again in the car; the rest stay home.
+                needed = _needed_later(stops, j + 1)
+                dropped_home = dropped_home + [k for k in car_now if k not in needed]
                 t = leave_home
                 here = HOME
-                car_now = []
+                car_now = [k for k in car_now if k in needed]
                 continue
             if s.loc == HOME:
                 out.segments.append(Segment("home", ready, dep))
@@ -543,6 +549,20 @@ def _route(
     return out
 
 
+def _needed_later(stops: Sequence[Stop], start: int) -> set[str]:
+    """The kids dropped off, staying or taken along at a stop from ``start`` on, up to the next
+    time the car is at home."""
+    out: set[str] = set()
+    for st in stops[start:]:
+        if st.kind in ("fetch", "end"):
+            break
+        if st.event is not None and st.kind in ("drop", "stay"):
+            if st.event.own is None:
+                out.add(st.event.kid)
+            out.update(st.event.along)
+    return out
+
+
 def _same_place_first(tasks: list[_Task], settings: PlannerSettings) -> None:
     """Drop the next kid off on arriving for a pick-up at the same place a few minutes before.
 
@@ -569,8 +589,22 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
     """Sort tasks into stops that start and end at home, tracking who is in the car."""
     stops = [Stop(HOME, "start")]
     car: list[str] = []
-    for k in tasks:
+    for q, k in enumerate(tasks):
         kid = k.event.kid
+        nxt = tasks[q + 1] if q + 1 < len(tasks) else None
+        if k.event.takes is not None and nxt is not None and nxt.type != "pick" and nxt.event.takes is None:
+            # An errand on the way to a drop-off: the kids for it leave home before the errand,
+            # instead of the car coming home for them after.
+            riders = (
+                list(nxt.event.along)
+                if nxt.event.own is not None
+                else [nxt.event.kid, *(a for a in dict.fromkeys(nxt.event.along) if a != nxt.event.kid)]
+            )
+            if any(r not in car for r in riders):
+                if stops[-1].loc != HOME:
+                    stops.append(Stop(HOME, "fetch"))
+                car = riders
+                stops[-1].car = list(car)
         if k.event.own is not None:
             # A parent's own event: the kids going too leave home with them.
             riders = list(k.event.along)
@@ -589,6 +623,13 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
             stops.append(stop)
             continue
         if k.type != "pick":
+            missing = [a for a in dict.fromkeys(k.event.along) if a != kid and a not in car]
+            if kid in car and missing:
+                # Kids taken along who aren't in the car yet come from home.
+                if stops[-1].loc != HOME:
+                    stops.append(Stop(HOME, "fetch"))
+                car += missing
+                stops[-1].car = list(car)
             if kid not in car:
                 # Dropping off a kid who isn't in the car means collecting them from home first.
                 if stops[-1].loc != HOME:
