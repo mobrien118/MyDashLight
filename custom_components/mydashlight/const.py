@@ -145,8 +145,8 @@ ATTR_BY: Final = "by"
 ATTR_DONE: Final = "done"
 ATTR_TEMPLATE: Final = "template"
 
-# Lunch: "Bring Lunch" and "Buy Lunch" all-day events on each kid's calendar, and "No School"
-# events for days off. The only setting is each kid's lunch when nobody picked.
+# Lunch: a "Lunch" all-day event a day on each kid's calendar, with the Bring or Buy pick at the
+# end of its notes, and "No School" events for days off. The only setting is each kid's lunch when nobody picked.
 CONF_LUNCH_DEFAULTS: Final = "lunch_defaults"
 """Each kid's default lunch, "buy" or "bring", by the kid's calendar id."""
 CONF_LUNCH_FEEDS: Final = "lunch_feeds"

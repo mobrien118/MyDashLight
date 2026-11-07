@@ -1551,8 +1551,8 @@ export class MyDashLightBoard extends LitElement {
         ${kids.map((k) => this.renderLunchCard(data, k, month, shown !== null))}
       </div>
       <p class="message-aside">
-        Picks are saved as <strong>Bring Lunch</strong> and <strong>Buy Lunch</strong> all-day events on each kid’s calendar.
-        Menus are <strong>Lunch: Pizza</strong> all-day events there, with the rest of the menu in the notes. They can
+        Each day’s lunch is a <strong>Lunch: Pizza</strong> all-day event on the kid’s calendar, with the rest of the
+        menu in its notes and the Bring or Buy pick at the end. Menus can
         come from the school’s menu feed (set in Home Assistant under MyDashLight’s options, Lunch), a calendar file
         imported once a month, or <strong>Edit menus</strong> here.
         Days off come from <strong>No School</strong> events there. A day nobody picked gets the kid’s default, set in

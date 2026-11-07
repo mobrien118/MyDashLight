@@ -21,7 +21,7 @@ from datetime import date
 import re
 from typing import Final
 
-from .school import MenuChange, SchoolCalendar, is_no_school, menu_title
+from .school import MenuChange, SchoolCalendar, day_changes, is_no_school
 
 FEED_NOTE: Final = "From the school's menu feed."
 
@@ -160,9 +160,9 @@ def feed_changes(
 ) -> list[MenuChange]:
     """The changes that copy a feed's menus from ``first`` to ``last`` onto ``kid``'s calendar.
 
-    A day with no menu gets one. A menu copied from the feed before follows it, and goes when
-    the feed drops that day (within the days the feed covers). Any other menu is left alone.
-    Days with no school for the kid are skipped.
+    A day with no menu gets one, on the day's lunch event (which keeps the kid's pick). A menu
+    copied from the feed before follows it, and goes when the feed drops that day (within the
+    days the feed covers). Any other menu is left alone. Days with no school are skipped.
     """
     out: list[MenuChange] = []
     covered = [d for d in menus if first <= d <= last]
@@ -172,21 +172,15 @@ def feed_changes(
     for day in sorted(covered):
         if not school.is_school_day(kid, day):
             continue
+        keep = school.lunch_event(kid, day)
+        if keep is not None and keep.dish and not keep.from_feed:
+            continue
         menu = menus[day]
-        found = school.menus.get((kid, day), [])
-        notes = _with_note(menu.details)
-        if not found:
-            out.append(MenuChange(kid, day, make=(menu_title(menu.dish), notes), from_feed=True))
-            continue
-        keep = found[0]
-        if not keep.from_feed:
-            continue
-        if keep.dish != " ".join(menu.dish.split()) or keep.details != notes.strip():
-            out.append(
-                MenuChange(kid, day, update=(keep.event_id, keep.etag, menu_title(menu.dish), notes), from_feed=True)
-            )
-    for (k, day), found in sorted(school.menus.items()):
+        out.extend(day_changes(school, kid, day, dish=menu.dish, details=_with_note(menu.details), from_feed=True))
+    for k, day in sorted(school.lunches):
         if k != kid or not (since <= day <= until) or day in menus:
             continue
-        out.extend(MenuChange(kid, day, remove=(m.event_id, m.etag)) for m in found if m.from_feed)
+        keep = school.lunch_event(kid, day)
+        if keep is not None and keep.dish and keep.from_feed:
+            out.extend(day_changes(school, kid, day, dish="", details="", from_feed=False))
     return out
