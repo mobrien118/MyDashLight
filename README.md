@@ -371,19 +371,29 @@ nothing to keep in Home Assistant:
 
 - An all-day event with **No School** in its title (such as "No School – Thanksgiving Break") means
   no school those days, for that kid. Every other weekday is a school day.
-- An all-day event titled **Bring Lunch** or **Buy Lunch** is that day's pick. A school day with no
-  pick gets the kid's default: Buy, unless the kid is picked under **Configure > Lunch** as bringing
-  by default.
+- Each day's lunch is one all-day event on the kid's calendar. Titled **Lunch: Pizza, side salad**,
+  it says what the school serves that day, and its notes can hold the rest of the menu (other
+  choices, sides). Titled just **Lunch**, the dish is the first line of its notes, or the menu isn't
+  known yet. Each kid has their own, so kids at different schools get different menus.
+- The kid's pick goes in a short block at the end of that event's notes:
 
-- An all-day event titled **Lunch: Pizza, side salad** is what the school serves that day. Its
-  notes can hold the rest of the menu (other choices, sides). An event titled just **Lunch** works
-  too, with the dish as the first line of its notes. Each kid has their own, so kids at different
-  schools get different menus. A month of these can be imported into a kid's calendar from a
-  `.ics` file (Google Calendar: **Settings > Import & export**), or added on the Lunch tab.
+  ```
+  --- Lunch ---
+  Pick: Bring
+  ```
+
+  A school day with no pick gets the kid's default: Buy, unless the kid is picked under
+  **Configure > Lunch** as bringing by default. A pick on a day with no menu yet goes on a plain
+  **Lunch** event, which the menu fills in later. (Before 0.16, picks were their own **Bring
+  Lunch** and **Buy Lunch** events. Those are still read, and MyDashLight moves them onto the day's
+  lunch event when it starts.)
+- A month of menus can be imported into a kid's calendar from a `.ics` file (Google Calendar:
+  **Settings > Import & export**), or added on the Lunch tab.
 - **Menu feeds.** Many schools publish their menu as a calendar to subscribe to (look for an
   ICAL or Subscribe button on the menu page). Paste its address for each kid under **Configure >
   Lunch**. Every 6 hours MyDashLight reads it and adds each day's lunch from today on to the kid's
-  calendar as a `Lunch: …` event: the first item is the dish, the rest goes in the notes.
+  calendar as a `Lunch: …` event (or fills in that day's plain **Lunch** event, keeping the
+  pick): the first item is the dish, the rest goes in the notes.
   Breakfast (`B: …`) and `No School` entries are skipped. These events carry a private mark, so
   only they follow later changes to the feed; a menu typed by hand, imported, or changed on the
   Lunch tab is left alone.
