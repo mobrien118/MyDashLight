@@ -295,9 +295,11 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                     jobs[-1][2].append(k)
                 else:
                     jobs.append((s.kind, place, [k]))
-            if own and s.event is not None:
-                for x in s.event.parents:
+            if s.event is not None and s.kind in ("drop", "stay", "pick"):
+                # The other parent riding along hears when they leave too.
+                for x in s.event.pick_parents if s.kind == "pick" else s.event.parents:
                     o.parents.setdefault(x, f"Leave home at {fmt12(o.start)} with {name}")
+            if own and s.event is not None:
                 jobs.append(("errand" if s.event.takes is not None else "go", place, [s.event.title]))
                 lines.append(f"{fmt(max(s.arrive, s.ready or 0))}  {place}, {s.event.title}")
             elif s.kind == "drop":

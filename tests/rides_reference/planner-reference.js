@@ -194,6 +194,13 @@ function route(d, tasks, busy) {
       s.car = car.slice();
       stops.push(s);
     } else {
+      var pm = (k.e.pickAlong || []).filter(function (a, x, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === x; });
+      if (pm.length) {
+        // Kids riding along on the pick-up leave home in the car.
+        if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
+        car = car.concat(pm);
+        cur().car = car.slice();
+      }
       car.push(kid);
       stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, e: k.e, car: car.slice() });
     }
@@ -308,6 +315,7 @@ function neededLater(stops, start) {
       if (!st.e.own) out.push(st.e.kid);
       (st.e.along || []).forEach(function (a) { out.push(a); });
     }
+    if (st.e && st.kind === 'pick') (st.e.pickAlong || []).forEach(function (a) { out.push(a); });
   }
   return out;
 }
@@ -317,12 +325,21 @@ function neededLater(stops, start) {
 function withRidesAlong(events, busy) {
   var out = {};
   Object.keys(busy).forEach(function (d) { out[d] = busy[d].slice(); });
+  var add = function (p, driver, leave, home, title) {
+    if (!isDriver(p) || p === driver) return;
+    (out[p] = out[p] || []).push({ start: Math.floor(leave), end: Math.ceil(home), title: title });
+  };
   events.forEach(function (e) {
-    if (!e.own || e.takes != null) return;
-    (e.parents || []).forEach(function (p) {
-      if (!isDriver(p) || p === e.own) return;
-      (out[p] = out[p] || []).push({ start: Math.floor(arriveAt(e) - travel('home', e.loc)), end: Math.ceil(e.end + travel(e.loc, 'home')), title: e.title });
-    });
+    if (e.takes != null) return;
+    var there = travel('home', e.loc), back = travel(e.loc, 'home'), arrive = arriveAt(e);
+    if (e.own) {
+      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, e.end + back, e.title); });
+      return;
+    }
+    // Riding along on a kid's ride: from leaving home until back, staying if the driver does.
+    var stays = e.stay && e.drop === e.pick;
+    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? e.end : arrive) + back, e.title); });
+    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, e.end - there, e.end + back, e.title); });
   });
   Object.keys(out).forEach(function (d) {
     out[d].sort(function (a, b) { return a.start - b.start || a.end - b.end || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0); });

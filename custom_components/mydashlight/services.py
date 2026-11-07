@@ -25,6 +25,7 @@ from .const import (
     ATTR_DRIVER,
     ATTR_EVENT,
     ATTR_KIDS,
+    ATTR_MINUTES,
     ATTR_SCOPE,
     ATTR_SIDE,
     ATTR_STAY,
@@ -41,6 +42,7 @@ from .const import (
     SERVICE_SET_RIDE,
     SERVICE_SET_STAY,
     SERVICE_SET_TAKE_ALONG,
+    SERVICE_SET_TAKES,
 )
 from .coordinator import target_for
 from .google import GoogleAuthError, GoogleCalendarUnavailable, GoogleConflict, GoogleError
@@ -71,7 +73,14 @@ SET_STAY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_STAY): cv.boole
 SET_ATTENDING_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_ATTENDING): cv.boolean})
 SET_ARRIVE_BY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Optional(ATTR_TIME): vol.Any(None, cv.time)})
 SET_TAKE_ALONG_SCHEMA = vol.Schema(
-    {**_EVENT_FIELDS, vol.Optional(ATTR_KIDS, default=[]): vol.All(cv.ensure_list, [cv.string])}
+    {
+        **_EVENT_FIELDS,
+        vol.Optional(ATTR_KIDS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(ATTR_SIDE, default="drop"): vol.In(["drop", "pick", "both"]),
+    }
+)
+SET_TAKES_SCHEMA = vol.Schema(
+    {**_EVENT_FIELDS, vol.Optional(ATTR_MINUTES): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=1, max=600)))}
 )
 APPLY_SUGGESTION_SCHEMA = vol.Schema({vol.Required(ATTR_SUGGESTION): cv.string})
 
@@ -87,6 +96,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         (SERVICE_SET_ATTENDING, _async_set_attending, SET_ATTENDING_SCHEMA),
         (SERVICE_SET_ARRIVE_BY, _async_set_arrive_by, SET_ARRIVE_BY_SCHEMA),
         (SERVICE_SET_TAKE_ALONG, _async_set_take_along, SET_TAKE_ALONG_SCHEMA),
+        (SERVICE_SET_TAKES, _async_set_takes, SET_TAKES_SCHEMA),
         (SERVICE_APPLY_SUGGESTION, _async_apply_suggestion, APPLY_SUGGESTION_SCHEMA),
     ]
     for name, handler, schema in changes:
@@ -141,7 +151,33 @@ async def _async_set_arrive_by(call: ServiceCall) -> None:
 
 
 async def _async_set_take_along(call: ServiceCall) -> None:
-    await _async_change_event(call, RideChange(along=tuple(call.data[ATTR_KIDS])))
+    """Who rides along. On a kid's event they go after the driver on the Drop-off or Pick-up
+    line, both when the driver stays; a parent's own event keeps its Take along line."""
+    people = tuple(call.data[ATTR_KIDS])
+    found = _loaded_entry(call.hass).runtime_data.coordinator.find(call.data[ATTR_EVENT], None)
+    ride = found[1] if found else None
+    side = call.data[ATTR_SIDE]
+    if ride is not None and ride.own is not None:
+        change = RideChange(along=people)
+    elif side == "both" or (ride is not None and ride.stay and ride.drop == ride.pick):
+        change = RideChange(along=(), drop_riders=people, pick_riders=people)
+    elif side == "pick":
+        change = RideChange(pick_riders=people)
+    else:
+        change = RideChange(along=(), drop_riders=people)
+    await _async_change_event(call, change)
+
+
+async def _async_set_takes(call: ServiceCall) -> None:
+    """Make a parent's own event an errand that takes this many minutes, or none for a set time."""
+    found = _loaded_entry(call.hass).runtime_data.coordinator.find(call.data[ATTR_EVENT], None)
+    if found is not None and found[1].own is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="errand_on_kid",
+            translation_placeholders={"title": found[1].title},
+        )
+    await _async_change_event(call, RideChange(takes=call.data.get(ATTR_MINUTES)))
 
 
 async def _async_apply_suggestion(call: ServiceCall) -> None:

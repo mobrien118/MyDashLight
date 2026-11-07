@@ -40,6 +40,10 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
         pick = drop if rng.random() < 0.4 else rng.choice(DRIVER_CHOICES)
         kid = rng.choice(KIDS)
         along = rng.sample([k for k in KIDS if k != kid], rng.randint(1, 2)) if rng.random() < 0.3 else []
+        # Sometimes kids ride along on the pick-up, or a parent rides along on either side.
+        pick_along = rng.sample([k for k in KIDS if k != kid], 1) if rng.random() < 0.2 else []
+        parents = [rng.choice(["mom", "dad"])] if rng.random() < 0.15 else []
+        pick_parents = [rng.choice(["mom", "dad"])] if rng.random() < 0.15 else []
         events.append(
             {
                 "id": f"d{n}e{i}",
@@ -54,6 +58,9 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
                 "stay": drop == pick and drop in ("mom", "dad") and rng.random() < 0.5,
                 "arriveBy": start - rng.choice([10, 15, 20, 30]) if rng.random() < 0.3 else None,
                 "along": along,
+                "pickAlong": pick_along,
+                "parents": parents,
+                "pickParents": pick_parents,
             }
         )
     if rng.random() < 0.3:

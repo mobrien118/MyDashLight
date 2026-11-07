@@ -194,14 +194,21 @@ def build_week(
             notes = parse_notes(ev.description, directory, start)
             if skipped:
                 notes = replace(notes, attending=False)
-            notes = _kids_only(notes, directory)
+            notes = _kid_notes(notes, kid.calendar_id)
             base_id = ev.id
             kind = where(ev.location or "", home_address)
             if kind == "home":
                 # Home needs no ride, whatever the notes say.
                 loc = HOME
                 notes = replace(
-                    notes, drop=NOT_NEEDED, pick=NOT_NEEDED, stay=False, arrive_by=None, along=(), travel=None
+                    notes,
+                    drop=NOT_NEEDED,
+                    pick=NOT_NEEDED,
+                    stay=False,
+                    arrive_by=None,
+                    drop_riders=(),
+                    pick_riders=(),
+                    travel=None,
                 )
             elif kind == "place":
                 loc = place_key(ev.location or "")
@@ -214,13 +221,16 @@ def build_week(
                     notes = replace(notes, drop=NOT_NEEDED, pick=NOT_NEEDED)
             if not notes.attending:
                 # Still shown, but nobody drives and nothing clashes with it.
-                notes = replace(notes, drop=NOT_NEEDED, pick=NOT_NEEDED, stay=False, arrive_by=None, along=())
+                notes = replace(
+                    notes, drop=NOT_NEEDED, pick=NOT_NEEDED, stay=False, arrive_by=None, drop_riders=(), pick_riders=()
+                )
+            riding = _sides(notes, directory)
             pieces: list[tuple[date, RideEvent, tuple[Side, ...]]] = []
             if end <= NEXT_MORNING:
                 pieces.append(
                     (
                         first,
-                        RideEvent(base_id, kid.calendar_id, title, loc, start, end, **_sides(notes)),
+                        RideEvent(base_id, kid.calendar_id, title, loc, start, end, **riding),
                         ("drop", "pick"),
                     )
                 )
@@ -239,7 +249,8 @@ def build_week(
                             drop=notes.drop,
                             pick=NOT_NEEDED,
                             arrive_by=notes.arrive_by,
-                            along=notes.along,
+                            along=riding["along"],
+                            parents=riding["parents"],
                             attending=notes.attending,
                         ),
                         ("drop",),
@@ -257,6 +268,8 @@ def build_week(
                             _minutes(ev.end, last, tz),
                             drop=NOT_NEEDED,
                             pick=notes.pick,
+                            pick_along=riding["pick_along"],
+                            pick_parents=riding["pick_parents"],
                             attending=notes.attending,
                         ),
                         ("pick",),
@@ -401,13 +414,22 @@ def addresses(week: WeekInput) -> list[str]:
     )
 
 
-def _sides(notes: RideNotes) -> dict[str, Any]:
+def _sides(notes: RideNotes, directory: DriverDirectory) -> dict[str, Any]:
+    def kids(riders: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(r for r in riders if r in directory.kids)
+
+    def parents(riders: tuple[str, ...], driver: str) -> tuple[str, ...]:
+        return tuple(r for r in riders if r in directory.names and r != driver)
+
     return {
         "drop": notes.drop,
         "pick": notes.pick,
         "stay": notes.stay,
         "arrive_by": notes.arrive_by,
-        "along": notes.along,
+        "along": kids(notes.drop_riders),
+        "parents": parents(notes.drop_riders, notes.drop),
+        "pick_along": kids(notes.pick_riders),
+        "pick_parents": parents(notes.pick_riders, notes.pick),
         "attending": notes.attending,
     }
 
@@ -458,20 +480,25 @@ def _own_event(
     return first, ride, notes
 
 
-def _kids_only(notes: RideNotes, directory: DriverDirectory) -> RideNotes:
-    """A kid's event takes only kids along. A parent can only go along to the other parent's
-    own event. An errand goes on a parent's calendar."""
+def _kid_notes(notes: RideNotes, kid: str) -> RideNotes:
+    """Who rides along on a kid's event, each side.
+
+    The people after the driver on a Drop-off or Pick-up line ride along on that side. An old
+    Take along line counts as riders on the drop-off. With Stay, everyone stays, so riders
+    named on the drop-off ride home too; a Pick-up line naming different riders is a conflict,
+    and until it's fixed everyone named on either goes both ways. An errand goes on a parent's
+    calendar.
+    """
+    problems = list(notes.problems)
     if notes.takes is not None:
-        notes = replace(notes, takes=None, problems=(*notes.problems, "Takes: errands go on a parent’s own calendar"))
-    kids = tuple(a for a in notes.along if a in directory.kids)
-    if kids == notes.along:
-        return notes
-    extra = tuple(
-        f"Take along: “{directory.names.get(a, a)}” can only go along to a parent’s own event"
-        for a in notes.along
-        if a not in directory.kids
-    )
-    return replace(notes, along=kids, problems=notes.problems + extra)
+        problems.append("Takes: errands go on a parent’s own calendar")
+    drop = tuple(r for r in dict.fromkeys((*notes.drop_riders, *notes.along)) if r != kid)
+    pick = tuple(r for r in notes.pick_riders if r != kid)
+    if notes.stay and notes.drop == notes.pick:
+        if pick and set(pick) != set(drop):
+            problems.append("Stay: everyone stays, so the Drop-off and Pick-up should name the same riders")
+        drop = pick = tuple(dict.fromkeys((*drop, *pick)))
+    return replace(notes, takes=None, along=(), drop_riders=drop, pick_riders=pick, problems=tuple(problems))
 
 
 def _sort_key(ev: CalendarEvent) -> tuple[str, str]:
