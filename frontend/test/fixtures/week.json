@@ -2201,7 +2201,7 @@
      "problems": [],
      "lines": {
       "drop": {
-       "text": "Drop-off: Robin",
+       "text": "Leaves 5:05 with Robin",
        "tone": "normal"
       },
       "pick": {
@@ -2304,7 +2304,9 @@
        "from": "home",
        "to": "piano studio, 410 elm st",
        "place": null,
-       "kids": [],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
        "event": null,
        "serves": "mon-piano",
        "overlaps_busy": false
@@ -2317,6 +2319,7 @@
        "to": "home",
        "place": null,
        "kids": [
+        "kid-b@group.calendar.google.com",
         "kid-a@group.calendar.google.com"
        ],
        "event": null,
@@ -2342,7 +2345,9 @@
        "from": "home",
        "to": "football field, 90 stadium dr",
        "place": null,
-       "kids": [],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
        "event": null,
        "serves": "mon-football",
        "overlaps_busy": false
@@ -2402,12 +2407,14 @@
         "4:40  Home"
        ],
        "kids": [
+        "kid-b@group.calendar.google.com",
         "kid-a@group.calendar.google.com"
        ],
        "warn": null,
        "target": "mon-piano",
        "first_drop": null,
        "riders": {
+        "kid-b@group.calendar.google.com": "Leave home at 4:20 PM with Robin",
         "kid-a@group.calendar.google.com": "Robin picks you up at Piano studio at 4:30 PM"
        },
        "go": {
@@ -2430,11 +2437,15 @@
         "5:25  Football field, drop off Ben",
         "5:45  Home"
        ],
-       "kids": [],
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
        "warn": null,
        "target": "mon-football",
        "first_drop": "mon-football",
-       "riders": {},
+       "riders": {
+        "kid-b@group.calendar.google.com": "Leave home at 5:05 PM with Robin"
+       },
        "go": {
         "from": "home",
         "from_name": "home",
@@ -2583,6 +2594,17 @@
     },
     {
      "index": 2,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "mom",
+     "start": 980,
+     "end": 1000,
+     "own": false,
+     "serves": [
+      "mon-piano"
+     ]
+    },
+    {
+     "index": 3,
      "kid": "kid-a@group.calendar.google.com",
      "driver": "mom",
      "start": 990,
@@ -2593,7 +2615,18 @@
      ]
     },
     {
-     "index": 3,
+     "index": 4,
+     "kid": "kid-b@group.calendar.google.com",
+     "driver": "mom",
+     "start": 1025,
+     "end": 1045,
+     "own": true,
+     "serves": [
+      "mon-football"
+     ]
+    },
+    {
+     "index": 5,
      "kid": "kid-b@group.calendar.google.com",
      "driver": "dad",
      "start": 1140,
@@ -2627,7 +2660,7 @@
        "start": 990,
        "end": 1000,
        "clash": false,
-       "ride": 2
+       "ride": 3
       }
      ]
     },
@@ -2650,10 +2683,24 @@
       },
       {
        "type": "ride",
+       "start": 980,
+       "end": 1000,
+       "clash": false,
+       "ride": 2
+      },
+      {
+       "type": "ride",
+       "start": 1025,
+       "end": 1045,
+       "clash": false,
+       "ride": 4
+      },
+      {
+       "type": "ride",
        "start": 1140,
        "end": 1166,
        "clash": false,
-       "ride": 3
+       "ride": 5
       }
      ]
     },
