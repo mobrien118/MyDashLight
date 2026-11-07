@@ -77,30 +77,63 @@ async def test_reads_picks_and_days_off(hass: HomeAssistant, google: FakeGoogle)
     assert ben["picks"] == {"2026-11-06": "buy"}
 
 
+def notes(google: FakeGoogle, cal: str, on: str) -> str:
+    (event,) = [e for e in google.events.get(cal, []) if e["start"].get("date") == on]
+    return str(event.get("description") or "")
+
+
 async def test_set_lunch(hass: HomeAssistant, google: FakeGoogle) -> None:
     google.add(AVA, **all_day("off", "No School", "2026-11-25", "2026-11-28"))
-    google.add(AVA, **all_day("b1", "Buy Lunch", "2026-11-06", "2026-11-07"))
+    google.add(AVA, **all_day("m1", "Lunch: Pizza", "2026-11-09", "2026-11-10", description="Or: salad"))
     await load(hass)
 
-    await call(hass, "set_lunch", kid="Ava", dates=["2026-11-05", "2026-11-06", "2026-11-25"], lunch="bring")
+    await call(hass, "set_lunch", kid="Ava", dates=["2026-11-05", "2026-11-09", "2026-11-25"], lunch="bring")
+    # One lunch event a day: the pick goes at the end of the menu's notes, or on a plain
+    # "Lunch" event until the menu is known. No school, no pick.
     assert titles(google, AVA) == [
-        ("2026-11-05", "Bring Lunch"),
-        ("2026-11-06", "Bring Lunch"),
+        ("2026-11-05", "Lunch"),
+        ("2026-11-09", "Lunch: Pizza"),
         ("2026-11-25", "No School"),
     ]
+    assert notes(google, AVA, "2026-11-05") == "--- Lunch ---\nPick: Bring"
+    assert notes(google, AVA, "2026-11-09") == "Or: salad\n\n--- Lunch ---\nPick: Bring"
     (_cal, made), *_ = google.inserted
     assert made["transparency"] == "transparent"
     assert made["end"] == {"date": "2026-11-06"}
     assert made["reminders"] == {"useDefault": False}
     lunches = await call(hass, "get_lunches")
-    assert lunches["kids"][0]["picks"] == {"2026-11-05": "bring", "2026-11-06": "bring"}
+    assert lunches["kids"][0]["picks"] == {"2026-11-05": "bring", "2026-11-09": "bring"}
+    assert lunches["kids"][0]["menus"] == {"2026-11-09": {"dish": "Pizza", "details": "Or: salad"}}
 
-    await call(hass, "set_lunch", kid=AVA, dates=["2026-11-06"], lunch="default")
-    assert titles(google, AVA) == [("2026-11-05", "Bring Lunch"), ("2026-11-25", "No School")]
-    assert google.deleted == [(AVA, "b1")]
+    await call(hass, "set_lunch", kid="Ava", dates=["2026-11-09"], lunch="buy")
+    assert notes(google, AVA, "2026-11-09") == "Or: salad\n\n--- Lunch ---\nPick: Buy"
+
+    # Back to the default: a day with only the pick loses its event; a menu keeps its own.
+    await call(hass, "set_lunch", kid=AVA, dates=["2026-11-05", "2026-11-09"], lunch="default")
+    assert titles(google, AVA) == [("2026-11-09", "Lunch: Pizza"), ("2026-11-25", "No School")]
+    assert notes(google, AVA, "2026-11-09") == "Or: salad"
+    assert google.deleted == [(AVA, "made-1")]
 
     with pytest.raises(ServiceValidationError):
         await call(hass, "set_lunch", kid="Zed", dates=["2026-11-06"], lunch="buy")
+
+
+async def test_old_picks_fold_in(hass: HomeAssistant, google: FakeGoogle) -> None:
+    """Picks saved before 0.16 as their own events move onto the day's lunch event."""
+    google.add(AVA, **all_day("b1", "Buy Lunch", "2026-11-06", "2026-11-07"))
+    google.add(AVA, **all_day("b2", "Bring Lunch", "2026-11-09", "2026-11-10"))
+    google.add(AVA, **all_day("m1", "Lunch: Pizza", "2026-11-09", "2026-11-10", description="Or: salad"))
+    # One spanning several days, typed by hand, is read but left alone.
+    google.add(BEN, **all_day("b3", "Bring Lunch", "2026-11-16", "2026-11-21"))
+    await load(hass)
+    assert titles(google, AVA) == [("2026-11-06", "Lunch"), ("2026-11-09", "Lunch: Pizza")]
+    assert notes(google, AVA, "2026-11-06") == "--- Lunch ---\nPick: Buy"
+    assert notes(google, AVA, "2026-11-09") == "Or: salad\n\n--- Lunch ---\nPick: Bring"
+    assert sorted(google.deleted) == [(AVA, "b1"), (AVA, "b2")]
+    assert titles(google, BEN) == [("2026-11-16", "Bring Lunch")]
+    ava, ben = (await call(hass, "get_lunches"))["kids"]
+    assert ava["picks"] == {"2026-11-06": "buy", "2026-11-09": "bring"}
+    assert list(ben["picks"]) == ["2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20"]
 
 
 async def test_menus(hass: HomeAssistant, google: FakeGoogle) -> None:
@@ -201,6 +234,18 @@ async def test_menu_feed(hass: HomeAssistant, google: FakeGoogle, aioclient_mock
     count = len(google.inserted)
     await entry.runtime_data.lunch.async_sync_feeds()
     assert len(google.inserted) == count
+
+    # A pick goes on the feed's menu, which keeps following the feed and keeps the pick.
+    await call(hass, "set_lunch", kid="Ava", dates=["2026-11-06"], lunch="bring")
+    picked = next(e for e in google.events[AVA] if e["start"]["date"] == "2026-11-06")
+    assert picked["summary"] == "Lunch: Nachos Supreme w/ Queso"
+    assert picked["description"].endswith("From the school's menu feed.\n\n--- Lunch ---\nPick: Bring")
+    assert picked["extendedProperties"] == {"private": {"mydashlight_menu": "feed"}}
+    count = len(google.inserted)
+    await entry.runtime_data.lunch.async_sync_feeds()
+    assert len(google.inserted) == count
+    picked = next(e for e in google.events[AVA] if e["start"]["date"] == "2026-11-06")
+    assert picked["description"].endswith("--- Lunch ---\nPick: Bring")
 
     # Changed on the Lunch tab, it stops following the feed.
     await call(hass, "set_lunch_menu", kids=["Ava"], date="2026-11-09", menu="Pizza")

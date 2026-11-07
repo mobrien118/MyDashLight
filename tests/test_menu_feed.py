@@ -167,3 +167,30 @@ def test_feed_changes() -> None:
     )
     changes = feed_changes(synced, "ava", menus, date(2026, 11, 6), LAST)
     assert [(c.day.isoformat(), c.remove) for c in changes] == [("2026-11-07", ("c", '"c"'))]
+
+
+def test_feed_keeps_the_pick() -> None:
+    """The kid's pick at the end of the notes stays when the feed fills, changes or drops a menu."""
+    menus = feed_menus(read_feed(FEED))
+    pick = "\n\n--- Lunch ---\nPick: Bring"
+    cal = school(
+        # A pick with no menu yet: the feed fills it in.
+        event("p", "Lunch", "2026-11-06", pick.strip()),
+        # A feed menu the feed changed: the pick stays.
+        event("old", "Lunch: Tacos", "2026-11-09", FEED_NOTE + pick, feed=True),
+        # A feed menu the feed dropped: back to just the pick.
+        event("gone", "Lunch: Fish", "2026-11-07", FEED_NOTE + pick, feed=True),
+    )
+    changes = feed_changes(cal, "ava", menus, date(2026, 11, 6), LAST)
+    assert [(c.day.isoformat(), c.update) for c in changes] == [
+        (
+            "2026-11-06",
+            ("p", '"p"', "Lunch: Nachos Supreme w/ Queso", f"Southwestern Refried Beans\n\n{FEED_NOTE}{pick}"),
+        ),
+        (
+            "2026-11-09",
+            ("old", '"old"', "Lunch: Create Your Own Pizza", f"Parmesan Roasted Broccoli\n\n{FEED_NOTE}{pick}"),
+        ),
+        ("2026-11-07", ("gone", '"gone"', "Lunch", pick.strip())),
+    ]
+    assert [c.from_feed for c in changes] == [True, True, False]

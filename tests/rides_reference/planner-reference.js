@@ -129,7 +129,9 @@ function planDriver(d, events, busy) {
         var trial = tasks.slice(0, i).concat([Object.assign({}, k, { late: late })], tasks.slice(i));
         var p = route(d, trial, busy);
         var cost = p.issues.length * 1000 + p.issues.reduce(function (a, x) { return a + (x.min || 0); }, 0) * 10 + p.drive;
-        if (!best || cost < best.cost - 1e-9) best = { cost: cost, tasks: trial };
+        // On a tie, the least time away from home, so the stop sits right next to the trip it joins.
+        var away = p.segs.reduce(function (a, g) { return a + (g.type === 'home' ? 0 : g.end - g.start); }, 0);
+        if (!best || cost < best.cost - 1e-9 || (cost < best.cost + 1e-9 && away < best.away - 1e-9)) best = { cost: cost, away: away, tasks: trial };
       });
     }
     tasks = best.tasks;
@@ -147,6 +149,18 @@ function route(d, tasks, busy) {
   var cur = function () { return stops[stops.length - 1]; };
   tasks.forEach(function (k, i) {
     var kid = k.e.kid;
+    var nt = tasks[i + 1];
+    if (k.e.takes != null && nt && nt.type !== 'pick' && nt.e.takes == null) {
+      // An errand on the way to a drop-off: the kids for it leave home before the errand, instead
+      // of the car coming home for them after.
+      var rd = nt.e.own ? (nt.e.along || []).slice()
+        : [nt.e.kid].concat((nt.e.along || []).filter(function (a, x, arr) { return a !== nt.e.kid && arr.indexOf(a) === x; }));
+      if (rd.some(function (r) { return car.indexOf(r) < 0; })) {
+        if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
+        car = rd;
+        cur().car = car.slice();
+      }
+    }
     if (k.e.own) {
       // A parent's own event: the kids going too leave home with them.
       var rs = (k.e.along || []).slice();
@@ -160,6 +174,13 @@ function route(d, tasks, busy) {
       return;
     }
     if (k.type !== 'pick') {
+      var missing = (k.e.along || []).filter(function (a, i, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === i; });
+      if (car.indexOf(kid) >= 0 && missing.length) {
+        // Kids taken along who aren't in the car yet come from home.
+        if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
+        car = car.concat(missing);
+        cur().car = car.slice();
+      }
       if (car.indexOf(kid) < 0) {
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
         car = [kid];
@@ -173,6 +194,13 @@ function route(d, tasks, busy) {
       s.car = car.slice();
       stops.push(s);
     } else {
+      var pm = (k.e.pickAlong || []).filter(function (a, x, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === x; });
+      if (pm.length) {
+        // Kids riding along on the pick-up leave home in the car.
+        if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
+        car = car.concat(pm);
+        cur().car = car.slice();
+      }
       car.push(kid);
       stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, e: k.e, car: car.slice() });
     }
@@ -227,7 +255,7 @@ function route(d, tasks, busy) {
     if (j < n - 1) {
       var tg = target(j);
       if (isFinite(tg)) {
-        if ((s2.kind === 'stay' || s2.kind === 'pick') && tg - ready >= 0 && tg - ready < 3 && isFinite(LD[j])) out.soft.push({ kind: 'tight', d: d, s: s2, e: s2.e, at: ready });
+        if ((s2.kind === 'stay' || s2.kind === 'pick') && !s2.late && tg - ready >= 0 && tg - ready < 3 && isFinite(LD[j])) out.soft.push({ kind: 'tight', d: d, s: s2, e: s2.e, at: ready });
         dep = Math.max(ready, tg);
       }
     }
@@ -244,8 +272,10 @@ function route(d, tasks, busy) {
         out.drive += back;
         var leaveHome = dep + direct - out2;
         out.segs.push({ type: 'home', start: ready + back, end: leaveHome });
-        droppedHome = droppedHome.concat(carNow);
-        t = leaveHome; from = 'home'; carNow = [];
+        // Kids with somewhere to be later leave home again in the car; the rest stay home.
+        var needed = neededLater(stops, j + 1);
+        droppedHome = droppedHome.concat(carNow.filter(function (k) { return needed.indexOf(k) < 0; }));
+        t = leaveHome; from = 'home'; carNow = carNow.filter(function (k) { return needed.indexOf(k) >= 0; });
         continue;
       }
       if (s2.loc === 'home') out.segs.push({ type: 'home', start: ready, end: dep });
@@ -274,17 +304,42 @@ function route(d, tasks, busy) {
   return out;
 }
 
+// The kids dropped off, staying or taken along at a stop from `start` on, up to the next time the
+// car is at home.
+function neededLater(stops, start) {
+  var out = [];
+  for (var q = start; q < stops.length; q++) {
+    var st = stops[q];
+    if (st.kind === 'fetch' || st.kind === 'end') break;
+    if (st.e && (st.kind === 'drop' || st.kind === 'stay')) {
+      if (!st.e.own) out.push(st.e.kid);
+      (st.e.along || []).forEach(function (a) { out.push(a); });
+    }
+    if (st.e && st.kind === 'pick') (st.e.pickAlong || []).forEach(function (a) { out.push(a); });
+  }
+  return out;
+}
+
 // The parents' busy times, plus each trip to the other parent's own event they ride along on: from
 // leaving home until back home.
 function withRidesAlong(events, busy) {
   var out = {};
   Object.keys(busy).forEach(function (d) { out[d] = busy[d].slice(); });
+  var add = function (p, driver, leave, home, title) {
+    if (!isDriver(p) || p === driver) return;
+    (out[p] = out[p] || []).push({ start: Math.floor(leave), end: Math.ceil(home), title: title });
+  };
   events.forEach(function (e) {
-    if (!e.own || e.takes != null) return;
-    (e.parents || []).forEach(function (p) {
-      if (!isDriver(p) || p === e.own) return;
-      (out[p] = out[p] || []).push({ start: Math.floor(arriveAt(e) - travel('home', e.loc)), end: Math.ceil(e.end + travel(e.loc, 'home')), title: e.title });
-    });
+    if (e.takes != null) return;
+    var there = travel('home', e.loc), back = travel(e.loc, 'home'), arrive = arriveAt(e);
+    if (e.own) {
+      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, e.end + back, e.title); });
+      return;
+    }
+    // Riding along on a kid's ride: from leaving home until back, staying if the driver does.
+    var stays = e.stay && e.drop === e.pick;
+    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? e.end : arrive) + back, e.title); });
+    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, e.end - there, e.end + back, e.title); });
   });
   Object.keys(out).forEach(function (d) {
     out[d].sort(function (a, b) { return a.start - b.start || a.end - b.end || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0); });

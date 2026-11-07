@@ -72,6 +72,8 @@ _WRITE_LABELS: Final[dict[Field, str]] = {
     "takes": "Takes",
 }
 _NOT_NEEDED_WORDS: Final = frozenset({"not needed", "none", "no", "n/a", "na", "no ride", "not required"})
+_TBD_WORDS: Final = frozenset({"", "tbd", "?", "nobody yet", "unassigned", "anyone"})
+"""What a driver line can start with when it names riders but no driver yet."""
 _YES: Final = frozenset({"yes", "y", "true", "on", "stay", "staying"})
 _NOBODY: Final = frozenset({"", "none", "no", "nobody", "no one", "n/a", "na"})
 _LIST_SPLIT_RE: Final = re.compile(r"\s*(?:,|&|\+|/|\band\b)\s*", re.IGNORECASE)
@@ -181,6 +183,10 @@ class RideNotes:
     """A manual drive time in minutes, overriding the computed one."""
     takes: int | None = None
     """For an errand on a parent's calendar: the minutes it takes, any time in the event."""
+    drop_riders: tuple[str, ...] = ()
+    """Who rides along on the drop-off, after the driver on its line: kid ids and driver ids."""
+    pick_riders: tuple[str, ...] = ()
+    """Who rides along on the pick-up, after the driver on its line."""
     has_block: bool = False
     problems: tuple[str, ...] = ()
     """Lines that couldn't be read, worded for people."""
@@ -240,9 +246,14 @@ def write_notes(
     travel: int | Keep | None = KEEP,
     attending: bool | Keep = KEEP,
     takes: int | Keep | None = KEEP,
+    drop_riders: Iterable[str] | Keep = KEEP,
+    pick_riders: Iterable[str] | Keep = KEEP,
     event_start: int | None = None,
 ) -> str:
     """Return the description with ride settings changed.
+
+    A driver line holds the driver, then whoever rides along on that side, such as
+    "Drop-off: Sam, Ben". Riders with no driver yet are written after "TBD".
 
     Returns the description unchanged when no value actually changes, so callers can skip
     the write to Google.
@@ -251,10 +262,12 @@ def write_notes(
     doc = _split(original)
     notes = _read(doc, directory, event_start)
     current: dict[Field, object] = {f: getattr(notes, f) for f in FIELDS}
+    current["drop"] = (notes.drop, notes.drop_riders)
+    current["pick"] = (notes.pick, notes.pick_riders)
     wanted: dict[Field, object] = {
         "attending": attending,
-        "drop": drop,
-        "pick": pick,
+        "drop": _side(drop, drop_riders, notes.drop, notes.drop_riders),
+        "pick": _side(pick, pick_riders, notes.pick, notes.pick_riders),
         "stay": stay,
         "along": along,
         "arrive_by": arrive_by,
@@ -386,6 +399,7 @@ def _locate(doc: _Doc) -> dict[Field, list[int]]:
 
 def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> RideNotes:
     drivers = {"drop": UNASSIGNED, "pick": UNASSIGNED}
+    riders: dict[str, list[str]] = {"drop": [], "pick": []}
     attending = True
     stay = False
     along: list[str] = []
@@ -403,7 +417,13 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         raw = m.group(2)
         label = _WRITE_LABELS[fld]
         if fld in ("drop", "pick"):
-            drivers[fld] = directory.resolve(raw)
+            first, *rest = raw.split(",") if "," in raw else [raw]
+            drivers[fld] = UNASSIGNED if rest and first.strip().casefold() in _TBD_WORDS else directory.resolve(first)
+            for name in filter(None, (r.strip() for r in rest)):
+                if (who := directory.rider(name)) is None:
+                    problems.append(f"{label}: “{name}” isn’t one of the family")
+                elif who != drivers[fld] and who not in riders[fld]:
+                    riders[fld].append(who)
         elif fld == "attending":
             word = " ".join(raw.split()).casefold()
             if word in _ATTENDING_NO:
@@ -435,6 +455,8 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     return RideNotes(
         drop=drivers["drop"],
         pick=drivers["pick"],
+        drop_riders=tuple(riders["drop"]),
+        pick_riders=tuple(riders["pick"]),
         attending=attending,
         stay=stay,
         along=tuple(along),
@@ -446,9 +468,22 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     )
 
 
+def _side(driver: str | Keep, riders: Iterable[str] | Keep, now_driver: str, now_riders: tuple[str, ...]) -> object:
+    """A driver line's wanted value, as (driver, riders), or KEEP when neither changes."""
+    if isinstance(driver, Keep) and isinstance(riders, Keep):
+        return KEEP
+    return (
+        now_driver if isinstance(driver, Keep) else driver,
+        now_riders if isinstance(riders, Keep) else tuple(riders),
+    )
+
+
 def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
     if fld in ("drop", "pick"):
-        return directory.resolve(str(value or ""))
+        assert isinstance(value, tuple)
+        driver = directory.resolve(str(value[0] or ""))
+        found = (directory.rider(str(v)) for v in value[1])
+        return (driver, tuple(dict.fromkeys(r for r in found if r is not None and r != driver)))
     if fld in ("stay", "attending"):
         return bool(value)
     if fld == "along":
@@ -464,16 +499,20 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
     """The line for a value, or None when the value is the default and needs no line."""
     label = _WRITE_LABELS[fld]
     if fld in ("drop", "pick"):
-        v = str(value)
-        return None if v == UNASSIGNED else f"{label}: {directory.display(v)}"
+        assert isinstance(value, tuple)
+        driver, riders = str(value[0]), value[1]
+        names = [directory.kids.get(r) or directory.names.get(r, r) for r in riders]
+        if driver == UNASSIGNED:
+            return f"{label}: {', '.join(['TBD', *names])}" if names else None
+        return f"{label}: {', '.join([directory.display(driver), *names])}"
     if fld == "stay":
         return f"{label}: yes" if value else None
     if fld == "attending":
         return None if value else f"{label}: no"
     if fld == "along":
         assert isinstance(value, tuple)
-        names = (directory.kids.get(k) or directory.names.get(k, k) for k in value)
-        return f"{label}: {', '.join(names)}" if value else None
+        kids = (directory.kids.get(k) or directory.names.get(k, k) for k in value)
+        return f"{label}: {', '.join(kids)}" if value else None
     if not isinstance(value, int):
         return None
     if fld == "arrive_by":

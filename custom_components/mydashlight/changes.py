@@ -37,11 +37,29 @@ class RideChange:
     """Minutes after midnight, or None to go back to the default."""
     attending: bool | Keep = KEEP
     """False when the kid isn't going. True also takes the old "NO" prefix off the title."""
+    drop_riders: tuple[str, ...] | Keep = KEEP
+    """Who rides along on the drop-off, written after the driver on its line."""
+    takes: int | Keep | None = KEEP
+    """For a parent's errand: the minutes it takes, or None for an event at a set time."""
+    pick_riders: tuple[str, ...] | Keep = KEEP
+    """Who rides along on the pick-up."""
 
     @property
     def rides(self) -> bool:
         """Whether this changes any ride line, as opposed to only whether the kid is going."""
-        return any(not isinstance(v, Keep) for v in (self.drop, self.pick, self.stay, self.along, self.arrive_by))
+        return any(
+            not isinstance(v, Keep)
+            for v in (
+                self.drop,
+                self.pick,
+                self.stay,
+                self.along,
+                self.arrive_by,
+                self.drop_riders,
+                self.pick_riders,
+                self.takes,
+            )
+        )
 
     def apply(self, description: str, directory: DriverDirectory, event_start: int | None) -> str:
         return write_notes(
@@ -53,6 +71,9 @@ class RideChange:
             stay=self.stay,
             along=self.along,
             arrive_by=self.arrive_by,
+            drop_riders=self.drop_riders,
+            pick_riders=self.pick_riders,
+            takes=self.takes,
             event_start=event_start,
         )
 

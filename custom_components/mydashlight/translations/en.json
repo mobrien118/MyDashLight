@@ -200,7 +200,7 @@
       },
       "lunch": {
         "title": "Lunch",
-        "description": "Each school day a kid hasn't picked Bring or Buy on the Lunch tab, they get their default. Picks are saved as \"Bring Lunch\" and \"Buy Lunch\" all-day events on the kid's calendar, and days off as \"No School\" events.\n\n**Menu feeds:** if a kid's school publishes its lunch menu as a calendar to subscribe to, paste its iCal address in their box (an address ending in .ics, or starting with webcal://, often under the calendar's ICAL or Subscribe button). MyDashLight reads it every few hours and adds each day's lunch to the kid's calendar as a \"Lunch: …\" all-day event. Menus changed by hand are left alone. Leave a box empty for none; kids at the same school can use the same address.",
+        "description": "Each school day a kid hasn't picked Bring or Buy on the Lunch tab, they get their default. Picks are saved at the end of the notes of the day's \"Lunch\" all-day event on the kid's calendar, and days off are \"No School\" events.\n\n**Menu feeds:** if a kid's school publishes its lunch menu as a calendar to subscribe to, paste its iCal address in their box (an address ending in .ics, or starting with webcal://, often under the calendar's ICAL or Subscribe button). MyDashLight reads it every few hours and adds each day's lunch to the kid's calendar as a \"Lunch: …\" all-day event. Menus changed by hand are left alone. Leave a box empty for none; kids at the same school can use the same address.",
         "data": {
           "bring_by_default": "Bring lunch by default"
         },
@@ -323,7 +323,7 @@
     },
     "set_take_along": {
       "name": "Set take-along",
-      "description": "Sets who rides along: on a kid's drop-off, the other kids, so the driver can go on to their drop-offs without coming home for them. On a parent's own event, the kids or the other parent going too.",
+      "description": "Sets who rides along: on a kid's event, the people after the driver on the Drop-off or Pick-up line (both when the driver stays); on a parent's own event, the kids or the other parent going too.",
       "fields": {
         "event": {
           "name": "Event",
@@ -331,11 +331,15 @@
         },
         "kids": {
           "name": "Kids",
-          "description": "Who is taken along, by name. A parent can go along only to the other parent's own event. Leave empty to take nobody along."
+          "description": "Who rides along, by name: kids, or the other parent. Leave empty to take nobody along."
         },
         "scope": {
           "name": "Repeating events",
           "description": "For a repeating event: change just this one, or every one."
+        },
+        "side": {
+          "name": "Side",
+          "description": "On a kid's event: the drop-off (default), the pick-up, or both. When the driver stays, it's always both."
         }
       }
     },
@@ -453,7 +457,7 @@
     },
     "set_lunch": {
       "name": "Set lunch",
-      "description": "Saves a kid's lunch as \"Bring Lunch\" or \"Buy Lunch\" all-day events on their calendar. Days with no school are skipped.",
+      "description": "Saves a kid's Bring or Buy pick at the end of the notes of the day's \"Lunch\" all-day event on their calendar. Days with no school are skipped.",
       "fields": {
         "kid": {
           "name": "Kid",
@@ -488,6 +492,24 @@
         "details": {
           "name": "Details",
           "description": "The rest of the menu, saved in the event's notes."
+        }
+      }
+    },
+    "set_takes": {
+      "name": "Set errand time",
+      "description": "Makes a parent's own event an errand: it takes this many minutes, any time between its start and end, and the planner picks when. No minutes puts it back at its set time.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
+        },
+        "minutes": {
+          "name": "Minutes",
+          "description": "How long the errand takes. Leave empty for an event at a set time."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
         }
       }
     }
@@ -579,6 +601,9 @@
     },
     "lunch_failed": {
       "message": "The lunch wasn't saved: {error}"
+    },
+    "errand_on_kid": {
+      "message": "{title} is a kid's event. Errands go on a parent's own calendar."
     }
   },
   "selector": {

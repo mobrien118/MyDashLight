@@ -31,15 +31,15 @@ from .google import (
 )
 from .menu_feed import FeedMenu, feed_changes, feed_menus, read_feed, webcal_to_https
 from .school import (
-    LUNCH_TITLES,
     MENU_FROM_FEED,
     MENU_MARK,
     Lunch,
     MenuChange,
     SchoolCalendar,
-    lunch_changes,
+    fold_old_picks,
     lunch_payload,
     menu_changes,
+    pick_changes,
     read_school,
 )
 from .settings import HubSettings
@@ -49,7 +49,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-LUNCH_NOTE = "Picked on the MyDashLight Lunch tab."
 _FEED_TIMEOUT = ClientTimeout(total=30)
 _FEED_MAX_BYTES = 2_000_000
 
@@ -173,17 +172,25 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         days = list(days)
 
         async def apply(school: SchoolCalendar) -> None:
-            for change in lunch_changes(school, kid, days, lunch):
-                if change.make:
-                    await self.api.async_add_all_day(kid, change.day, LUNCH_TITLES[change.make], LUNCH_NOTE)
-                elif change.retitle:
-                    event_id, etag, to = change.retitle
-                    await self.api.async_set_title(kid, event_id, etag, LUNCH_TITLES[to])
-                elif change.remove:
-                    event_id, etag = change.remove
-                    await self.api.async_delete_event(kid, event_id, etag)
+            await self._async_menu_changes(kid, pick_changes(school, kid, days, lunch))
 
         await self._async_write(apply)
+
+    async def async_fold_old_picks(self) -> None:
+        """Move "Bring Lunch" and "Buy Lunch" events (how picks were saved before 0.16) onto
+        each day's lunch event."""
+        school = self.data
+        if school is None or not any(school.old_picks.values()):
+            return
+
+        async def apply(school: SchoolCalendar) -> None:
+            for kid, changes in fold_old_picks(school).items():
+                await self._async_menu_changes(kid, changes)
+
+        try:
+            await self._async_write(apply)
+        except GoogleError as err:
+            _LOGGER.warning("Couldn't move the lunch picks onto the lunch events: %s", err)
 
     async def async_set_menu(self, kids: Iterable[str], day: date, dish: str, details: str = "") -> None:
         """Save the menu on ``day`` for each of ``kids``: a "Lunch: <dish>" event on the kid's
@@ -198,8 +205,8 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
 
     async def _async_menu_changes(self, kid: str, changes: list[MenuChange]) -> None:
         for change in changes:
-            # A menu changed by hand stops following the feed.
-            private = {MENU_MARK: MENU_FROM_FEED if change.from_feed else ""}
+            # A menu changed by hand stops following the feed; a pick leaves that as it is.
+            private = None if change.from_feed is None else {MENU_MARK: MENU_FROM_FEED if change.from_feed else ""}
             if change.make:
                 title, notes = change.make
                 await self.api.async_add_all_day(kid, change.day, title, notes, private if change.from_feed else None)
