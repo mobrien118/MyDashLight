@@ -1525,6 +1525,12 @@ export const styles = css`
     flex-direction: column;
     gap: 8px;
   }
+  .field-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+  }
   .field-label {
     font-size: 14px;
     font-weight: 700;

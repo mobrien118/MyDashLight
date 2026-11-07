@@ -128,23 +128,27 @@ end of the event's notes, after a `--- Rides ---` line:
 Bring shin guards. Field 3.
 
 --- Rides ---
-Drop-off: Sam
+Drop-off: Sam, Ben
 Pick-up: the Parkers
-Stay: yes
-Take along: Ben
 Arrive by: 5:15 PM
 Travel: 25 min
 ```
 
 | Line | Values | Without the line |
 | --- | --- | --- |
-| Drop-off, Pick-up | A parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver) | Nobody is driving yet, which shows as a problem |
+| Drop-off, Pick-up | The driver first: a parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver). Then anyone riding along, by name, such as `Drop-off: Sam, Ben, Robin`. `TBD` holds the driver's place when riders are named but nobody is driving yet | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
-| Take along | Kids' names, such as Ben, Cleo, and on a parent's own event the other parent | Nobody else rides along. Kids named here leave home in the same car on this drop-off, so the driver can go on to their own drop-offs without coming home for them. On a parent's own event, everyone named goes there and back with that parent |
+| Take along | Kids' names, and on a parent's own event the other parent | Nobody else rides along. On a parent's own event, everyone named goes there and back with that parent. On a kid's event, an older line still counts as riders on the drop-off |
 | Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive early by a margin that grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
 | Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
+
+Riders on the Drop-off line leave home in the same car, so the driver can go on to their own
+drop-offs without coming home for them. Riders on the Pick-up line come along to fetch the kid. A
+parent named as a rider is busy for that trip. With `Stay: yes`, everyone stays, so riders go
+both ways. If the two lines name different riders then, the plan flags it to fix, and counts
+everyone named on either line as riding both ways.
 
 An event the kid isn't going to stays on the board, marked "Not attending", but needs no rides,
 raises no problems or reminders, and never clashes with anything. Besides `Attending: no`, the old
@@ -169,7 +173,8 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_attending` | Whether the kid is going (`attending`). Going again also takes an old `NO` off the start of the title |
 | `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to the usual margin before the start |
-| `mydashlight.set_take_along` | Who rides along (`kids`, by name): on a kid's drop-off the other kids, so the driver can go on to their drop-offs without coming home for them; on a parent's own event, kids or the other parent. Empty takes nobody along |
+| `mydashlight.set_take_along` | Who rides along (`kids`, by name: other kids or the other parent) on the `side` you pick, `drop`, `pick` or `both`. When the driver stays, riders go both ways. On a parent's own event, they go there and back. Empty takes nobody along |
+| `mydashlight.set_takes` | How long a parent's errand takes (`minutes`). The errand then fits in any time between the event's start and end. No minutes makes it a set-time event again. Kids' events turn it down |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
 
 The event actions take the event's `id` from `get_plan`. For a repeating event, `scope: this`
@@ -371,19 +376,29 @@ nothing to keep in Home Assistant:
 
 - An all-day event with **No School** in its title (such as "No School – Thanksgiving Break") means
   no school those days, for that kid. Every other weekday is a school day.
-- An all-day event titled **Bring Lunch** or **Buy Lunch** is that day's pick. A school day with no
-  pick gets the kid's default: Buy, unless the kid is picked under **Configure > Lunch** as bringing
-  by default.
+- Each day's lunch is one all-day event on the kid's calendar. Titled **Lunch: Pizza, side salad**,
+  it says what the school serves that day, and its notes can hold the rest of the menu (other
+  choices, sides). Titled just **Lunch**, the dish is the first line of its notes, or the menu isn't
+  known yet. Each kid has their own, so kids at different schools get different menus.
+- The kid's pick goes in a short block at the end of that event's notes:
 
-- An all-day event titled **Lunch: Pizza, side salad** is what the school serves that day. Its
-  notes can hold the rest of the menu (other choices, sides). An event titled just **Lunch** works
-  too, with the dish as the first line of its notes. Each kid has their own, so kids at different
-  schools get different menus. A month of these can be imported into a kid's calendar from a
-  `.ics` file (Google Calendar: **Settings > Import & export**), or added on the Lunch tab.
+  ```
+  --- Lunch ---
+  Pick: Bring
+  ```
+
+  A school day with no pick gets the kid's default: Buy, unless the kid is picked under
+  **Configure > Lunch** as bringing by default. A pick on a day with no menu yet goes on a plain
+  **Lunch** event, which the menu fills in later. (Before 0.16, picks were their own **Bring
+  Lunch** and **Buy Lunch** events. Those are still read, and MyDashLight moves them onto the day's
+  lunch event when it starts.)
+- A month of menus can be imported into a kid's calendar from a `.ics` file (Google Calendar:
+  **Settings > Import & export**), or added on the Lunch tab.
 - **Menu feeds.** Many schools publish their menu as a calendar to subscribe to (look for an
   ICAL or Subscribe button on the menu page). Paste its address for each kid under **Configure >
   Lunch**. Every 6 hours MyDashLight reads it and adds each day's lunch from today on to the kid's
-  calendar as a `Lunch: …` event: the first item is the dish, the rest goes in the notes.
+  calendar as a `Lunch: …` event (or fills in that day's plain **Lunch** event, keeping the
+  pick): the first item is the dish, the rest goes in the notes.
   Breakfast (`B: …`) and `No School` entries are skipped. These events carry a private mark, so
   only they follow later changes to the feed; a menu typed by hand, imported, or changed on the
   Lunch tab is left alone.

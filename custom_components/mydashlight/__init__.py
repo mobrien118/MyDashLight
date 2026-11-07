@@ -10,9 +10,9 @@ Chores live in Google Tasks: templates on three base lists, and each kid's chore
 list, which MyDashLight keeps filled from the templates. The app subscribes to
 ``mydashlight/chores/subscribe`` for the chores as they change.
 
-Lunches are "Bring Lunch" and "Buy Lunch" all-day events on each kid's calendar, and days off
-are "No School" events there. School-days chores (like Pack lunch) follow them. The app
-subscribes to ``mydashlight/lunch/subscribe``.
+Lunches are a "Lunch" all-day event a day on each kid's calendar (the menu, with the Bring or
+Buy pick at the end of its notes), and days off are "No School" events there. School-days
+chores (like Pack lunch) follow them. The app subscribes to ``mydashlight/lunch/subscribe``.
 """
 
 from __future__ import annotations
@@ -164,6 +164,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
         # School days first, so the first chore read already knows them.
         await lunch.async_refresh()
         await chores.async_refresh()
+        await lunch.async_fold_old_picks()
         await lunch.async_sync_feeds()
 
     entry.async_create_background_task(hass, first_reads(), f"{DOMAIN}_first_reads")

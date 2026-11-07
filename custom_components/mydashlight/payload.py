@@ -138,6 +138,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "stay": e.stay,
         "arrive_by": e.arrive_by,
         "along": [*e.along, *e.parents],
+        "pick_along": [*e.pick_along, *e.pick_parents],
         "own": e.own,
         "takes": e.takes,
         "planned": _num(planned_at(e, board.plan)),

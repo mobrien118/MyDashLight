@@ -281,9 +281,8 @@ async def test_take_along(hass: HomeAssistant, google: FakeGoogle) -> None:
 
     await call(hass, "set_take_along", event="piano", kids=["ben"])
 
-    assert google.event(AVA, "piano")["description"] == (
-        "--- Rides ---\nDrop-off: Robin\nPick-up: Robin\nTake along: Ben"
-    )
+    # Riders go after the driver on the line.
+    assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin, Ben\nPick-up: Robin"
     assert planned(entry, "piano")["along"] == [BEN]
     # Now Ben rides along to Ava's drop-off, then on to the pool.
     assert first_drive(entry)["kids"] == [AVA, BEN]
@@ -292,6 +291,28 @@ async def test_take_along(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert planned(entry, "piano")["along"] == []
     assert first_drive(entry)["kids"] == [AVA]
     assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Robin"
+
+    # Ben and Sam ride along on the pick-up instead.
+    await call(hass, "set_take_along", event="piano", kids=["Ben", "Sam"], side="pick")
+    assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Robin, Ben, Sam"
+    assert planned(entry, "piano")["pick_along"] == [BEN, "dad"]
+
+
+async def test_errand_minutes(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        ROBIN,
+        **timed("jersey", "Jersey", "2026-11-03T14:30:00-06:00", "2026-11-03T17:30:00-06:00", location="Gym"),
+    )
+    entry = await load(hass)
+    await call(hass, "set_takes", event="jersey", minutes=10)
+    assert google.event(ROBIN, "jersey")["description"] == "--- Rides ---\nTakes: 10 min"
+    assert planned(entry, "jersey")["takes"] == 10
+    await call(hass, "set_takes", event="jersey")
+    assert planned(entry, "jersey")["takes"] is None
+    # A kid's event can't be an errand.
+    with pytest.raises(ServiceValidationError) as err:
+        await call(hass, "set_takes", event="piano", minutes=10)
+    assert err.value.translation_key == "errand_on_kid"
 
 
 def suggestions(entry: MockConfigEntry) -> list[dict[str, Any]]:

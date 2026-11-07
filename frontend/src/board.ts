@@ -856,11 +856,20 @@ export class MyDashLightBoard extends LitElement {
     void this.save("stay", !e.stay, () => b.setStay(e.id, !e.stay, this.scope));
   }
 
-  private toggleAlong(e: PlanEvent, kid: string): void {
+  /** Who rides along: on the drop-off, the pick-up, or both when the driver stays. */
+  private toggleAlong(e: PlanEvent, kid: string, side: Side | "both" = "drop"): void {
     if (!this.backend) return;
     const b = this.backend;
-    const next = e.along.includes(kid) ? e.along.filter((k) => k !== kid) : [...e.along, kid];
-    void this.save("along", next, () => b.setTakeAlong(e.id, next, this.scope));
+    const cur = side === "pick" ? (e.pick_along ?? []) : e.along;
+    const next = cur.includes(kid) ? cur.filter((k) => k !== kid) : [...cur, kid];
+    void this.save(`along-${side}`, next, () => b.setTakeAlong(e.id, next, this.scope, side));
+  }
+
+  /** Errand minutes for a parent's own event, or null to put it back at its set time. */
+  private setTakes(e: PlanEvent, minutes: number | null): void {
+    if (!this.backend || (e.takes ?? null) === minutes) return;
+    const b = this.backend;
+    void this.save("takes", minutes, () => b.setTakes(e.id, minutes, this.scope));
   }
 
   private nudgeArrive(e: PlanEvent, by: number): void {
@@ -1563,8 +1572,8 @@ export class MyDashLightBoard extends LitElement {
         ${kids.map((k) => this.renderLunchCard(data, k, month, shown !== null))}
       </div>
       <p class="message-aside">
-        Picks are saved as <strong>Bring Lunch</strong> and <strong>Buy Lunch</strong> all-day events on each kid’s calendar.
-        Menus are <strong>Lunch: Pizza</strong> all-day events there, with the rest of the menu in the notes. They can
+        Each day’s lunch is a <strong>Lunch: Pizza</strong> all-day event on the kid’s calendar, with the rest of the
+        menu in its notes and the Bring or Buy pick at the end. Menus can
         come from the school’s menu feed (set in Home Assistant under MyDashLight’s options, Lunch), a calendar file
         imported once a month, or <strong>Edit menus</strong> here.
         Days off come from <strong>No School</strong> events there. A day nobody picked gets the kid’s default, set in
@@ -2271,6 +2280,27 @@ export class MyDashLightBoard extends LitElement {
             if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
           }}
         />
+        ${!stay && v !== "" && v !== "none" ? riders(s, v) : nothing}
+      </div>`;
+    };
+
+    // Who rides along on one side (or both when the driver stays): the other kids, and the other
+    // parent. They're written after the driver on the Drop-off or Pick-up line.
+    const riders = (s: Side | "both", driver: string): TemplateResult | typeof nothing => {
+      const pend = pendingValue(`along-${s}`);
+      const cur = pend !== undefined ? (pend as string[]) : s === "pick" ? (e.pick_along ?? []) : e.along;
+      const choices = [...kidIds(plan).filter((k) => k !== e.kid), ...drivers.filter((d) => d !== driver)];
+      if (!choices.length) return nothing;
+      const label = s === "both" ? "Riding along, both ways" : "Riding along";
+      return html`<div class="field-sub">
+        <span class="field-label">${label} <span class="field-hint">${s === "pick" ? "They come for the pick-up" : "They leave home in the same car"}</span></span>
+        <div role="group" aria-label=${s === "drop" ? "Riding along on the drop-off" : s === "pick" ? "Riding along on the pick-up" : "Riding along both ways"} class="chips">
+          ${choices.map(
+            (k) => html`<button type="button" class="chip" aria-pressed=${cur.includes(k) ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleAlong(e, k, s)}>
+              ${drivers.includes(k) ? driverName(plan, k) : kidName(plan, k)}
+            </button>`,
+          )}
+        </div>
       </div>`;
     };
 
@@ -2280,20 +2310,27 @@ export class MyDashLightBoard extends LitElement {
     const alongPend = pendingValue("along");
     const along = alongPend !== undefined ? (alongPend as string[]) : e.along;
     // On a parent's own event the other parent can go along too.
-    const otherKids = e.own ? [...kidIds(plan), ...drivers.filter((d) => d !== e.own)] : kidIds(plan).filter((k) => k !== e.kid);
+    const otherKids = e.own ? [...kidIds(plan), ...drivers.filter((d) => d !== e.own)] : [];
     const errand = e.own != null && e.takes != null;
-    const canTake = drivers.includes(e.drop) && e.sides.includes("drop") && !errand;
+    const canTake = e.own != null && !errand;
+    const takesPend = pendingValue("takes");
+    const takes = takesPend !== undefined ? (takesPend as number | null) : (e.takes ?? null);
     const arrivePend = pendingValue("arrive");
     const arrive = this.arriveDraft !== undefined ? this.arriveDraft : arrivePend !== undefined ? (arrivePend as number | null) : e.arrive_by;
 
     const notes: string[] = [];
     const noteVal = (v: string): string => (v === "none" ? "Not needed" : whoName(plan, v));
     // A parent's own event drives itself: only who goes along and when to arrive are written.
-    if (!e.own && e.drop !== "") notes.push(`Drop-off: ${noteVal(e.drop)}`);
-    if (!e.own && e.pick !== "") notes.push(`Pick-up: ${noteVal(e.pick)}`);
+    const who = (k: string): string => (drivers.includes(k) ? driverName(plan, k) : kidName(plan, k));
+    const line = (label: string, driver: string, with_: string[]): void => {
+      if (driver === "" && !with_.length) return;
+      notes.push(`${label}: ${[driver === "" ? "TBD" : noteVal(driver), ...with_.map(who)].join(", ")}`);
+    };
+    if (!e.own) line("Drop-off", e.drop, e.along);
+    if (!e.own) line("Pick-up", e.pick, e.pick_along ?? []);
     if (!e.own && e.stay) notes.push("Stay: yes");
     if (errand) notes.push(`Takes: ${e.takes} min`);
-    if (e.along.length) notes.push(`Take along: ${e.along.map((k) => (drivers.includes(k) ? driverName(plan, k) : kidName(plan, k))).join(", ")}`);
+    if (e.own && e.along.length) notes.push(`Take along: ${e.along.map(who).join(", ")}`);
     if (e.arrive_by != null) notes.push(`Arrive by: ${clockAmPm(e.arrive_by)}`);
     const attendPend = pendingValue("attending");
     const attending = attendPend !== undefined ? Boolean(attendPend) : e.attending !== false;
@@ -2349,11 +2386,30 @@ export class MyDashLightBoard extends LitElement {
                     <button type="button" class="choice wide" aria-pressed=${stay ? "true" : "false"} ?disabled=${!canStay || busy} @click=${() => this.toggleStay(e)}>
                       ${canStay ? (stay ? "Driver stays the whole time" : "Driver leaves and comes back") : "Staying needs the same driver both ways"}
                     </button>
+                    ${stay && canStay ? riders("both", e.drop) : nothing}
                   </div>`}
+      ${e.own
+        ? html`<div class="field arrive">
+            <span class="arrive-text">
+              <span class="field-label">Errand</span>
+              <span class="field-hint">${takes != null ? `Takes ${takes} min, any time ${clock(e.start)}–${clock(e.end)}` : "At its set time"}</span>
+            </span>
+            ${takes != null
+              ? html`<span class="stepper">
+                  <button type="button" class="step" aria-label="Five minutes shorter" ?disabled=${busy || takes <= 5} @click=${() => this.setTakes(e, Math.max(5, takes - 5))}>−</button>
+                  <span class="arrive-value">${takes} min</span>
+                  <button type="button" class="step" aria-label="Five minutes longer" ?disabled=${busy || takes + 5 > e.end - e.start} @click=${() => this.setTakes(e, takes + 5)}>+</button>
+                </span>`
+              : nothing}
+          </div>
+          <button type="button" class="chip clear" ?disabled=${busy} @click=${() => this.setTakes(e, takes != null ? null : Math.min(10, Math.max(5, e.end - e.start)))}>
+            ${takes != null ? "Go at its set time instead" : "Make it an errand: any time in this window"}
+          </button>`
+        : nothing}
       ${canTake && otherKids.length
         ? html`<div class="field">
             <span class="field-label">Take along <span class="field-hint">They leave home in the same car</span></span>
-            <div role="group" aria-label=${e.own ? "Who goes along" : "Kids taken along"} class="chips">
+            <div role="group" aria-label="Who goes along" class="chips">
               ${otherKids.map(
                 (k) => html`<button type="button" class="chip" aria-pressed=${along.includes(k) ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleAlong(e, k)}>
                   ${drivers.includes(k) ? driverName(plan, k) : kidName(plan, k)}

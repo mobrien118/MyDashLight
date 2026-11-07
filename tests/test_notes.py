@@ -172,6 +172,25 @@ def test_takes_needs_minutes() -> None:
     assert notes.problems == ("Takes: “a while” isn’t a number of minutes",)
 
 
+def test_riders_on_driver_lines() -> None:
+    notes = parse_notes("Drop-off: Sam, Ben, Robin\nPick-up: TBD, Cleo", KIDS)
+    assert (notes.drop, notes.drop_riders) == ("dad", ("k2", "mom"))
+    assert (notes.pick, notes.pick_riders) == (UNASSIGNED, ("k3",))
+    assert notes.problems == ()
+    # A name alone is still just the driver, and a stranger after the driver is a problem.
+    assert parse_notes("Drop-off: the Parkers", KIDS).drop == "the Parkers"
+    odd = parse_notes("Drop-off: Sam, Zed", KIDS)
+    assert (odd.drop, odd.drop_riders, odd.problems) == ("dad", (), ("Drop-off: “Zed” isn’t one of the family",))
+
+
+def test_write_riders() -> None:
+    text = write_notes("--- Rides ---\nDrop-off: Sam\nTake along: Ben", KIDS, drop_riders=["ben", "Robin"], along=())
+    assert text == "--- Rides ---\nDrop-off: Sam, Ben, Robin"
+    assert write_notes(text, KIDS, drop="mom") == "--- Rides ---\nDrop-off: Robin, Ben"
+    assert write_notes("", KIDS, pick_riders=["Cleo"]) == "--- Rides ---\nPick-up: TBD, Cleo"
+    assert write_notes(text, KIDS, drop_riders=()) == "--- Rides ---\nDrop-off: Sam"
+
+
 def test_write_take_along() -> None:
     text = write_notes("Bring water.\n\n--- Rides ---\nDrop-off: Sam", KIDS, along=["ben", "k3"])
     assert text == "Bring water.\n\n--- Rides ---\nDrop-off: Sam\nTake along: Ben, Cleo"

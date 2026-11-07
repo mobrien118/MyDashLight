@@ -17,7 +17,10 @@ export interface Backend {
   setStay(event: string, stay: boolean, scope: Scope): Promise<void>;
   /** `minutes` past midnight, or null to go back to a few minutes before the start. */
   setArriveBy(event: string, minutes: number | null, scope: Scope): Promise<void>;
-  setTakeAlong(event: string, kids: string[], scope: Scope): Promise<void>;
+  /** Who rides along. On a kid's event, `side` picks the drop-off (default) or pick-up; staying is always both. */
+  setTakeAlong(event: string, kids: string[], scope: Scope, side?: Side | "both"): Promise<void>;
+  /** A parent's own event as an errand that takes `minutes` any time in its window, or null for a set time. */
+  setTakes(event: string, minutes: number | null, scope: Scope): Promise<void>;
   /** Going (true) or skipping this one (false). */
   setAttending(event: string, attending: boolean, scope: Scope): Promise<void>;
   applySuggestion(id: string): Promise<void>;
@@ -220,8 +223,12 @@ export class HassBackend implements Backend {
     return this.call("set_arrive_by", minutes == null ? { event, scope } : { event, time: timeField(minutes), scope });
   }
 
-  setTakeAlong(event: string, kids: string[], scope: Scope): Promise<void> {
-    return this.call("set_take_along", { event, kids, scope });
+  setTakeAlong(event: string, kids: string[], scope: Scope, side: Side | "both" = "drop"): Promise<void> {
+    return this.call("set_take_along", { event, kids, scope, side });
+  }
+
+  setTakes(event: string, minutes: number | null, scope: Scope): Promise<void> {
+    return this.call("set_takes", minutes == null ? { event, scope } : { event, minutes, scope });
   }
 
   applySuggestion(id: string): Promise<void> {
@@ -475,6 +482,10 @@ export class PreviewBackend implements Backend {
   }
 
   setTakeAlong(): Promise<void> {
+    return this.nope();
+  }
+
+  setTakes(): Promise<void> {
     return this.nope();
   }
 
