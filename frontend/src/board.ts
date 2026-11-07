@@ -110,6 +110,8 @@ function localZone(): string {
 const PLUS = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>`;
 const PENCIL = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.3V20h2.7l9.9-9.9-2.7-2.7zM19.7 7a1 1 0 0 0 0-1.4l-1.3-1.3a1 1 0 0 0-1.4 0l-1.2 1.2 2.7 2.7z"/></svg>`;
 /** Pictures for a chore; a kitchen screen has no emoji keyboard. */
+/** Every emoji, for the chore picture's More button: served with the app, so it works offline. */
+const EMOJI_DATA = new URL("emoji.json", import.meta.url).href;
 const ICONS = ["🛏️", "🍽️", "🧺", "👕", "🧹", "🧽", "🗑️", "♻️", "🐕", "🐈", "🐟", "🌱", "🪥", "🛁", "🧸", "📚", "🎒", "🎻", "🎹", "🚗", "🥪", "💊"];
 
 /** A lunch bag, for Bring. */
@@ -121,12 +123,11 @@ const EXPAND = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="
 const COLLAPSE = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>`;
 const LUNCH_WORD: Record<Lunch, string> = { bring: "Bring", buy: "Buy" };
 
-/** "Every week", "Every other week", "Every 3 months (quarterly)". */
-function everyText(repeats: Repeats, every: number): string {
+/** The unit after "Every [2]": "weeks", "day", "months (quarterly)". */
+function everyUnit(repeats: Repeats, every: number): string {
   const unit = { daily: "day", weekly: "week", monthly: "month", school: "school day" }[repeats];
-  if (every <= 1) return `Every ${unit}`;
-  if (every === 2) return `Every other ${unit}`;
-  return `Every ${every} ${unit}s${repeats === "monthly" && every === 3 ? " (quarterly)" : ""}`;
+  if (every <= 1) return unit;
+  return `${unit}s${repeats === "monthly" && every === 3 ? " (quarterly)" : repeats === "monthly" && every === 12 ? " (yearly)" : ""}`;
 }
 
 function initial(name: string): string {
@@ -221,6 +222,7 @@ export class MyDashLightBoard extends LitElement {
     removeArmed: { state: true },
     whoFor: { state: true },
     whoOthers: { state: true },
+    iconMore: { state: true },
     lunch: { state: true },
     lunchDraft: { state: true },
     lunchMonth: { state: true },
@@ -264,6 +266,8 @@ export class MyDashLightBoard extends LitElement {
   declare whoFor: Chore | null;
   /** "Someone else did" was tapped: everyone is listed. */
   declare whoOthers: boolean;
+  /** The full emoji picker is open under the chore's picture chips. */
+  declare iconMore: boolean;
   /** Undefined until the first read; null when lunches can't be read (or MyDashLight has none). */
   declare lunch: LunchPayload | null | undefined;
   /** Lunch picks tapped but not seen back from Google yet. */
@@ -324,6 +328,7 @@ export class MyDashLightBoard extends LitElement {
     this.manage = false;
     this.choreEdit = null;
     this.choreBusy = false;
+    this.iconMore = false;
     this.removeArmed = false;
     this.whoFor = null;
     this.whoOthers = false;
@@ -652,6 +657,13 @@ export class MyDashLightBoard extends LitElement {
     this.removeArmed = false;
     this.whoFor = null;
     this.whoOthers = false;
+    this.iconMore = false;
+  }
+
+  /** Opens the full emoji picker, loading it the first time. */
+  private toggleIconMore(): void {
+    this.iconMore = !this.iconMore;
+    if (this.iconMore) void import("emoji-picker-element");
   }
 
   private changeDraft(change: Partial<ChoreDraft>): void {
@@ -1730,8 +1742,7 @@ export class MyDashLightBoard extends LitElement {
         <p>Add the first one here: give it a name, pick who does it and which days.</p>
         <button type="button" class="btn dark big-btn" @click=${() => this.editChore(null)}>${PLUS} Add a chore</button>
         <p class="message-aside">
-          Or add a task to the Google Tasks list <strong>Chore templates: Daily</strong> (or Weekly or Monthly). It
-          shows here to be set up.
+          Or add a task to the Google Tasks list <strong>Chore seeds</strong>. It shows here to be set up.
         </p>
       </div>`;
     }
@@ -1819,10 +1830,10 @@ export class MyDashLightBoard extends LitElement {
   /** Manage chores: every chore template by how often it repeats, to add, change, pause or remove. */
   private renderManage(data: ChoresPayload): TemplateResult {
     const groups: [Repeats, string][] = [
-      ["daily", "Every day or some days"],
+      ["daily", "Every day"],
+      ["weekly", "Every week"],
+      ["monthly", "Every month"],
       ["school", "School days"],
-      ["weekly", "Weekly"],
-      ["monthly", "Monthly"],
     ];
     return html`<div class="chores-scroll">
       <div class="chores-bar">
@@ -1845,8 +1856,8 @@ export class MyDashLightBoard extends LitElement {
           })
         : html`<p class="chore-none">No chores yet. Tap <strong>Add a chore</strong> to make the first one.</p>`}
       <p class="message-aside">
-        Chores are kept in Google Tasks, on the lists <strong>Chore templates: Daily</strong>, <strong>Weekly</strong>,
-        <strong>Monthly</strong> and <strong>School days</strong>. A task added there by hand shows up here to be set up.
+        Chores are kept in Google Tasks, on the list <strong>Chore seeds</strong>. A task added there by hand shows up
+        here to be set up.
       </p>
     </div>`;
   }
@@ -1934,36 +1945,33 @@ export class MyDashLightBoard extends LitElement {
             </div>`
           : html`<p class="field-hint">${v.toLowerCase() === "last" ? "Due on the month’s last day." : other ? "Set in Google Tasks; pick another to change it." : "Shows all month, due on its last day."}</p>`}
       </div>`;
+    } else if (d.repeats === "daily") {
+      days = html`<p class="field-hint">Picking days of the week? That’s <strong>Every week</strong>, on those days.</p>`;
     } else {
-      const any = d.repeats === "weekly" && (d.days === "" || d.days.toLowerCase() === "any");
+      const any = d.days === "" || d.days.toLowerCase() === "any";
       const set = d.days === NO_DAYS ? new Set<number>() : any ? new Set<number>() : (weekdaysOf(d.days) ?? new Set<number>());
       const toggleDay = (i: number): void => {
         const next = new Set(set);
         if (next.has(i)) next.delete(i);
         else next.add(i);
-        if (d.repeats === "weekly") this.changeDraft({ days: next.size ? weekdaysLabel(next) || "Mon-Sun" : "Any" });
-        else this.changeDraft({ days: next.size ? weekdaysLabel(next) : NO_DAYS });
+        this.changeDraft({ days: next.size ? weekdaysLabel(next) || "Mon-Sun" : NO_DAYS });
       };
       days = html`<div class="field">
-        <span class="field-label">${d.repeats === "weekly" ? "Which day" : "Which days"}</span>
-        ${d.repeats === "weekly"
-          ? html`<div role="group" aria-label="Any day" class="choices" style="grid-template-columns:1fr 1fr">
-              ${choice(any, "Any day that week", () => this.changeDraft({ days: "Any" }))}
-              ${choice(!any, "On a set day", () => this.changeDraft({ days: any ? "Sat" : d.days }))}
-            </div>`
-          : nothing}
-        ${d.repeats === "daily" || !any
-          ? html`<div role="group" aria-label="Days of the week" class="day-chips">
-              ${WEEKDAYS.map((w, i) => chip(set.has(i), w.slice(0, 2), () => toggleDay(i), w))}
-            </div>`
-          : nothing}
-        ${d.repeats === "daily"
-          ? html`<div class="chips">
-              ${chip(d.days === "", "Every day", () => this.changeDraft({ days: "" }))}
-              ${chip(d.days === "Mon-Fri", "Weekdays", () => this.changeDraft({ days: "Mon-Fri" }))}
-              ${chip(d.days === "Sat, Sun", "Weekends", () => this.changeDraft({ days: "Sat, Sun" }))}
-            </div>`
-          : html`<p class="field-hint">${any ? "Shows all week, due on Sunday." : "Due that day."}</p>`}
+        <span class="field-label">Which days</span>
+        <div role="group" aria-label="Any day" class="choices" style="grid-template-columns:1fr 1fr">
+          ${choice(any, "Any day that week", () => this.changeDraft({ days: "Any" }))}
+          ${choice(!any, "On set days", () => this.changeDraft({ days: any ? "Sat" : d.days }))}
+        </div>
+        ${any
+          ? html`<p class="field-hint">Shows all week, due on Sunday.</p>`
+          : html`<div role="group" aria-label="Days of the week" class="day-chips">
+                ${WEEKDAYS.map((w, i) => chip(set.has(i), w.slice(0, 2), () => toggleDay(i), w))}
+              </div>
+              <div class="chips">
+                ${chip(d.days === "Mon-Fri", "Weekdays", () => this.changeDraft({ days: "Mon-Fri" }))}
+                ${chip(d.days === "Sat, Sun", "Weekends", () => this.changeDraft({ days: "Sat, Sun" }))}
+              </div>
+              <p class="field-hint">Due each day picked.</p>`}
       </div>`;
     }
 
@@ -1990,7 +1998,20 @@ export class MyDashLightBoard extends LitElement {
         />
         <div role="group" aria-label="Picture" class="icon-chips">
           ${ICONS.map((i) => chip(d.icon === i, i, () => this.changeDraft({ icon: d.icon === i ? null : i }), `Picture ${i}`))}
+          ${d.icon && !ICONS.includes(d.icon) ? chip(true, d.icon, () => this.changeDraft({ icon: null }), `Picture ${d.icon}`) : nothing}
+          <button type="button" class="chip more" aria-pressed=${this.iconMore ? "true" : "false"} aria-expanded=${this.iconMore ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleIconMore()}>More…</button>
         </div>
+        ${this.iconMore
+          ? html`<emoji-picker
+              class="emoji-more"
+              .dataSource=${EMOJI_DATA}
+              @emoji-click=${(ev: CustomEvent<{ unicode?: string }>) => {
+                const u = ev.detail.unicode;
+                if (u) this.changeDraft({ icon: u });
+                this.iconMore = false;
+              }}
+            ></emoji-picker>`
+          : nothing}
       </div>
       <div class="field">
         <span class="field-label">Who does it</span>
@@ -2013,23 +2034,21 @@ export class MyDashLightBoard extends LitElement {
       <div class="field">
         <span class="field-label">How often</span>
         <div role="group" aria-label="How often" class="choices" style="grid-template-columns:repeat(2, minmax(0, 1fr))">
-          ${choice(d.repeats === "daily", "Days", () => setRepeats("daily"))}
+          ${choice(d.repeats === "daily", "Every day", () => setRepeats("daily"))}
+          ${choice(d.repeats === "weekly", "Every week", () => setRepeats("weekly"))}
+          ${choice(d.repeats === "monthly", "Every month", () => setRepeats("monthly"))}
           ${choice(d.repeats === "school", "School days", () => setRepeats("school"))}
-          ${choice(d.repeats === "weekly", "Weekly", () => setRepeats("weekly"))}
-          ${choice(d.repeats === "monthly", "Monthly", () => setRepeats("monthly"))}
         </div>
       </div>
       ${days}
-      ${d.repeats === "school" ? nothing : html`<div class="field arrive">
-        <span class="arrive-text">
-          <span class="field-label">Repeats</span>
-          <span class="field-hint">${everyText(d.repeats, d.every)}</span>
-        </span>
+      ${d.repeats === "school" ? nothing : html`<div class="field arrive every-row">
+        <span class="field-label">Every</span>
         <span class="stepper">
           <button type="button" class="step" aria-label="More often" ?disabled=${busy || d.every <= 1} @click=${() => this.changeDraft({ every: d.every - 1 })}>−</button>
           <span class="arrive-value">${d.every}</span>
           <button type="button" class="step" aria-label="Less often" ?disabled=${busy || d.every >= 52} @click=${() => this.changeDraft({ every: d.every + 1 })}>+</button>
         </span>
+        <span class="field-label every-unit">${everyUnit(d.repeats, d.every)}</span>
       </div>`}
       <div class="field">
         <label class="field-label" for="chore-details">Notes <span class="field-hint">Optional, shown with the chore</span></label>

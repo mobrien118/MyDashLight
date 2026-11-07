@@ -1605,6 +1605,13 @@ export const styles = css`
     align-items: center;
     justify-content: space-between;
   }
+  .every-row {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .every-unit {
+    flex: 1;
+  }
   .arrive-text {
     display: flex;
     flex-direction: column;
@@ -2072,6 +2079,20 @@ export const styles = css`
     background: #e8eefb;
     border: 2px solid var(--ink);
     color: var(--ink);
+  }
+  .icon-chips .chip.more {
+    font-size: 13px;
+    font-weight: 700;
+    grid-column: span 2;
+  }
+  .emoji-more {
+    width: 100%;
+    height: 360px;
+    margin-top: 8px;
+    --border-radius: 12px;
+    --border-color: var(--line, #e3e5e8);
+    --emoji-size: 1.5rem;
+    --num-columns: 7;
   }
   .day-chips {
     display: grid;

@@ -53,7 +53,10 @@ export interface ChoreTemplate {
   take_turns?: boolean;
   /** As MyDashLight writes the Days line: "" (every day), "Mon-Fri", "Any", "15", "last", "1st Sat". */
   days?: string;
+  /** Days for every day, weeks for every week, months for every month. */
   every?: number;
+  /** How often, in words: "Every day", "Every 2 weeks", "School days". */
+  repeats_label?: string;
   starts?: string | null;
   ends?: string | null;
   points?: number | null;
@@ -250,7 +253,7 @@ export function weekdaysLabel(days: Iterable<number>): string {
     .join(", ");
 }
 
-/** Daily chores with no day picked; never saved. */
+/** A weekly or school-days chore with no day picked; never saved. */
 export const NO_DAYS = "none";
 
 /** A template being added or changed, before it's saved. */
@@ -314,16 +317,19 @@ export function newDraft(who: string[] = []): ChoreDraft {
 }
 
 export function draftOf(t: ChoreTemplate): ChoreDraft {
+  // Picking weekdays means weekly: an every-day chore has no days of its own.
+  const days = t.days ?? defaultDays(t.repeats);
+  const weekly = t.repeats === "daily" && days !== "";
   return {
     template: t.id,
-    repeats: t.repeats,
+    repeats: weekly ? "weekly" : t.repeats,
     title: t.title,
     icon: t.icon,
     details: t.details ?? "",
     who: [...t.who],
     take_turns: !!t.take_turns,
-    days: t.days ?? defaultDays(t.repeats),
-    every: t.every && t.every > 0 ? t.every : 1,
+    days,
+    every: !weekly && t.every && t.every > 0 ? t.every : 1,
     paused: t.paused,
     night_before: !!t.night_before,
     bring_only: !!t.bring_only,
@@ -347,7 +353,7 @@ export function draftFields(d: ChoreDraft): TemplateFields {
     details: d.details.trim(),
     who: d.who,
     take_turns: d.take_turns && d.who.length > 1,
-    days: d.days,
+    days: d.repeats === "daily" ? "" : d.days,
     every: d.repeats === "school" ? 1 : d.every,
     paused: d.paused,
     ...(d.repeats === "school" ? { night_before: d.night_before, bring_only: d.bring_only } : {}),
@@ -373,11 +379,8 @@ export function scheduleText(repeats: Repeats, days: string, every = 1, nightBef
   const unit = { daily: "day", weekly: "week", monthly: "month" }[repeats];
   const each = every > 1 ? `every ${every} ${unit}s` : `each ${unit}`;
   const d = days.trim();
-  if (repeats === "daily") {
-    const label = d.replace(/-/g, "–");
-    if (every > 1) return label ? `${label}, every ${every} days` : `Every ${every} days`;
-    return label || "Every day";
-  }
+  if (repeats === "daily") return every > 1 ? `Every ${every} days` : "Every day";
+  if (repeats === "weekly" && /^mon\s*-\s*sun$/i.test(d)) return every > 1 ? `Every day, every ${every} weeks` : "Every day";
   if (!d || d.toLowerCase() === "any") return `Sometime ${each}`;
   if (repeats === "weekly") return `${d.replace(/-/g, "–")} ${each}`;
   const parts = d.split(",").map((p) => {
