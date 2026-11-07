@@ -1,7 +1,7 @@
 """MyDashLight's lunch services: read the lunches, and save a kid's Bring or Buy picks.
 
-Picks are "Bring Lunch" and "Buy Lunch" all-day events on the kid's own calendar, so they
-show the same on the board, in Google Calendar and on phones.
+Picks are saved at the end of the notes of the day's "Lunch" event on the kid's own calendar,
+so they show the same on the board, in Google Calendar and on phones.
 """
 
 from __future__ import annotations

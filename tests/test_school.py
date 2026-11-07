@@ -18,14 +18,17 @@ from custom_components.mydashlight.chores import (
 from custom_components.mydashlight.google import CalendarEvent
 from custom_components.mydashlight.school import (
     SchoolCalendar,
+    fold_old_picks,
     is_no_school,
-    lunch_changes,
     lunch_of,
     lunch_payload,
     menu_changes,
     menu_of,
     menu_title,
+    pick_changes,
     read_school,
+    split_pick,
+    with_pick,
 )
 
 KIDS = {"ava": "Ava", "ben": "Ben"}
@@ -114,33 +117,89 @@ def test_payload() -> None:
     assert ben["picks"] == {"2026-11-25": "buy"}
 
 
-def test_lunch_changes() -> None:
+def test_pick_block() -> None:
+    assert split_pick("Or: salad\n\n--- Lunch ---\nPick: Bring") == ("Or: salad", "bring")
+    assert split_pick("--- lunch ---\nBring or buy: buying") == ("", "buy")
+    assert split_pick("Or: salad") == ("Or: salad", None)
+    # Edited on the Google Calendar website, the notes are HTML.
+    assert split_pick("Or: salad<br><br>--- Lunch ---<br>Pick: Buy") == ("Or: salad", "buy")
+    assert with_pick("Or: salad", "bring") == "Or: salad\n\n--- Lunch ---\nPick: Bring"
+    assert with_pick("", "buy") == "--- Lunch ---\nPick: Buy"
+    assert with_pick(" Or: salad ", None) == "Or: salad"
+
+
+def test_reads_picks_on_lunch_events() -> None:
+    s = school(
+        ava=[
+            day("p", "Lunch", "2026-11-05", notes="--- Lunch ---\nPick: Bring"),
+            day("m", "Lunch: Pizza", "2026-11-06", notes="Or: salad\n\n--- Lunch ---\nPick: Buy"),
+            day("x", "Lunch", "2026-11-09"),
+        ]
+    )
+    assert s.lunch("ava", date(2026, 11, 5)) == "bring"
+    assert s.menu("ava", date(2026, 11, 5)) is None
+    assert s.lunch("ava", date(2026, 11, 6)) == "buy"
+    assert s.menu("ava", date(2026, 11, 6)).details == "Or: salad"  # type: ignore[union-attr]
+    # A bare "Lunch" with nothing in it is neither.
+    assert s.lunch_event("ava", date(2026, 11, 9)) is None
+    ava = lunch_payload(s, KIDS, TODAY)["kids"][0]
+    assert ava["picks"] == {"2026-11-05": "bring", "2026-11-06": "buy"}
+    assert ava["menus"] == {"2026-11-06": {"dish": "Pizza", "details": "Or: salad"}}
+
+
+def test_pick_changes() -> None:
     s = school(
         ava=[
             day("off", "No School", "2026-11-25", "2026-11-27"),
-            day("b1", "Bring Lunch", "2026-11-05"),
-            day("b2", "Buy Lunch", "2026-11-06"),
-            day("dup1", "Buy Lunch", "2026-11-09"),
-            day("dup2", "Bring Lunch", "2026-11-09"),
+            day("m5", "Lunch: Pizza", "2026-11-05", notes="Or: salad"),
+            day("p6", "Lunch", "2026-11-06", notes="--- Lunch ---\nPick: Buy"),
+            # Picks from before 0.16, as their own events.
+            day("old9", "Buy Lunch", "2026-11-09"),
+            day("m9", "Lunch: Tacos", "2026-11-09"),
+            day("old12", "Bring Lunch", "2026-11-12"),
         ]
     )
-    days = [date(2026, 11, d) for d in (5, 6, 9, 10, 25)]
-    changes = lunch_changes(s, "ava", days, "bring")
-    assert [(c.day.day, c.make, c.retitle, c.remove) for c in changes] == [
-        (6, None, ("b2", '"b2"', "bring"), None),
-        (9, None, None, ("dup2", '"dup2"')),
-        (9, None, ("dup1", '"dup1"', "bring"), None),
-        (10, "bring", None, None),
+    days = [date(2026, 11, d) for d in (5, 6, 9, 10, 12, 25)]
+    changes = pick_changes(s, "ava", days, "bring")
+    pick = "--- Lunch ---\nPick: Bring"
+    assert [(c.day.day, c.make, c.update, c.remove, c.from_feed) for c in changes] == [
+        (5, None, ("m5", '"m5"', "Lunch: Pizza", f"Or: salad\n\n{pick}"), None, None),
+        (6, None, ("p6", '"p6"', "Lunch", pick), None, None),
+        (9, None, None, ("old9", '"old9"'), None),
+        (9, None, ("m9", '"m9"', "Lunch: Tacos", pick), None, None),
+        (10, ("Lunch", pick), None, None, None),
+        (12, None, None, ("old12", '"old12"'), None),
+        (12, ("Lunch", pick), None, None, None),
     ]
-    # Back to the default takes the picks away.
-    changes = lunch_changes(s, "ava", [date(2026, 11, 5), date(2026, 11, 10)], None)
-    assert [(c.day.day, c.remove) for c in changes] == [(5, ("b1", '"b1"'))]
+    # Back to the default: the pick comes off, and a day with nothing else loses its event.
+    changes = pick_changes(s, "ava", [date(2026, 11, 5), date(2026, 11, 6), date(2026, 11, 10)], None)
+    assert [(c.day.day, c.update, c.remove) for c in changes] == [(6, None, ("p6", '"p6"'))]
+    # Same pick again: nothing to do.
+    assert pick_changes(s, "ava", [date(2026, 11, 6)], "buy") == []
 
 
-def test_a_pick_over_several_days_is_removed_once() -> None:
+def test_a_pick_over_several_days_is_left_alone() -> None:
     s = school(ava=[day("week", "Buy Lunch", "2026-11-09", "2026-11-13")])
-    changes = lunch_changes(s, "ava", [date(2026, 11, 9), date(2026, 11, 10)], None)
-    assert [c.remove for c in changes] == [("week", '"week"')]
+    assert s.lunch("ava", date(2026, 11, 10)) == "buy"
+    changes = pick_changes(s, "ava", [date(2026, 11, 10)], "bring")
+    assert [(c.make, c.remove) for c in changes] == [(("Lunch", "--- Lunch ---\nPick: Bring"), None)]
+    assert fold_old_picks(s) == {}
+
+
+def test_fold_old_picks() -> None:
+    s = school(
+        ava=[day("old5", "Bring Lunch", "2026-11-05"), day("m5", "Lunch: Pizza", "2026-11-05")],
+        ben=[day("old6", "Buy Lunch", "2026-11-06")],
+    )
+    folded = fold_old_picks(s)
+    assert [(c.make, c.update, c.remove) for c in folded["ava"]] == [
+        (None, None, ("old5", '"old5"')),
+        (None, ("m5", '"m5"', "Lunch: Pizza", "--- Lunch ---\nPick: Bring"), None),
+    ]
+    assert [(c.make, c.remove) for c in folded["ben"]] == [
+        (None, ("old6", '"old6"')),
+        (("Lunch", "--- Lunch ---\nPick: Buy"), None),
+    ]
 
 
 # School-days chores

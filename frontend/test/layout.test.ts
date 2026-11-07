@@ -455,3 +455,26 @@ test("whose event it is, by name and color", () => {
   const all = attention(p, { date: FIRST, minutes: 0 }, 24 * 8);
   assert.ok(all.items.some((i) => i.title === "Sun · Check the notes on Sam’s Golf"));
 });
+
+test("timeline: something running past midnight shows only its edge, not the whole night", () => {
+  const hours = (p: ReturnType<typeof sampleWeek>): [number, number] => {
+    const b = layout(p, "timeline", 1160, today);
+    const a = b.anchors.filter((x) => x.t >= 1440 && x.t < 2 * 1440).map((x) => x.t - 1440);
+    return [Math.min(...a), Math.max(...a)];
+  };
+  const before = hours(sampleWeek());
+  const p = sampleWeek();
+  const day = p.days[1]!;
+  const first = day.events[0]!;
+  const kid = first.kid;
+  const late = { ...first, id: "overnight-in", start: 0, end: before[0] + 60, arrive_by: null };
+  const out = { ...first, id: "overnight-out", start: before[1] - 60, end: 1440 + 600, arrive_by: null };
+  const allDay = { ...first, id: "whole-day", start: 0, end: 1440, arrive_by: null };
+  day.events.push(late, out, allDay);
+  day.kids[kid]!.items.push(
+    { type: "act", start: 0, end: late.end, clash: false, event: late.id },
+    { type: "act", start: out.start, end: 1440, clash: false, event: out.id },
+    { type: "act", start: 0, end: 1440, clash: false, event: allDay.id },
+  );
+  assert.deepEqual(hours(p), before);
+});

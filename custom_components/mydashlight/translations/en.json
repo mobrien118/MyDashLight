@@ -200,7 +200,7 @@
       },
       "lunch": {
         "title": "Lunch",
-        "description": "Each school day a kid hasn't picked Bring or Buy on the Lunch tab, they get their default. Picks are saved as \"Bring Lunch\" and \"Buy Lunch\" all-day events on the kid's calendar, and days off as \"No School\" events.\n\n**Menu feeds:** if a kid's school publishes its lunch menu as a calendar to subscribe to, paste its iCal address in their box (an address ending in .ics, or starting with webcal://, often under the calendar's ICAL or Subscribe button). MyDashLight reads it every few hours and adds each day's lunch to the kid's calendar as a \"Lunch: …\" all-day event. Menus changed by hand are left alone. Leave a box empty for none; kids at the same school can use the same address.",
+        "description": "Each school day a kid hasn't picked Bring or Buy on the Lunch tab, they get their default. Picks are saved at the end of the notes of the day's \"Lunch\" all-day event on the kid's calendar, and days off are \"No School\" events.\n\n**Menu feeds:** if a kid's school publishes its lunch menu as a calendar to subscribe to, paste its iCal address in their box (an address ending in .ics, or starting with webcal://, often under the calendar's ICAL or Subscribe button). MyDashLight reads it every few hours and adds each day's lunch to the kid's calendar as a \"Lunch: …\" all-day event. Menus changed by hand are left alone. Leave a box empty for none; kids at the same school can use the same address.",
         "data": {
           "bring_by_default": "Bring lunch by default"
         },
@@ -457,7 +457,7 @@
     },
     "set_lunch": {
       "name": "Set lunch",
-      "description": "Saves a kid's lunch as \"Bring Lunch\" or \"Buy Lunch\" all-day events on their calendar. Days with no school are skipped.",
+      "description": "Saves a kid's Bring or Buy pick at the end of the notes of the day's \"Lunch\" all-day event on their calendar. Days with no school are skipped.",
       "fields": {
         "kid": {
           "name": "Kid",
