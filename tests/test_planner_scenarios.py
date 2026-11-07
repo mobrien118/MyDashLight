@@ -11,6 +11,7 @@ import pytest
 
 from custom_components.mydashlight.board import build_day
 from custom_components.mydashlight.planner import (
+    NOT_NEEDED,
     Issue,
     Labels,
     PlannerSettings,
@@ -20,6 +21,7 @@ from custom_components.mydashlight.planner import (
     driving_text,
     issue_text,
     minutes_text,
+    plan_all,
     plan_driver,
 )
 
@@ -125,3 +127,62 @@ def test_a_few_seconds_late_is_not_late() -> None:
     assert late.kind == "late"
     assert issue_text(late, LABELS).body == "Robin gets there at 4:13, 1 min after the 4:12 arrive-by time."
     assert [minutes_text(v) for v in (15.200000000000045, 0.5, 2.0, None)] == ["15", "1", "2", "0"]
+
+
+def _drive(table: dict[frozenset[str], int]) -> Any:
+    return lambda a, b: 0 if a == b else table[frozenset({a, b})]
+
+
+def test_kids_taken_along_from_home_go_straight_on_to_their_own_event() -> None:
+    # Ava is picked up first. Ava's golf takes Ben along, and Ben's game takes Ava along, with
+    # the driver staying at both: Ben comes from home before golf, then golf goes straight on to
+    # the game instead of back home for Ben.
+    drive = _drive(
+        {
+            frozenset({"home", "party"}): 10,
+            frozenset({"home", "golf"}): 20,
+            frozenset({"home", "gym"}): 25,
+            frozenset({"party", "golf"}): 25,
+            frozenset({"party", "gym"}): 30,
+            frozenset({"golf", "gym"}): 25,
+        }
+    )
+    party = RideEvent("party", "ava", "Party", "party", 0, 690, drop=NOT_NEEDED, pick="mom")
+    golf = RideEvent("golf", "ava", "Golf", "golf", 840, 960, drop="mom", pick="mom", stay=True, along=("ben",))
+    game = RideEvent("game", "ben", "Game", "gym", 1005, 1080, drop="mom", pick="mom", stay=True, along=("ava",))
+    plan = plan_all([party, golf, game], {}, drive)
+    assert [(s.kind, s.loc) for s in plan["mom"].stops] == [
+        ("start", "home"),
+        ("pick", "party"),
+        ("fetch", "home"),
+        ("stay", "golf"),
+        ("stay", "gym"),
+        ("end", "home"),
+    ]
+    assert plan.hard == []
+    to_game = next(g for g in plan["mom"].segments if g.type == "drive" and g.to_loc == "gym")
+    assert (to_game.from_loc, sorted(to_game.kids)) == ("golf", ["ava", "ben"])
+
+
+def test_kids_with_somewhere_to_be_leave_home_again() -> None:
+    # Ben's game in the morning takes Cleo along. After picking Ava up, the driver has time to
+    # go home before Ava's golf, which takes Ben and Cleo: all three leave home again for it.
+    drive = _drive(
+        {
+            frozenset({"home", "field"}): 30,
+            frozenset({"home", "party"}): 10,
+            frozenset({"home", "golf"}): 20,
+            frozenset({"field", "party"}): 35,
+            frozenset({"field", "golf"}): 40,
+            frozenset({"party", "golf"}): 25,
+        }
+    )
+    game = RideEvent("game", "ben", "Game", "field", 600, 660, drop="mom", pick="mom", stay=True, along=("cleo",))
+    party = RideEvent("party", "ava", "Party", "party", 0, 690, drop=NOT_NEEDED, pick="mom")
+    golf = RideEvent("golf", "ava", "Golf", "golf", 840, 960, drop="mom", pick="mom", stay=True, along=("ben", "cleo"))
+    plan = plan_all([game, party, golf], {}, drive)
+    segments = plan["mom"].segments
+    home = next(i for i, g in enumerate(segments) if g.type == "home")
+    to_golf = segments[home + 1]
+    assert (to_golf.type, to_golf.from_loc, to_golf.to_loc) == ("drive", "home", "golf")
+    assert sorted(to_golf.kids) == ["ava", "ben", "cleo"]
