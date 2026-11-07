@@ -125,6 +125,15 @@ set_take_along:
       selector:
         text:
           multiple: true
+    side:
+      required: false
+      default: drop
+      selector:
+        select:
+          options:
+            - drop
+            - pick
+            - both
     scope:
       required: false
       default: this
@@ -303,3 +312,28 @@ set_lunch_menu:
       selector:
         text:
           multiline: true
+set_takes:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    minutes:
+      required: false
+      example: 10
+      selector:
+        number:
+          min: 1
+          max: 600
+          unit_of_measurement: min
+          mode: box
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series

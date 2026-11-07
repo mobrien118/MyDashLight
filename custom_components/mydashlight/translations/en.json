@@ -323,7 +323,7 @@
     },
     "set_take_along": {
       "name": "Set take-along",
-      "description": "Sets who rides along: on a kid's drop-off, the other kids, so the driver can go on to their drop-offs without coming home for them. On a parent's own event, the kids or the other parent going too.",
+      "description": "Sets who rides along: on a kid's event, the people after the driver on the Drop-off or Pick-up line (both when the driver stays); on a parent's own event, the kids or the other parent going too.",
       "fields": {
         "event": {
           "name": "Event",
@@ -331,11 +331,15 @@
         },
         "kids": {
           "name": "Kids",
-          "description": "Who is taken along, by name. A parent can go along only to the other parent's own event. Leave empty to take nobody along."
+          "description": "Who rides along, by name: kids, or the other parent. Leave empty to take nobody along."
         },
         "scope": {
           "name": "Repeating events",
           "description": "For a repeating event: change just this one, or every one."
+        },
+        "side": {
+          "name": "Side",
+          "description": "On a kid's event: the drop-off (default), the pick-up, or both. When the driver stays, it's always both."
         }
       }
     },
@@ -490,6 +494,24 @@
           "description": "The rest of the menu, saved in the event's notes."
         }
       }
+    },
+    "set_takes": {
+      "name": "Set errand time",
+      "description": "Makes a parent's own event an errand: it takes this many minutes, any time between its start and end, and the planner picks when. No minutes puts it back at its set time.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
+        },
+        "minutes": {
+          "name": "Minutes",
+          "description": "How long the errand takes. Leave empty for an event at a set time."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
+        }
+      }
     }
   },
   "exceptions": {
@@ -576,6 +598,9 @@
     },
     "lunch_failed": {
       "message": "The lunch wasn't saved: {error}"
+    },
+    "errand_on_kid": {
+      "message": "{title} is a kid's event. Errands go on a parent's own calendar."
     }
   },
   "selector": {

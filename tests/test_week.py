@@ -522,7 +522,7 @@ def test_a_kids_event_on_a_parents_calendar_stays_busy_time() -> None:
     assert w.days[0].busy["mom"] == [BusyBlock(960, 1020, "Piano")]
 
 
-def test_parents_only_go_along_to_a_parents_event() -> None:
+def test_riders_on_the_drop_off_and_pick_up_lines() -> None:
     w = week(
         {
             AVA: [
@@ -532,14 +532,62 @@ def test_parents_only_go_along_to_a_parents_event() -> None:
                     at(3, "16:00"),
                     at(3, "17:00"),
                     location=SCHOOL,
-                    description="Take along: Ben, Sam",
-                )
+                    description="Drop-off: Robin, Ben, Sam\nPick-up: Sam, Ben",
+                ),
+                timed(
+                    "art",
+                    "Art",
+                    at(4, "16:00"),
+                    at(4, "17:00"),
+                    location=SCHOOL,
+                    description="Take along: Ben, Sam\nDrop-off: Robin",
+                ),
             ]
         }
     )
-    [e] = w.days[0].events
-    assert e.along == (BEN,)
-    assert w.days[0].problems["piano"] == ("Take along: “Sam” can only go along to a parent’s own event",)
+    [piano] = w.days[0].events
+    assert (piano.drop, piano.along, piano.parents) == ("mom", (BEN,), ("dad",))
+    # Sam drives the pick-up, so only Ben rides along on it.
+    assert (piano.pick, piano.pick_along, piano.pick_parents) == ("dad", (BEN,), ())
+    assert "piano" not in w.days[0].problems
+    # An old Take along line still counts, as riders on the drop-off, a parent too.
+    [art] = w.days[1].events
+    assert (art.along, art.parents, art.pick_along) == ((BEN,), ("dad",), ())
+
+
+def test_riders_when_the_driver_stays() -> None:
+    w = week(
+        {
+            AVA: [
+                timed(
+                    "golf",
+                    "Golf",
+                    at(3, "14:00"),
+                    at(3, "16:00"),
+                    location=SCHOOL,
+                    description="Drop-off: Robin, Ben\nPick-up: Robin\nStay: yes",
+                ),
+                timed(
+                    "game",
+                    "Game",
+                    at(4, "14:00"),
+                    at(4, "16:00"),
+                    location=SCHOOL,
+                    description="Drop-off: Robin, Ben\nPick-up: Robin, Sam\nStay: yes",
+                ),
+            ]
+        }
+    )
+    # Everyone stays: riders named on the drop-off ride home too.
+    [golf] = w.days[0].events
+    assert (golf.along, golf.pick_along) == ((BEN,), (BEN,))
+    assert "golf" not in w.days[0].problems
+    # Different riders on each line is a conflict to fix. Meanwhile everyone goes both ways.
+    [game] = w.days[1].events
+    assert (game.along, game.parents, game.pick_along, game.pick_parents) == ((BEN,), ("dad",), (BEN,), ("dad",))
+    assert w.days[1].problems["game"] == (
+        "Stay: everyone stays, so the Drop-off and Pick-up should name the same riders",
+    )
 
 
 def test_own_event_payload() -> None:

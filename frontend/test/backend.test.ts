@@ -56,6 +56,9 @@ test("reads the week's plan, and changes rides through the mydashlight actions",
   await b.setArriveBy("football", null, "this");
   await b.setStay("piano", false, "this");
   await b.setTakeAlong("piano", ["kid-b@group.calendar.google.com"], "this");
+  await b.setTakeAlong("piano", ["dad"], "this", "pick");
+  await b.setTakes("errand", 10, "this");
+  await b.setTakes("errand", null, "this");
   await b.applySuggestion("2026-11-05|soccer|drop|mom");
   const calls = conn.sent.filter((m) => m["service"] !== "get_plan");
   assert.deepEqual(
@@ -65,12 +68,15 @@ test("reads the week's plan, and changes rides through the mydashlight actions",
       ["set_arrive_by", { event: "football", time: "17:15:00", scope: "this" }],
       ["set_arrive_by", { event: "football", scope: "this" }],
       ["set_stay", { event: "piano", stay: false, scope: "this" }],
-      ["set_take_along", { event: "piano", kids: ["kid-b@group.calendar.google.com"], scope: "this" }],
+      ["set_take_along", { event: "piano", kids: ["kid-b@group.calendar.google.com"], scope: "this", side: "drop" }],
+      ["set_take_along", { event: "piano", kids: ["dad"], scope: "this", side: "pick" }],
+      ["set_takes", { event: "errand", minutes: 10, scope: "this" }],
+      ["set_takes", { event: "errand", scope: "this" }],
       ["apply_suggestion", { suggestion: "2026-11-05|soccer|drop|mom" }],
     ],
   );
   // Without live updates, each change reads the new plan.
-  assert.equal(conn.sent.filter((m) => m["service"] === "get_plan").length, 6);
+  assert.equal(conn.sent.filter((m) => m["service"] === "get_plan").length, 9);
   stop();
 });
 

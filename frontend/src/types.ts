@@ -25,8 +25,10 @@ export interface PlanEvent {
   pick: string;
   stay: boolean;
   arrive_by: number | null;
-  /** Kids taken along on this drop-off. On a parent's own event, the other parent can go too (their driver id). */
+  /** Who rides along on the drop-off: kids, then the other parent (their driver id). On a parent's own event, who goes there and back. */
   along: string[];
+  /** Who rides along on the pick-up, the same way. Older plans leave it out. */
+  pick_along?: string[];
   sides: Side[];
   calendar_id: string;
   event_id: string;
