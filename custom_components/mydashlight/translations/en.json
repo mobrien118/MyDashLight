@@ -381,7 +381,7 @@
         },
         "repeats": {
           "name": "Repeats",
-          "description": "Daily, weekly, monthly, or school days (each weekday with no No School event on the kid's calendar). Use Every for every other week or quarterly."
+          "description": "Every day, every week, every month, or school days (each weekday with no No School event on the kid's calendar). Every says how many days, weeks or months apart."
         },
         "title": {
           "name": "Title",
@@ -405,11 +405,11 @@
         },
         "days": {
           "name": "Days",
-          "description": "Daily: which days, such as Mon-Fri (empty for every day). School days: which weekdays (empty for every school day). Weekly: a day such as Thu, or Any for sometime that week. Monthly: a date such as 15, a day such as 1st Sat, or Any."
+          "description": "Every week: weekdays such as Mon, Thu, or Any for sometime that week. Every month: a date such as 15, a day such as 1st Sat, last, or Any. School days: which weekdays (empty for every school day). Every day: leave it out; picking days makes it weekly."
         },
         "every": {
           "name": "Every",
-          "description": "Every this many days, weeks or months: 1 is every time, 2 every other, and 3 months is quarterly."
+          "description": "How many apart, in the repeat's own unit: days for every day, weeks for every week, months for every month (3 is quarterly). Not used for school days."
         },
         "starts": {
           "name": "Starts",
@@ -568,6 +568,9 @@
     "bad_days": {
       "message": "MyDashLight can't read the days \"{days}\". Try Mon-Fri, Thu, 15, 1st Sat or Any."
     },
+    "daily_no_days": {
+      "message": "A chore on certain days of the week repeats every week, not every day. Pick Every week for it."
+    },
     "ends_before_starts": {
       "message": "A chore can't end before it starts."
     },
@@ -594,9 +597,9 @@
     },
     "repeats": {
       "options": {
-        "daily": "Daily",
-        "weekly": "Weekly",
-        "monthly": "Monthly",
+        "daily": "Every day",
+        "weekly": "Every week",
+        "monthly": "Every month",
         "school": "School days"
       }
     },

@@ -1,23 +1,36 @@
 """Chore templates and the chores made from them, as they're stored in Google Tasks.
 
-A template is a task on one of the four base lists ("Chore templates: Daily", "Weekly",
-"Monthly" and "School days"). Its title is the chore, the list says how often it repeats, and
-the rest of the rules are lines in a block at the end of its notes::
+A template (a "seed") is a task on the one "Chore seeds" list. Its title is the chore and its
+rules are lines in a block at the end of its notes::
 
     Bins at the curb by 7 PM.
 
     --- Chore ---
     Id: k3J9x0
+    Repeats: Every 2 weeks
     Who: Ava, Ben
     Take turns: yes
     Days: Thu
-    Every: 2
     Starts: 2026-11-04
     Ends: 2027-06-05
     Points: 1
 
 Text above the block is the chore's details, shown when it's tapped. A template that's
 checked off in Google is paused.
+
+``Repeats`` is one of four kinds, each counted in its own unit so they can't mix:
+
+* ``Every day`` or ``Every 3 days``: no Days line.
+* ``Every week`` or ``Every 2 weeks``: Days are weekdays (``Mon, Thu``), or ``Any`` for
+  sometime that week.
+* ``Every month`` or ``Every 3 months`` (``Quarterly``): Days are dates (``15``, ``last``),
+  weekdays in the month (``1st Sat``), or ``Any``.
+* ``School days``: every school day, or only the weekdays in Days.
+
+Picking weekdays always means a weekly chore: a daily one with Days is read as weekly on those
+days. With no Repeats line, Days says which (weekdays: weekly, dates: monthly, none: daily).
+Templates from before the one list, on "Chore templates: Daily" and the like, said how often
+by their list and how many by an ``Every`` line; they're moved onto the one list as they are.
 
 A school-days chore is made for each day that's a school day for its kid: a weekday with no
 "No School" event on the kid's calendar. Two more lines only mean something there::
@@ -133,6 +146,9 @@ _LABELS: Final[dict[str, str]] = {
     "day": "days",
     "on": "days",
     "every": "every",
+    "repeats": "repeats",
+    "repeat": "repeats",
+    "howoften": "repeats",
     "starts": "starts",
     "start": "starts",
     "ends": "ends",
@@ -179,6 +195,25 @@ def read_block(notes: str) -> ChoreBlock:
         if key:
             found.append((key, match.group(2)))
     return ChoreBlock(details="\n".join(lines[:start]).strip(), lines=tuple(found), has_block=True)
+
+
+def edit_block(notes: str, add: Sequence[tuple[str, str]], drop: Iterable[str] = ()) -> str:
+    """Notes with ``add`` lines put first in the Chore block (one is made when there's none)
+    and the lines for the ``drop`` fields taken out, leaving every other line as it was."""
+    gone = set(drop)
+    text = notes.replace("\r\n", "\n")
+    lines = text.split("\n")
+    start = next((i for i, line in enumerate(lines) if _HEADER_RE.match(line)), None)
+    new = [f"{label}: {value}" for label, value in add]
+    if start is None:
+        return write_block(text, add)
+    kept = []
+    for line in lines[start + 1 :]:
+        match = _LINE_RE.match(line)
+        key = _LABELS.get(re.sub(r"[\s]", "", match.group(1)).casefold()) if match else None
+        if key not in gone:
+            kept.append(line)
+    return "\n".join([*lines[: start + 1], *new, *kept])
 
 
 def write_block(details: str, lines: Iterable[tuple[str, str]]) -> str:
@@ -352,6 +387,70 @@ def _month_days(text: str) -> tuple[MonthDay, ...]:
 # Templates
 
 
+_REPEATS_WORDS: Final[dict[str, tuple[Repeats, int]]] = {
+    "daily": ("daily", 1),
+    "every day": ("daily", 1),
+    "everyday": ("daily", 1),
+    "each day": ("daily", 1),
+    "every other day": ("daily", 2),
+    "weekly": ("weekly", 1),
+    "every week": ("weekly", 1),
+    "each week": ("weekly", 1),
+    "every other week": ("weekly", 2),
+    "biweekly": ("weekly", 2),
+    "fortnightly": ("weekly", 2),
+    "monthly": ("monthly", 1),
+    "every month": ("monthly", 1),
+    "each month": ("monthly", 1),
+    "every other month": ("monthly", 2),
+    "quarterly": ("monthly", 3),
+    "every quarter": ("monthly", 3),
+    "yearly": ("monthly", 12),
+    "annually": ("monthly", 12),
+    "every year": ("monthly", 12),
+    "school": ("school", 1),
+    "school days": ("school", 1),
+    "school day": ("school", 1),
+    "every school day": ("school", 1),
+}
+_EVERY_RE: Final = re.compile(r"^(?:every|each)\s+(\d+)\s+(day|week|month|year)s?$")
+_UNITS: Final[dict[str, Repeats]] = {"day": "daily", "week": "weekly", "month": "monthly", "year": "monthly"}
+
+
+def parse_repeats(value: str) -> tuple[Repeats, int] | None:
+    """How often, from a Repeats line: ("weekly", 2) for "Every 2 weeks", or None."""
+    text = " ".join(value.split()).casefold().rstrip(".")
+    if text in _REPEATS_WORDS:
+        return _REPEATS_WORDS[text]
+    match = _EVERY_RE.match(text)
+    if not match or int(match.group(1)) < 1:
+        return None
+    count = int(match.group(1)) * (12 if match.group(2) == "year" else 1)
+    return _UNITS[match.group(2)], count
+
+
+def repeats_label(repeats: Repeats, every: int = 1) -> str:
+    """ "Every day", "Every 3 days", "Every 2 weeks", "Every month" or "School days"."""
+    if repeats == "school":
+        return "School days"
+    unit = {"daily": "day", "weekly": "week", "monthly": "month"}[repeats]
+    return f"Every {unit}" if every == 1 else f"Every {every} {unit}s"
+
+
+def _guess_repeats(days: str) -> Repeats:
+    """How often a template with no Repeats line repeats, from its Days line."""
+    text = " ".join(days.split()).casefold()
+    if text in _EVERY_DAY:
+        return "daily"
+    for repeats in ("weekly", "monthly"):
+        try:
+            parse_days(text, repeats)
+        except DaysError:
+            continue
+        return repeats
+    return "daily"
+
+
 @dataclass(frozen=True, slots=True)
 class Template:
     """One chore's rules, read from a task on a base list."""
@@ -385,10 +484,21 @@ class Template:
     def active(self) -> bool:
         return not self.paused and not self.problems and bool(self.who)
 
+    @property
+    def days_label(self) -> str:
+        """The Days line as it's written: "Mon, Thu", "1st Sat", "Any" or "" for every day."""
+        if self.repeats == "weekly" and len(self.days.weekdays) == 7:
+            return "Mon-Sun"  # every day of the week, not "Any"
+        return self.days.label(self.repeats)
+
+    @property
+    def repeats_label(self) -> str:
+        return repeats_label(self.repeats, self.every)
+
 
 def parse_template(
     task_id: str,
-    repeats: Repeats,
+    repeats: Repeats | None,
     title: str,
     notes: str,
     *,
@@ -397,9 +507,20 @@ def parse_template(
     created: date | None = None,
     position: str = "",
 ) -> Template:
-    """Read a template task. ``kids`` gives each kid's name by kid id."""
+    """Read a template task. ``kids`` gives each kid's name by kid id. ``repeats`` is how often
+    for a template on one of the old lists; None reads it from the Repeats line."""
     block = read_block(notes)
     problems: list[str] = []
+    every_line = block.first("every")
+    every: int | None = None
+    if (line := block.first("repeats")) is not None and line.strip():
+        found = parse_repeats(line)
+        if found is None:
+            problems.append(f"repeats:{line}")
+        else:
+            repeats, every = found
+    if repeats is None:
+        repeats = _guess_repeats(block.first("days") or "")
     who: list[str] = []
     for name in _SPLIT_RE.split(block.first("who") or ""):
         name = " ".join(name.split())
@@ -420,9 +541,17 @@ def parse_template(
     except DaysError:
         problems.append(f"days:{block.first('days') or ''}")
         days = Days()
-    every = _number(block.first("every"), 1)
-    if every is None or every < 1:
-        problems.append(f"every:{block.first('every')}")
+    if every in (None, 1) and every_line:
+        # The Every line of a template from before the Repeats line.
+        every = _number(every_line, 1)
+        if every is None or every < 1:
+            problems.append(f"every:{every_line}")
+            every = 1
+    if repeats == "daily" and days.weekdays:
+        # Picking days means weekly: "every 2 days, on Mondays" can't be both.
+        repeats, every = "weekly", 1
+    every = every or 1
+    if repeats == "school":
         every = 1
     starts = _date(block.first("starts"))
     if block.first("starts") and starts is None:
@@ -469,14 +598,13 @@ def parse_template(
 def template_notes(template: Template, kids: Mapping[str, str]) -> str:
     """The notes MyDashLight writes for a template, in the fixed form."""
     lines: list[tuple[str, str]] = [("Id", template.id)]
+    lines.append(("Repeats", template.repeats_label))
     lines.append(("Who", ", ".join(kids.get(k, k) for k in template.who)))
     if template.take_turns:
         lines.append(("Take turns", "yes"))
-    days = template.days.label(template.repeats)
+    days = template.days_label
     if days:
         lines.append(("Days", days))
-    if template.every != 1:
-        lines.append(("Every", str(template.every)))
     if template.starts:
         lines.append(("Starts", template.starts.isoformat()))
     if template.ends:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -13,8 +14,10 @@ from custom_components.mydashlight.chore_rules import (
     Template,
     occurrences,
     parse_days,
+    parse_repeats,
     parse_template,
     read_block,
+    repeats_label,
     split_icon,
     template_notes,
     weekdays_label,
@@ -139,7 +142,9 @@ def test_template_notes_round_trip() -> None:
     notes = head + "Days: mondays\nStarts: 2026-11-02\nPoints: 1"
     t = template("weekly", notes)
     written = template_notes(t, KIDS)
-    assert written == head + "Days: Mon\nStarts: 2026-11-02\nPoints: 1"
+    assert written == head.replace("Id: abc\n", "Id: abc\nRepeats: Every week\n") + (
+        "Days: Mon\nStarts: 2026-11-02\nPoints: 1"
+    )
     assert template("weekly", written) == t
 
 
@@ -236,3 +241,87 @@ def test_no_starts_means_from_today() -> None:
     t = template("weekly", "--- Chore ---\nWho: Ava\nDays: Mon")
     assert t.starts is None
     assert due_days(t, last=date(2026, 11, 10)) == [("ava", "2026-11-09")]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Every day", ("daily", 1)),
+        ("daily", ("daily", 1)),
+        ("every 3 days", ("daily", 3)),
+        ("Every other day", ("daily", 2)),
+        ("Weekly", ("weekly", 1)),
+        ("Every 2 weeks", ("weekly", 2)),
+        ("biweekly", ("weekly", 2)),
+        ("Every month", ("monthly", 1)),
+        ("Quarterly", ("monthly", 3)),
+        ("every 1 year", ("monthly", 12)),
+        ("School days", ("school", 1)),
+        ("every 0 weeks", None),
+        ("sometimes", None),
+    ],
+)
+def test_parse_repeats(text: str, expected: tuple[str, int] | None) -> None:
+    assert parse_repeats(text) == expected
+
+
+def test_repeats_label_round_trips() -> None:
+    for repeats, every in [("daily", 1), ("daily", 3), ("weekly", 1), ("weekly", 2), ("monthly", 3), ("school", 1)]:
+        label = repeats_label(repeats, every)  # type: ignore[arg-type]
+        assert parse_repeats(label) == (repeats, every)
+    assert repeats_label("weekly", 2) == "Every 2 weeks"
+
+
+def seed(notes: str) -> Template:
+    return parse_template("task-1", None, "Vacuum", notes, completed=False, kids=KIDS)
+
+
+def test_seed_reads_how_often_from_its_repeats_line() -> None:
+    t = seed("--- Chore ---\nId: v\nRepeats: Every 2 weeks\nWho: Ava\nDays: Mon, Thu\nStarts: 2026-11-02")
+    assert (t.repeats, t.every, t.days, t.problems) == ("weekly", 2, Days(weekdays=frozenset({0, 3})), ())
+    assert template_notes(t, KIDS) == (
+        "--- Chore ---\nId: v\nRepeats: Every 2 weeks\nWho: Ava\nDays: Mon, Thu\nStarts: 2026-11-02"
+    )
+    assert seed("--- Chore ---\nRepeats: Quarterly\nWho: Ava\nDays: 1st Sat").every == 3
+    assert seed("--- Chore ---\nRepeats: whenever\nWho: Ava").problems == ("repeats:whenever",)
+
+
+def test_picking_days_means_weekly() -> None:
+    # Marty's "Mon and Thu, every 2 days" can't happen: picked days make it weekly.
+    t = seed("--- Chore ---\nRepeats: Every 2 days\nWho: Ava\nDays: Mon, Thu")
+    assert (t.repeats, t.every) == ("weekly", 1)
+    assert due_days(replace_starts(t)) == [
+        ("ava", "2026-11-05"),
+        ("ava", "2026-11-09"),
+        ("ava", "2026-11-12"),
+        ("ava", "2026-11-16"),
+    ]
+    # An old Daily template with days moves across the same way.
+    old = template("daily", "--- Chore ---\nWho: Ava\nDays: Sat, Sun")
+    assert (old.repeats, old.days.label("weekly")) == ("weekly", "Sat, Sun")
+
+
+def test_seed_with_no_repeats_line_goes_by_its_days() -> None:
+    assert seed("--- Chore ---\nWho: Ava").repeats == "daily"
+    assert seed("--- Chore ---\nWho: Ava\nDays: Tue").repeats == "weekly"
+    assert seed("--- Chore ---\nWho: Ava\nDays: 15").repeats == "monthly"
+    assert seed("--- Chore ---\nWho: Ava\nDays: Any").repeats == "weekly"
+
+
+def test_old_every_line_still_counts() -> None:
+    t = template("monthly", "--- Chore ---\nWho: Ava\nDays: 1\nEvery: 3")
+    assert (t.repeats, t.every) == ("monthly", 3)
+    assert "Repeats: Every 3 months" in template_notes(t, KIDS)
+    assert "Every:" not in template_notes(t, KIDS)
+
+
+def test_weekly_on_every_weekday_isnt_any() -> None:
+    t = seed("--- Chore ---\nRepeats: Every 2 weeks\nWho: Ava\nDays: Mon-Sun")
+    assert len(t.days.weekdays) == 7
+    written = template_notes(t, KIDS)
+    assert "Days: Mon-Sun" in written
+    assert seed(written).days == t.days
+
+
+def replace_starts(t: Template) -> Template:
+    return replace(t, starts=date(2026, 11, 2))

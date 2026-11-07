@@ -120,12 +120,14 @@ DEFAULT_ROUTES_DAILY_LIMIT: Final = 150
 ROUTES_PER_UPDATE: Final = 25
 ROUTES_AT_ONCE: Final = 4
 
-# Chores, kept in Google Tasks. Templates are tasks on the four base lists; each kid's chores
-# are tasks on that kid's list, made from the templates this many days ahead.
+# Chores, kept in Google Tasks. Templates ("seeds") are tasks on the one seed list; each kid's
+# chores are tasks on that kid's list, made from the seeds this many days ahead.
 CONF_CHORE_DAYS: Final = "chore_days_ahead"
 DEFAULT_CHORE_DAYS: Final = 7
 MAX_CHORE_DAYS: Final = 28
-TEMPLATE_LIST_TITLES: Final = {
+SEED_LIST_TITLE: Final = "Chore seeds"
+OLD_TEMPLATE_LIST_TITLES: Final = {
+    # The lists from before the one seed list: their templates move onto it.
     "daily": "Chore templates: Daily",
     "weekly": "Chore templates: Weekly",
     "monthly": "Chore templates: Monthly",
