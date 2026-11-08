@@ -82,7 +82,7 @@
      "problems": [],
      "lines": {
       "drop": {
-       "text": "Leaves 4:25 with Sam",
+       "text": "Leaves 4:20 with Sam",
        "tone": "normal"
       },
       "pick": {
@@ -121,7 +121,7 @@
      "problems": [],
      "lines": {
       "drop": {
-       "text": "Leaves 4:55 with Sam",
+       "text": "Leaves 4:50 with Sam",
        "tone": "normal"
       },
       "pick": {
@@ -357,14 +357,14 @@
     },
     "dad": {
      "name": "Sam",
-     "leave": 985,
+     "leave": 980,
      "drive": 110,
      "trips": 3,
      "segments": [
       {
        "type": "drive",
-       "start": 985,
-       "end": 1000,
+       "start": 980,
+       "end": 995,
        "from": "home",
        "to": "soccer fields, 2200 park rd",
        "place": null,
@@ -377,8 +377,8 @@
       },
       {
        "type": "drive",
-       "start": 1000,
-       "end": 1015,
+       "start": 995,
+       "end": 1010,
        "from": "soccer fields, 2200 park rd",
        "to": "home",
        "place": null,
@@ -389,8 +389,8 @@
       },
       {
        "type": "drive",
-       "start": 1015,
-       "end": 1035,
+       "start": 1010,
+       "end": 1030,
        "from": "home",
        "to": "football field, 90 stadium dr",
        "place": null,
@@ -403,8 +403,8 @@
       },
       {
        "type": "drive",
-       "start": 1035,
-       "end": 1055,
+       "start": 1030,
+       "end": 1050,
        "from": "football field, 90 stadium dr",
        "to": "home",
        "place": null,
@@ -415,7 +415,7 @@
       },
       {
        "type": "home",
-       "start": 1055,
+       "start": 1050,
        "end": 1120,
        "from": null,
        "to": null,
@@ -454,15 +454,15 @@
      ],
      "outings": [
       {
-       "start": 985,
-       "end": 1055,
-       "lead": "Leave 4:25",
+       "start": 980,
+       "end": 1050,
+       "lead": "Leave 4:20",
        "title": "Drop off Cleo at Soccer fields, drop off Ben at Football field",
        "lines": [
-        "4:40  Soccer fields, drop off Cleo",
-        "4:55  Home, get Ben",
-        "5:15  Football field, drop off Ben",
-        "5:35  Home"
+        "4:35  Soccer fields, drop off Cleo",
+        "4:50  Home, get Ben",
+        "5:10  Football field, drop off Ben",
+        "5:30  Home"
        ],
        "kids": [
         "kid-c@group.calendar.google.com",
@@ -472,8 +472,8 @@
        "target": "soccer",
        "first_drop": "soccer",
        "riders": {
-        "kid-c@group.calendar.google.com": "Leave home at 4:25 PM with Sam",
-        "kid-b@group.calendar.google.com": "Sam picks you up at home at 4:55 PM"
+        "kid-c@group.calendar.google.com": "Leave home at 4:20 PM with Sam",
+        "kid-b@group.calendar.google.com": "Sam picks you up at home at 4:50 PM"
        },
        "go": {
         "from": "home",
@@ -564,8 +564,8 @@
      "index": 3,
      "kid": "kid-c@group.calendar.google.com",
      "driver": "dad",
-     "start": 985,
-     "end": 1000,
+     "start": 980,
+     "end": 995,
      "own": true,
      "serves": [
       "soccer"
@@ -575,8 +575,8 @@
      "index": 4,
      "kid": "kid-b@group.calendar.google.com",
      "driver": "dad",
-     "start": 1015,
-     "end": 1035,
+     "start": 1010,
+     "end": 1030,
      "own": true,
      "serves": [
       "football"
@@ -647,8 +647,8 @@
       },
       {
        "type": "ride",
-       "start": 1015,
-       "end": 1035,
+       "start": 1010,
+       "end": 1030,
        "clash": false,
        "ride": 4
       },
@@ -680,8 +680,8 @@
       },
       {
        "type": "ride",
-       "start": 985,
-       "end": 1000,
+       "start": 980,
+       "end": 995,
        "clash": false,
        "ride": 3
       }
@@ -700,7 +700,7 @@
      "minutes": 15,
      "at": null,
      "title": "Sam is still at Work",
-     "body": "Leaving at 4:25 for Cleo’s soccer overlaps Work until 4:40.",
+     "body": "Leaving at 4:20 for Cleo’s soccer overlaps Work until 4:40.",
      "note": null,
      "suggestions": [
       {
@@ -765,6 +765,19 @@
        "note": "+16 min round trip"
       }
      ]
+    },
+    {
+     "key": "early|dad|soccer||",
+     "level": "heads_up",
+     "kind": "early",
+     "driver": "dad",
+     "event": "soccer",
+     "side": null,
+     "minutes": 25,
+     "at": null,
+     "title": "Cleo waits 25 min",
+     "body": "Sam gets Cleo to Soccer at 4:35, well before the 5:00 start.",
+     "note": "Cleo waits 25 min at Soccer"
     }
    ],
    "score": 2310
@@ -1350,7 +1363,7 @@
      "problems": [],
      "lines": {
       "drop": {
-       "text": "Sam stays · leaves 8:30",
+       "text": "Sam stays · leaves 8:25",
        "tone": "normal"
       },
       "pick": {
@@ -1389,7 +1402,7 @@
      "problems": [],
      "lines": {
       "drop": {
-       "text": "Robin stays · leaves 10:20",
+       "text": "Robin stays · leaves 10:15",
        "tone": "normal"
       },
       "pick": {
@@ -1402,14 +1415,14 @@
    "drivers": {
     "mom": {
      "name": "Robin",
-     "leave": 620,
+     "leave": 615,
      "drive": 40,
      "trips": 1,
      "segments": [
       {
        "type": "drive",
-       "start": 620,
-       "end": 640,
+       "start": 615,
+       "end": 635,
        "from": "home",
        "to": "football field, 90 stadium dr",
        "place": null,
@@ -1422,7 +1435,7 @@
       },
       {
        "type": "stay",
-       "start": 640,
+       "start": 635,
        "end": 780,
        "from": null,
        "to": null,
@@ -1449,12 +1462,12 @@
      ],
      "outings": [
       {
-       "start": 620,
+       "start": 615,
        "end": 800,
-       "lead": "Leave 10:20",
+       "lead": "Leave 10:15",
        "title": "Drive Ben to Football field and stay",
        "lines": [
-        "10:40  Football field, stay with Ben",
+        "10:35  Football field, stay with Ben",
         "1:00  Leave Football field",
         "1:20  Home"
        ],
@@ -1465,7 +1478,7 @@
        "target": "sat-football",
        "first_drop": "sat-football",
        "riders": {
-        "kid-b@group.calendar.google.com": "Leave home at 10:20 AM with Robin"
+        "kid-b@group.calendar.google.com": "Leave home at 10:15 AM with Robin"
        },
        "go": {
         "from": "home",
@@ -1483,14 +1496,14 @@
     },
     "dad": {
      "name": "Sam",
-     "leave": 510,
+     "leave": 505,
      "drive": 46,
      "trips": 2,
      "segments": [
       {
        "type": "drive",
-       "start": 510,
-       "end": 525,
+       "start": 505,
+       "end": 520,
        "from": "home",
        "to": "soccer fields, 2200 park rd",
        "place": null,
@@ -1503,7 +1516,7 @@
       },
       {
        "type": "stay",
-       "start": 525,
+       "start": 520,
        "end": 615,
        "from": null,
        "to": null,
@@ -1568,12 +1581,12 @@
      ],
      "outings": [
       {
-       "start": 510,
+       "start": 505,
        "end": 630,
-       "lead": "Leave 8:30",
+       "lead": "Leave 8:25",
        "title": "Drive Cleo to Soccer fields and stay",
        "lines": [
-        "8:45  Soccer fields, stay with Cleo",
+        "8:40  Soccer fields, stay with Cleo",
         "10:15  Leave Soccer fields",
         "10:30  Home"
        ],
@@ -1584,7 +1597,7 @@
        "target": "sat-soccer",
        "first_drop": "sat-soccer",
        "riders": {
-        "kid-c@group.calendar.google.com": "Leave home at 8:30 AM with Sam"
+        "kid-c@group.calendar.google.com": "Leave home at 8:25 AM with Sam"
        },
        "go": {
         "from": "home",
@@ -1635,8 +1648,8 @@
      "index": 0,
      "kid": "kid-b@group.calendar.google.com",
      "driver": "mom",
-     "start": 620,
-     "end": 640,
+     "start": 615,
+     "end": 635,
      "own": true,
      "serves": [
       "sat-football"
@@ -1657,8 +1670,8 @@
      "index": 2,
      "kid": "kid-c@group.calendar.google.com",
      "driver": "dad",
-     "start": 510,
-     "end": 525,
+     "start": 505,
+     "end": 520,
      "own": true,
      "serves": [
       "sat-soccer"
@@ -1719,8 +1732,8 @@
       },
       {
        "type": "ride",
-       "start": 620,
-       "end": 640,
+       "start": 615,
+       "end": 635,
        "clash": false,
        "ride": 0
       },
@@ -1745,8 +1758,8 @@
       },
       {
        "type": "ride",
-       "start": 510,
-       "end": 525,
+       "start": 505,
+       "end": 520,
        "clash": false,
        "ride": 2
       },

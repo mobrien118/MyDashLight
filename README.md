@@ -139,7 +139,7 @@ Travel: 25 min
 | Drop-off, Pick-up | The driver first: a parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver). Then anyone riding along, by name, such as `Drop-off: Sam, Ben, Robin`. `TBD` holds the driver's place when riders are named but nobody is driving yet | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
 | Take along | Kids' names, and on a parent's own event the other parent | Nobody else rides along. On a parent's own event, everyone named goes there and back with that parent. On a kid's event, an older line still counts as riders on the drop-off |
-| Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive early by a margin that grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
+| Arrive by | A time, such as 5:15 PM, or 15 min early, when the kid has to be there before the event starts | They have to be there at the start. Either way, the driver aims to get there a margin early for traffic. It grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
 | Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
@@ -172,7 +172,7 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet. A parent always drives to their own event, so this and `set_stay` turn it down |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_attending` | Whether the kid is going (`attending`). Going again also takes an old `NO` off the start of the title |
-| `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to the usual margin before the start |
+| `mydashlight.set_arrive_by` | When the kid needs to be there, if it's before the start. The traffic margin still comes off it. No time means they need to be there at the start |
 | `mydashlight.set_take_along` | Who rides along (`kids`, by name: other kids or the other parent) on the `side` you pick, `drop`, `pick` or `both`. When the driver stays, riders go both ways. On a parent's own event, they go there and back. Empty takes nobody along |
 | `mydashlight.set_takes` | How long a parent's errand takes (`minutes`). The errand then fits in any time between the event's start and end. No minutes makes it a set-time event again. Kids' events turn it down |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
@@ -432,7 +432,7 @@ each parent and each kid who should get reminders. A notifier is a `notify` acti
 the Home Assistant app adds for each phone. Anyone left on **No reminders** gets none.
 
 - **Before each drive.** Leave time is worked back from when the kid has to be there (Arrive by,
-  or the usual margin before the start) and the drive time. The reminder goes off 15 minutes before
+  or else the start), less the traffic margin, and the drive time. The reminder goes off 15 minutes before
   that, or whatever **Remind before leaving** says. The driver's says where to go, stop by stop.
   Each kid in the car with a notifier gets one saying when they leave, or when they'll be picked up
   and where. If the plan changes so a drive leaves at least 5 minutes earlier than it was
