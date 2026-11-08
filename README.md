@@ -282,25 +282,29 @@ restarts. A plan follows when it's back.
 Chores live in Google Tasks, under the Google account MyDashLight signs in with. MyDashLight makes
 these lists the first time it runs:
 
-- **Chore templates: Daily**, **School days**, **Weekly** and **Monthly**, the base lists. Each
-  task on one is a chore's template: its title is the chore, the list says how often, and its notes
-  say the rest. A School days chore comes only on the kid's school days (see [Lunch](#lunch)).
+- **Chore seeds**, the one list every chore grows from. Each task on it is a chore's seed (its
+  template): its title is the chore, and its notes say who, how often and the rest. A School days
+  chore comes only on the kid's school days (see [Lunch](#lunch)).
 - **Chores: \<kid\>**, one per kid. These are the real chores, each due on its day.
-  MyDashLight fills them from the templates, 7 days ahead (**Configure > Names and planner timing
+  MyDashLight fills them from the seeds, 7 days ahead (**Configure > Names and planner timing
   > Chore days ahead**). Tasks added to a kid's list by hand are one-off chores: they show, and
   can be checked off, but MyDashLight leaves them alone.
 
-A template's notes end in a Chore block, which the `save_chore_template` action writes:
+Before 0.18, seeds were on four lists (**Chore templates: Daily**, **Weekly**, **Monthly** and
+**School days**). MyDashLight moves them onto Chore seeds as they are, with their history, and
+removes each old list once it's empty.
+
+A seed's notes end in a Chore block, which the `save_chore_template` action writes:
 
 ```
 Bins at the curb by 7 PM.
 
 --- Chore ---
 Id: 3f9a1c22b7
+Repeats: Every 2 weeks
 Who: Ava, Ben
 Take turns: yes
 Days: Thu
-Every: 2
 Starts: 2026-11-04
 Ends: 2027-06-05
 Points: 1
@@ -308,18 +312,18 @@ Points: 1
 
 | Line | Meaning |
 | --- | --- |
+| Repeats | How often, one of four kinds, each counted in its own unit: `Every day` (or `Every 3 days`), `Every week` (or `Every 2 weeks`), `Every month` (or `Every 3 months`, `Quarterly`), or `School days`. Left out, Days decides: weekdays make it weekly, dates monthly, none daily. |
 | Who | The kids who do it, by name, or Everyone. Each gets their own, unless they take turns. |
 | Take turns | The kids in Who take turns, one each time, in order from Starts. |
-| Days | Daily or School days: which days, such as `Mon-Fri` (none for every day). Weekly: a day such as `Thu`, or `Any` for sometime that week (shows from Monday, due Sunday). Monthly: a date such as `15` or `last`, a day such as `1st Sat`, or `Any` for sometime that month. Several are separated by commas. |
-| Every | Every this many days, weeks or months, counted from Starts. Monthly with Every 3 is quarterly. |
+| Days | Weekly: weekdays such as `Mon, Thu` or `Mon-Fri`, or `Any` for sometime that week (shows from Monday, due Sunday). Monthly: a date such as `15` or `last`, a day such as `1st Sat`, or `Any` for sometime that month. School days: which weekdays (none for every school day). Daily chores have no Days: picking days makes a chore weekly, so "every 2 days, on Mondays" can't happen. Several are separated by commas. |
 | Starts, Ends | The first and last days. Starts is the day the template was made if left out. |
 | Points | Saved on each chore for later. Nothing uses it yet. |
 | When | School days only: `Night before` makes it due the day before each school day (Sunday for Monday); the board shows it from 1 PM that day. Left out, it's due that morning. |
 | Only | School days only: `Bring lunch days` makes it only on days the kid brings lunch, for chores like packing it. |
 
 Text above the block is the chore's details, shown when it's tapped. A leading emoji in the title
-is its icon. Checking a template off in Google pauses it. A template typed into Google by hand works
-too; MyDashLight adds its Id and Starts lines the first time it reads it. One it can't read (an
+is its icon. Checking a seed off in Google pauses it. A seed typed into Google by hand works too;
+MyDashLight adds its Id, Repeats and Starts lines the first time it reads it. One it can't read (an
 unknown kid, say) makes no chores, and `get_chores` lists what's wrong with it.
 
 Each chore on a kid's list has the template's title and details, and a Chore block with `From`
@@ -361,7 +365,7 @@ within a minute, when MyDashLight next reads the lists.
 **Add a chore** and **Manage chores**, above the columns, open the chore editor in the panel, like a
 ride's: its name and picture, who does it (each one, or taking turns), how often (some days of the
 week, weekly or monthly), which days, how many weeks or months apart, and notes. A chore can be
-paused or removed there too. A task typed straight into a Chore templates list in Google Tasks
+paused or removed there too. A task typed straight into the Chore seeds list in Google Tasks
 shows at the top of the Chores board under **needs setting up**; tap it to pick who does it and
 when.
 The **Needs attention** list starts with a Chores section: every kid's overdue chores and the ones
