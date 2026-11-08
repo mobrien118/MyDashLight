@@ -144,7 +144,7 @@ async def _async_set_chore_done(call: ServiceCall) -> None:
 async def _async_save_template(call: ServiceCall) -> ServiceResponse:
     entry, coordinator = _loaded(call.hass)
     data = coordinator.data
-    if data is None or not data.template_lists:
+    if data is None or not data.seed_list:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="chores_not_ready")
     kids = coordinator.kids
     old: Template | None = None
@@ -158,25 +158,20 @@ async def _async_save_template(call: ServiceCall) -> ServiceResponse:
             )
     template = build_template(call.data, old, kids, dt_util.now().date())
     notes = template_notes(template, kids)
-    lists = data.template_lists
+    seeds = data.seed_list
     api = coordinator.api
     async with coordinator.write_lock:
-        if old is not None and old.repeats == template.repeats:
+        if old is not None:
             await _async_google(
                 entry,
                 call,
-                api.async_update(
-                    lists[old.repeats], old.task_id, title=template.title, notes=notes, done=template.paused
-                ),
+                api.async_update(seeds, old.task_id, title=template.title, notes=notes, done=template.paused),
             )
         else:
-            made = await _async_google(entry, call, api.async_insert(lists[template.repeats], template.title, notes))
+            made = await _async_google(entry, call, api.async_insert(seeds, template.title, notes))
             if template.paused:
-                await _async_google(entry, call, api.async_update(lists[template.repeats], made.id, done=True))
+                await _async_google(entry, call, api.async_update(seeds, made.id, done=True))
             template = replace(template, task_id=made.id)
-            if old is not None:
-                # Moved to another base list: the Id line goes with it, so its chores stay linked.
-                await _async_google(entry, call, api.async_delete(lists[old.repeats], old.task_id))
     # The editor and every board show the template now, and its chores once they're made.
     coordinator.async_saved_template(replace(template, position=old.position) if old else template)
     await coordinator.async_refresh()
@@ -194,9 +189,7 @@ async def _async_remove_template(call: ServiceCall) -> None:
             translation_placeholders={"template": call.data[ATTR_TEMPLATE]},
         )
     async with coordinator.write_lock:
-        await _async_google(
-            entry, call, coordinator.api.async_delete(data.template_lists[template.repeats], template.task_id)
-        )
+        await _async_google(entry, call, coordinator.api.async_delete(data.seed_list, template.task_id))
     coordinator.async_saved_template(None, removed=template.id)
     # The next read removes the chores it made that aren't done yet.
     await coordinator.async_refresh()
@@ -231,13 +224,20 @@ def build_template(fields: dict[str, Any], old: Template | None, kids: dict[str,
         who = list(old.who) if old else []
     if not who:
         raise ServiceValidationError(translation_domain=DOMAIN, translation_key="template_incomplete")
-    days_text = fields.get("days") if "days" in fields else (old.days.label(old.repeats) if old else "")
+    # A different kind of repeat starts over on its days and how many apart: a week's days
+    # and a month's are different things, and so are 2 days and 2 weeks.
+    same_kind = old is not None and old.repeats == repeats
+    days_text = fields.get("days", old.days_label if old and same_kind else "")
     try:
         days = parse_days(days_text or "", repeats)
     except DaysError as err:
         raise ServiceValidationError(
             translation_domain=DOMAIN, translation_key="bad_days", translation_placeholders={"days": days_text or ""}
         ) from err
+    if repeats == "daily" and days.weekdays:
+        # Picking days means weekly; a daily chore is every day, or every few days.
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="daily_no_days")
+    every = int(pick("every", old.every if old and same_kind else 1)) if repeats != "school" else 1
     starts: date = pick("starts", (old.starts if old else None) or today)
     ends: date | None = pick("ends", old.ends if old else None)
     if ends is not None and ends < starts:
@@ -251,7 +251,7 @@ def build_template(fields: dict[str, Any], old: Template | None, kids: dict[str,
         who=tuple(who),
         take_turns=bool(pick("take_turns", old.take_turns if old else False)) and len(who) > 1,
         days=days,
-        every=int(pick("every", old.every if old else 1)),
+        every=every,
         starts=starts,
         ends=ends,
         points=pick("points", old.points if old else None),

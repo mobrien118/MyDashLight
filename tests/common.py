@@ -350,6 +350,9 @@ class FakeTasks:
             items = [{"id": i, "title": tl["title"]} for i, tl in self.lists.items()]
             return AiohttpClientMockResponse(method, url, json={"items": items})
         if one := re.fullmatch(r"/users/@me/lists/([^/]+)", path):
+            if method == "DELETE":
+                self.lists.pop(one.group(1), None)
+                return AiohttpClientMockResponse(method, url, status=HTTPStatus.NO_CONTENT)
             self.lists[one.group(1)]["title"] = data["title"]
             return AiohttpClientMockResponse(method, url, json={"id": one.group(1)})
         match = re.fullmatch(r"/lists/([^/]+)/tasks(?:/([^/]+))?", path)

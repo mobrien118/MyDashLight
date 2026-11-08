@@ -80,6 +80,12 @@ class GoogleTasksApi:
             "PATCH", f"/users/@me/lists/{quote(list_id, safe='')}", {"fields": "id"}, json={"title": title}
         )
 
+    async def async_delete_list(self, list_id: str) -> None:
+        try:
+            await self._request("DELETE", f"/users/@me/lists/{quote(list_id, safe='')}", {})
+        except TasksNotFound:
+            return
+
     async def async_tasks(
         self, list_id: str, *, completed: bool = True, completed_min: datetime | None = None
     ) -> list[TaskRecord]:
