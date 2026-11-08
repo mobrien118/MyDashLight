@@ -1,7 +1,7 @@
 {
   "name": "mydashlight-frontend",
   "private": true,
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "The MyDashLight kitchen app: the rides board, served by the Home Assistant integration",
   "type": "module",
   "scripts": {
@@ -11,6 +11,8 @@
     "sample": "python scripts/sample_plan.py > test/fixtures/week.json"
   },
   "dependencies": {
+    "emoji-picker-element": "1.29.1",
+    "emoji-picker-element-data": "1.8.0",
     "home-assistant-js-websocket": "9.6.0",
     "lit": "3.3.1",
     "qrcode-generator": "2.0.4"

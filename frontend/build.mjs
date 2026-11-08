@@ -61,6 +61,8 @@ if (args.includes("--preview")) {
   for (const name of await readdir(resolve(here, "public"))) {
     await copyFile(resolve(here, "public", name), resolve(out, name));
   }
+  // Every emoji, for the chore picture's More button, served next to the app so it works offline.
+  await copyFile(resolve(here, "node_modules/emoji-picker-element-data/en/emojibase/data.json"), resolve(out, "emoji.json"));
   // Home Assistant fills in the script's and icons' addresses, with a version on the script so
   // browsers fetch new builds.
   await writeFile(resolve(out, "index.html"), await readFile(resolve(here, "src/kiosk.html"), "utf8"));

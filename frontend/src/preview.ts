@@ -91,7 +91,7 @@ function sampleTemplates(kids: string[]): ChoreTemplate[] {
   return [
     t("t-bed", "🛏️", "Make bed", { who: [a, b, c].filter(Boolean) }),
     t("t-dog", "🐕", "Feed the dog", { who: [a].filter(Boolean) }),
-    t("t-violin", "🎻", "Practice violin", { who: [a].filter(Boolean), days: "Mon-Fri" }),
+    t("t-violin", "🎻", "Practice violin", { who: [a].filter(Boolean), repeats: "weekly", days: "Mon-Fri" }),
     t("t-table", "🍽️", "Clear the table", { who: [b].filter(Boolean) }),
     t("t-teeth", "🪥", "Brush teeth", { who: [c].filter(Boolean) }),
     t("t-laundry", "🧺", "Put away laundry", { repeats: "weekly", who: [a].filter(Boolean), days: "Any" }),

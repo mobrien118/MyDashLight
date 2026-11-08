@@ -203,7 +203,8 @@ test("days of the week read and written like MyDashLight does", () => {
 
 test("a template in words", () => {
   assert.equal(scheduleText("daily", ""), "Every day");
-  assert.equal(scheduleText("daily", "Mon-Fri"), "Mon–Fri");
+  assert.equal(scheduleText("weekly", "Mon-Fri"), "Mon–Fri each week");
+  assert.equal(scheduleText("weekly", "Mon-Sun"), "Every day");
   assert.equal(scheduleText("daily", "", 2), "Every 2 days");
   assert.equal(scheduleText("weekly", "Any"), "Sometime each week");
   assert.equal(scheduleText("weekly", "Thu", 2), "Thu every 2 weeks");
@@ -273,4 +274,10 @@ test("editing a template: what's sent, and what stops a save", () => {
   assert.equal(bare.every, 1);
   assert.equal(defaultDays("weekly"), "Any");
   assert.equal(defaultDays("school"), "");
+  // Weekdays mean weekly: an every-day chore with days opens as a weekly one, and an every-day
+  // chore is never sent days.
+  const old = draftOf({ id: "t2", repeats: "daily", title: "Violin", icon: null, who: ["ava"], days: "Mon-Fri", every: 2, paused: false, problems: [] });
+  assert.equal(old.repeats, "weekly");
+  assert.equal(old.every, 1);
+  assert.equal(draftFields({ ...old, repeats: "daily" }).days, "");
 });
