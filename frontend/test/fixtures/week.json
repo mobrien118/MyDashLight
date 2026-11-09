@@ -41,6 +41,7 @@
      "calendar_id": "kid-a@group.calendar.google.com",
      "event_id": "piano-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -80,6 +81,7 @@
      "calendar_id": "kid-c@group.calendar.google.com",
      "event_id": "soccer-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -119,6 +121,7 @@
      "calendar_id": "kid-b@group.calendar.google.com",
      "event_id": "football-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -158,6 +161,7 @@
      "calendar_id": "kid-a@group.calendar.google.com",
      "event_id": "volley-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -197,6 +201,7 @@
      "calendar_id": "kid-b@group.calendar.google.com",
      "event_id": "tutor-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -815,6 +820,7 @@
      "calendar_id": "kid-c@group.calendar.google.com",
      "event_id": "fri-soccer-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -854,6 +860,7 @@
      "calendar_id": "kid-b@group.calendar.google.com",
      "event_id": "fri-party-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -893,6 +900,7 @@
      "calendar_id": "kid-a@group.calendar.google.com",
      "event_id": "fri-sit-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -1360,6 +1368,7 @@
      "calendar_id": "kid-a@group.calendar.google.com",
      "event_id": "sat-tourney-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -1399,6 +1408,7 @@
      "calendar_id": "kid-c@group.calendar.google.com",
      "event_id": "sat-soccer-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -1438,6 +1448,7 @@
      "calendar_id": "kid-b@group.calendar.google.com",
      "event_id": "sat-football-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -1848,6 +1859,7 @@
      "calendar_id": "kid-a@group.calendar.google.com",
      "event_id": "sun-youth-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -1890,6 +1902,7 @@
      "calendar_id": "dad-calendar",
      "event_id": "sun-golf-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -2243,6 +2256,7 @@
      "calendar_id": "kid-a@group.calendar.google.com",
      "event_id": "mon-piano-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -2282,6 +2296,7 @@
      "calendar_id": "kid-b@group.calendar.google.com",
      "event_id": "mon-football-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -2321,6 +2336,7 @@
      "calendar_id": "dad-calendar",
      "event_id": "mon-cleaners-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -2843,6 +2859,7 @@
      "calendar_id": "kid-c@group.calendar.google.com",
      "event_id": "tue-soccer-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -2882,6 +2899,7 @@
      "calendar_id": "kid-c@group.calendar.google.com",
      "event_id": "tue-art-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -2921,6 +2939,7 @@
      "calendar_id": "kid-a@group.calendar.google.com",
      "event_id": "tue-volley-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -2960,6 +2979,7 @@
      "calendar_id": "mom-calendar",
      "event_id": "tue-book-google",
      "recurring": false,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -3497,6 +3517,7 @@
      "calendar_id": "kid-c@group.calendar.google.com",
      "event_id": "wed-dance-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
@@ -3536,6 +3557,7 @@
      "calendar_id": "kid-b@group.calendar.google.com",
      "event_id": "wed-football-google",
      "recurring": true,
+     "no_ride_unless_named": false,
      "problems": [],
      "lines": {
       "drop": {
