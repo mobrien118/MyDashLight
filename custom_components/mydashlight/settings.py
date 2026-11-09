@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .const import (
+    CONF_ALIASES,
+    CONF_ALL_KIDS,
     CONF_ARRIVE_EARLY,
     CONF_ARRIVE_EARLY_MAX,
     CONF_ARRIVE_EARLY_PER,
@@ -18,18 +20,19 @@ from .const import (
     CONF_CARPOOLS,
     CONF_CHORE_DAYS,
     CONF_DAD_ALIASES,
-    CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
     CONF_DAD_NOTIFY,
     CONF_DAD_PERSON,
+    CONF_EVENTS_CALENDAR,
     CONF_GO_HOME_MARGIN,
     CONF_HOME_ADDRESS,
+    CONF_KID_ID,
     CONF_KID_NOTIFY,
     CONF_KIDS,
+    CONF_LUNCH_CALENDAR,
     CONF_LUNCH_DEFAULTS,
     CONF_LUNCH_FEEDS,
     CONF_MOM_ALIASES,
-    CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
     CONF_MOM_NOTIFY,
     CONF_MOM_PERSON,
@@ -47,18 +50,20 @@ from .const import (
     DEFAULT_NO_DRIVER_HOURS,
     DEFAULT_PLANNER,
     DEFAULT_REMIND_BEFORE,
+    DRIVERS,
     MAX_CHORE_DAYS,
     NOTIFY_OFF,
 )
 from .notes import DriverDirectory
 from .planner import PlannerSettings
 from .week import CalendarRoles, KidCalendar
+from .who import People
 
 
 @dataclass(frozen=True, slots=True)
 class ReminderSettings:
     notify: Mapping[str, str] = field(default_factory=dict)
-    """Each person's notify service, by driver id or kid calendar id. Nobody else gets one."""
+    """Each person's notify service, by driver id or kid id. Nobody else gets one."""
     before: int = DEFAULT_REMIND_BEFORE
     """Minutes before leaving."""
     no_driver_alerts: bool = True
@@ -82,10 +87,15 @@ class HubSettings:
     chore_days_ahead: int = DEFAULT_CHORE_DAYS
     """How many days of chores, counting today, to keep on the kids' lists."""
     lunch_defaults: Mapping[str, str] = field(default_factory=dict)
-    """Each kid's lunch when nobody picked, ``buy`` or ``bring``, by kid calendar id."""
+    """Each kid's lunch when nobody picked, ``buy`` or ``bring``, by kid id."""
     lunch_feeds: Mapping[str, str] = field(default_factory=dict)
-    """Each kid's school menu feed (an iCal address), by kid calendar id. Kids without one
-    aren't listed."""
+    """Each kid's school menu feed (an iCal address), by kid id. Kids without one aren't listed."""
+    events_calendar: str = ""
+    """The shared family calendar, or empty until it's picked."""
+    lunch_calendar: str = ""
+    """The calendar the kids' lunches are kept on, or empty when there's none."""
+    people: People = field(default_factory=People)
+    """Who's who, for reading the names at the start of each title."""
 
     @property
     def driver_names(self) -> Mapping[str, str]:
@@ -99,6 +109,11 @@ class HubSettings:
             "dad": _name(options.get(CONF_DAD_NAME), "Dad"),
         }
         kids = _kids(options.get(CONF_KIDS))
+        aliases = {
+            "mom": _names(options.get(CONF_MOM_ALIASES)),
+            "dad": _names(options.get(CONF_DAD_ALIASES)),
+            **_kid_aliases(options.get(CONF_KIDS)),
+        }
         return cls(
             planner=PlannerSettings(
                 arrive_early=int(planner[CONF_ARRIVE_EARLY]),
@@ -121,13 +136,9 @@ class HubSettings:
             ),
             no_address_travel=int(planner[CONF_NO_ADDRESS_TRAVEL]),
             home_address=" ".join(str(options.get(CONF_HOME_ADDRESS) or "").split()),
-            roles=CalendarRoles(
-                kids=kids,
-                busy={
-                    "mom": _ids(options.get(CONF_MOM_CALENDARS)),
-                    "dad": _ids(options.get(CONF_DAD_CALENDARS)),
-                },
-            ),
+            # Everyone's events come from the one shared calendar, sorted into a lane each by
+            # kid id or driver id, so each lane is read as if it were that person's calendar.
+            roles=CalendarRoles(kids=kids, busy={d: (d,) for d in DRIVERS}),
             reminders=ReminderSettings(
                 notify=_notifiers(options, kids),
                 before=int(options.get(CONF_REMIND_BEFORE, DEFAULT_REMIND_BEFORE)),
@@ -143,6 +154,14 @@ class HubSettings:
             chore_days_ahead=min(MAX_CHORE_DAYS, max(1, int(options.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)))),
             lunch_defaults=_lunch_defaults(options.get(CONF_LUNCH_DEFAULTS), kids),
             lunch_feeds=_lunch_feeds(options.get(CONF_LUNCH_FEEDS), kids),
+            events_calendar=str(options.get(CONF_EVENTS_CALENDAR) or ""),
+            lunch_calendar=str(options.get(CONF_LUNCH_CALENDAR) or ""),
+            people=People(
+                kids={k.calendar_id: k.name for k in kids},
+                parents=names,
+                aliases=aliases,
+                all_kids=_names(options.get(CONF_ALL_KIDS)),
+            ),
         )
 
 
@@ -185,6 +204,11 @@ def _names(value: object) -> tuple[str, ...]:
     return tuple(out)
 
 
+def kid_id(item: Mapping[str, Any]) -> str:
+    """A kid's id in the options: its own, or the id of the calendar they had before 0.19."""
+    return str(item.get(CONF_KID_ID) or item.get(CONF_CALENDAR_ID) or "")
+
+
 def _kids(value: object) -> tuple[KidCalendar, ...]:
     if not isinstance(value, (list, tuple)):
         return ()
@@ -192,13 +216,15 @@ def _kids(value: object) -> tuple[KidCalendar, ...]:
     for item in value:
         if not isinstance(item, Mapping):
             continue
-        cal_id = str(item.get(CONF_CALENDAR_ID) or "")
-        if cal_id and all(k.calendar_id != cal_id for k in out):
-            out.append(KidCalendar(cal_id, _name(item.get(CONF_NAME), cal_id)))
+        kid = kid_id(item)
+        if kid and all(k.calendar_id != kid for k in out):
+            out.append(KidCalendar(kid, _name(item.get(CONF_NAME), kid)))
     return tuple(out)
 
 
-def _ids(value: object) -> tuple[str, ...]:
+def _kid_aliases(value: object) -> dict[str, tuple[str, ...]]:
     if not isinstance(value, (list, tuple)):
-        return ()
-    return tuple(dict.fromkeys(str(v) for v in value if v))
+        return {}
+    return {
+        kid_id(item): _names(item.get(CONF_ALIASES)) for item in value if isinstance(item, Mapping) and kid_id(item)
+    }

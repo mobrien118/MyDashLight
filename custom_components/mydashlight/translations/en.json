@@ -27,23 +27,16 @@
       },
       "calendars": {
         "title": "Pick the calendars",
-        "description": "Signed in as {account}. MyDashLight plans rides for the activities on each kid's calendar. Events on a parent's busy calendars mean that parent can't drive then. Calendars you don't pick are never read.\n\nThe first parent is {mom} and the second is {dad}.",
+        "description": "Signed in as {account}. Every family event lives on one shared calendar, and each title starts with who it's for: \"Ava Ballet\", or \"Ava & Ben Swim\" for both. MyDashLight plans rides for the kids' events and works around the parents' own. Calendars you don't pick are never read.",
         "data": {
-          "kids": "Kids' calendars",
-          "mom_calendars": "First parent's busy calendars",
-          "dad_calendars": "Second parent's busy calendars"
+          "events_calendar": "Family calendar",
+          "lunch_calendar": "Lunch calendar",
+          "kids": "Kids"
         },
         "data_description": {
-          "kids": "One calendar per kid, holding the activities that need rides.",
-          "mom_calendars": "Optional. Events marked Free, and events this parent declined, don't count.",
-          "dad_calendars": "Optional. Events marked Free, and events this parent declined, don't count."
-        }
-      },
-      "kid_name": {
-        "title": "Kid {number} of {count}",
-        "description": "The name shown on the ride board for the calendar {calendar}.",
-        "data": {
-          "name": "Name"
+          "events_calendar": "The shared calendar with everyone's events.",
+          "lunch_calendar": "Optional. A calendar of its own, just for MyDashLight, where it keeps each kid's school lunches (titled like \"Ava Lunch: Pizza\"). Not the family calendar.",
+          "kids": "Each kid's name, as titles start with it, in the order their lanes are shown. Add other names for them under Settings."
         }
       },
       "reauth_confirm": {
@@ -54,10 +47,11 @@
     "error": {
       "name_required": "Enter a name.",
       "names_match": "The two parents need different names.",
-      "kids_required": "Pick at least one kid's calendar.",
-      "kid_calendar_as_busy": "A kid's calendar can't also be a parent's busy calendar.",
-      "shared_busy_calendar": "Pick each busy calendar for one parent only. A calendar both parents use belongs to neither.",
-      "kid_names_match": "Two kids can't have the same name."
+      "kids_required": "Enter at least one kid's name.",
+      "kid_names_match": "Two kids can't have the same name.",
+      "events_calendar_required": "Pick the family calendar.",
+      "lunch_on_events_calendar": "Lunches need a calendar of their own, not the family calendar.",
+      "kid_named_like_parent": "A kid can't have the same name as a parent."
     },
     "abort": {
       "single_instance_allowed": "MyDashLight is already set up.",
@@ -105,14 +99,16 @@
           "dad_aliases": "Other names for the second parent",
           "carpools": "Carpool drivers",
           "home_address": "Home address",
-          "chore_days_ahead": "Chore days ahead"
+          "chore_days_ahead": "Chore days ahead",
+          "all_kids": "Shortcuts for all the kids"
         },
         "data_description": {
-          "mom_aliases": "Names that mean this parent in event notes, such as a nickname or Mom.",
-          "dad_aliases": "Names that mean this parent in event notes, such as Dad.",
+          "mom_aliases": "Names that mean this parent at the start of a title or in event notes, such as a nickname or Mom.",
+          "dad_aliases": "Names that mean this parent at the start of a title or in event notes, such as Dad.",
           "carpools": "Other people who drive, such as the Parkers. Rides with them are shown but not planned.",
           "home_address": "Your street address, such as 12 Oak St. Events there, or with Home as the location, need no ride.",
-          "chore_days_ahead": "How many days of chores, counting today, to keep on the kids' Google Tasks lists."
+          "chore_days_ahead": "How many days of chores, counting today, to keep on the kids' Google Tasks lists.",
+          "all_kids": "Words at the start of a title that mean every kid. The kids' initials always work, such as AB&C or A, B & C."
         },
         "sections": {
           "planner": {
@@ -141,27 +137,21 @@
               "no_address_travel": "The drive time used for an event with no location whose notes still name a driver."
             }
           }
-        }
+        },
+        "description": "Each kid's other names box takes names that mean that kid at the start of a title, such as a nickname."
       },
       "calendars": {
         "title": "Pick the calendars",
-        "description": "Signed in as {account}. MyDashLight plans rides for the activities on each kid's calendar. Events on a parent's busy calendars mean that parent can't drive then. Calendars you don't pick are never read.\n\nThe first parent is {mom} and the second is {dad}.",
+        "description": "Signed in as {account}. Every family event lives on one shared calendar, and each title starts with who it's for: \"Ava Ballet\", or \"Ava & Ben Swim\" for both. MyDashLight plans rides for the kids' events and works around the parents' own. Calendars you don't pick are never read.",
         "data": {
-          "kids": "Kids' calendars",
-          "mom_calendars": "First parent's busy calendars",
-          "dad_calendars": "Second parent's busy calendars"
+          "events_calendar": "Family calendar",
+          "lunch_calendar": "Lunch calendar",
+          "kids": "Kids"
         },
         "data_description": {
-          "kids": "One calendar per kid, holding the activities that need rides.",
-          "mom_calendars": "Optional. Events marked Free, and events this parent declined, don't count.",
-          "dad_calendars": "Optional. Events marked Free, and events this parent declined, don't count."
-        }
-      },
-      "kid_name": {
-        "title": "Kid {number} of {count}",
-        "description": "The name shown on the ride board for the calendar {calendar}.",
-        "data": {
-          "name": "Name"
+          "events_calendar": "The shared calendar with everyone's events.",
+          "lunch_calendar": "Optional. A calendar of its own, just for MyDashLight, where it keeps each kid's school lunches (titled like \"Ava Lunch: Pizza\"). Not the family calendar.",
+          "kids": "Each kid's name, as titles start with it, in the order their lanes are shown. Add other names for them under Settings."
         }
       },
       "drive_times": {
@@ -212,16 +202,17 @@
     "error": {
       "name_required": "Enter a name.",
       "names_match": "The two parents need different names.",
-      "kids_required": "Pick at least one kid's calendar.",
-      "kid_calendar_as_busy": "A kid's calendar can't also be a parent's busy calendar.",
-      "shared_busy_calendar": "Pick each busy calendar for one parent only. A calendar both parents use belongs to neither.",
+      "kids_required": "Enter at least one kid's name.",
       "kid_names_match": "Two kids can't have the same name.",
       "no_home_location": "Set your home's location under Settings > System > General first. Drive times start from there.",
       "routes_key_rejected": "Google turned down this key. Check that the Routes API is turned on for its project and that the key may use it.",
       "routes_quota": "Google says this key's quota for today is used up. Try again tomorrow, or raise the quota in Google Cloud.",
       "cannot_connect": "Couldn't reach Google. Try again in a few minutes.",
       "feed_not_web": "That isn't a web address. It should start with https:// or webcal://.",
-      "feed_unreadable": "Couldn't read a calendar feed at that address. Check that it opens a calendar file in a browser."
+      "feed_unreadable": "Couldn't read a calendar feed at that address. Check that it opens a calendar file in a browser.",
+      "events_calendar_required": "Pick the family calendar.",
+      "lunch_on_events_calendar": "Lunches need a calendar of their own, not the family calendar.",
+      "kid_named_like_parent": "A kid can't have the same name as a parent."
     },
     "abort": {
       "api_disabled": "The Google Calendar API is turned off in your Google Cloud project. Turn it on, then try again.",

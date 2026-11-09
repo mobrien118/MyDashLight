@@ -13,8 +13,8 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
+import voluptuous as vol
 
-from custom_components.mydashlight.config_flow import suggested_kid_name
 from custom_components.mydashlight.const import DEFAULT_PLANNER, DOMAIN, OAUTH_AUTHORIZE, OAUTH_TOKEN, SCOPES
 
 from .common import (
@@ -22,11 +22,10 @@ from .common import (
     AVA,
     BEN,
     CLIENT_ID,
-    JOINT,
+    FAMILY,
+    LUNCH,
     OPTIONS,
-    ROBIN,
     ROUTES_KEY,
-    SAM,
     FakeGoogle,
     FakeRoutes,
     google_error,
@@ -103,30 +102,23 @@ async def test_full_flow(
         result["flow_id"], {"mom_name": " Robin ", "dad_name": "Sam"}
     )
     assert result["step_id"] == "calendars"
-    assert result["description_placeholders"] == {"mom": "Robin", "dad": "Sam", "account": ACCOUNT}
-    options = result["data_schema"].schema["kids"].config["options"]
-    assert [o["label"] for o in options] == ["Kid-Ava", "Kid-Ben", "Robin", "Robin & Sam", ACCOUNT, "Sam"]
+    assert result["description_placeholders"] == {"account": ACCOUNT}
+    options = result["data_schema"].schema["events_calendar"].config["options"]
+    labels = ["Family", "Kid-Ava", "Kid-Ben", "Lunches", "Robin", "Robin & Sam", ACCOUNT, "Sam"]
+    assert [o["label"] for o in options] == labels
 
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"kids": []})
+    async def pick(**data: Any) -> dict[str, Any]:
+        return await hass.config_entries.flow.async_configure(result["flow_id"], data)
+
+    result = await pick(events_calendar=FAMILY, kids=[" "])
     assert result["errors"] == {"kids": "kids_required"}
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"kids": [AVA], "mom_calendars": [AVA]})
-    assert result["errors"] == {"mom_calendars": "kid_calendar_as_busy"}
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"kids": [AVA], "mom_calendars": [JOINT], "dad_calendars": [JOINT]}
-    )
-    assert result["errors"] == {"dad_calendars": "shared_busy_calendar"}
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"kids": [AVA, BEN], "mom_calendars": [ROBIN], "dad_calendars": [SAM]}
-    )
-
-    assert result["step_id"] == "kid_name"
-    assert result["description_placeholders"] == {"calendar": "Kid-Ava", "number": "1", "count": "2"}
-    assert result["data_schema"]({})["name"] == "Ava"
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"name": "Ava"})
-    assert result["description_placeholders"]["calendar"] == "Kid-Ben"
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"name": "ava"})
-    assert result["errors"] == {"name": "kid_names_match"}
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"name": "Ben"})
+    result = await pick(events_calendar=FAMILY, lunch_calendar=FAMILY, kids=["Ava"])
+    assert result["errors"] == {"lunch_calendar": "lunch_on_events_calendar"}
+    result = await pick(events_calendar=FAMILY, kids=["Ava", "ava"])
+    assert result["errors"] == {"kids": "kid_names_match"}
+    result = await pick(events_calendar=FAMILY, kids=["Ava", "Robin"])
+    assert result["errors"] == {"kids": "kid_named_like_parent"}
+    result = await pick(events_calendar=FAMILY, lunch_calendar=LUNCH, kids=[" Ava ", "Ben"])
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -135,7 +127,11 @@ async def test_full_flow(
     assert entry.unique_id == ACCOUNT
     assert entry.data["auth_implementation"] == DOMAIN
     assert entry.data["token"]["refresh_token"] == "mock-refresh-token"
-    assert entry.options == {k: v for k, v in OPTIONS.items() if k != "calendar_reminders"} | {"carpools": []}
+    assert entry.options == {k: v for k, v in OPTIONS.items() if k != "calendar_reminders"} | {
+        "carpools": [],
+        "kids": [{"id": "kid-ava", "name": "Ava", "aliases": []}, {"id": "kid-ben", "name": "Ben", "aliases": []}],
+        "all_kids": [],
+    }
     assert entry.runtime_data.coordinator.last_update_success
 
 
@@ -227,21 +223,6 @@ async def test_reauth_with_another_account(
     assert result["reason"] == "wrong_account"
 
 
-@pytest.mark.parametrize(
-    ("name", "suggestion"),
-    [
-        ("Kid-Ava", "Ava"),
-        ("kid: Ben", "Ben"),
-        ("Kids - Cleo  Ray", "Cleo Ray"),
-        ("Kid Ava", "Ava"),
-        ("Kidney", "Kidney"),
-        ("Kid-", "Kid-"),
-    ],
-)
-def test_suggested_kid_name(name: str, suggestion: str) -> None:
-    assert suggested_kid_name(name) == suggestion
-
-
 async def loaded_entry(hass: HomeAssistant) -> MockConfigEntry:
     entry = make_entry()
     entry.add_to_hass(hass)
@@ -273,6 +254,9 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
             "dad_aliases": ["Dad"],
             "carpools": ["the Parkers", "Jordan"],
             "home_address": "12 Oak St",
+            "Ava's other names": ["Aves"],
+            "Ben's other names": [],
+            "all_kids": ["the kids"],
             "planner": {**DEFAULT_PLANNER, "arrive_early": 10.0},
         },
     )
@@ -280,12 +264,24 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["planner"]["arrive_early"] == 10
-    assert entry.options["kids"] == OPTIONS["kids"]
+    assert entry.options["kids"] == [
+        {"calendar_id": AVA, "name": "Ava", "aliases": ["Aves"]},
+        {"calendar_id": BEN, "name": "Ben", "aliases": []},
+    ]
+    assert "Ava's other names" not in entry.options
+    assert entry.options["all_kids"] == ["the kids"]
     settings = entry.runtime_data.settings
     assert settings.planner.arrive_early == 10
     assert settings.directory.resolve("rae") == "mom"
     assert settings.directory.resolve("the parkers") == "the Parkers"
     assert settings.home_address == "12 Oak St"
+    assert settings.people.aliases[AVA] == ("Aves",)
+    assert tuple(settings.people.all_kids) == ("the kids",)
+
+    # The kids' other names are filled in next time.
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
+    assert result["data_schema"]({"planner": DEFAULT_PLANNER})["Ava's other names"] == ["Aves"]
 
 
 async def test_options_calendars(hass: HomeAssistant, google: FakeGoogle) -> None:
@@ -295,36 +291,38 @@ async def test_options_calendars(hass: HomeAssistant, google: FakeGoogle) -> Non
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "calendars"})
     assert result["step_id"] == "calendars"
     defaults = result["data_schema"]({})
-    assert defaults == {"kids": [AVA, BEN], "mom_calendars": [ROBIN], "dad_calendars": [SAM]}
+    assert defaults == {"events_calendar": FAMILY, "kids": ["Ava", "Ben"]}
 
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"kids": [BEN], "mom_calendars": [BEN]}
+        result["flow_id"], {"events_calendar": FAMILY, "lunch_calendar": FAMILY, "kids": ["Ben"]}
     )
-    assert result["errors"] == {"mom_calendars": "kid_calendar_as_busy"}
+    assert result["errors"] == {"lunch_calendar": "lunch_on_events_calendar"}
+    # Ben is kept, with his id from before, Cleo is new, and Ava has gone.
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"kids": [BEN], "mom_calendars": [ROBIN, JOINT], "dad_calendars": []}
+        result["flow_id"], {"events_calendar": FAMILY, "kids": ["Cleo", "ben"]}
     )
-    # The name chosen before is kept.
-    assert result["step_id"] == "kid_name"
-    assert result["data_schema"]({})["name"] == "Ben"
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {"name": "Benny"})
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options["kids"] == [{"calendar_id": BEN, "name": "Benny"}]
-    assert entry.options["mom_calendars"] == [ROBIN, JOINT]
-    assert entry.options["dad_calendars"] == []
+    assert entry.options["kids"] == [
+        {"id": "kid-cleo", "name": "Cleo", "aliases": []},
+        {"id": BEN, "name": "ben", "aliases": []},
+    ]
+    assert entry.options["events_calendar"] == FAMILY
+    assert entry.options["lunch_calendar"] is None
     assert entry.options["mom_name"] == "Robin"
-    assert entry.runtime_data.settings.roles.busy == {"mom": (ROBIN, JOINT), "dad": ()}
+    assert [k.calendar_id for k in entry.runtime_data.settings.roles.kids] == ["kid-cleo", BEN]
 
 
 async def test_options_calendars_drop_ones_that_are_gone(hass: HomeAssistant, google: FakeGoogle) -> None:
     entry = await loaded_entry(hass)
-    google.calendars = [c for c in google.calendars if c["id"] != SAM]
+    google.calendars = [c for c in google.calendars if c["id"] != FAMILY]
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "calendars"})
-    assert result["data_schema"]({})["dad_calendars"] == []
+    with pytest.raises(vol.Invalid):
+        result["data_schema"]({})
+    assert result["data_schema"]({"events_calendar": LUNCH})["kids"] == ["Ava", "Ben"]
 
 
 async def test_options_calendars_when_google_fails(hass: HomeAssistant, google: FakeGoogle) -> None:

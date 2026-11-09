@@ -1,7 +1,7 @@
 """MyDashLight: the kitchen family planner's backend in Home Assistant.
 
-Signs in to Google, reads the kids' calendars and the parents' own calendars every minute,
-and plans the week's rides with drive times from Google Routes. ``mydashlight.get_plan``
+Signs in to Google, reads the one shared family calendar every minute (each title starts with
+who it's for, see :mod:`.who`), and plans the week's rides with drive times from Google Routes. ``mydashlight.get_plan``
 returns the plan, and the other services save who drives, Stay, Take along and Arrive by into
 the events' notes. The kitchen app subscribes to ``mydashlight/rides/subscribe`` for the plan as
 it changes. Each parent can get a reminder on their phone before each drive leaves.
@@ -10,8 +10,8 @@ Chores live in Google Tasks: templates on three base lists, and each kid's chore
 list, which MyDashLight keeps filled from the templates. The app subscribes to
 ``mydashlight/chores/subscribe`` for the chores as they change.
 
-Lunches are a "Lunch" all-day event a day on each kid's calendar (the menu, with the Bring or
-Buy pick at the end of its notes), and days off are "No School" events there. School-days
+Lunches are a "<Kid> Lunch" all-day event a day on the lunch calendar (the menu, with the Bring
+or Buy pick at the end of its notes), and days off are "No School" events on the family calendar. School-days
 chores (like Pack lunch) follow them. The app subscribes to ``mydashlight/lunch/subscribe``.
 """
 

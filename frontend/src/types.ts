@@ -151,9 +151,39 @@ export interface Clash {
   b: KidItem;
 }
 
+/** An all-day event, shown across the top of each day it covers, for nobody (MyDashLight 0.19 and later). */
+export interface AllDayItem {
+  id: string;
+  title: string;
+  /** Who its title names: kid ids and driver ids. Only for its colour. */
+  people: string[];
+  first: string;
+  last: string;
+  /** Which of its days this is, from 1. */
+  day_number: number;
+  days: number;
+  cancelled: boolean;
+}
+
+/** A timed event whose title doesn't say who it's for (MyDashLight 0.19 and later). */
+export interface UnplacedEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  /** Minutes after midnight on its day. */
+  at: number;
+  /** "nobody": no name starts the title. "unknown": a name is joined to `word`, who isn't in the family. */
+  reason: "nobody" | "unknown";
+  word: string | null;
+  people: string[];
+}
+
 export interface PlanDay {
   date: string;
   events: PlanEvent[];
+  all_day?: AllDayItem[];
+  unplaced?: UnplacedEvent[];
   drivers: Record<string, DriverDay>;
   rides: Ride[];
   kids: Record<string, { name: string; items: KidItem[] }>;
@@ -172,6 +202,8 @@ export interface Plan {
   people?: People;
   /** Whether the last calendar read worked (MyDashLight 0.5 and later). */
   status?: { ok: boolean; error: string | null };
+  /** "events_calendar" until the shared family calendar is picked (MyDashLight 0.19 and later). */
+  needs_setup?: string | null;
 }
 
 export interface People {

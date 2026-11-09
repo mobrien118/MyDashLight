@@ -1,8 +1,11 @@
-"""School days and lunches, read from all-day events on each kid's own calendar.
+"""School days and lunches, read from all-day events as if on each kid's own calendar.
+
+Since 0.19 a kid's events here are their part of the lunch calendar and of the family calendar,
+with the kid's name taken off the front of each title (see :func:`.shared.school_lanes`).
 
 * An all-day event with "No School" in its title means no school that day (or those days),
   for that kid. Every other weekday is a school day.
-* Each day's lunch is one all-day event on the kid's calendar, titled "Lunch: Pizza, side
+* Each day's lunch is one all-day event for the kid, titled "Lunch: Pizza, side
   salad" when the menu is known, or just "Lunch". Its notes hold the rest of the menu, and the
   kid's pick (Bring or Buy) goes in a short block at the end::
 
@@ -13,7 +16,7 @@
 
   A school day with no pick gets the kid's default from the settings (Buy, unless changed).
   Titled just "Lunch", the first line of the notes (above the block) is the dish, if any.
-  A .ics file of menus can be imported into each kid's calendar once a month.
+  A .ics file of menus can be imported into the lunch calendar once a month.
 * Before MyDashLight 0.16, a pick was its own "Bring Lunch" or "Buy Lunch" event. Those are
   still read, and folded into the day's lunch event the next time that day is saved.
 
@@ -186,7 +189,7 @@ class DayOff:
 
 @dataclass(slots=True)
 class SchoolCalendar:
-    """What the kids' calendars say about school and lunch from ``first`` to ``last``.
+    """What the kids' events say about school and lunch from ``first`` to ``last``.
 
     Outside that range every weekday counts as a school day with the default lunch.
     """

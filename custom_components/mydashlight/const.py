@@ -53,11 +53,21 @@ SCOPES: Final = (
 )
 TASKS_SCOPE: Final = SCOPES[-1]
 
-# Which calendars to read. Kids: a list of {"calendar_id", "name"}. The parents' busy
-# calendars: lists of calendar ids.
+# The kids: a list of {"id", "name", "aliases"}, in the order their lanes are shown. A kid's id
+# never changes. Before 0.19 each kid had their own calendar, and its id (under "calendar_id")
+# is still that kid's id, so their settings carry over.
 CONF_KIDS: Final = "kids"
+CONF_KID_ID: Final = "id"
 CONF_CALENDAR_ID: Final = "calendar_id"
 CONF_NAME: Final = "name"
+CONF_ALIASES: Final = "aliases"
+CONF_ALL_KIDS: Final = "all_kids"
+"""More shortcuts that mean all the kids at the start of a title, besides their initials."""
+# The one shared calendar where every family event lives, each title starting with who it's for.
+CONF_EVENTS_CALENDAR: Final = "events_calendar"
+# Where MyDashLight keeps the kids' lunches: one calendar, each title starting with the kid's name.
+CONF_LUNCH_CALENDAR: Final = "lunch_calendar"
+# Before 0.19: the parents' own calendars. Read once more when switching to the shared calendar.
 CONF_MOM_CALENDARS: Final = "mom_calendars"
 CONF_DAD_CALENDARS: Final = "dad_calendars"
 
@@ -98,7 +108,7 @@ SCOPE_SERIES: Final = "series"
 CONF_MOM_NOTIFY: Final = "mom_notify"
 CONF_DAD_NOTIFY: Final = "dad_notify"
 CONF_KID_NOTIFY: Final = "kid_notify"
-"""Each kid's notify service, by the kid's calendar id."""
+"""Each kid's notify service, by kid id."""
 CONF_MOM_PERSON: Final = "mom_person"
 CONF_DAD_PERSON: Final = "dad_person"
 """Each parent's person in Home Assistant, whose phone says where they are."""
@@ -149,12 +159,12 @@ ATTR_BY: Final = "by"
 ATTR_DONE: Final = "done"
 ATTR_TEMPLATE: Final = "template"
 
-# Lunch: a "Lunch" all-day event a day on each kid's calendar, with the Bring or Buy pick at the
-# end of its notes, and "No School" events for days off. The only setting is each kid's lunch when nobody picked.
+# Lunch: a "<Kid> Lunch" all-day event a day for each kid on the lunch calendar, with the Bring or
+# Buy pick at the end of its notes. "No School" all-day events on the shared calendar are days off.
 CONF_LUNCH_DEFAULTS: Final = "lunch_defaults"
-"""Each kid's default lunch, "buy" or "bring", by the kid's calendar id."""
+"""Each kid's default lunch, "buy" or "bring", by kid id."""
 CONF_LUNCH_FEEDS: Final = "lunch_feeds"
-"""Each kid's school menu feed (an iCal address), by the kid's calendar id."""
+"""Each kid's school menu feed (an iCal address), by kid id."""
 MENU_FEED_HOURS: Final = 6
 """How often the menu feeds are read."""
 LUNCH_UPDATE_SECONDS: Final = 120

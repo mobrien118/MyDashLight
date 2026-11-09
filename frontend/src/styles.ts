@@ -731,6 +731,62 @@ export const styles = css`
     width: 1px;
     background: #d6d3cb;
   }
+  /* All-day events across the top of a day, for nobody. */
+  .allday {
+    position: absolute;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 4px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .ad-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    max-width: 100%;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(var(--rgb), 0.45);
+    border-left: 4px solid var(--c);
+    background: rgba(var(--rgb), 0.1);
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 24px;
+    white-space: nowrap;
+  }
+  .ad-chip.plain {
+    border-color: var(--border);
+    border-left-color: var(--faint);
+    background: var(--surface);
+  }
+  .ad-chip.warn {
+    border: 1px dashed var(--warn-ink);
+    border-left: 4px solid var(--warn-ink);
+    background: #fff6e0;
+  }
+  .ad-chip.warn .ad-note {
+    color: var(--warn-ink);
+    font-weight: 700;
+  }
+  .ad-chip.skipped .ad-title {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+  }
+  .ad-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+  }
+  .ad-note {
+    flex: none;
+    color: var(--muted);
+    font-size: 11px;
+  }
   .empty {
     left: 72px;
     font-size: 13px;

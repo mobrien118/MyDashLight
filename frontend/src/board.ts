@@ -10,6 +10,7 @@ import { kidColor } from "./colors.ts";
 import { ago, clock, clockAmPm, dayLabel, duration, nowIn, shortDay } from "./format.ts";
 import {
   DAY_HEAD,
+  GUTTER,
   OWN_COLOR,
   andList,
   attention,
@@ -1203,6 +1204,12 @@ export class MyDashLightBoard extends LitElement {
   };
 
   private renderBanner(plan: Plan | null): TemplateResult | typeof nothing {
+    if (plan?.needs_setup === "events_calendar") {
+      return html`<div class="banner" role="status">
+        Pick your family calendar to see the week: in Home Assistant, open Settings &gt; Devices &amp; services &gt; MyDashLight &gt;
+        Configure &gt; Calendars.
+      </div>`;
+    }
     const n = plan?.unavailable_calendars.length ?? 0;
     if (!n) return nothing;
     return html`<div class="banner" role="status">
@@ -1280,6 +1287,18 @@ export class MyDashLightBoard extends LitElement {
                 class="sub ${d.warn ? "warn" : ""}"
                 >${d.sub}</span
               >
+            </div>`,
+          )}
+          ${b.allDay.map(
+            (r) => html`<div class="allday" style="top:${r.y}px;left:${GUTTER}px;width:${W - GUTTER}px;height:${r.h}px">
+              ${r.chips.map(
+                (c) =>
+                  html`<span
+                    class="ad-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
+                    style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
+                    ><span class="ad-title">${c.title}</span>${c.note ? html`<span class="ad-note">${c.note}</span>` : nothing}</span
+                  >`,
+              )}
             </div>`,
           )}
           ${b.empties.map((x) => html`<span class="empty" style="top:${x.y}px">${x.text}</span>`)}

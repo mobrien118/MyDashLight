@@ -1,7 +1,8 @@
 """Turns a week of Google Calendar events into the planner's input for each day.
 
-Kid calendars give the activities that need rides. Each parent's own calendars give the
-times they can't drive. Pure module, no Home Assistant imports.
+Each kid's events (their lane of the shared calendar, see :mod:`.shared`) give the activities
+that need rides. Each parent's own events give the times they can't drive. Each lane is passed
+in as if it were that person's own calendar, by their id. Pure module, no Home Assistant imports.
 
 An event at home needs no ride. Nor does one with no address, or an online one, since it can
 happen anywhere, unless its notes name a driver.
@@ -64,6 +65,7 @@ _STREET_WORDS: Final = {
 @dataclass(frozen=True, slots=True)
 class KidCalendar:
     calendar_id: str
+    """The kid's id. Before 0.19 each kid had a calendar, and this was its id."""
     name: str
 
 
@@ -112,6 +114,10 @@ class DayInput:
     problems: dict[str, tuple[str, ...]] = field(default_factory=dict)
     """Lines in an event's notes that couldn't be read, by ride event id."""
     busy: dict[str, list[BusyBlock]] = field(default_factory=dict)
+    all_day: list[dict[str, Any]] = field(default_factory=list)
+    """The day's all-day events, shown across the top of the day for nobody."""
+    unplaced: list[dict[str, Any]] = field(default_factory=list)
+    """The day's timed events whose titles don't say who they're for."""
 
 
 @dataclass(slots=True)
@@ -511,7 +517,7 @@ def _minutes(moment: datetime, day: date, tz: tzinfo) -> int:
 
 
 def _unique_id(event_id: str, taken: Iterable[str]) -> str:
-    # The same event can be on two kids' calendars. Each kid gets their own ride event.
+    # One event can name two kids. Each kid gets their own ride event.
     used = set(taken)
     if event_id not in used:
         return event_id

@@ -7,7 +7,7 @@
 
 import { DRIVER_DOT, DRIVER_RGB, kidColor, type KidColor } from "./colors.ts";
 import { clock, dayLabel, daysBetween, duration, hourLabel, shortDay } from "./format.ts";
-import type { BusyBlock, CardLine, KidItem, Plan, PlanDay, PlanEvent, Segment } from "./types.ts";
+import type { BusyBlock, CardLine, KidItem, Plan, PlanDay, PlanEvent, Segment, UnplacedEvent } from "./types.ts";
 
 export type Mode = "timeline" | "compact";
 
@@ -168,6 +168,29 @@ export interface DayHead {
   warn: boolean;
 }
 
+/** One piece of the thin row across the top of a day: an all-day event, or a timed one for nobody. */
+export interface AllDayChip {
+  key: string;
+  title: string;
+  /** "Day 2 of 4", or what's wrong with an event for nobody. */
+  note: string;
+  /** The colour of the first person its title names, or null for nobody's. */
+  color: KidColor | null;
+  cancelled: boolean;
+  /** A timed event whose title doesn't say who it's for. */
+  warn: boolean;
+}
+
+export interface AllDayRow {
+  key: string;
+  y: number;
+  h: number;
+  chips: AllDayChip[];
+}
+
+export const ALL_DAY_LINE = 26;
+const ALL_DAY_GAP = 4;
+
 export interface Board {
   mode: Mode;
   width: number;
@@ -176,6 +199,8 @@ export interface Board {
   /** Between the kids' columns and the drivers'. */
   sepX: number;
   dayHeads: DayHead[];
+  /** Each day's all-day row, under its heading. Days with nothing all day have none. */
+  allDay: AllDayRow[];
   empties: { key: string; y: number; text: string }[];
   grid: { key: string; y: number; strong: boolean }[];
   hours: { key: string; y: number; label: string }[];
@@ -467,7 +492,7 @@ export function busyLabel(b: { start: number; end: number; title: string }, rang
 
 /** How many problems a day has: issues to fix plus double-bookings. */
 export function problemCount(day: PlanDay): number {
-  return day.issues.filter((i) => i.level === "problem").length + day.clashes.length;
+  return day.issues.filter((i) => i.level === "problem").length + day.clashes.length + (day.unplaced?.length ?? 0);
 }
 
 export function dayTag(date: string, today: string): string {
@@ -546,6 +571,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     columns,
     sepX,
     dayHeads: [],
+    allDay: [],
     empties: [],
     grid: [],
     hours: [],
@@ -583,7 +609,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       warn: problems > 0,
     });
     board.anchors.push({ t: base, y });
-    const top = y + DAY_HEAD + PAD;
+    const strip = allDayRow(plan, day, colors, w);
+    if (strip) board.allDay.push({ ...strip, y: y + DAY_HEAD + ALL_DAY_GAP });
+    const top = y + DAY_HEAD + PAD + (strip ? strip.h + ALL_DAY_GAP : 0);
 
     const outings = drivers.flatMap((d) => day.drivers[d]?.outings ?? []);
     if (!count && !outings.length) {
@@ -1251,6 +1279,9 @@ export interface Attention {
 /** What needs fixing from earlier today up to {@link ATTENTION_HOURS} from now. */
 export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Attention {
   const items: AttentionItem[] = [];
+  const drivers = new Set(driverIds(plan));
+  const kidNames = kidIds(plan).map((k) => kidName(plan, k));
+  const example = kidNames.length > 1 ? kidNames.slice(0, 2) : [kidNames[0] ?? "Ava", "Ben"];
   let problems = 0;
   let unassigned = 0;
   let later = 0;
@@ -1342,6 +1373,25 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
         });
       }
     }
+    for (const u of day.unplaced ?? []) {
+      if (!soon(u.at)) {
+        later++;
+        continue;
+      }
+      problems++;
+      const named = u.people.map((p) => (drivers.has(p) ? driverName(plan, p) : kidName(plan, p)));
+      items.push({
+        key: `${day.date}|unplaced|${u.id}`,
+        tone: "problem",
+        title: `${pre}${clock(u.at)} ${u.title}: ${unplacedNote(u).toLowerCase()}`,
+        body:
+          u.reason === "unknown" && u.word
+            ? `“${u.word}” isn’t anyone in the family, so this is only in ${andList(named)}’s lane. If it’s a misspelt name, fix the title in Google Calendar.`
+            : `Its title doesn’t start with anyone’s name, so it isn’t on the board. Start the title in Google Calendar with who it’s for, such as “${example[0]} Piano”, or “${example.join(" & ")} Piano” for both.`,
+        target: null,
+        suggestions: [],
+      });
+    }
     for (const e of day.events) {
       if (!e.problems.length || !soon(e.start)) continue;
       items.push({
@@ -1355,6 +1405,62 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
     }
   }
   return { items, problems, unassigned, later, laterUnassigned };
+}
+
+/** What a timed event for nobody needs, in a few words. */
+export function unplacedNote(u: UnplacedEvent): string {
+  return u.reason === "unknown" && u.word ? `Who is “${u.word}”?` : "Who is this for?";
+}
+
+/**
+ * The thin row across the top of a day: its all-day events, for nobody, then any timed events
+ * whose titles don't say who they're for. Null when there are none. Chips that don't fit on one
+ * line go on the next, so the row's height is worked out from a rough width for each chip.
+ */
+export function allDayRow(
+  plan: Plan,
+  day: PlanDay,
+  colors: Map<string, KidColor>,
+  width: number,
+): Omit<AllDayRow, "y"> | null {
+  const drivers = new Set(driverIds(plan));
+  const colorOf = (people: string[]): KidColor | null => {
+    const first = people[0];
+    if (first == null) return null;
+    return drivers.has(first) ? OWN_COLOR : (colors.get(first) ?? null);
+  };
+  const chips: AllDayChip[] = [
+    ...(day.all_day ?? []).map((i) => ({
+      key: `${day.date}|allday|${i.id}`,
+      title: i.title,
+      note: i.days > 1 ? `Day ${i.day_number} of ${i.days}` : "",
+      color: colorOf(i.people),
+      cancelled: i.cancelled,
+      warn: false,
+    })),
+    ...(day.unplaced ?? []).map((u) => ({
+      key: `${day.date}|unplaced|${u.id}`,
+      title: `${clock(u.at)} ${u.title}`,
+      note: unplacedNote(u),
+      color: null,
+      cancelled: false,
+      warn: true,
+    })),
+  ];
+  if (!chips.length) return null;
+  // About 7 px a character at 12 px, plus the chip's padding and the gap after it.
+  const room = Math.max(120, width - GUTTER);
+  let lines = 1;
+  let used = 0;
+  for (const c of chips) {
+    const chip = Math.min(room, 30 + 7 * (c.title.length + (c.note ? c.note.length + 2 : 0)));
+    if (used && used + chip > room) {
+      lines++;
+      used = 0;
+    }
+    used += chip;
+  }
+  return { key: `${day.date}|allday`, h: lines * ALL_DAY_LINE + (lines - 1) * ALL_DAY_GAP, chips };
 }
 
 // What's coming up next, for the top of the board.

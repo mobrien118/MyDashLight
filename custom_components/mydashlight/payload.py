@@ -90,6 +90,8 @@ def plan_day(
     return {
         "date": day.day.isoformat(),
         "events": [_event(e, day, labels, board) for e in day.events],
+        "all_day": list(day.all_day),
+        "unplaced": list(day.unplaced),
         "drivers": {
             d: {
                 "name": labels.driver(d),

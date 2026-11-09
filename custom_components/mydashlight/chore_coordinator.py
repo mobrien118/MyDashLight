@@ -1,6 +1,6 @@
 """Reads the chore templates and the kids' chore lists in Google Tasks every minute, and keeps
 the lists filled from the templates. School-days chores follow the school days and lunches the
-lunch coordinator reads from the kids' calendars.
+lunch coordinator reads from the lunch and family calendars.
 
 Nothing about chores is kept in Home Assistant except which Google Tasks lists are the base
 lists and the kids' lists, so a list renamed in Google is still found.

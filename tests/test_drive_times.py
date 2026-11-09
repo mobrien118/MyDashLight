@@ -14,7 +14,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.mydashlight.const import DOMAIN
 
-from .common import AVA, OPTIONS, ROUTES_KEY, FakeGoogle, FakeRoutes, make_entry, setup_credentials, timed
+from .common import FAMILY, OPTIONS, ROUTES_KEY, FakeGoogle, FakeRoutes, make_entry, setup_credentials, timed
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time
 PIANO = "Piano studio, 1 Elm St"
@@ -31,10 +31,10 @@ async def setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
 def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     g = FakeGoogle(aioclient_mock)
     g.add(
-        AVA,
+        FAMILY,
         **timed(
             "piano",
-            "Piano",
+            "Ava Piano",
             "2026-11-03T16:00:00-06:00",
             "2026-11-03T17:00:00-06:00",
             location=PIANO,

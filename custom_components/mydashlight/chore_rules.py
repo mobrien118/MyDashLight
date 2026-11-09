@@ -33,7 +33,7 @@ Templates from before the one list, on "Chore templates: Daily" and the like, sa
 by their list and how many by an ``Every`` line; they're moved onto the one list as they are.
 
 A school-days chore is made for each day that's a school day for its kid: a weekday with no
-"No School" event on the kid's calendar. Two more lines only mean something there::
+"No School" event for the kid. Two more lines only mean something there::
 
     When: Night before
     Only: Bring lunch days

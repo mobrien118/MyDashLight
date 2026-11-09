@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   attention,
   columnsFor,
+  DAY_HEAD,
   compactCardHeight,
   dayTag,
   layout,
@@ -125,14 +126,24 @@ test("moving between modes keeps the same moment on screen", () => {
 test("the needs-attention list", () => {
   // The whole week, seen from early on the first day with a window that takes it all in.
   const all = attention(plan, { date: FIRST, minutes: 0 }, 24 * 8);
-  assert.equal(all.problems, 4);
+  assert.equal(all.problems, 5);
   assert.deepEqual(
     all.items.filter((i) => i.tone !== "heads_up").map((i) => i.title),
-    ["Sam is still at Work", "No pick-up for Ava", `Sun · No pick-up for Ava`, "Tue · Cleo is double-booked"],
+    [
+      "Sam is still at Work",
+      "No pick-up for Ava",
+      "Fri · 4:00 Garage floor bid: who is this for?",
+      `Sun · No pick-up for Ava`,
+      "Tue · Cleo is double-booked",
+    ],
   );
+  // An event whose title names nobody says how to fix it, with the family's own names.
+  const nobody = all.items.find((i) => i.key.endsWith("|unplaced|bid"))!;
+  assert.equal(nobody.target, null);
+  assert.match(nobody.body, /such as “Ava Piano”, or “Ava & Ben Piano” for both/);
   // Normally only the next two days: later problems are counted, not listed.
   const { items, problems, later, laterUnassigned } = attention(plan, today);
-  assert.equal(problems, 2);
+  assert.equal(problems, 3);
   assert.equal(later, 2);
   assert.equal(laterUnassigned, 1);
   const busy = items[0]!;
@@ -477,4 +488,33 @@ test("timeline: something running past midnight shows only its edge, not the who
     { type: "act", start: 0, end: 1440, clash: false, event: allDay.id },
   );
   assert.deepEqual(hours(p), before);
+});
+
+test("all-day events go across the top of each day they cover", () => {
+  const board = layout(plan, "timeline", 1160, today);
+  const rows = new Map(board.allDay.map((r) => [r.key.split("|")[0], r]));
+  const fri = rows.get(plan.days[1]!.date)!;
+  assert.deepEqual(
+    fri.chips.map((c) => [c.title, c.note, c.warn]),
+    [
+      ["Trash & Recycling Day", "", false],
+      ["Wear the black jersey", "", false],
+      ["4:00 Garage floor bid", "Who is this for?", true],
+    ],
+  );
+  // Nobody's all-day event is plain; one naming someone takes their colour.
+  assert.equal(fri.chips[0]!.color, null);
+  assert.ok(fri.chips[1]!.color);
+  // It sits under the day's heading, and the day's events start below it.
+  const head = board.dayHeads.find((h) => h.date === plan.days[1]!.date)!;
+  assert.equal(fri.y, head.y + DAY_HEAD + 4);
+  const firstCard = Math.min(...board.cards.filter((c) => c.target?.day === plan.days[1]!.date).map((c) => c.y));
+  assert.ok(firstCard >= fri.y + fri.h);
+  assert.deepEqual(
+    board.allDay.filter((r) => r.chips.some((c) => c.title === "Indianapolis")).map((r) => r.chips[0]!.note),
+    ["Day 1 of 3", "Day 2 of 3", "Day 3 of 3"],
+  );
+  // Days with nothing all day have no row, in either view.
+  assert.equal(rows.has(plan.days[0]!.date), false);
+  assert.equal(layout(plan, "compact", 1160, today).allDay.length, board.allDay.length);
 });

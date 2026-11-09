@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import timedelta
 import logging
 import re
@@ -34,31 +34,33 @@ from homeassistant.helpers.selector import (
     TextSelectorConfig,
     TextSelectorType,
 )
-from homeassistant.util import dt as dt_util
+from homeassistant.util import dt as dt_util, slugify
 import voluptuous as vol
 
 from .alerts import notify_services
 from .const import (
+    CONF_ALIASES,
+    CONF_ALL_KIDS,
     CONF_ARRIVE_EARLY,
     CONF_ARRIVE_EARLY_MAX,
     CONF_ARRIVE_EARLY_PER,
-    CONF_CALENDAR_ID,
     CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
     CONF_CHORE_DAYS,
     CONF_DAD_ALIASES,
-    CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
     CONF_DAD_NOTIFY,
     CONF_DAD_PERSON,
+    CONF_EVENTS_CALENDAR,
     CONF_GO_HOME_MARGIN,
     CONF_HOME_ADDRESS,
+    CONF_KID_ID,
     CONF_KID_NOTIFY,
     CONF_KIDS,
+    CONF_LUNCH_CALENDAR,
     CONF_LUNCH_DEFAULTS,
     CONF_LUNCH_FEEDS,
     CONF_MOM_ALIASES,
-    CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
     CONF_MOM_NOTIFY,
     CONF_MOM_PERSON,
@@ -91,7 +93,7 @@ from .google import CalendarInfo, GoogleApiDisabled, GoogleAuthError, GoogleCale
 from .lunch_coordinator import MenuFeedError, async_read_menu_feed
 from .menu_feed import webcal_to_https
 from .routes import Place, RoutesApi, RoutesError, RoutesKeyError, RoutesNoRoute, RoutesQuotaError
-from .settings import HubSettings
+from .settings import HubSettings, kid_id
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -100,8 +102,6 @@ _LOGGER = logging.getLogger(__name__)
 
 _NAME = TextSelector()
 _NAMES = TextSelector(TextSelectorConfig(multiple=True))
-# "Kid-Ava", "Kid: Ava" and "kid ava" all suggest the name Ava.
-_KID_PREFIX = re.compile(r"^\s*kids?\s*[-:_]?\s+|^\s*kids?\s*[-:_]\s*", re.IGNORECASE)
 
 
 def _minutes(maximum: int) -> NumberSelector:
@@ -130,16 +130,16 @@ def _people(options: Mapping[str, Any]) -> list[tuple[str, str]]:
         (_clean_name(options.get(CONF_DAD_NAME) or "") or "Second parent", "dad"),
     ]
     for kid in options.get(CONF_KIDS) or []:
-        if isinstance(kid, Mapping) and kid.get(CONF_CALENDAR_ID):
-            label = _clean_name(kid.get(CONF_NAME) or "") or str(kid[CONF_CALENDAR_ID])
+        if isinstance(kid, Mapping) and kid_id(kid):
+            label = _clean_name(kid.get(CONF_NAME) or "") or kid_id(kid)
             while any(label.casefold() == taken.casefold() for taken, _ in out):
                 label += " (kid)"
-            out.append((label, str(kid[CONF_CALENDAR_ID])))
+            out.append((label, kid_id(kid)))
     return out
 
 
 def _feed_fields(kids: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    """Each kid's menu feed box on the Lunch form, as (the label it shows, the kid's calendar)."""
+    """Each kid's menu feed box on the Lunch form, as (the label it shows, the kid's id)."""
     out: list[tuple[str, str]] = []
     for kid, name in kids:
         label = f"{_clean_name(name) or kid}'s menu feed"
@@ -151,10 +151,6 @@ def _feed_fields(kids: list[tuple[str, str]]) -> list[tuple[str, str]]:
 
 def _clean_name(value: str) -> str:
     return " ".join(str(value).split())
-
-
-def suggested_kid_name(calendar_name: str) -> str:
-    return _clean_name(_KID_PREFIX.sub("", calendar_name, count=1)) or _clean_name(calendar_name)
 
 
 def _names_schema(defaults: Mapping[str, Any]) -> dict[vol.Marker, Any]:
@@ -181,72 +177,87 @@ def _calendars_schema(calendars: list[CalendarInfo], current: Mapping[str, Any])
     options = [SelectOptionDict(value=c.id, label=c.name) for c in sorted(calendars, key=lambda c: c.name.casefold())]
     known = {c.id for c in calendars}
 
-    def pick() -> SelectSelector:
-        return SelectSelector(SelectSelectorConfig(options=options, multiple=True, mode=SelectSelectorMode.LIST))
+    def one() -> SelectSelector:
+        return SelectSelector(SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN))
 
-    def default(key: str) -> list[str]:
-        value = current.get(key) or []
-        ids = [k.get(CONF_CALENDAR_ID) if isinstance(k, Mapping) else k for k in value]
-        return [i for i in ids if i in known]
-
+    events = current.get(CONF_EVENTS_CALENDAR)
+    lunch = current.get(CONF_LUNCH_CALENDAR)
+    events_key = (
+        vol.Required(CONF_EVENTS_CALENDAR, default=events) if events in known else vol.Required(CONF_EVENTS_CALENDAR)
+    )
     return vol.Schema(
         {
-            vol.Required(CONF_KIDS, default=default(CONF_KIDS)): pick(),
-            vol.Optional(CONF_MOM_CALENDARS, default=default(CONF_MOM_CALENDARS)): pick(),
-            vol.Optional(CONF_DAD_CALENDARS, default=default(CONF_DAD_CALENDARS)): pick(),
+            events_key: one(),
+            vol.Optional(
+                CONF_LUNCH_CALENDAR, description={"suggested_value": lunch if lunch in known else None}
+            ): one(),
+            vol.Required(CONF_KIDS, default=_kid_names(current.get(CONF_KIDS))): _NAMES,
         }
     )
 
 
-def _validate_calendars(user_input: Mapping[str, Any]) -> dict[str, str]:
-    kids = set(user_input.get(CONF_KIDS) or [])
-    mom = set(user_input.get(CONF_MOM_CALENDARS) or [])
-    dad = set(user_input.get(CONF_DAD_CALENDARS) or [])
-    if not kids:
+def _kid_names(value: object) -> list[str]:
+    """The kids' names from saved options (a list of kids) or a form (a list of names)."""
+    if not isinstance(value, (list, tuple)):
+        return []
+    out: list[str] = []
+    for item in value:
+        name = _clean_name(item.get(CONF_NAME) or "") if isinstance(item, Mapping) else _clean_name(str(item))
+        if name:
+            out.append(name)
+    return out
+
+
+def _validate_calendars(user_input: Mapping[str, Any], parents: Iterable[str]) -> dict[str, str]:
+    names = _kid_names(user_input.get(CONF_KIDS))
+    folded = [n.casefold() for n in names]
+    if not user_input.get(CONF_EVENTS_CALENDAR):
+        return {CONF_EVENTS_CALENDAR: "events_calendar_required"}
+    if user_input.get(CONF_LUNCH_CALENDAR) and user_input.get(CONF_LUNCH_CALENDAR) == user_input[CONF_EVENTS_CALENDAR]:
+        return {CONF_LUNCH_CALENDAR: "lunch_on_events_calendar"}
+    if not names:
         return {CONF_KIDS: "kids_required"}
-    if kids & mom:
-        return {CONF_MOM_CALENDARS: "kid_calendar_as_busy"}
-    if kids & dad:
-        return {CONF_DAD_CALENDARS: "kid_calendar_as_busy"}
-    if mom & dad:
-        return {CONF_DAD_CALENDARS: "shared_busy_calendar"}
+    if len(set(folded)) != len(folded):
+        return {CONF_KIDS: "kid_names_match"}
+    if any(_clean_name(p).casefold() in folded for p in parents):
+        return {CONF_KIDS: "kid_named_like_parent"}
     return {}
 
 
-class _KidNames:
-    """Asks for each picked kid calendar's display name, one form per kid."""
+def _kids_from(names: Iterable[str], current: object) -> list[dict[str, Any]]:
+    """The kids for the options, in the order given. A kid already set up keeps their id and
+    other names, so everything saved for them carries over; a new kid gets a new id."""
+    old: dict[str, Mapping[str, Any]] = {}
+    if isinstance(current, (list, tuple)):
+        for item in current:
+            if isinstance(item, Mapping) and kid_id(item):
+                old.setdefault(_clean_name(item.get(CONF_NAME) or "").casefold(), item)
+    out: list[dict[str, Any]] = []
+    for name in names:
+        before = old.get(name.casefold())
+        if before is not None:
+            kid = kid_id(before)
+            aliases = list(before.get(CONF_ALIASES) or [])
+        else:
+            base = "kid-" + (slugify(name) or "kid")
+            kid, n = base, 2
+            taken = {k[CONF_KID_ID] for k in out} | {kid_id(i) for i in old.values()}
+            while kid in taken:
+                kid, n = f"{base}-{n}", n + 1
+            aliases = []
+        out.append({CONF_KID_ID: kid, CONF_NAME: name, CONF_ALIASES: aliases})
+    return out
 
-    def __init__(self, picked: list[str], calendars: list[CalendarInfo], current: Mapping[str, Any]) -> None:
-        by_id = {c.id: c for c in calendars}
-        old = {
-            k.get(CONF_CALENDAR_ID): k.get(CONF_NAME) for k in current.get(CONF_KIDS) or [] if isinstance(k, Mapping)
-        }
-        self.queue = [
-            (cal_id, by_id[cal_id].name, old.get(cal_id) or suggested_kid_name(by_id[cal_id].name))
-            for cal_id in picked
-            if cal_id in by_id
-        ]
-        self.done: list[dict[str, str]] = []
 
-    @property
-    def finished(self) -> bool:
-        return len(self.done) == len(self.queue)
-
-    def schema(self) -> tuple[vol.Schema, dict[str, str]]:
-        _cal_id, cal_name, name = self.queue[len(self.done)]
-        return (
-            vol.Schema({vol.Required(CONF_NAME, default=name): _NAME}),
-            {"calendar": cal_name, "number": str(len(self.done) + 1), "count": str(len(self.queue))},
-        )
-
-    def take(self, user_input: Mapping[str, Any]) -> dict[str, str]:
-        name = _clean_name(user_input.get(CONF_NAME, ""))
-        if not name:
-            return {CONF_NAME: "name_required"}
-        if any(k[CONF_NAME].casefold() == name.casefold() for k in self.done):
-            return {CONF_NAME: "kid_names_match"}
-        self.done.append({CONF_CALENDAR_ID: self.queue[len(self.done)][0], CONF_NAME: name})
-        return {}
+def _alias_fields(kids: Iterable[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Each kid's other-names box on the Settings form, as (the label it shows, the kid's id)."""
+    out: list[tuple[str, str]] = []
+    for kid, name in kids:
+        label = f"{name}'s other names"
+        while any(label == taken for taken, _ in out):
+            label += " (2)"
+        out.append((label, kid))
+    return out
 
 
 async def _list_calendars(api: GoogleCalendarApi) -> tuple[list[CalendarInfo] | None, str | None]:
@@ -273,7 +284,6 @@ class MyDashLightConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
         self._oauth_data: dict[str, Any] = {}
         self._calendars: list[CalendarInfo] = []
         self._options: dict[str, Any] = {}
-        self._kid_names: _KidNames | None = None
 
     @property
     def logger(self) -> logging.Logger:
@@ -323,34 +333,24 @@ class MyDashLightConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
     async def async_step_calendars(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _validate_calendars(user_input)
+            errors = _validate_calendars(user_input, (self._options[CONF_MOM_NAME], self._options[CONF_DAD_NAME]))
             if not errors:
-                self._options[CONF_MOM_CALENDARS] = list(user_input.get(CONF_MOM_CALENDARS) or [])
-                self._options[CONF_DAD_CALENDARS] = list(user_input.get(CONF_DAD_CALENDARS) or [])
-                self._kid_names = _KidNames(list(user_input[CONF_KIDS]), self._calendars, {})
-                return await self.async_step_kid_name()
+                return self.async_create_entry(
+                    title=TITLE,
+                    data=self._oauth_data,
+                    options={
+                        **self._options,
+                        CONF_EVENTS_CALENDAR: user_input[CONF_EVENTS_CALENDAR],
+                        CONF_LUNCH_CALENDAR: user_input.get(CONF_LUNCH_CALENDAR) or None,
+                        CONF_KIDS: _kids_from(_kid_names(user_input[CONF_KIDS]), []),
+                        CONF_ALL_KIDS: [],
+                    },
+                )
         return self.async_show_form(
             step_id="calendars",
             data_schema=_calendars_schema(self._calendars, user_input or {}),
             errors=errors,
-            description_placeholders={
-                "mom": self._options[CONF_MOM_NAME],
-                "dad": self._options[CONF_DAD_NAME],
-                "account": self.unique_id or "",
-            },
-        )
-
-    async def async_step_kid_name(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        names = self._kid_names
-        assert names is not None
-        errors = names.take(user_input) if user_input is not None else {}
-        if names.finished:
-            return self.async_create_entry(
-                title=TITLE, data=self._oauth_data, options={**self._options, CONF_KIDS: names.done}
-            )
-        schema, placeholders = names.schema()
-        return self.async_show_form(
-            step_id="kid_name", data_schema=schema, errors=errors, description_placeholders=placeholders
+            description_placeholders={"account": self.unique_id or ""},
         )
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
@@ -380,8 +380,6 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
 
     def __init__(self) -> None:
         self._calendars: list[CalendarInfo] = []
-        self._pending: dict[str, Any] = {}
-        self._kid_names: _KidNames | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_show_menu(
@@ -390,14 +388,20 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
 
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-        current: Mapping[str, Any] = self.config_entry.options
+        options: Mapping[str, Any] = self.config_entry.options
+        current: Mapping[str, Any] = options
+        kids = [k for k in options.get(CONF_KIDS) or [] if isinstance(k, Mapping) and kid_id(k)]
+        alias_fields = _alias_fields((kid_id(k), _clean_name(k.get(CONF_NAME) or "") or kid_id(k)) for k in kids)
         if user_input is not None:
             errors = _validate_names(user_input)
             if not errors:
+                user_input = dict(user_input)
+                aliases = {kid: user_input.pop(label, []) for label, kid in alias_fields}
                 return self.async_create_entry(
                     data={
-                        **self.config_entry.options,
+                        **options,
                         **user_input,
+                        CONF_KIDS: [{**k, CONF_ALIASES: list(aliases.get(kid_id(k), []))} for k in kids],
                         CONF_MOM_NAME: _clean_name(user_input[CONF_MOM_NAME]),
                         CONF_DAD_NAME: _clean_name(user_input[CONF_DAD_NAME]),
                         CONF_PLANNER: {k: int(v) for k, v in user_input[CONF_PLANNER].items()},
@@ -406,11 +410,18 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
                 )
             current = user_input
         planner = {**DEFAULT_PLANNER, **current.get(CONF_PLANNER, {})}
+        saved_aliases = {kid_id(k): list(k.get(CONF_ALIASES) or []) for k in kids}
+        alias_schema: dict[vol.Marker, Any] = {
+            vol.Optional(label, default=current[label] if label in current else saved_aliases.get(kid, [])): _NAMES
+            for label, kid in alias_fields
+        }
         schema = vol.Schema(
             {
                 **_names_schema(current),
                 vol.Optional(CONF_MOM_ALIASES, default=current.get(CONF_MOM_ALIASES, [])): _NAMES,
                 vol.Optional(CONF_DAD_ALIASES, default=current.get(CONF_DAD_ALIASES, [])): _NAMES,
+                **alias_schema,
+                vol.Optional(CONF_ALL_KIDS, default=current.get(CONF_ALL_KIDS, [])): _NAMES,
                 vol.Optional(CONF_CARPOOLS, default=current.get(CONF_CARPOOLS, [])): _NAMES,
                 vol.Optional(CONF_HOME_ADDRESS, default=current.get(CONF_HOME_ADDRESS, "")): _NAME,
                 vol.Required(CONF_CHORE_DAYS, default=current.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)): NumberSelector(
@@ -441,37 +452,25 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
             if calendars is None:
                 return self.async_abort(reason=reason or "cannot_connect")
             self._calendars = calendars
-        current: Mapping[str, Any] = self.config_entry.options
+        options: Mapping[str, Any] = self.config_entry.options
+        current: Mapping[str, Any] = options
         if user_input is not None:
-            errors = _validate_calendars(user_input)
+            errors = _validate_calendars(user_input, (options.get(CONF_MOM_NAME, ""), options.get(CONF_DAD_NAME, "")))
             if not errors:
-                self._pending = {
-                    CONF_MOM_CALENDARS: list(user_input.get(CONF_MOM_CALENDARS) or []),
-                    CONF_DAD_CALENDARS: list(user_input.get(CONF_DAD_CALENDARS) or []),
-                }
-                self._kid_names = _KidNames(list(user_input[CONF_KIDS]), self._calendars, current)
-                return await self.async_step_kid_name()
+                return self.async_create_entry(
+                    data={
+                        **options,
+                        CONF_EVENTS_CALENDAR: user_input[CONF_EVENTS_CALENDAR],
+                        CONF_LUNCH_CALENDAR: user_input.get(CONF_LUNCH_CALENDAR) or None,
+                        CONF_KIDS: _kids_from(_kid_names(user_input[CONF_KIDS]), options.get(CONF_KIDS)),
+                    }
+                )
             current = user_input
         return self.async_show_form(
             step_id="calendars",
             data_schema=_calendars_schema(self._calendars, current),
             errors=errors,
-            description_placeholders={
-                "mom": str(self.config_entry.options.get(CONF_MOM_NAME, "")),
-                "dad": str(self.config_entry.options.get(CONF_DAD_NAME, "")),
-                "account": self.config_entry.unique_id or "",
-            },
-        )
-
-    async def async_step_kid_name(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        names = self._kid_names
-        assert names is not None
-        errors = names.take(user_input) if user_input is not None else {}
-        if names.finished:
-            return self.async_create_entry(data={**self.config_entry.options, **self._pending, CONF_KIDS: names.done})
-        schema, placeholders = names.schema()
-        return self.async_show_form(
-            step_id="kid_name", data_schema=schema, errors=errors, description_placeholders=placeholders
+            description_placeholders={"account": self.config_entry.unique_id or ""},
         )
 
     async def async_step_drive_times(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
