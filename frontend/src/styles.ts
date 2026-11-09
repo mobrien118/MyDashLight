@@ -913,6 +913,13 @@ export const styles = css`
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* Under way at the top of today: it runs in from the time that's over, so its top edge is open. */
+  .card.cut,
+  .stay.cut {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top-style: dashed;
+  }
   .card.skipped {
     box-shadow: inset 5px 0 0 rgba(var(--rgb), 0.35);
     border-style: dashed;

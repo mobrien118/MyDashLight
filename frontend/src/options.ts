@@ -14,6 +14,8 @@ export interface PageOptions {
   cursor?: "show";
   /** The page to open on. Unset means rides. */
   page?: Page;
+  /** `past=show` keeps events that are over on the board; otherwise they drop off. */
+  past?: "show";
 }
 
 const VIEWS: Record<string, Mode> = {
@@ -32,6 +34,7 @@ export function pageOptions(search: string): PageOptions {
   if ((q.get("cursor") ?? "").trim().toLowerCase() === "show") opts.cursor = "show";
   const page = (q.get("page") ?? "").trim().toLowerCase();
   if (page === "rides" || page === "chores" || page === "lunch") opts.page = page;
+  if (["show", "yes", "on", "true", "1"].includes((q.get("past") ?? "").trim().toLowerCase())) opts.past = "show";
   return opts;
 }
 

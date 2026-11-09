@@ -192,6 +192,10 @@ export interface PlanDay {
   clashes: Clash[];
   issues: Issue[];
   score: number | null;
+  /** Set by the board, not the plan: today's events that are over and left off (see past.ts). */
+  done?: number;
+  /** Set by the board: the minute today is shown from, since what's before it is over. */
+  from?: number;
 }
 
 export interface Plan {
@@ -206,6 +210,8 @@ export interface Plan {
   status?: { ok: boolean; error: string | null };
   /** "events_calendar" until the shared family calendar is picked (MyDashLight 0.19 and later). */
   needs_setup?: string | null;
+  /** Set by the board when what's over is left off: every day as the plan had it, for the week's totals. */
+  whole_week?: PlanDay[];
 }
 
 export interface People {
