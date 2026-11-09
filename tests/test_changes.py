@@ -12,7 +12,9 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
+from custom_components.mydashlight.changes import KEEP, RideChange, _Notes
 from custom_components.mydashlight.const import DOMAIN
+from custom_components.mydashlight.notes import RideNotes
 
 from .common import AVA, BEN, FAMILY, FakeGoogle, google_error, make_entry, setup_credentials, timed
 
@@ -171,6 +173,43 @@ async def test_every_one(hass: HomeAssistant, google: FakeGoogle) -> None:
         "Goggles. Lane 4 on Thursday.\n\n--- Rides ---\nPick-up: Sam"
     )
     assert [planned(entry, f"swim_202611{d}", i)["pick"] for i, d in enumerate(("03", "04", "05"))] == ["dad"] * 3
+
+
+async def test_every_one_keeps_what_one_occurrence_was_given_by_hand(hass: HomeAssistant, google: FakeGoogle) -> None:
+    # Marty, 2026-11-09: "Every time" mustn't undo a one-off. Thursday's lesson already has its
+    # own driver and arrive-by time, so a new driver for every lesson leaves Thursday's alone.
+    lessons(google)
+    thursday = next(e for e in google.events[FAMILY] if e["id"] == "swim_20261105")
+    thursday["description"] = "Goggles. Lane 4 on Thursday.\n\n--- Rides ---\nDrop-off: Robin\nArrive by: 4:45 PM"
+    entry = await load(hass)
+
+    await call(hass, "set_ride", event="swim_20261104", side="drop", driver="dad", scope="series")
+    await call(hass, "set_arrive_by", event="swim_20261104", time="16:50:00", scope="series")
+    await call(hass, "set_stay", event="swim_20261104", stay=True, scope="series")
+
+    assert google.event(FAMILY, "swim")["description"] == (
+        "Goggles.\n\n--- Rides ---\nDrop-off: Sam\nArrive by: 4:50 PM\nStay: yes"
+    )
+    # Thursday follows the series only on Stay, the one line it hadn't been given by hand.
+    assert google.event(FAMILY, "swim_20261105")["description"] == (
+        "Goggles. Lane 4 on Thursday.\n\n--- Rides ---\nDrop-off: Robin\nArrive by: 4:45 PM\nStay: yes"
+    )
+    days = [planned(entry, f"swim_202611{d}", i) for i, d in enumerate(("03", "04", "05"))]
+    assert [d["drop"] for d in days] == ["dad", "dad", "mom"]
+    assert [d["stay"] for d in days] == [True, True, True]
+
+
+def test_an_occurrence_moved_to_another_time_keeps_following_an_early_margin() -> None:
+    # "15 min early" on a lesson moved from 5:00 to 5:30 reads as 5:15, not the series' 4:45.
+    series = _Notes(RideNotes(arrive_by=1005), 1020, skipped=False)
+    moved = _Notes(RideNotes(arrive_by=1035), 1050, skipped=False)
+    own = _Notes(RideNotes(arrive_by=1040), 1050, skipped=False)
+    change = RideChange(arrive_by=990, stay=True)
+    assert change.unless_set_by_hand(series, moved) == change
+    assert change.unless_set_by_hand(series, own) == RideChange(arrive_by=KEEP, stay=True)
+    # Skipping one week by hand, with NO in the title, isn't undone by going every week.
+    going = RideChange(attending=True)
+    assert going.unless_set_by_hand(series, _Notes(RideNotes(), 1020, skipped=True)).empty
 
 
 async def test_every_one_of_an_event_that_does_not_repeat(hass: HomeAssistant, google: FakeGoogle) -> None:

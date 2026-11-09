@@ -207,7 +207,9 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 The event actions take the event's `id` from `get_plan`. For a repeating event, `scope: this`
 changes just that one (Google keeps it as a changed occurrence) and `scope: series` changes every
 one. Occurrences someone already changed by themselves keep their own notes in Google, so the ones
-in the next 7 days get the change too.
+in the next 7 days get the change too, except on a line set by hand for that one occurrence: a
+one-off driver, say, stays. Times and dates are never changed, so a moved occurrence keeps its
+time.
 
 Each change reads the event fresh and saves it only if nobody changed it in the meantime. If
 someone did, say on a phone at the same moment, the change is applied again on top of their edit.
