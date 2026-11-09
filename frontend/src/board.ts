@@ -204,6 +204,8 @@ export class MyDashLightBoard extends LitElement {
   static override properties = {
     backend: { attribute: false },
     pinDay: { state: true },
+    railShown: { state: true },
+    away: { state: true },
     kiosk: { type: Boolean },
     showMenu: { type: Boolean, attribute: "show-menu" },
     plan: { state: true },
@@ -244,6 +246,10 @@ export class MyDashLightBoard extends LitElement {
   declare plan: Plan | null;
   /** The day whose heading is pinned at the top while scrolling. */
   declare pinDay: string | null;
+  /** The row of days at the board's edge is out, while scrolling or just after. */
+  declare railShown: boolean;
+  /** Scrolled away from today (or from now, in Timeline): "up|Today", "down|Now", or null. */
+  declare away: string | null;
   declare error: BackendError | null;
   declare mode: Mode;
   declare sel: Target | null;
@@ -294,6 +300,11 @@ export class MyDashLightBoard extends LitElement {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private arriveTimer: ReturnType<typeof setTimeout> | null = null;
+  private railTimer: ReturnType<typeof setTimeout> | null = null;
+  /** When a finger, mouse or wheel last moved the board, so a scroll the app makes doesn't bring out the days. */
+  private touchedAt = -Infinity;
+  /** The pointer is over the row of days, so it stays out. */
+  private railHeld = false;
   private drag: { el: HTMLElement; x: number; y: number; top: number; left: number; moved: boolean; id: number } | null = null;
   private eatClick = false;
   private board: Board | null = null;
@@ -310,6 +321,8 @@ export class MyDashLightBoard extends LitElement {
   private readonly urlPage = pageOptions(location.search).page;
   /** `?past=show` keeps what's over on the board. */
   private readonly urlPast = pageOptions(location.search).past;
+  /** `?daypicker=off` leaves out the row of days at the board's edge. */
+  private readonly urlDayPicker = pageOptions(location.search).daypicker;
   private shownFor: { plan: Plan; key: string; shown: Plan } | null = null;
   private stopChores: (() => void) | null = null;
   private stopLunch: (() => void) | null = null;
@@ -322,6 +335,8 @@ export class MyDashLightBoard extends LitElement {
     this.showMenu = false;
     this.plan = null;
     this.pinDay = null;
+    this.railShown = false;
+    this.away = null;
     this.error = null;
     this.mode = this.urlView ?? readMode();
     this.sel = null;
@@ -377,7 +392,7 @@ export class MyDashLightBoard extends LitElement {
     this.stopLunch = null;
     this.resize?.disconnect();
     this.resize = null;
-    for (const t of [this.idleTimer, this.toastTimer, this.arriveTimer]) if (t) clearTimeout(t);
+    for (const t of [this.idleTimer, this.toastTimer, this.arriveTimer, this.railTimer]) if (t) clearTimeout(t);
     if (this.clockTimer) clearInterval(this.clockTimer);
     this.removeEventListener("pointerdown", this.onActivity, { capture: true });
     this.removeEventListener("keydown", this.onKey);
@@ -531,34 +546,49 @@ export class MyDashLightBoard extends LitElement {
    * that day's heading, or the day before would stay pinned at the top. That happens when
    * jumping to a day's start, and when the day before runs past midnight.
    */
-  private scrollToTime(t: number, date?: string): void {
+  private scrollToTime(t: number, date?: string, smooth = false): void {
     const el = this.scroller;
     if (!el || !this.board) return;
-    const head = this.board.dayHeads.find((h) => h.date === date)?.y ?? 0;
-    const top = Math.max(head, yAt(this.board, t) - headAt(this.board, t) - 4);
+    const top = this.topFor(t, date);
     // Left alone when it's already there, so a redraw doesn't stop a scroll that's under way.
-    if (Math.abs(el.scrollTop - top) >= 2) el.scrollTop = top;
+    if (Math.abs(el.scrollTop - top) >= 2) {
+      if (smooth && !matchMedia("(prefers-reduced-motion: reduce)").matches) el.scrollTo({ top, behavior: "smooth" });
+      else el.scrollTop = top;
+    }
     this.syncDay();
   }
 
-  private scrollToNow(): void {
+  /** Where the board scrolls to for a moment, given its day (see scrollToTime). */
+  private topFor(t: number, date?: string): number {
+    const b = this.board!;
+    const head = b.dayHeads.find((h) => h.date === date)?.y ?? 0;
+    return Math.max(head, yAt(b, t) - headAt(b, t) - 4);
+  }
+
+  /** Now on the board: today's start, or just before now in Timeline. */
+  private nowSpot(): { t: number; date: string | undefined } | null {
     const plan = this.boardPlan;
-    if (!plan) return;
+    if (!plan) return null;
     const today = this.today();
     const i = Math.max(0, this.dayIndexOf(today.date));
-    this.scrollToTime(
-      i * 1440 + (this.mode === "timeline" && i === this.dayIndexOf(today.date) ? today.minutes - 45 : 0),
-      plan.days[i]?.date,
-    );
+    return {
+      t: i * 1440 + (this.mode === "timeline" && i === this.dayIndexOf(today.date) ? today.minutes - 45 : 0),
+      date: plan.days[i]?.date,
+    };
+  }
+
+  private scrollToNow(smooth = false): void {
+    const spot = this.nowSpot();
+    if (spot) this.scrollToTime(spot.t, spot.date, smooth);
   }
 
   /** Jumps to a day: to now if it's today, else to its first activity or trip. */
-  private goToDay(date: string): void {
+  private goToDay(date: string, smooth = false): void {
     const plan = this.boardPlan;
     if (!plan) return;
     const today = this.today();
     if (date === today.date) {
-      this.scrollToNow();
+      this.scrollToNow(smooth);
       return;
     }
     const i = this.dayIndexOf(date);
@@ -569,7 +599,7 @@ export class MyDashLightBoard extends LitElement {
       for (const e of day.events) first = Math.min(first, e.arrive_by ?? e.start);
       for (const d of Object.values(day.drivers)) for (const o of d.outings) if (o.start != null) first = Math.min(first, o.start);
     }
-    this.scrollToTime(i * 1440 + (Number.isFinite(first) ? Math.max(0, first - 30) : 0), date);
+    this.scrollToTime(i * 1440 + (Number.isFinite(first) ? Math.max(0, first - 30) : 0), date, smooth);
   }
 
   private syncDay(): void {
@@ -580,8 +610,49 @@ export class MyDashLightBoard extends LitElement {
     for (const h of this.board.dayHeads) if (h.y <= top + 1) cur = h;
     // The pinned heading redraws only when the day changes, not on every scroll.
     if (this.pinDay !== cur.date) this.pinDay = cur.date;
-    const root = this.renderRoot;
-    for (const t of root.querySelectorAll<HTMLElement>(".day-tile")) t.classList.toggle("in-view", t.dataset["date"] === cur.date);
+    // The way back to today shows once it's scrolled away: off today, or in Timeline, well off now.
+    let away: string | null = null;
+    const spot = this.nowSpot();
+    const today = this.today().date;
+    if (spot) {
+      const off = top - Math.min(this.topFor(spot.t, spot.date), el.scrollHeight - el.clientHeight);
+      const dir = off > 0 ? "up" : "down";
+      if (this.board.dayHeads.some((h) => h.date === today) && cur.date !== today) away = `${dir}|Today`;
+      else if (this.mode === "timeline" && Math.abs(off) > el.clientHeight * 0.6) away = `${dir}|${cur.date === today ? "Now" : "Today"}`;
+    }
+    if (this.away !== away) this.away = away;
+  }
+
+  /** The board scrolled: keep the pinned day in step, and bring out the row of days if someone scrolled it. */
+  private onScroll = (): void => {
+    this.syncDay();
+    if (this.railShown || performance.now() - this.touchedAt < 800) this.showRail();
+  };
+
+  /** A finger, the mouse or the wheel is on the board. */
+  private onTouched = (): void => {
+    this.touchedAt = performance.now();
+  };
+
+  /** The same, as a passive listener, so it never holds up scrolling. */
+  private readonly touchListener = { handleEvent: this.onTouched, passive: true };
+
+  /** Brings out the row of days at the board's edge, and puts it away a moment after the last scroll. */
+  private showRail(ms = 2500): void {
+    if (this.urlDayPicker === false) return;
+    if (!this.railShown) this.railShown = true;
+    if (this.railTimer) clearTimeout(this.railTimer);
+    this.railTimer = setTimeout(() => {
+      this.railTimer = null;
+      if (this.railHeld) this.showRail(ms);
+      else this.railShown = false;
+    }, ms);
+  }
+
+  /** A day's heading was tapped: go to that day, and bring out the others to pick from. */
+  private tapHead(date: string): void {
+    this.goToDay(date, true);
+    this.showRail(4000);
   }
 
   private setPage(p: Page): void {
@@ -752,6 +823,7 @@ export class MyDashLightBoard extends LitElement {
 
   // Fingers scroll natively; a mouse or pen drags the board the same way.
   private onDown = (e: PointerEvent): void => {
+    this.onTouched();
     if (e.pointerType === "touch" || e.button !== 0) return;
     const el = e.currentTarget as HTMLElement;
     this.drag = { el, x: e.clientX, y: e.clientY, top: el.scrollTop, left: el.scrollLeft, moved: false, id: e.pointerId };
@@ -772,6 +844,7 @@ export class MyDashLightBoard extends LitElement {
       }
       d.el.classList.add("dragging");
     }
+    this.onTouched();
     d.el.scrollTop = d.top - dy;
     d.el.scrollLeft = d.left - dx;
   };
@@ -985,12 +1058,13 @@ export class MyDashLightBoard extends LitElement {
     return html`
       <div class="app ${wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
         <div class="col">
-          ${this.renderHeader(plan, att, todo.length)} ${rides && shown ? this.renderWeek(shown) : nothing}
-          ${rides ? this.renderBanner(plan) : nothing}
+          ${this.renderHeader(plan, att, todo.length)} ${rides ? this.renderBanner(plan) : nothing}
           <main>
             ${rides
               ? html`<section class="board-area" aria-label="Everyone’s week">
                   ${board && plan ? (quietWeek(plan) ? this.renderQuiet(plan) : this.renderBoard(board)) : this.renderEmpty()}
+                  ${board && shown && !quietWeek(shown) ? this.renderDayRail(shown) : nothing}
+                  ${board && this.away ? this.renderBackToToday(this.away) : nothing}
                 </section>`
               : this.page === "lunch"
                 ? html`<section class="board-area chores-area" aria-label="Lunch">${this.renderLunch()}</section>`
@@ -1053,8 +1127,10 @@ export class MyDashLightBoard extends LitElement {
           <h1 class="clock" aria-label=${`${dayLabel(now.date)}, ${time}`}>
             <span class="hm">${time.slice(0, -3)}</span><span class="ampm">${time.slice(-2)}</span>
           </h1>
-          <p class="today-line">${dayLabel(now.date)}</p>
-          ${status ? html`<p class="status">${status}</p>` : nothing}
+          <p class="today-line">
+            ${dayLabel(now.date)}${typeof status === "string" && status ? html`<span class="status"> · ${status}</span>` : nothing}
+          </p>
+          ${status && typeof status !== "string" ? html`<p class="status">${status}</p>` : nothing}
         </div>
         ${plan && !quiet ? this.renderNext(plan, nextUp(plan, now), att) : nothing}
         <div class="controls">
@@ -1100,8 +1176,10 @@ export class MyDashLightBoard extends LitElement {
       const later = att.laterUnassigned;
       if (open) {
         const body = html`<span class="next-eyebrow">No trips planned yet</span>
-          <span class="next-lead">${open} ${open === 1 ? "ride needs" : "rides need"} a driver</span>
-          <span class="next-stop">${this.wide ? "Pick who drives under Needs attention." : "Tap to pick who drives."}</span>`;
+          <span class="next-main">
+            <span class="next-lead">${open} ${open === 1 ? "ride needs" : "rides need"} a driver</span>
+            <span class="next-stop">${this.wide ? "Pick who drives under Needs attention." : "Tap to pick who drives."}</span>
+          </span>`;
         return this.wide
           ? html`<div class="next idle needs">${body}</div>`
           : html`<button type="button" class="next idle needs" @click=${() => (this.sheet = true)}>${body}</button>`;
@@ -1109,15 +1187,19 @@ export class MyDashLightBoard extends LitElement {
       if (later) {
         return html`<div class="next idle">
           <span class="next-eyebrow">No trips planned yet</span>
-          <span class="next-lead">All set for the next two days</span>
-          <span class="next-stop">${later} ${later === 1 ? "ride needs" : "rides need"} a driver later this week.</span>
+          <span class="next-main">
+            <span class="next-lead">All set for the next two days</span>
+            <span class="next-stop">${later} ${later === 1 ? "ride needs" : "rides need"} a driver later this week.</span>
+          </span>
         </div>`;
       }
       const any = plan.days.some((d) => d.date >= today && d.events.length);
       return html`<div class="next idle">
         <span class="next-eyebrow">All set</span>
-        <span class="next-lead">${any ? "No more trips this week" : "No trips this week"}</span>
-        <span class="next-stop">${any ? "Nobody else needs driving anywhere." : "Nobody needs a ride yet."}</span>
+        <span class="next-main">
+          <span class="next-lead">${any ? "No more trips this week" : "No trips this week"}</span>
+          <span class="next-stop">${any ? "Nobody else needs driving anywhere." : "Nobody needs a ride yet."}</span>
+        </span>
       </div>`;
     }
     let when: string;
@@ -1132,12 +1214,12 @@ export class MyDashLightBoard extends LitElement {
         <span class="avatar driver" aria-hidden="true">${initial(next.name)}</span>
         <span class="next-lead">${next.name} · ${next.lead}</span>
         <span class="next-kids">${next.kids.map((c) => html`<span class="kid-dot" style="background:${c.color}"></span>`)}</span>
+        ${next.warn
+          ? html`<span class="next-stop warn">${next.warn}</span>`
+          : next.stop
+            ? html`<span class="next-stop">${next.stop}</span>`
+            : nothing}
       </span>
-      ${next.warn
-        ? html`<span class="next-stop warn">${next.warn}</span>`
-        : next.stop
-          ? html`<span class="next-stop">${next.stop}</span>`
-          : nothing}
     `;
     const cls = `next ${next.ongoing ? "ongoing" : soon ? "soon" : ""}`;
     return next.target
@@ -1145,35 +1227,70 @@ export class MyDashLightBoard extends LitElement {
       : html`<div class=${cls}>${body}</div>`;
   }
 
-  /** A tile per day: what's on, and what needs sorting out. Tapping one goes to it. */
-  private renderWeek(plan: Plan): TemplateResult {
+  /**
+   * The week's days down the board's edge: what's on, and what needs sorting out. It slides out
+   * while the board scrolls (or a day's heading is tapped) and tucks away a moment later, leaving a
+   * small tab to pull it out with. Tapping a day goes to it.
+   */
+  private renderDayRail(plan: Plan): TemplateResult | typeof nothing {
+    if (this.urlDayPicker === false || plan.days.length < 2) return nothing;
     const today = this.today().date;
     const colors = kidColors(plan);
-    return html`<nav class="week" aria-label="Days">
-      ${plan.days.map((d) => {
-        const problems = problemCount(d);
-        const n = d.events.length;
-        const dots = d.events.slice(0, 6).map((e) => (e.own ? OWN_COLOR.color : (colors.get(e.kid)?.color ?? kidColor(0).color)));
-        const label = `${dayLabel(d.date)}: ${n ? `${n} ${n === 1 ? "activity" : "activities"}` : "nothing planned"}${problems ? `, ${problems} to sort out` : ""}`;
-        return html`<button
-          type="button"
-          class="day-tile ${d.date === today ? "today" : ""}"
-          data-date=${d.date}
-          aria-label=${label}
-          @click=${() => this.goToDay(d.date)}
-        >
-          <span class="dt-wd">${d.date === today ? "Today" : shortDay(d.date)}</span>
-          <span class="dt-num">${Number(d.date.slice(8))}</span>
-          <span class="dt-dots" aria-hidden="true">
-            ${dots.length
-              ? dots.map((c) => html`<span class="dt-dot" style="background:${c}"></span>`)
-              : html`<span class="dt-free">free</span>`}
-            ${n > 6 ? html`<span class="dt-more">+${n - 6}</span>` : nothing}
-          </span>
-          ${problems ? html`<span class="dt-badge" aria-hidden="true">${problems}</span>` : nothing}
-        </button>`;
-      })}
-    </nav>`;
+    const shown = this.railShown;
+    return html`<div
+      class="rail-wrap ${shown ? "out" : ""}"
+      @pointerenter=${() => {
+        this.railHeld = true;
+      }}
+      @pointerleave=${() => {
+        this.railHeld = false;
+      }}
+    >
+      <button
+        type="button"
+        class="rail-tab"
+        aria-label="Show the days of the week"
+        aria-expanded=${shown ? "true" : "false"}
+        tabindex=${shown ? -1 : 0}
+        @click=${() => this.showRail(4000)}
+      >
+        <span aria-hidden="true"></span>
+      </button>
+      <nav class="rail" aria-label="Days" ?inert=${!shown}>
+        ${plan.days.map((d) => {
+          const problems = problemCount(d);
+          const n = d.events.length;
+          const dots = d.events.slice(0, 4).map((e) => (e.own ? OWN_COLOR.color : (colors.get(e.kid)?.color ?? kidColor(0).color)));
+          const label = `${dayLabel(d.date)}: ${n ? `${n} ${n === 1 ? "activity" : "activities"}` : "nothing planned"}${problems ? `, ${problems} to sort out` : ""}`;
+          return html`<button
+            type="button"
+            class="rail-day ${d.date === today ? "today" : ""} ${d.date === this.pinDay ? "here" : ""}"
+            aria-label=${label}
+            aria-current=${d.date === this.pinDay ? "date" : "false"}
+            @click=${() => {
+              this.goToDay(d.date, true);
+              this.showRail();
+            }}
+          >
+            <span class="rd-wd">${d.date === today ? "Today" : shortDay(d.date)}</span>
+            <span class="rd-num">${Number(d.date.slice(8))}</span>
+            <span class="rd-dots" aria-hidden="true">
+              ${dots.length ? dots.map((c) => html`<span class="rd-dot" style="background:${c}"></span>`) : html`<span class="rd-free">free</span>`}
+            </span>
+            ${problems ? html`<span class="rd-badge" aria-hidden="true">${problems}</span>` : nothing}
+          </button>`;
+        })}
+      </nav>
+    </div>`;
+  }
+
+  /** A small button back to today, or to now, once the board has scrolled away from it. */
+  private renderBackToToday(away: string): TemplateResult {
+    const [dir, what] = away.split("|") as ["up" | "down", string];
+    return html`<button type="button" class="back-today" @click=${() => this.scrollToNow(true)}>
+      ${svg`<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style=${dir === "down" ? "transform:rotate(180deg)" : ""}><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg>`}
+      <span>${what === "Now" ? "Back to now" : "Today"}</span>
+    </button>`;
   }
 
   /** Nothing on any kid's calendar all week: say so, and how things get here. */
@@ -1264,13 +1381,23 @@ export class MyDashLightBoard extends LitElement {
     return html`<div class="empty-state"><p class="big">Loading the week…</p></div>`;
   }
 
-  /** A day's heading: the date line, with its all-day row glued under it. */
-  private renderHead(d: DayHead): TemplateResult {
+  /**
+   * A day's heading: the date line, with its all-day row glued under it. Tapping the date goes to
+   * that day and brings out the others. The pinned copy is a stand-in for the real heading, so it
+   * isn't a stop for the keyboard.
+   */
+  private renderHead(d: DayHead, pinned = false): TemplateResult {
     return html`<div class="dh-line">
-        <span class="label">${d.label}</span>${d.tag ? html`<span class="tag">${d.tag}</span>` : nothing}<span
-          class="sub ${d.warn ? "warn" : ""}"
-          >${d.sub}</span
+        <button
+          type="button"
+          class="dh-jump"
+          tabindex=${pinned ? -1 : 0}
+          aria-label=${`${d.label}: go to this day`}
+          @click=${() => this.tapHead(d.date)}
         >
+          <span class="label">${d.label}</span>${d.tag ? html`<span class="tag">${d.tag}</span>` : nothing}
+        </button>
+        <span class="sub ${d.warn ? "warn" : ""}">${d.sub}</span>
       </div>
       ${d.allDay.length
         ? html`<div class="day-strip" style="padding-left:${GUTTER}px">
@@ -1312,7 +1439,9 @@ export class MyDashLightBoard extends LitElement {
         @pointerup=${this.onUp}
         @pointercancel=${this.onUp}
         @click=${this.onClickCapture}
-        @scroll=${() => this.syncDay()}
+        @scroll=${this.onScroll}
+        @wheel=${this.touchListener}
+        @touchstart=${this.touchListener}
       >
         <div class="heads" style="width:${W}px">
           ${b.columns.map(
@@ -1327,7 +1456,7 @@ export class MyDashLightBoard extends LitElement {
         </div>
         ${pinned
           ? html`<div class="pinned" aria-hidden="true" style="width:${W}px;height:${pinned.h}px;margin-bottom:${-pinned.h}px">
-              ${this.renderHead(pinned)}
+              ${this.renderHead(pinned, true)}
             </div>`
           : nothing}
         <div class="canvas" style="width:${W}px;height:${Math.max(b.height + 400, 600)}px">

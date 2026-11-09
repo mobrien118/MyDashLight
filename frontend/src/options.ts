@@ -16,6 +16,8 @@ export interface PageOptions {
   page?: Page;
   /** `past=show` keeps events that are over on the board; otherwise they drop off. */
   past?: "show";
+  /** `daypicker=off` leaves out the row of days that slides in at the board's edge while scrolling. */
+  daypicker?: false;
 }
 
 const VIEWS: Record<string, Mode> = {
@@ -35,6 +37,7 @@ export function pageOptions(search: string): PageOptions {
   const page = (q.get("page") ?? "").trim().toLowerCase();
   if (page === "rides" || page === "chores" || page === "lunch") opts.page = page;
   if (["show", "yes", "on", "true", "1"].includes((q.get("past") ?? "").trim().toLowerCase())) opts.past = "show";
+  if (["off", "no", "false", "0", "hide"].includes((q.get("daypicker") ?? "").trim().toLowerCase())) opts.daypicker = false;
   return opts;
 }
 

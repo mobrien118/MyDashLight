@@ -92,6 +92,7 @@ Add these to the address you give the setup:
 | `?page=chores` | Opens on the chores board instead of rides. |
 | `?keyboard=off` | Hides the on-screen keyboard, for a screen with a real keyboard. |
 | `?cursor=show` | Keeps the mouse pointer on screen. Otherwise it hides after 3 seconds without movement. |
+| `?daypicker=off` | Leaves out the week's days that slide out at the board's edge while scrolling. |
 
 Combine them with `&`, for example `.../mydashlight-kitchen?view=compact&keyboard=off`.
 

@@ -232,13 +232,22 @@ top edge. Today's heading counts what's left ("2 activities left", or "All done 
 before today go altogether, and all-day events stay until their day is over. Nothing that's over
 asks for attention any more. Add `?past=show` to the address to keep everything on the board.
 
+There's no row of day buttons taking up the top of the screen: the board is one long scroll
+through the week, with each day's heading pinned at the top as you go. Swipe (or drag, or use the
+mouse wheel) to move through the days. While the board is moving, the week's days slide out at its
+right edge, each with dots for what's on and a red count for what needs sorting out; tap one to go
+straight there. They tuck away a moment later, leaving a small tab beside the board to pull them
+out again. Tapping a day's date also goes to that day and brings out the others. Once you've moved
+off today (or, in Timeline, well away from now), a **Today** button appears at the bottom to jump
+back. Add `?daypicker=off` to the address to leave out the days at the edge.
+
 A **Rides | Chores** switch at the top flips between this board and the chores board (see
 [Chores on the board](#chores-on-the-board)).
 
 The **Needs attention** list shows chores that are overdue or due today, then ride problems in the next 48 hours (no driver, late, a kid
 waiting, a parent still at work, a kid double-booked) with the suggested fixes, plus heads-ups
-for today and tomorrow. Problems later in the week show as a red count on their day in the top
-bar. Tap any activity, car or trip to change who drives each way, whether the driver
+for today and tomorrow. Problems later in the week show in red on their day's heading ("1 to sort
+out") and as a red count on that day at the board's edge. Tap any activity, car or trip to change who drives each way, whether the driver
 stays, who's taken along, and the arrive-by time. A repeating activity asks whether to change just
 that day or every time. If a kid is skipping one, tap **Not attending**: it stays on the board,
 crossed out, with no rides planned, and it no longer counts as a clash. When a kid is
@@ -288,6 +297,7 @@ Either address can pick the view it opens in, so each screen can have its own:
 | `?page=chores` | The chores board instead of rides |
 | `?page=lunch` | The Lunch tab instead of rides |
 | `?past=show` | Keeps activities and trips that are over on the board, for checking what happened |
+| `?daypicker=off` | Leaves out the week's days that slide out at the board's edge while scrolling |
 
 For example, `<your Home Assistant URL>/mydashlight-kitchen?view=compact`, or
 `?page=chores&view=compact` for both. You can still switch by tapping; the kitchen screen goes back
