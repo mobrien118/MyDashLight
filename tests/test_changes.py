@@ -130,6 +130,27 @@ async def test_someone_else_edits_at_the_same_time(hass: HomeAssistant, google: 
     assert err.value.translation_key == "write_conflict"
 
 
+async def test_a_change_shows_while_google_lists_it_as_it_was(
+    hass: HomeAssistant, google: FakeGoogle, freezer: FrozenDateTimeFactory
+) -> None:
+    # Marty, 2026-11-09: a driver typed in for tonight went back to nobody on the board, and
+    # only showed up a minute later. Google's list of events can lag a change just saved.
+    entry = await load(hass)
+    google.lag_lists()
+
+    await call(hass, "set_ride", event="piano", side="pick", driver="Grandma")
+
+    assert google.event(FAMILY, "piano")["description"].endswith("Pick-up: Grandma")
+    assert planned(entry, "piano")["pick"] == "Grandma"
+    # It stays while the list is behind, then Google's own copy takes over.
+    await entry.runtime_data.coordinator.async_refresh()
+    assert planned(entry, "piano")["pick"] == "Grandma"
+    google.catch_up()
+    await entry.runtime_data.coordinator.async_refresh()
+    assert planned(entry, "piano")["pick"] == "Grandma"
+    assert entry.runtime_data.coordinator._saved == {}
+
+
 def lessons(google: FakeGoogle) -> None:
     """Swim lessons every day this week. Thursday's was changed by itself."""
     google.add_series(FAMILY, id="swim", summary="Ben Swim", description="Goggles.")

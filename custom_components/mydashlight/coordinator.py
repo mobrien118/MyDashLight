@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 import logging
+import time
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
@@ -16,6 +17,7 @@ from .changes import Target
 from .const import DOMAIN, DRIVERS, PLAN_DAYS, UPDATE_SECONDS
 from .google import (
     CalendarEvent,
+    EventNotes,
     GoogleApiDisabled,
     GoogleAuthError,
     GoogleCalendarApi,
@@ -34,6 +36,9 @@ if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
+
+SAVED_GRACE_SECONDS = 180
+"""How long a saved change is shown over what Google lists, while its list catches up."""
 
 
 @dataclass(slots=True)
@@ -85,6 +90,34 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         self.settings = settings
         self.lookups = lookups
         self._unavailable: set[str] = set()
+        self._saved: dict[tuple[str, str], tuple[EventNotes, float]] = {}
+        """Notes this saved lately, by calendar and event id, with when (monotonic seconds)."""
+
+    def note_saved(self, saved: list[tuple[str, EventNotes]]) -> None:
+        """Remember notes just saved, so the next reads show them even if Google's list of
+        events is a moment behind (it can be, right after a change)."""
+        now = time.monotonic()
+        for calendar_id, notes in saved:
+            self._saved[(calendar_id, notes.id)] = (notes, now)
+
+    def _with_saved(self, events: list[CalendarEvent]) -> list[CalendarEvent]:
+        """``events`` with the notes saved lately in place of older ones Google still lists."""
+        if not self._saved:
+            return events
+        now = time.monotonic()
+        self._saved = {k: v for k, v in self._saved.items() if now - v[1] < SAVED_GRACE_SECONDS}
+        out = []
+        for e in events:
+            found = self._saved.get((e.calendar_id, e.id))
+            if found is not None:
+                notes = found[0]
+                if e.etag == notes.etag:
+                    # Google lists it as saved now.
+                    del self._saved[(e.calendar_id, e.id)]
+                else:
+                    e = replace(e, description=notes.description, title=notes.title or e.title, etag=notes.etag)
+            out.append(e)
+        return out
 
     async def _async_update_data(self) -> PlanData:
         tz = dt_util.get_default_time_zone()
@@ -109,6 +142,7 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
                     translation_placeholders={"error": str(err)},
                 ) from err
         self._note_unavailable(unavailable)
+        events = self._with_saved(events)
 
         settings = self.settings
         split = split_events(events, settings.people, tz)

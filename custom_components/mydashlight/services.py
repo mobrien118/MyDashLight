@@ -45,7 +45,7 @@ from .const import (
     SERVICE_SET_TAKES,
 )
 from .coordinator import target_for
-from .google import GoogleAuthError, GoogleCalendarUnavailable, GoogleConflict, GoogleError
+from .google import EventNotes, GoogleAuthError, GoogleCalendarUnavailable, GoogleConflict, GoogleError
 from .notes import KEEP, Keep
 from .planner import HOME
 
@@ -226,10 +226,17 @@ async def _async_change_event(
     target = target_for(ride, ref)
     series = ref.recurring_id if call.data.get(ATTR_SCOPE) == SCOPE_SERIES else None
     also = coordinator.occurrences(ref.calendar_id, series) if series else []
+    saved: list[tuple[str, EventNotes]] = []
     async with entry.runtime_data.write_lock:
         try:
             written = await async_save(
-                entry.runtime_data.api, coordinator.settings.directory, target, change, series=series, also=also
+                entry.runtime_data.api,
+                coordinator.settings.directory,
+                target,
+                change,
+                series=series,
+                also=also,
+                saved=saved,
             )
         except GoogleAuthError as err:
             entry.async_start_reauth(call.hass)
@@ -247,4 +254,5 @@ async def _async_change_event(
                 translation_domain=DOMAIN, translation_key="write_failed", translation_placeholders={"error": str(err)}
             ) from err
         if written:
+            coordinator.note_saved(saved)
             await coordinator.async_refresh()
