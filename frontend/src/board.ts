@@ -86,6 +86,7 @@ import {
   type LunchPayload,
 } from "./lunch.ts";
 import { pageOptions, type Page } from "./options.ts";
+import { withoutPast } from "./past.ts";
 import { styles } from "./styles.ts";
 import type { Plan, PlanDay, PlanEvent, Scope, Side } from "./types.ts";
 
@@ -307,6 +308,9 @@ export class MyDashLightBoard extends LitElement {
   private readonly urlView = pageOptions(location.search).view;
   /** The page this screen's address asks for, if any. */
   private readonly urlPage = pageOptions(location.search).page;
+  /** `?past=show` keeps what's over on the board. */
+  private readonly urlPast = pageOptions(location.search).past;
+  private shownFor: { plan: Plan; key: string; shown: Plan } | null = null;
   private stopChores: (() => void) | null = null;
   private stopLunch: (() => void) | null = null;
   private scrolledOnce = false;
@@ -476,23 +480,50 @@ export class MyDashLightBoard extends LitElement {
     return nowIn(this.plan?.time_zone ?? localZone());
   }
 
-  private currentBoard(): Board | null {
+  /** The plan as the board shows it: what's over left off, unless the address says to keep it. */
+  private shownPlan(): Plan | null {
     const plan = this.plan;
+    if (!plan || this.urlPast === "show") return plan;
+    const today = this.today();
+    const key = `${today.date}|${today.minutes}`;
+    if (this.shownFor?.plan !== plan || this.shownFor.key !== key) this.shownFor = { plan, key, shown: withoutPast(plan, today) };
+    return this.shownFor.shown;
+  }
+
+  private currentBoard(): Board | null {
+    const plan = this.shownPlan();
     if (!plan) return null;
     const today = this.today();
     const key = `${this.mode}|${this.boardWidth}|${today.date}|${today.minutes}`;
     if (this.board == null || plan !== this.boardPlan || key !== this.boardKey) {
+      const old = this.board;
+      const oldPlan = this.boardPlan;
       this.board = layout(plan, this.mode, this.boardWidth, today);
       this.boardPlan = plan;
       this.boardKey = key;
+      if (old && oldPlan) this.keepPlace(old, oldPlan, plan);
     }
     return this.board;
+  }
+
+  /**
+   * Keeps the same moment on screen when the board is drawn again: something over dropping off
+   * above it, or a new plan coming in, would otherwise move everything under the viewer's eyes.
+   */
+  private keepPlace(old: Board, oldPlan: Plan, plan: Plan): void {
+    const el = this.scroller;
+    if (!el || !this.scrolledOnce || this.keepAt != null || old.mode !== this.mode || el.scrollTop <= 0) return;
+    const pinned = old.dayHeads.find((h) => h.date === this.pinDay)?.h ?? DAY_HEAD;
+    const t = tAt(old, el.scrollTop + pinned + 4);
+    const date = oldPlan.days[Math.floor(t / 1440)]?.date;
+    const i = date ? plan.days.findIndex((d) => d.date === date) : -1;
+    if (i >= 0) this.keepAt = i * 1440 + (t - Math.floor(t / 1440) * 1440);
   }
 
   // Scrolling
 
   private dayIndexOf(date: string): number {
-    return this.plan ? this.plan.days.findIndex((d) => d.date === date) : -1;
+    return this.boardPlan ? this.boardPlan.days.findIndex((d) => d.date === date) : -1;
   }
 
   /**
@@ -504,23 +535,26 @@ export class MyDashLightBoard extends LitElement {
     const el = this.scroller;
     if (!el || !this.board) return;
     const head = this.board.dayHeads.find((h) => h.date === date)?.y ?? 0;
-    el.scrollTop = Math.max(head, yAt(this.board, t) - headAt(this.board, t) - 4);
+    const top = Math.max(head, yAt(this.board, t) - headAt(this.board, t) - 4);
+    // Left alone when it's already there, so a redraw doesn't stop a scroll that's under way.
+    if (Math.abs(el.scrollTop - top) >= 2) el.scrollTop = top;
     this.syncDay();
   }
 
   private scrollToNow(): void {
-    if (!this.plan) return;
+    const plan = this.boardPlan;
+    if (!plan) return;
     const today = this.today();
     const i = Math.max(0, this.dayIndexOf(today.date));
     this.scrollToTime(
       i * 1440 + (this.mode === "timeline" && i === this.dayIndexOf(today.date) ? today.minutes - 45 : 0),
-      this.plan.days[i]?.date,
+      plan.days[i]?.date,
     );
   }
 
   /** Jumps to a day: to now if it's today, else to its first activity or trip. */
   private goToDay(date: string): void {
-    const plan = this.plan;
+    const plan = this.boardPlan;
     if (!plan) return;
     const today = this.today();
     if (date === today.date) {
@@ -917,8 +951,10 @@ export class MyDashLightBoard extends LitElement {
   override render(): TemplateResult {
     const plan = this.plan;
     const board = this.currentBoard();
-    const att: Attention = plan
-      ? attention(plan, this.today())
+    // Without what's over, so nothing that's already done asks for attention.
+    const shown = this.shownPlan();
+    const att: Attention = shown
+      ? attention(shown, this.today())
       : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
     const wide = this.wide;
     const todo = this.chores ? choresNeedingAttention(this.chores, this.today().minutes).filter((c) => !this.choreDone(c)) : [];
@@ -949,7 +985,7 @@ export class MyDashLightBoard extends LitElement {
     return html`
       <div class="app ${wide ? "wide" : this.width < PHONE ? "narrow phone" : "narrow"}">
         <div class="col">
-          ${this.renderHeader(plan, att, todo.length)} ${rides && plan ? this.renderWeek(plan) : nothing}
+          ${this.renderHeader(plan, att, todo.length)} ${rides && shown ? this.renderWeek(shown) : nothing}
           ${rides ? this.renderBanner(plan) : nothing}
           <main>
             ${rides
@@ -1380,7 +1416,7 @@ export class MyDashLightBoard extends LitElement {
                 : `linear-gradient(rgba(${k.rgb},0.15), rgba(${k.rgb},0.15)), var(--surface)`;
               return html`<button
                 type="button"
-                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""} ${x.skipped ? "skipped" : ""}"
+                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""} ${x.skipped ? "skipped" : ""} ${x.cut ? "cut" : ""}"
                 aria-label=${x.aria}
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : `rgba(${k.rgb},0.45)`};--c:${k.color};--rgb:${k.rgb};--ring:${k.color}"
                 @click=${() => this.open(x.target)}
@@ -1400,7 +1436,7 @@ export class MyDashLightBoard extends LitElement {
             (x) =>
               html`<button
                 type="button"
-                class="stay"
+                class="stay ${x.cut ? "cut" : ""}"
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;border-color:${x.color.color};background:repeating-linear-gradient(135deg, rgba(${x.color.rgb},0.28) 0px, rgba(${x.color.rgb},0.28) 5px, #fff 5px, #fff 10px)"
                 @click=${() => this.open(x.target)}
               >

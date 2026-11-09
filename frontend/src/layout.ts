@@ -76,6 +76,8 @@ export interface CardBox extends Box {
   showPick: boolean;
   /** Lines wrap (Compact) instead of being cut off. */
   wrap: boolean;
+  /** Under way at the top of today: it started before the time shown, which is over. */
+  cut?: boolean;
   aria: string;
   layer?: number;
 }
@@ -121,6 +123,8 @@ export interface TripBox extends Box {
 
 export interface StayBox extends Box {
   target: Target | null;
+  /** Under way at the top of today, as on a card. */
+  cut?: boolean;
   color: KidColor;
   l1: string;
   l2: string;
@@ -411,8 +415,10 @@ export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX
   const kidW = Math.floor(unit);
   const driverW = Math.floor(unit * DRIVER_SHARE);
 
+  // The week's totals count what's over too; only "Needs a ride" is about what's still to come.
+  const week = plan.whole_week ?? plan.days;
   const weekEvents = new Map<string, PlanEvent[]>();
-  for (const d of plan.days) {
+  for (const d of week) {
     for (const e of d.events) {
       for (const who of e.own ? e.along : [e.kid]) {
         const list = weekEvents.get(who) ?? [];
@@ -450,7 +456,7 @@ export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX
   drivers.forEach((d, i) => {
     let trips = 0;
     let mins = 0;
-    for (const day of plan.days) {
+    for (const day of week) {
       const dd = day.drivers[d];
       if (!dd) continue;
       trips += dd.outings.length;
@@ -677,8 +683,11 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       label: dayLabel(day.date),
       tag,
       sub:
-        (count ? `${count} ${count === 1 ? "activity" : "activities"}` : "Nothing scheduled") +
-        (problems ? ` · ${problems} to sort out` : ""),
+        (count
+          ? `${count} ${count === 1 ? "activity" : "activities"}${day.done ? " left" : ""}`
+          : day.done
+            ? "All done for today"
+            : "Nothing scheduled") + (problems ? ` · ${problems} to sort out` : ""),
       warn: problems > 0,
       h: DAY_HEAD + (strip ? strip.h + ALL_DAY_GAP + 2 : 0),
       allDay: strip?.chips ?? [],
@@ -689,7 +698,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
 
     const outings = drivers.flatMap((d) => day.drivers[d]?.outings ?? []);
     if (!count && !outings.length) {
-      board.empties.push({ key: day.date, y: top, text: "Nothing planned" });
+      board.empties.push({ key: day.date, y: top, text: day.done ? "Nothing else today" : "Nothing planned" });
       y = top + 40;
       board.anchors.push({ t: base + 1439, y });
       return;
@@ -804,11 +813,18 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         if (o.start != null) lo = Math.min(lo, o.start);
         if (o.end != null) hi = Math.max(hi, o.end);
       }
-      if (day.date === today.date && Number.isFinite(lo) && today.minutes > lo - 60 && today.minutes < hi) {
+      // With what's over left off, today starts just before now: whatever is under way runs in
+      // from the top, cut off where the time before is over.
+      const from = day.from;
+      if (from != null && Number.isFinite(lo) && lo < from + 60) lo = from - 15;
+      else if (day.date === today.date && Number.isFinite(lo) && today.minutes > lo - 60 && today.minutes < hi) {
         lo = Math.min(lo, today.minutes - 15);
       }
       const r0 = Number.isFinite(lo) ? Math.floor((lo - 5) / 30) * 30 : 900;
-      const r1 = Number.isFinite(hi) ? Math.ceil((hi + 5) / 30) * 30 : 960;
+      const r1 = Math.max(Number.isFinite(hi) ? Math.ceil((hi + 5) / 30) * 30 : 960, r0 + 60);
+      // Still on the board but over before the top (an event whose trip home is still going).
+      const above = (end: number | null | undefined): boolean => from != null && n(end) <= r0;
+      const cut = (start: number | null | undefined): boolean => from != null && n(start) < r0;
       const Y = (t: number): number => Math.round(top + (Math.max(r0, Math.min(r1, t)) - r0) * PPM);
       board.anchors.push({ t: base + r0, y: Y(r0) }, { t: base + r1, y: Y(r1) });
 
@@ -816,7 +832,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         const c = col.get(kid)!;
         const color = colors.get(kid)!;
         const items: { item: KidItem; s: number; en: number }[] = (day.kids[kid]?.items ?? [])
-          .filter((it) => it.start != null && it.end != null)
+          .filter((it) => it.start != null && it.end != null && !above(it.end))
           .map((it) => ({ item: it, s: n(it.start), en: n(it.end) }));
         // What's drawn in this column, to join each car box to whatever it's going to.
         type Piece = {
@@ -844,8 +860,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             const h = Math.max(30, Y(p.en) - y0);
             const card = cardFor(e, ix, y0, iw, h, it.clash, false, kid);
             card.layer = MAIN_LAYER;
+            card.cut = cut(p.s);
             board.cards.push(card);
-            if (e.arrive_by != null && e.start - e.arrive_by >= 5) {
+            if (e.arrive_by != null && e.start - e.arrive_by >= 5 && !card.cut) {
               const py = Y(e.arrive_by);
               const prep: PrepBox = {
                 key: `${day.date}|prep|${e.id}`,
@@ -994,6 +1011,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           drawn.add(e.id);
           const y0 = Y(s);
           const card = cardFor(e, c.x + 8, y0, c.w - 16, Math.max(30, Y(en) - y0), false, false, d);
+          card.cut = cut(s);
           // The trip box just above already says when they leave.
           if (onTrip && card.drop?.tone === "normal") {
             card.drop = null;
@@ -1002,6 +1020,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           board.cards.push(card);
         };
         for (const piece of pieces) {
+          if (above(piece.en)) continue;
           const y0 = Y(piece.s);
           const h = Math.max(24, Y(piece.en) - y0);
           if (piece.type === "stay") {
@@ -1014,6 +1033,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             const color = e ? colors.get(e.kid) ?? kidColor(0) : kidColor(0);
             const others = piece.g.kids.map(nameOfKid);
             board.stays.push({
+              cut: cut(piece.s),
               key: `${day.date}|stay|${d}|${piece.s}`,
               x: c.x + 8,
               y: y0,
@@ -1058,7 +1078,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           for (const b of dd.busy) {
             const s = Math.max(g.start, b.start);
             const en = Math.min(g.end, b.end);
-            if (en <= s) continue;
+            if (en <= s || above(en)) continue;
             board.overlaps.push({
               key: `${day.date}|overlap|${d}|${s}`,
               x: c.x + 6,
@@ -1071,8 +1091,8 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         for (const e of day.events) {
           if (e.own !== d) continue;
           // Not going, or an errand that didn't fit: still on the board, to change it.
-          if (!drawn.has(e.id)) ownCard(e, ...ownSpan(e), false);
-          if (e.takes != null && e.attending !== false) {
+          if (!drawn.has(e.id) && !above(ownSpan(e)[1])) ownCard(e, ...ownSpan(e), false);
+          if (e.takes != null && e.attending !== false && !above(e.end)) {
             const wy = Y(e.start);
             board.windows.push({
               key: `${day.date}|window|${e.id}`,

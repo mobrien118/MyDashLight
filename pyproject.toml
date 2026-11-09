@@ -1,6 +1,6 @@
 [project]
 name = "mydashlight"
-version = "0.19.5"
+version = "0.19.6"
 description = "MyDashLight: a kitchen family planner built on Home Assistant and Google Calendar"
 requires-python = ">=3.13"
 

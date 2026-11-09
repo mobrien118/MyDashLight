@@ -225,6 +225,13 @@ the top:
 - **Timeline** spaces everything by the clock, so overlaps and tight handoffs are easy to see.
 - **Compact** drops the time scale: everything sits in start order, with each trip's stops listed.
 
+What's over drops off, so more of the week fits on screen. An activity stays until it has ended
+and the drive home is done; a trip, a car ride or a busy time goes once it ends. In Timeline, today
+starts just before now, and anything already under way runs in from the top with an open (dashed)
+top edge. Today's heading counts what's left ("2 activities left", or "All done for today"), days
+before today go altogether, and all-day events stay until their day is over. Nothing that's over
+asks for attention any more. Add `?past=show` to the address to keep everything on the board.
+
 A **Rides | Chores** switch at the top flips between this board and the chores board (see
 [Chores on the board](#chores-on-the-board)).
 
@@ -280,6 +287,7 @@ Either address can pick the view it opens in, so each screen can have its own:
 | `?view=compact` | Compact |
 | `?page=chores` | The chores board instead of rides |
 | `?page=lunch` | The Lunch tab instead of rides |
+| `?past=show` | Keeps activities and trips that are over on the board, for checking what happened |
 
 For example, `<your Home Assistant URL>/mydashlight-kitchen?view=compact`, or
 `?page=chores&view=compact` for both. You can still switch by tapping; the kitchen screen goes back
