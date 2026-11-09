@@ -74,6 +74,8 @@ def test_lanes() -> None:
     }
     assert split.unplaced == []
     assert split.day_items == []
+    # Dad goes with the kids, so he takes them unless the notes say otherwise.
+    assert split.escorts == {"donuts": ("dad",)}
 
 
 def test_all_day_events_go_across_the_top() -> None:

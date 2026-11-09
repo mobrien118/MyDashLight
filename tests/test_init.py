@@ -156,6 +156,35 @@ async def test_one_family_calendar(hass: HomeAssistant, google: FakeGoogle) -> N
     assert [(u["id"], u["reason"]) for u in today["unplaced"]] == [("bid", "nobody")]
 
 
+async def test_a_parent_named_with_the_kids_takes_them(hass: HomeAssistant, google: FakeGoogle) -> None:
+    shop = {"location": "Donut Shop, 1 Main St"}
+    google.add(
+        FAMILY,
+        **timed("donuts", "Sam, Ava & Ben Donuts", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00", **shop),
+    )
+    google.add(FAMILY, **timed("call", "Sam & Ben Call", "2026-11-03T12:00:00-06:00", "2026-11-03T13:00:00-06:00"))
+    await load(hass)
+
+    (today,) = (await get_plan(hass))["days"]
+    lines = {
+        e["id"]: (e["drop"], e["pick"], e["lines"]["drop"]["text"], e["lines"]["pick"]["text"])
+        for e in today["events"]
+        if e["title"] == "Donuts"
+    }
+    # Sam takes them both, in one car, and stays.
+    assert lines == {
+        "donuts": ("dad", "dad", "Sam stays · leaves 5:38", "Home 7:15 with Sam"),
+        "donuts~2": ("dad", "dad", "Sam stays · leaves 5:38", "Home 7:15 with Sam"),
+    }
+    dad = today["drivers"]["dad"]
+    assert [o["title"] for o in dad["outings"]] == ["Drive Ava and Ben to Donut Shop and stay"]
+    assert today["issues"] == []
+    # Taking them isn't busy time on top. A call can happen anywhere, so it needs no ride.
+    assert [b["title"] for b in dad["busy"]] == ["Call"]
+    (call,) = [e for e in today["events"] if e["title"] == "Call"]
+    assert (call["drop"], call["pick"]) == ("none", "none")
+
+
 async def test_until_the_family_calendar_is_picked(hass: HomeAssistant, google: FakeGoogle) -> None:
     await load(hass, make_entry({**OPTIONS, "events_calendar": None}))
     plan = await get_plan(hass)

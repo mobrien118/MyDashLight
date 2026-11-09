@@ -261,6 +261,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         lines: list[str] = []
         kids: list[str] = []
         jobs: list[tuple[str, str, list[str]]] = []
+        job_event: str | None = None
         riders: dict[str, str] = {}
         name = labels.driver(d)
         first = o.legs[0]
@@ -291,10 +292,18 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 for x in s.car:
                     riders.setdefault(x, f"{name} picks you up at home at {fmt12(s.arrive)}")
             if s.kind in ("drop", "stay", "pick") and k:
-                if jobs and jobs[-1][0] == s.kind and jobs[-1][1] == place:
-                    jobs[-1][2].append(k)
+                prev = jobs[-1] if jobs and jobs[-1][1] == place else None
+                same = prev is not None and s.event is not None and job_event == same_event(s.event.id)
+                if prev is not None and prev[0] == s.kind:
+                    prev[2].append(k)
+                elif prev is not None and same and (prev[0], s.kind) == ("drop", "stay"):
+                    # Kids at the same event, and the driver stays: "take Ava and Ben to ... and stay".
+                    jobs[-1] = ("stay", place, [*prev[2], k])
+                elif prev is not None and same and prev[0] == "stay" and s.kind == "pick" and k in prev[2]:
+                    pass
                 else:
                     jobs.append((s.kind, place, [k]))
+                job_event = same_event(s.event.id) if s.event is not None else None
             if s.event is not None and s.kind in ("drop", "stay", "pick"):
                 # The other parent riding along hears when they leave too.
                 for x in s.event.pick_parents if s.kind == "pick" else s.event.parents:
@@ -395,6 +404,11 @@ def _outing_title(jobs: list[tuple[str, str, list[str]]]) -> str:
     return text[0].upper() + text[1:]
 
 
+def same_event(ride_id: str) -> str:
+    """The calendar event a ride event is a copy of: "dentist~2" is the second kid's "dentist"."""
+    return ride_id.split("~", 1)[0]
+
+
 def _and(names: list[str]) -> str:
     return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
 
@@ -410,17 +424,22 @@ def _card_lines(
     for e in events:
         there: Ride | None = None
         back: Ride | None = None
+        # Kids at the same event ride together, on rides that serve the first kid's copy, and
+        # only the last copy holds the driver's wait.
+        twins = [x for x in events if e.own is None and x.own is None and same_event(x.id) == same_event(e.id)]
+        twin_ids = {x.id for x in twins} | {e.id}
+        stays = e.stay or any(x.stay and (x.drop, x.pick) == (e.drop, e.pick) for x in twins)
         for r in rides:
-            if r.kid != e.kid or not r.own:
+            if r.kid != e.kid or not (r.own or len(twin_ids) > 1):
                 continue
-            if not any(g.serves is not None and g.serves.id == e.id for g in r.legs):
+            if not any(g.serves is not None and g.serves.id in twin_ids for g in r.legs):
                 continue
             if r.start < e.start:
                 there = r
             else:
                 back = r
 
-        def line(side: str, r: Ride | None, e: RideEvent = e) -> CardLine | None:
+        def line(side: str, r: Ride | None, e: RideEvent = e, stays: bool = stays) -> CardLine | None:
             v = e.drop if side == "drop" else e.pick
             if v == NOT_NEEDED:
                 return None
@@ -443,7 +462,7 @@ def _card_lines(
             if side == "drop":
                 first = r.legs[0]
                 from_home = first.type == "drive" and first.from_loc == HOME
-                if e.stay:
+                if stays:
                     return CardLine(f"{name} stays · leaves {fmt(r.start)}{extra}", tone)
                 lead = f"Leaves {fmt(r.start)} with " if from_home else "With "
                 return CardLine(lead + name + extra, tone)
@@ -464,10 +483,9 @@ def _card_lines(
         if e.drop == NOT_NEEDED and e.pick == NOT_NEEDED:
             out[e.id] = CardLines(CardLine("No ride needed", "muted"), None)
             continue
-        if e.stay and e.drop in drivers:
-            pick = line("pick", back) if back is not None else None
-        else:
-            pick = line("pick", back)
+        # Staying, the pick-up line only shows once there's a drive home to time.
+        waits = stays and e.drop in drivers and back is None
+        pick = None if waits else line("pick", back)
         out[e.id] = CardLines(line("drop", there), pick)
     return out
 

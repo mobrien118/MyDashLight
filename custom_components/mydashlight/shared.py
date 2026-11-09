@@ -90,6 +90,9 @@ class Split:
     """Each person's timed events, by kid id or driver id."""
     day_items: list[DayItem] = field(default_factory=list)
     unplaced: list[Unplaced] = field(default_factory=list)
+    escorts: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    """The parents a kid's event also names, by event id, in title order: "Sam, Ben & Cleo
+    Donuts" means Sam takes them, so Sam drives both ways unless the notes say otherwise."""
 
     def day_items_on(self, day: date) -> list[DayItem]:
         return [i for i in self.day_items if i.first <= day <= i.last]
@@ -131,6 +134,9 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
             shown = lane_title(who)
             for pid in who.people:
                 out.lanes[pid].append(replace(ev, title=shown))
+            parents = tuple(p for p in who.people if p in people.parents)
+            if parents and any(p in people.kids for p in who.people):
+                out.escorts[ev.id] = parents
     return out
 
 

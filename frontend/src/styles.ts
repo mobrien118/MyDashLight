@@ -805,6 +805,7 @@ export const styles = css`
   .hour {
     left: 0;
     width: 52px;
+    white-space: nowrap;
     font-size: 12px;
     line-height: 16px;
     font-weight: 600;

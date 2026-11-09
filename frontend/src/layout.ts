@@ -6,7 +6,7 @@
 // only draws them.
 
 import { DRIVER_DOT, DRIVER_RGB, kidColor, type KidColor } from "./colors.ts";
-import { clock, dayLabel, daysBetween, duration, hourLabel, shortDay } from "./format.ts";
+import { clock, clockAmPm, dayLabel, daysBetween, duration, hourLabel, shortDay } from "./format.ts";
 import type { BusyBlock, CardLine, KidItem, Plan, PlanDay, PlanEvent, Segment, UnplacedEvent } from "./types.ts";
 
 export type Mode = "timeline" | "compact";
@@ -537,10 +537,73 @@ export function rideLines(h: number): number {
   return Math.max(0, Math.min(RIDE_MAX_LINES, Math.floor((h - RIDE_CHROME) / RIDE_LINE)));
 }
 
-/** A Compact "along with" box tall enough for its route, wrapped, up to three lines. */
-export function alongHeight(route: string, colW: number): number {
-  const rows = Math.min(RIDE_MAX_LINES, wrapRows(route, colW - 19, 6.6));
-  return RIDE_CHROME + rows * RIDE_LINE + 2;
+/** A Compact "along with" box: one line, on its driver's trip's row. */
+const ALONG_H = RIDE_CHROME + 2;
+/** How much lower each later start time's row begins, at least. */
+const ROW_STEP = 20;
+
+/** The time a trip's last stop line says it's home ("6:01  Home"), or null. */
+function homeAt(lines: string[]): string | null {
+  return /^(\d+:\d\d)\s+Home$/.exec(lines.at(-1) ?? "")?.[1] ?? null;
+}
+
+
+const CAR = "🚗";
+
+type RideBit = { who: string; at: string; stays: boolean; extra: string };
+
+/** A card's ride line, read back into its parts, or null when it isn't one we can shorten. */
+function rideBit(text: string, side: "drop" | "pick"): RideBit | "needed" | null {
+  if (text === (side === "drop" ? "No ride there yet" : "No ride home yet")) return "needed";
+  const bit = (at: string, who: string, extra: string | undefined, stays = false): RideBit => ({
+    at,
+    who,
+    stays,
+    extra: extra ? ` ·${extra.slice(1)}` : "",
+  });
+  let m: RegExpExecArray | null;
+  if (side === "drop") {
+    if ((m = /^Leaves (\d+:\d\d) with (.+?)(, .+)?$/.exec(text))) return bit(m[1]!, m[2]!, m[3]);
+    if ((m = /^(.+?) stays · leaves (\d+:\d\d)(, .+)?$/.exec(text))) return bit(m[2]!, m[1]!, m[3], true);
+    if ((m = /^(?:Drop-off: |Goes with )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
+  } else {
+    if ((m = /^(?:Home (\d+:\d\d) with|Picked up (\d+:\d\d) by) (.+?)(, .+)?$/.exec(text))) return bit(m[1] ?? m[2]!, m[3]!, m[4]);
+    if ((m = /^(?:Pick-up: |Home with )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
+  }
+  return null;
+}
+
+const TONE_RANK: Record<string, number> = { muted: 0, normal: 1, pending: 2, problem: 3 };
+
+/**
+ * A card's ride lines, shortened for Compact into one line: a car, then ↓ for the drop-off and
+ * ↑ for the pick-up, each with its time and driver ("🚗 Sam ↓4:25 ↑6:10" when it's the same
+ * driver both ways). Two rides still needed are "🚗 No rides yet". Lines that aren't rides stay
+ * as they are.
+ */
+export function compactLines(lines: { drop: CardLine | null; pick: CardLine | null }): {
+  drop: CardLine | null;
+  pick: CardLine | null;
+} {
+  const { drop, pick } = lines;
+  const d = drop ? rideBit(drop.text, "drop") : null;
+  const p = pick ? rideBit(pick.text, "pick") : null;
+  // Something that isn't a ride line (no ride needed, at home) stays as it is.
+  if ((drop && !d) || (pick && !p) || (!d && !p)) return lines;
+  const tone = [drop, pick].reduce<CardLine["tone"]>(
+    (t, l) => (l && (TONE_RANK[l.tone] ?? 1) > (TONE_RANK[t] ?? 1) ? l.tone : t),
+    (drop ?? pick)!.tone,
+  );
+  if (d === "needed" && p === "needed") return { drop: { text: `${CAR} No rides yet`, tone }, pick: null };
+  if (d && p && d !== "needed" && p !== "needed" && d.who === p.who && !d.extra && !p.extra) {
+    const who = `${CAR} ${d.who}${d.stays ? " stays" : ""}`;
+    if (!d.at && !p.at) return { drop: { text: `${who} both ways`, tone }, pick: null };
+    return { drop: { text: `${who} ↓${d.at} ↑${p.at}`.trimEnd(), tone }, pick: null };
+  }
+  const part = (b: RideBit | "needed", arrow: string): string =>
+    b === "needed" ? `${arrow} needed` : `${arrow}${b.at ? `${b.at} ` : " "}${b.who}${b.stays ? " stays" : ""}${b.extra}`;
+  const parts = [d ? part(d, "↓") : null, p ? part(p, "↑") : null].filter(Boolean);
+  return { drop: { text: `${CAR} ${parts.join(" · ")}`, tone }, pick: null };
 }
 
 /** A Compact card's height: everything on it shows, wrapped. */
@@ -548,7 +611,8 @@ export function compactCardHeight(e: PlanEvent, colW: number): number {
   const inner = colW - 23; // padding, the color stripe and the border
   const time = `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "");
   let h = 15 + 18 + wrapRows(time, inner, 6.6) * 16;
-  for (const l of [e.lines.drop, e.lines.pick]) if (l) h += 2 + wrapRows(l.text, inner, 7) * 16;
+  const ln = e.own ? e.lines : compactLines(e.lines);
+  for (const l of [ln.drop, ln.pick]) if (l) h += 2 + wrapRows(l.text, inner, 7) * 16;
   return h + 4;
 }
 
@@ -639,7 +703,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       const who = mine ? nameOfDriver(colId) : nameOfKid(colId);
       const ln: { drop: CardLine | null; pick: CardLine | null } = along
         ? { drop: { text: `With ${nameOfDriver(e.own!)}`, tone: e.attending === false ? "muted" : "normal" }, pick: null }
-        : e.lines;
+        : wrap && !e.own
+          ? compactLines(e.lines)
+          : e.lines;
       const going = mine ? alongNames(plan, e) : [];
       const time =
         (e.takes != null
@@ -1041,8 +1107,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       return;
     }
 
-    // Compact: no time scale. Sort everything by start; each box goes as high as its column
-    // allows without rising above anything that starts earlier.
+    // Compact: no time scale, but it reads in time order. Things that start together share a
+    // row; anything later starts lower, with its start time in the margin. A kid riding along
+    // is on the same row as the driver's trip.
     type Item =
       | { col: string; s: number; h: number; kind: "act"; item: KidItem }
       | { col: string; s: number; h: number; kind: "along"; item: KidItem }
@@ -1060,8 +1127,10 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           items.push({ col: kid, s: it.start, h: compactCardHeight(e, c.w), kind: "act", item: it });
         } else if (!day.rides[it.ride ?? -1]?.own) {
           const along = day.rides[it.ride ?? -1];
-          const route = along ? routeOf(legsOf(along.index), names).join(" → ") : "";
-          items.push({ col: kid, s: it.start, h: alongHeight(route, c.w), kind: "along", item: it });
+          const trip = along
+            ? day.drivers[along.driver]?.outings.find((o) => o.start != null && o.start <= n(along.start) && n(along.start) <= n(o.end, o.start))
+            : undefined;
+          items.push({ col: kid, s: trip?.start ?? it.start, h: ALONG_H, kind: "along", item: it });
         }
       }
     }
@@ -1078,19 +1147,42 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       }
       for (const o of dd.outings) {
         if (o.start == null) continue;
-        items.push({ col: d, s: o.start, h: 30 + o.lines.length * 16 + (o.warn ? 16 : 0), kind: "out", out: o });
+        const stops = o.lines.length - (homeAt(o.lines) ? 1 : 0);
+        items.push({ col: d, s: o.start, h: 30 + stops * 16 + (o.warn ? 16 : 0), kind: "out", out: o });
       }
     }
     items.sort((a, b) => a.s - b.s || order.indexOf(a.col) - order.indexOf(b.col));
     const bottom = new Map<string, number>();
     // Where each box landed, and the box itself when a long event can stretch to fill its time.
     const placed: { col: string; s: number; end: number | null; y: number; h: number; box: { h: number } | null }[] = [];
-    let prevY = top;
+    // Each start time's row: below the row before, and below whatever is above in its columns.
+    const rowTop = new Map<number, number>();
+    let prevRow = top - ROW_STEP;
+    for (let i = 0; i < items.length; ) {
+      let j = i;
+      let t = prevRow + ROW_STEP;
+      for (; j < items.length && items[j]!.s === items[i]!.s; j++) {
+        const below = bottom.get(items[j]!.col);
+        if (below != null) t = Math.max(t, below + GAP);
+      }
+      const used = new Set<string>();
+      for (let k = i; k < j; k++) {
+        const m = items[k]!;
+        // Two things in one column at the same time still stack.
+        const iy = used.has(m.col) ? bottom.get(m.col)! + GAP : t;
+        used.add(m.col);
+        bottom.set(m.col, iy + m.h);
+      }
+      rowTop.set(items[i]!.s, t);
+      if (items[i]!.s > 0) board.hours.push({ key: `${day.date}|hour|${items[i]!.s}`, y: t + 2, label: clockAmPm(items[i]!.s) });
+      prevRow = t;
+      i = j;
+    }
+    bottom.clear();
     items.forEach((m, i) => {
       const below = bottom.get(m.col);
-      const iy = Math.max(below != null ? below + GAP : top, prevY);
+      const iy = Math.max(below != null ? below + GAP : top, rowTop.get(m.s)!);
       bottom.set(m.col, iy + m.h);
-      prevY = iy;
       const end =
         m.kind === "busy"
           ? m.busy.end
@@ -1116,6 +1208,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         placed[placed.length - 1]!.box = box;
       } else if (m.kind === "out") {
         const o = m.out;
+        // Home goes up beside the leave time, a line shorter.
+        const home = homeAt(o.lines);
+        const stopLines = home ? o.lines.slice(0, -1) : o.lines;
         board.trips.push({
           key: `${day.date}|trip|${m.col}|${i}`,
           x: c.x + 8,
@@ -1123,12 +1218,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           w: c.w - 16,
           h: m.h,
           target: target(o.target),
-          l1: o.lead,
+          l1: home ? `${o.lead} · home ${home}` : o.lead,
           l2: "",
           show2: false,
           l3: "",
           show3: false,
-          stops: [...o.lines.map((text) => ({ text, warn: false })), ...(o.warn ? [{ text: o.warn, warn: true }] : [])],
+          stops: [...stopLines.map((text) => ({ text, warn: false })), ...(o.warn ? [{ text: o.warn, warn: true }] : [])],
           kids: o.kids.map((k) => (colors.get(k) ?? kidColor(0)).color),
           bad: !!o.warn,
           aria: `${nameOfDriver(m.col)}: ${o.lead}. ${o.lines.join(". ")}${o.warn ? `. ${o.warn}` : ""}`,
@@ -1153,9 +1248,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           w: c.w,
           h: m.h,
           target: rideTarget(ride.index),
-          l1: `Along with ${who} ${clock(n(ride.start))}`,
+          l1: `${CAR} with ${who}`,
           l2: route.join(" → "),
-          show2: true,
+          show2: false,
           lines2: RIDE_MAX_LINES,
           dashed: true,
           clash: m.item.clash,

@@ -14,7 +14,8 @@ separate database or server to look after.
 ## What's here
 
 `custom_components/mydashlight` is a custom Home Assistant integration. It signs in to Google,
-reads each kid's calendar and each parent's own calendars every minute, and plans the week's
+reads the family's shared Google calendar every minute, sorts each event to the people its title
+names, and plans the week's
 rides, with drive times from Google Routes. The `mydashlight.get_plan` action returns the plan,
 the other actions change who drives (saving it in the events' notes), and the kitchen app
 subscribes to the plan over Home Assistant's WebSocket API. Before each drive, the driver and the
@@ -60,18 +61,37 @@ their own.
 
 ## Calendars
 
-Setup asks which of your Google calendars to use:
+Everything lives in one shared family calendar. Setup asks which of your Google calendars it is,
+and for the kids' names. Each event's title starts with who it's for:
 
-- **Kids' calendars**: one per kid, holding the activities that need rides. Setup suggests each
-  kid's name from the calendar's name, so a calendar called `Kid-Ava` suggests Ava.
-- **Each parent's busy calendars** (optional): their events mean that parent can't drive then.
-  Events marked Free and events they declined don't count. All-day events count only when marked
-  Busy, which Google doesn't do by default.
+- **One name**: "Ava Piano" is Ava's, shown in her column as "Piano". Parents count too: "Robin
+  Dentist" is Robin's own event.
+- **Several names**, joined by `&`, `,` or `+`: "Ben & Cleo Dentist" shows in both kids' columns.
+  It's one event, so its ride details are shared, and kids at the same event with the same driver
+  go in one car. Possessives and a dash or colon after the names are fine ("Ava's Recital",
+  "Robin - Dr Appt").
+- **Other names**: under **Configure > Names and planner timing**, each parent and kid can have
+  other names, such as Mom and Dad, and there's a box for shortcuts that mean every kid. The kids'
+  initials always work for all of them, so with Ava, Ben and Cleo, "AB&C Pictures" and "A, B & C
+  Pictures" are everyone's.
+- **NO in front** means they aren't going: "NO Ava Golf" is struck through and needs no rides.
+- **A parent named with kids**, as in "Sam, Ben & Cleo Donuts", means that parent takes them: Sam
+  drives both ways and stays, unless the notes name someone else.
+
+All-day events go in a thin row across the top of each day they cover, such as "Trash Day" or a
+week of "Winter Break". They aren't assigned to anyone and never stop anyone driving; a name in
+the title just colours the chip. A trip that should keep a parent from driving needs times: "Robin
+Indianapolis" from 7 AM Tuesday to 7 PM Friday is one event in Robin's column.
+
+An event with times whose title doesn't start with a known name, like "Garage floor bid" or
+"Happy Hour Robin", is flagged in Needs attention as "Who is this for?" and shown in the top row
+until its title is fixed. So is a name MyDashLight doesn't know, as in "Ava & Zoe Sleepover",
+which still shows in Ava's column. Declined events and events marked Free don't count as busy.
 
 A parent's own event at a set time and a real address, such as a dentist visit or a soccer game,
 gets a ride too: that parent drives there, stays, and drives back, and the drive counts as busy
 time. Kids or the other parent can go along (see Take along below). The same event on both
-parents' calendars is one trip, with the second parent along. Online events, events at home,
+parents ("Robin & Sam Dinner") is one trip, with the second parent along. Online events, events at home,
 all-day events and ones running past 6 AM the next day are just busy time, as before. A trip
 alone to your own event gets no leave reminder, since you know your own day; one with someone
 along reminds the driver and tells each rider when they leave.
@@ -82,9 +102,15 @@ when to go, stopping on the way to or from another trip when that fits. The card
 ("Stop at 4:40"), and the driver gets the usual leave reminder. An errand counts even when the
 event is marked Free, and it takes nobody along.
 
-Calendars you don't pick are never read. An event that ends by 6 AM the next day stays on the day
-it starts. A longer one, such as a weekend trip, is planned as a drop-off on its first day and a
-pick-up on its last. Change the calendars later under the integration's **Configure** button.
+**Coming from 0.18 or earlier**, when each kid had a calendar of their own: after the update the
+board says to pick the family calendar. Under **Configure > Calendars**, pick it and the lunch
+calendar, and check the kids' names. Each kid keeps their notifier, lunch default, menu feed and
+chore list. The old kid and parent calendars are no longer read and nothing on them is changed,
+so ride details saved there need entering again on the family calendar's events.
+
+No other calendar is read for the rides. An event that ends by 6 AM the next day stays on the
+day it starts. A longer one, such as a weekend trip, is planned as a drop-off on its first day and
+a pick-up on its last. Change the calendars later under the integration's **Configure** button.
 
 Where an event is decides whether it needs a ride:
 
@@ -121,7 +147,7 @@ leaving half an hour before it starts, and a trip home as leaving when it ends.
 
 ## Ride details in event notes
 
-Each kid's activity is an event on their own Google calendar. Ride details go in a block at the
+Each kid's activity is an event on the family calendar. Ride details go in a block at the
 end of the event's notes, after a `--- Rides ---` line:
 
 ```
@@ -139,7 +165,7 @@ Travel: 25 min
 | Drop-off, Pick-up | The driver first: a parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver). Then anyone riding along, by name, such as `Drop-off: Sam, Ben, Robin`. `TBD` holds the driver's place when riders are named but nobody is driving yet | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
 | Take along | Kids' names, and on a parent's own event the other parent | Nobody else rides along. On a parent's own event, everyone named goes there and back with that parent. On a kid's event, an older line still counts as riders on the drop-off |
-| Arrive by | A time, such as 5:15 PM, or 15 min early | Arrive early by a margin that grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
+| Arrive by | A time, such as 5:15 PM, or 15 min early, when the kid has to be there before the event starts | They have to be there at the start. Either way, the driver aims to get there a margin early for traffic. It grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
 | Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
@@ -172,7 +198,7 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet. A parent always drives to their own event, so this and `set_stay` turn it down |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_attending` | Whether the kid is going (`attending`). Going again also takes an old `NO` off the start of the title |
-| `mydashlight.set_arrive_by` | When the kid needs to be there. No time goes back to the usual margin before the start |
+| `mydashlight.set_arrive_by` | When the kid needs to be there, if it's before the start. The traffic margin still comes off it. No time means they need to be there at the start |
 | `mydashlight.set_take_along` | Who rides along (`kids`, by name: other kids or the other parent) on the `side` you pick, `drop`, `pick` or `both`. When the driver stays, riders go both ways. On a parent's own event, they go there and back. Empty takes nobody along |
 | `mydashlight.set_takes` | How long a parent's errand takes (`minutes`). The errand then fits in any time between the event's start and end. No minutes makes it a set-time event again. Kids' events turn it down |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
@@ -190,8 +216,7 @@ Nobody gets an update email.
 
 The kitchen app's first screen is everyone's week of rides: a column for each kid, then one for
 each parent. A kid's column holds their activities and their time in a car; a parent's column
-holds their trips out of the house, with dots for who's in the car, and the busy times from their
-own calendar. A tinted band links a kid's car time to whoever is driving. Two views, switched at
+holds their trips out of the house, with dots for who's in the car, and their busy times. A tinted band links a kid's car time to whoever is driving. Two views, switched at
 the top:
 
 - **Timeline** spaces everything by the clock, so overlaps and tight handoffs are easy to see.
@@ -375,15 +400,18 @@ the Chores board says how to add the first one.
 
 ## Lunch
 
-School days and lunches are read from all-day events on each kid's own calendar, so there's
-nothing to keep in Home Assistant:
+Lunches live on a calendar of their own, so they stay out of the family calendar. Make one in
+Google Calendar (such as "MyDashLight Lunches"; it doesn't need sharing with anyone) and pick it
+under **Configure > Calendars**. There's nothing to keep in Home Assistant:
 
-- An all-day event with **No School** in its title (such as "No School – Thanksgiving Break") means
-  no school those days, for that kid. Every other weekday is a school day.
-- Each day's lunch is one all-day event on the kid's calendar. Titled **Lunch: Pizza, side salad**,
-  it says what the school serves that day, and its notes can hold the rest of the menu (other
-  choices, sides). Titled just **Lunch**, the dish is the first line of its notes, or the menu isn't
-  known yet. Each kid has their own, so kids at different schools get different menus.
+- An all-day event on the family calendar with **No School** in its title (such as "No School –
+  Thanksgiving Break") means no school those days: for the kids it names, or for every kid when it
+  names nobody. Every other weekday is a school day.
+- Each day's lunch is one all-day event on the lunch calendar, starting with the kid's name.
+  Titled **Ava Lunch: Pizza, side salad**, it says what Ava's school serves that day, and its notes
+  can hold the rest of the menu (other choices, sides). Titled just **Ava Lunch**, the dish is the
+  first line of its notes, or the menu isn't known yet. Each kid has their own, so kids at
+  different schools get different menus.
 - The kid's pick goes in a short block at the end of that event's notes:
 
   ```
@@ -396,12 +424,12 @@ nothing to keep in Home Assistant:
   **Lunch** event, which the menu fills in later. (Before 0.16, picks were their own **Bring
   Lunch** and **Buy Lunch** events. Those are still read, and MyDashLight moves them onto the day's
   lunch event when it starts.)
-- A month of menus can be imported into a kid's calendar from a `.ics` file (Google Calendar:
+- A month of menus can be imported into the lunch calendar from a `.ics` file (Google Calendar:
   **Settings > Import & export**), or added on the Lunch tab.
 - **Menu feeds.** Many schools publish their menu as a calendar to subscribe to (look for an
   ICAL or Subscribe button on the menu page). Paste its address for each kid under **Configure >
-  Lunch**. Every 6 hours MyDashLight reads it and adds each day's lunch from today on to the kid's
-  calendar as a `Lunch: …` event (or fills in that day's plain **Lunch** event, keeping the
+  Lunch**. Every 6 hours MyDashLight reads it and adds each day's lunch from today on to the lunch
+  calendar as an `Ava Lunch: …` event (or fills in that day's plain **Lunch** event, keeping the
   pick): the first item is the dish, the rest goes in the notes.
   Breakfast (`B: …`) and `No School` entries are skipped. These events carry a private mark, so
   only they follow later changes to the feed; a menu typed by hand, imported, or changed on the
@@ -409,15 +437,15 @@ nothing to keep in Home Assistant:
 
 Tap **Lunch** at the top of the kitchen app for this month and next, a card per kid with Monday to
 Friday like the printed menu. Tap a day to switch it between Buy and Bring, or tap a weekday's name
-to make every one left that month Bring (or Buy, when they all are already). Each tap adds, changes or removes the day's event on
-the kid's calendar. Days off are drawn hatched with their name underneath. Each day shows its menu; tap
+to make every one left that month Bring (or Buy, when they all are already). Each tap adds, changes or removes the kid's event that day on
+the lunch calendar. Days off are drawn hatched with their name underneath. Each day shows its menu; tap
 **Edit menus** to add or change one, for one kid or several at once. Each kid's column on
 the rides and chores boards shows a small Buy or Bring chip: today's until 1 PM, then the next
 school day's, so in the evening it says what to pack.
 
 The School days chores list uses the same school days: a chore there is made only on a kid's
 school days, and its turns count school days, so a day off doesn't change whose turn it is. When
-the kids' calendars can't be read, School days chores are left as they are until they can.
+the calendars can't be read, School days chores are left as they are until they can.
 
 The actions: `mydashlight.get_lunches` returns each kid's school days off, picks and default from
 the 1st of this month to the end of next month; `mydashlight.set_lunch` sets a kid's lunch on one
@@ -432,7 +460,7 @@ each parent and each kid who should get reminders. A notifier is a `notify` acti
 the Home Assistant app adds for each phone. Anyone left on **No reminders** gets none.
 
 - **Before each drive.** Leave time is worked back from when the kid has to be there (Arrive by,
-  or the usual margin before the start) and the drive time. The reminder goes off 15 minutes before
+  or else the start), less the traffic margin, and the drive time. The reminder goes off 15 minutes before
   that, or whatever **Remind before leaving** says. The driver's says where to go, stop by stop.
   Each kid in the car with a notifier gets one saying when they leave, or when they'll be picked up
   and where. If the plan changes so a drive leaves at least 5 minutes earlier than it was

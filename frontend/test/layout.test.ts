@@ -12,7 +12,7 @@ import {
   pack,
   shortTitle,
   rideLines,
-  alongHeight,
+  compactLines,
   busyLabel,
   tidyMinutes,
   routeOf,
@@ -93,7 +93,7 @@ test("timeline: the driver's trips, the clash with work, and now", () => {
   const b = layout(plan, "timeline", 1160, today);
   const sam = b.columns.find((c) => c.name === "Sam")!;
   const day0 = b.trips.filter((t) => t.key.startsWith(FIRST) && t.x > sam.x);
-  assert.ok(day0.some((t) => t.l1 === "Leave 4:25" && t.bad && t.kids.length === 2));
+  assert.ok(day0.some((t) => t.l1 === "Leave 4:20" && t.bad && t.kids.length === 2));
   assert.ok(b.overlaps.some((o) => o.key.startsWith(FIRST) && o.x > sam.x));
   assert.ok(b.busy.some((x) => x.label === "Work until 4:40"));
   assert.ok(b.preps.some((p) => p.label === "Arrive by 5:15"));
@@ -206,10 +206,10 @@ test("the next trip: leaving soon, under way, or tomorrow", () => {
   const soon = nextUp(plan, { date: FIRST, minutes: 16 * 60 })!;
   assert.equal(soon.ongoing, false);
   assert.equal(soon.name, "Sam");
-  assert.equal(soon.lead, "Leave 4:25");
-  assert.equal(soon.inMinutes, 25);
+  assert.equal(soon.lead, "Leave 4:20");
+  assert.equal(soon.inMinutes, 20);
   assert.equal(soon.warn, "Still at Work until 4:40");
-  assert.equal(soon.stop, "4:40 Soccer fields, drop off Cleo");
+  assert.equal(soon.stop, "4:35 Soccer fields, drop off Cleo");
   assert.ok(soon.target);
 
   // Someone is out, but the next one to leave matters more.
@@ -270,10 +270,46 @@ test("a car box shows only whole lines of its route", () => {
   assert.equal(rideLines(40), 1);
   assert.equal(rideLines(55), 2);
   assert.equal(rideLines(200), 3);
-  const long = "Main Street Dance Studio - West (wait) → Home";
-  assert.ok(alongHeight(long, 190) >= 25 + 2 * 15);
-  assert.ok(alongHeight("Home → Piano", 190) < alongHeight(long, 190));
-  for (const b of layout(plan, "compact", 1160, today).rides) if (b.dashed) assert.ok(b.h >= 25 + 15);
+});
+
+test("compact: things read in time order, and a kid along sits beside the trip", () => {
+  const b = layout(plan, "compact", 1160, today);
+  for (const day of plan.days) {
+    const cards = b.cards.filter((c) => c.key.startsWith(day.date) && !c.event.own);
+    for (const x of cards)
+      for (const y of cards) {
+        if (x.event.start < y.event.start) assert.ok(x.y < y.y, `${x.event.title} starts before ${y.event.title}`);
+        if (x.event.start === y.event.start) assert.equal(x.y, y.y);
+      }
+  }
+  const along = b.rides.filter((r) => r.dashed);
+  assert.ok(along.length > 0);
+  for (const r of along) {
+    assert.equal(r.l1.startsWith("🚗 with "), true);
+    assert.equal(r.show2, false);
+    assert.ok(b.trips.some((t) => t.y === r.y), `${r.key} is level with its trip`);
+  }
+  // Each row's start time is in the margin.
+  assert.ok(b.hours.some((h) => /^\d+:\d\d [AP]M$/.test(h.label)));
+});
+
+test("compact: ride lines are a car and arrows on one line", () => {
+  const L = (text: string, tone: "normal" | "pending" | "problem" = "normal") => ({ text, tone });
+  assert.deepEqual(compactLines({ drop: L("Leaves 4:25 with Sam"), pick: L("Home 6:10 with Sam") }), {
+    drop: L("🚗 Sam ↓4:25 ↑6:10"),
+    pick: null,
+  });
+  assert.deepEqual(compactLines({ drop: L("Sam stays · leaves 4:25"), pick: L("Home 6:10 with Sam") }).drop, L("🚗 Sam stays ↓4:25 ↑6:10"));
+  assert.deepEqual(compactLines({ drop: L("No ride there yet", "pending"), pick: L("No ride home yet", "pending") }).drop, L("🚗 No rides yet", "pending"));
+  assert.deepEqual(compactLines({ drop: L("Leaves 4:25 with Sam"), pick: L("No ride home yet", "pending") }).drop, L("🚗 ↓4:25 Sam · ↑ needed", "pending"));
+  assert.deepEqual(
+    compactLines({ drop: L("Leaves 4:25 with Sam, 5 min late", "problem"), pick: L("Picked up 6:00 by Robin") }).drop,
+    L("🚗 ↓4:25 Sam · 5 min late · ↑6:00 Robin", "problem"),
+  );
+  assert.deepEqual(compactLines({ drop: L("Drop-off: Sam"), pick: L("Pick-up: Sam") }).drop, L("🚗 Sam both ways"));
+  // Not rides: left alone.
+  const none = { drop: L("No ride needed"), pick: null };
+  assert.deepEqual(compactLines(none), none);
 });
 
 test("planner text is tidied everywhere on the board", async () => {

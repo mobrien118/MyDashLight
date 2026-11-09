@@ -113,7 +113,9 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         settings = self.settings
         split = split_events(events, settings.people, tz)
         lanes = people_events(split, {**settings.people.kids, **settings.people.parents})
-        week = build_week(lanes, settings.roles, settings.directory, today, PLAN_DAYS, tz, settings.home_address)
+        week = build_week(
+            lanes, settings.roles, settings.directory, today, PLAN_DAYS, tz, settings.home_address, split.escorts
+        )
         shown = in_window(split, [d.day for d in week.days])
         for day in week.days:
             day.all_day = shown[day.day.isoformat()]["all_day"]
