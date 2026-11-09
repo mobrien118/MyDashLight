@@ -191,7 +191,7 @@ function route(d, tasks, busy) {
       }
       car = car.filter(function (x) { return x !== kid; });
       var s = { loc: k.e.loc, kind: k.type, deadline: k.t, e: k.e };
-      if (k.type === 'stay') { s.after = k.e.end; car.push(kid); }
+      if (k.type === 'stay') { s.after = k.e.end; if (car.indexOf(kid) < 0) car.push(kid); }
       s.car = car.slice();
       stops.push(s);
     } else {
@@ -202,7 +202,7 @@ function route(d, tasks, busy) {
         car = car.concat(pm);
         cur().car = car.slice();
       }
-      car.push(kid);
+      if (car.indexOf(kid) < 0) car.push(kid);
       stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, e: k.e, car: car.slice() });
     }
   });
@@ -262,6 +262,8 @@ function route(d, tasks, busy) {
     }
     if (s2.kind === 'stay' && ready > arr) tag({ type: 'stay', loc: s2.loc, start: arr, end: ready, e: s2.e, kids: s2.car.filter(function (k) { return !attends(s2.e, k) && droppedHome.indexOf(k) < 0; }) }, s2);
     if (s2.kind === 'fetch') droppedHome = [];
+    // Picked up again after an earlier ride ended at home: back in the car.
+    else if ((s2.kind === 'pick' || s2.kind === 'stay') && s2.e && !s2.e.own) droppedHome = droppedHome.filter(function (k) { return k !== s2.e.kid; });
     carNow = s2.car.filter(function (k) { return droppedHome.indexOf(k) < 0; });
     from = s2.loc;
     var idle = dep - ready;

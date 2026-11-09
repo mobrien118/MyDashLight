@@ -494,6 +494,9 @@ def _route(
             )
         if s.kind == "fetch":
             dropped_home = []
+        elif s.kind in ("pick", "stay") and s.event is not None and s.event.own is None:
+            # Picked up again after an earlier ride ended at home: back in the car.
+            dropped_home = [k for k in dropped_home if k != s.event.kid]
         car_now = [k for k in s.car if k not in dropped_home]
         here = s.loc
         idle = dep - ready
@@ -650,7 +653,8 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
             stop = Stop(k.event.loc, k.type, event=k.event, deadline=k.t)
             if k.type == "stay":
                 stop.after = k.event.end
-                car.append(kid)
+                if kid not in car:
+                    car.append(kid)
             stop.car = list(car)
             stops.append(stop)
         else:
@@ -661,7 +665,8 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
                     stops.append(Stop(HOME, "fetch"))
                 car += missing
                 stops[-1].car = list(car)
-            car.append(kid)
+            if kid not in car:
+                car.append(kid)
             stops.append(Stop(k.event.loc, "pick", list(car), event=k.event, ready=k.event.end))
     if stops[-1].loc != HOME:
         stops.append(Stop(HOME, "end"))

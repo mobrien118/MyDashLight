@@ -3284,7 +3284,6 @@
        "to": "home",
        "place": null,
        "kids": [
-        "kid-c@group.calendar.google.com",
         "kid-c@group.calendar.google.com"
        ],
        "event": null,
@@ -3379,17 +3378,6 @@
      "serves": [
       "tue-art"
      ]
-    },
-    {
-     "index": 4,
-     "kid": "kid-c@group.calendar.google.com",
-     "driver": "dad",
-     "start": 1140,
-     "end": 1151,
-     "own": true,
-     "serves": [
-      "tue-art"
-     ]
     }
    ],
    "kids": {
@@ -3453,13 +3441,6 @@
        "end": 1151,
        "clash": false,
        "ride": 3
-      },
-      {
-       "type": "ride",
-       "start": 1140,
-       "end": 1151,
-       "clash": false,
-       "ride": 4
       }
      ]
     }
