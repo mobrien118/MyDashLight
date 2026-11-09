@@ -4,6 +4,7 @@ import {
   attention,
   columnsFor,
   DAY_HEAD,
+  headAt,
   compactCardHeight,
   dayTag,
   layout,
@@ -526,12 +527,12 @@ test("timeline: something running past midnight shows only its edge, not the who
   assert.deepEqual(hours(p), before);
 });
 
-test("all-day events go across the top of each day they cover", () => {
+test("all-day events go in the day's heading, under the date", () => {
   const board = layout(plan, "timeline", 1160, today);
-  const rows = new Map(board.allDay.map((r) => [r.key.split("|")[0], r]));
-  const fri = rows.get(plan.days[1]!.date)!;
+  const heads = new Map(board.dayHeads.map((h) => [h.date, h]));
+  const fri = heads.get(plan.days[1]!.date)!;
   assert.deepEqual(
-    fri.chips.map((c) => [c.title, c.note, c.warn]),
+    fri.allDay.map((c) => [c.title, c.note, c.warn]),
     [
       ["Trash & Recycling Day", "", false],
       ["Wear the black jersey", "", false],
@@ -539,18 +540,24 @@ test("all-day events go across the top of each day they cover", () => {
     ],
   );
   // Nobody's all-day event is plain; one naming someone takes their colour.
-  assert.equal(fri.chips[0]!.color, null);
-  assert.ok(fri.chips[1]!.color);
-  // It sits under the day's heading, and the day's events start below it.
-  const head = board.dayHeads.find((h) => h.date === plan.days[1]!.date)!;
-  assert.equal(fri.y, head.y + DAY_HEAD + 4);
+  assert.equal(fri.allDay[0]!.color, null);
+  assert.ok(fri.allDay[1]!.color);
+  // The heading grows by one line of chips, glued under the date, and the day starts below it.
+  assert.equal(fri.h, DAY_HEAD + 26 + 4 + 2);
   const firstCard = Math.min(...board.cards.filter((c) => c.target?.day === plan.days[1]!.date).map((c) => c.y));
   assert.ok(firstCard >= fri.y + fri.h);
   assert.deepEqual(
-    board.allDay.filter((r) => r.chips.some((c) => c.title === "Indianapolis")).map((r) => r.chips[0]!.note),
+    board.dayHeads.filter((h) => h.allDay.some((c) => c.title === "Indianapolis")).map((h) => h.allDay[0]!.note),
     ["Day 1 of 3", "Day 2 of 3", "Day 3 of 3"],
   );
-  // Days with nothing all day have no row, in either view.
-  assert.equal(rows.has(plan.days[0]!.date), false);
-  assert.equal(layout(plan, "compact", 1160, today).allDay.length, board.allDay.length);
+  // A day with nothing all day keeps the plain heading, in either view.
+  const thu = heads.get(plan.days[0]!.date)!;
+  assert.deepEqual([thu.h, thu.allDay], [DAY_HEAD, []]);
+  const compact = layout(plan, "compact", 1160, today).dayHeads;
+  assert.deepEqual(
+    compact.map((h) => h.h),
+    board.dayHeads.map((h) => h.h),
+  );
+  // Scrolling to a time leaves room for that day's heading.
+  assert.equal(headAt(board, 1440 + 600), fri.h);
 });

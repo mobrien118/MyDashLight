@@ -10,6 +10,7 @@ import { kidColor } from "./colors.ts";
 import { ago, clock, clockAmPm, dayLabel, duration, nowIn, shortDay } from "./format.ts";
 import {
   DAY_HEAD,
+  headAt,
   GUTTER,
   OWN_COLOR,
   andList,
@@ -32,6 +33,7 @@ import {
   yAt,
   type Attention,
   type Board,
+  type DayHead,
   type Mode,
   type NextUp,
   type Target,
@@ -200,6 +202,7 @@ export class MyDashLightBoard extends LitElement {
 
   static override properties = {
     backend: { attribute: false },
+    pinDay: { state: true },
     kiosk: { type: Boolean },
     showMenu: { type: Boolean, attribute: "show-menu" },
     plan: { state: true },
@@ -238,6 +241,8 @@ export class MyDashLightBoard extends LitElement {
   /** Show a button that opens Home Assistant's sidebar (in the HA app on a phone). */
   declare showMenu: boolean;
   declare plan: Plan | null;
+  /** The day whose heading is pinned at the top while scrolling. */
+  declare pinDay: string | null;
   declare error: BackendError | null;
   declare mode: Mode;
   declare sel: Target | null;
@@ -312,6 +317,7 @@ export class MyDashLightBoard extends LitElement {
     this.kiosk = false;
     this.showMenu = false;
     this.plan = null;
+    this.pinDay = null;
     this.error = null;
     this.mode = this.urlView ?? readMode();
     this.sel = null;
@@ -498,7 +504,7 @@ export class MyDashLightBoard extends LitElement {
     const el = this.scroller;
     if (!el || !this.board) return;
     const head = this.board.dayHeads.find((h) => h.date === date)?.y ?? 0;
-    el.scrollTop = Math.max(head, yAt(this.board, t) - DAY_HEAD - 4);
+    el.scrollTop = Math.max(head, yAt(this.board, t) - headAt(this.board, t) - 4);
     this.syncDay();
   }
 
@@ -538,17 +544,9 @@ export class MyDashLightBoard extends LitElement {
     const top = el.scrollTop;
     let cur = this.board.dayHeads[0]!;
     for (const h of this.board.dayHeads) if (h.y <= top + 1) cur = h;
+    // The pinned heading redraws only when the day changes, not on every scroll.
+    if (this.pinDay !== cur.date) this.pinDay = cur.date;
     const root = this.renderRoot;
-    const label = root.querySelector(".pinned .label");
-    const tag = root.querySelector<HTMLElement>(".pinned .tag");
-    const sub = root.querySelector(".pinned .sub");
-    if (label && label.textContent !== cur.label) label.textContent = cur.label;
-    if (tag) {
-      if (tag.textContent !== cur.tag) tag.textContent = cur.tag;
-      tag.hidden = !cur.tag;
-    }
-    if (sub && sub.textContent !== cur.sub) sub.textContent = cur.sub;
-    sub?.classList.toggle("warn", cur.warn);
     for (const t of root.querySelectorAll<HTMLElement>(".day-tile")) t.classList.toggle("in-view", t.dataset["date"] === cur.date);
   }
 
@@ -711,7 +709,8 @@ export class MyDashLightBoard extends LitElement {
   private setMode(m: Mode): void {
     if (m === this.mode) return;
     const el = this.scroller;
-    this.keepAt = el && this.board ? tAt(this.board, el.scrollTop + DAY_HEAD + 4) : null;
+    const pinned = this.board?.dayHeads.find((h) => h.date === this.pinDay)?.h ?? DAY_HEAD;
+    this.keepAt = el && this.board ? tAt(this.board, el.scrollTop + pinned + 4) : null;
     this.mode = m;
     // A screen whose address picks the view keeps it, and leaves this browser's choice alone.
     if (!this.urlView) saveMode(m);
@@ -1229,10 +1228,32 @@ export class MyDashLightBoard extends LitElement {
     return html`<div class="empty-state"><p class="big">Loading the week…</p></div>`;
   }
 
+  /** A day's heading: the date line, with its all-day row glued under it. */
+  private renderHead(d: DayHead): TemplateResult {
+    return html`<div class="dh-line">
+        <span class="label">${d.label}</span>${d.tag ? html`<span class="tag">${d.tag}</span>` : nothing}<span
+          class="sub ${d.warn ? "warn" : ""}"
+          >${d.sub}</span
+        >
+      </div>
+      ${d.allDay.length
+        ? html`<div class="allday" style="padding-left:${GUTTER}px">
+            ${d.allDay.map(
+              (c) =>
+                html`<span
+                  class="ad-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
+                  style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
+                  ><span class="ad-title">${c.title}</span>${c.note ? html`<span class="ad-note">${c.note}</span>` : nothing}</span
+                >`,
+            )}
+          </div>`
+        : nothing}`;
+  }
+
   private renderBoard(b: Board): TemplateResult {
     const sel = this.sel;
     const isSel = (t: Target | null): boolean => !!t && !!sel && t.day === sel.day && t.event === sel.event;
-    const first = b.dayHeads[0];
+    const pinned = b.dayHeads.find((h) => h.date === this.pinDay) ?? b.dayHeads[0];
     const W = b.width;
     // Cards and the add-ons built onto them, drawn back to front so each add-on tucks behind.
     type Piece =
@@ -1268,10 +1289,11 @@ export class MyDashLightBoard extends LitElement {
             </div>`,
           )}
         </div>
-        <div class="pinned" aria-hidden="true" style="width:${W}px">
-          <span class="label">${first?.label ?? ""}</span><span class="tag" ?hidden=${!first?.tag}>${first?.tag ?? ""}</span
-          ><span class="sub ${first?.warn ? "warn" : ""}">${first?.sub ?? ""}</span>
-        </div>
+        ${pinned
+          ? html`<div class="pinned" aria-hidden="true" style="width:${W}px;height:${pinned.h}px;margin-bottom:${-pinned.h}px">
+              ${this.renderHead(pinned)}
+            </div>`
+          : nothing}
         <div class="canvas" style="width:${W}px;height:${Math.max(b.height + 400, 600)}px">
           ${b.columns.map(
             (c) =>
@@ -1282,24 +1304,7 @@ export class MyDashLightBoard extends LitElement {
           )}
           <span class="sep" style="left:${b.sepX}px;height:${Math.max(b.height + 392, 592)}px"></span>
           ${b.dayHeads.map(
-            (d) => html`<div class="day-head" style="top:${d.y}px;width:${W}px">
-              <span class="label">${d.label}</span>${d.tag ? html`<span class="tag">${d.tag}</span>` : nothing}<span
-                class="sub ${d.warn ? "warn" : ""}"
-                >${d.sub}</span
-              >
-            </div>`,
-          )}
-          ${b.allDay.map(
-            (r) => html`<div class="allday" style="top:${r.y}px;left:${GUTTER}px;width:${W - GUTTER}px;height:${r.h}px">
-              ${r.chips.map(
-                (c) =>
-                  html`<span
-                    class="ad-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
-                    style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
-                    ><span class="ad-title">${c.title}</span>${c.note ? html`<span class="ad-note">${c.note}</span>` : nothing}</span
-                  >`,
-              )}
-            </div>`,
+            (d) => html`<div class="day-head" style="top:${d.y}px;width:${W}px;height:${d.h}px">${this.renderHead(d)}</div>`,
           )}
           ${b.empties.map((x) => html`<span class="empty" style="top:${x.y}px">${x.text}</span>`)}
           ${b.grid.map((g) => html`<div class="grid ${g.strong ? "strong" : ""}" style="top:${g.y}px;width:${W - 60}px"></div>`)}

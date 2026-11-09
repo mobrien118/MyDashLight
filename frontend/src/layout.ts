@@ -166,6 +166,15 @@ export interface DayHead {
   tag: string;
   sub: string;
   warn: boolean;
+  /** The whole heading's height: the date line, then the all-day row glued under it. */
+  h: number;
+  /** The all-day row: all-day events, and timed ones for nobody. Floats with the date line. */
+  allDay: AllDayChip[];
+}
+
+/** The heading's height for the day at ``t`` minutes into the week. */
+export function headAt(board: Board, t: number): number {
+  return board.dayHeads[Math.max(0, Math.floor(t / 1440))]?.h ?? DAY_HEAD;
 }
 
 /** One piece of the thin row across the top of a day: an all-day event, or a timed one for nobody. */
@@ -183,13 +192,14 @@ export interface AllDayChip {
 
 export interface AllDayRow {
   key: string;
-  y: number;
+  /** The chips' height, without the space under them. */
   h: number;
   chips: AllDayChip[];
 }
 
 export const ALL_DAY_LINE = 26;
-const ALL_DAY_GAP = 4;
+/** Between wrapped lines of chips, and under the last line. */
+export const ALL_DAY_GAP = 4;
 
 export interface Board {
   mode: Mode;
@@ -200,7 +210,6 @@ export interface Board {
   sepX: number;
   dayHeads: DayHead[];
   /** Each day's all-day row, under its heading. Days with nothing all day have none. */
-  allDay: AllDayRow[];
   empties: { key: string; y: number; text: string }[];
   grid: { key: string; y: number; strong: boolean }[];
   hours: { key: string; y: number; label: string }[];
@@ -635,7 +644,6 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     columns,
     sepX,
     dayHeads: [],
-    allDay: [],
     empties: [],
     grid: [],
     hours: [],
@@ -662,6 +670,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     const problems = problemCount(day);
     const count = day.events.length;
     const tag = dayTag(day.date, today.date);
+    const strip = allDayRow(plan, day, colors, w);
     board.dayHeads.push({
       date: day.date,
       y,
@@ -671,11 +680,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         (count ? `${count} ${count === 1 ? "activity" : "activities"}` : "Nothing scheduled") +
         (problems ? ` · ${problems} to sort out` : ""),
       warn: problems > 0,
+      h: DAY_HEAD + (strip ? strip.h + ALL_DAY_GAP + 2 : 0),
+      allDay: strip?.chips ?? [],
     });
     board.anchors.push({ t: base, y });
-    const strip = allDayRow(plan, day, colors, w);
-    if (strip) board.allDay.push({ ...strip, y: y + DAY_HEAD + ALL_DAY_GAP });
-    const top = y + DAY_HEAD + PAD + (strip ? strip.h + ALL_DAY_GAP : 0);
+    const head = board.dayHeads[board.dayHeads.length - 1]!;
+    const top = y + head.h + PAD;
 
     const outings = drivers.flatMap((d) => day.drivers[d]?.outings ?? []);
     if (!count && !outings.length) {
