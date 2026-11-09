@@ -11,7 +11,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
-from .common import AVA, BEN, FakeGoogle, google_error, make_entry, setup_credentials, timed
+from .common import AVA, BEN, FAMILY, FakeGoogle, google_error, make_entry, setup_credentials, timed
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time
 
@@ -26,7 +26,7 @@ async def setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
 @pytest.fixture
 def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     g = FakeGoogle(aioclient_mock)
-    g.add(AVA, **timed("piano", "Piano", "2026-11-03T16:00:00-06:00", "2026-11-03T17:00:00-06:00"))
+    g.add(FAMILY, **timed("piano", "Ava Piano", "2026-11-03T16:00:00-06:00", "2026-11-03T17:00:00-06:00"))
     return g
 
 
@@ -78,8 +78,8 @@ async def test_sends_the_plan_then_each_change(
 
     # Nothing changed on the next read, so nothing is sent.
     await reread(entry)
-    google.event(AVA, "piano")["description"] = "Drop-off: Robin"
-    google.event(AVA, "piano")["etag"] = '"9"'
+    google.event(FAMILY, "piano")["description"] = "Drop-off: Robin"
+    google.event(FAMILY, "piano")["etag"] = '"9"'
     await reread(entry)
 
     plan = await next_plan(client)
@@ -94,7 +94,7 @@ async def test_says_when_google_cannot_be_read(
     client = await subscribe(hass, hass_ws_client)
     await next_plan(client)
 
-    google.errors[AVA] = google_error(500, "backendError", "Backend Error")
+    google.errors[FAMILY] = google_error(500, "backendError", "Backend Error")
     await reread(entry)
     plan = await next_plan(client)
     assert plan is not None
@@ -103,7 +103,7 @@ async def test_says_when_google_cannot_be_read(
     # The last good plan is still there.
     assert [e["id"] for e in plan["days"][0]["events"]] == ["piano"]
 
-    del google.errors[AVA]
+    del google.errors[FAMILY]
     await reread(entry)
     plan = await next_plan(client)
     assert plan is not None

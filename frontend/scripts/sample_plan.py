@@ -12,7 +12,7 @@ private preview, as ``kid1,kid2,kid3,driver1,driver2``; that output is never com
 from __future__ import annotations
 
 import argparse
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import json
 from pathlib import Path
 import sys
@@ -27,6 +27,7 @@ from custom_components.mydashlight.planner import (
     PlannerSettings,
     RideEvent,
 )
+from custom_components.mydashlight.shared import DayItem, Unplaced
 from custom_components.mydashlight.week import DayInput, EventRef, make_travel
 
 FIRST_DAY = date(2026, 11, 5)  # a Thursday
@@ -137,6 +138,18 @@ BUSY: dict[int, dict[str, list[tuple[str, str, str]]]] = {
     6: {"dad": [("9:00 AM", "5:00 PM", "Work")], "mom": [("12:00 PM", "1:00 PM", "Dentist")]},
 }
 
+# All-day events across the top of each day they cover: first day, last day, id, title, and who
+# the title names (kid indexes or driver ids), only for the colour.
+ALL_DAY: list[tuple[int, int, str, str, tuple[int | str, ...]]] = [
+    (1, 1, "trash", "Trash & Recycling Day", ()),
+    (1, 1, "jersey", "Wear the black jersey", (1,)),
+    (3, 5, "trip", "Indianapolis", ("mom",)),
+]
+# Timed events whose titles don't say who they're for: day, id, title, start, end.
+UNPLACED: list[tuple[int, str, str, str, str]] = [
+    (1, "bid", "Garage floor bid", "4:00 PM", "5:00 PM"),
+]
+
 
 def minutes(text: str) -> int:
     clock, half = text.split()
@@ -228,6 +241,21 @@ def main() -> None:
             day.refs[ev_id] = EventRef(f"{driver}-calendar", f"{ev_id}-google", "etag", None, ("drop", "pick"))
         for driver, blocks in BUSY.get(offset, {}).items():
             day.busy[driver] = [BusyBlock(minutes(s), minutes(e), t) for s, e, t in blocks]
+        for first, last, ev_id, title, people in ALL_DAY:
+            if first <= offset <= last:
+                item = DayItem(
+                    ev_id,
+                    title,
+                    tuple(KIDS[p] if isinstance(p, int) else p for p in people),
+                    FIRST_DAY + timedelta(days=first),
+                    FIRST_DAY + timedelta(days=last),
+                )
+                day.all_day.append(item.as_dict(day.day))
+        for d, ev_id, title, start, end in UNPLACED:
+            if d == offset:
+                at = datetime.combine(day.day, datetime.strptime(start, "%I:%M %p").time())
+                until = datetime.combine(day.day, datetime.strptime(end, "%I:%M %p").time())
+                day.unplaced.append(Unplaced(ev_id, title, day.day, at, until, "nobody", at=minutes(start)).as_dict())
         days.append(plan_day(day, labels, KIDS, travel, settings, DRIVERS))
 
     json.dump(
@@ -242,6 +270,7 @@ def main() -> None:
                 "lookups_today": 3,
                 "daily_limit": 150,
             },
+            "needs_setup": None,
             "days": days,
             "people": {
                 "drivers": [{"id": d, "name": labels.driver(d)} for d in DRIVERS],

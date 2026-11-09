@@ -38,7 +38,7 @@ class LeaveReminder:
     """A reminder to leave for one drive."""
 
     who: str
-    """A driver id or a kid's calendar id."""
+    """A driver id or a kid id."""
     key: str
     """Stays the same while the drive does, even when its times move."""
     leave: datetime
@@ -84,8 +84,8 @@ def leave_reminders(
 ) -> list[LeaveReminder]:
     """A reminder ``before`` minutes before every drive leaves, for each of ``recipients``.
 
-    A recipient is a driver id (the driver's reminder says where to go) or a kid's calendar
-    id (the kid's says when they leave, or when they're picked up). The other parent riding
+    A recipient is a driver id (the driver's reminder says where to go) or a kid id
+    (the kid's says when they leave, or when they're picked up). The other parent riding
     along to a driver's own event is told when they leave too. A drive that's only the driver
     going to their own events gets no reminder.
     """

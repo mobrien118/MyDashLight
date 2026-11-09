@@ -1,10 +1,10 @@
-"""A school's lunch menu read from its calendar feed (iCal), copied onto each kid's calendar.
+"""A school's lunch menu read from its calendar feed (iCal), copied onto the lunch calendar.
 
 Many school menus are published as a calendar to subscribe to, one all-day event per meal:
 "L: Create Your Own Pizza, Parmesan Roasted Broccoli, Diced Pears, Choice of Cold Milk". Each
 kid can be given their school's feed. MyDashLight reads it every few hours and keeps a
-"Lunch: Create Your Own Pizza" event on the kid's own calendar for each day, the rest of the
-menu in its notes, so the menu sits with the kid's picks and days off.
+"Ava Lunch: Create Your Own Pizza" event on the lunch calendar for each day, the rest of the
+menu in its notes, so the menu sits with the kid's picks.
 
 Events MyDashLight made from a feed carry a private mark. Only those are changed or removed
 when the feed changes: a menu typed by hand, imported, or changed on the Lunch tab is left as

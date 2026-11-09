@@ -25,6 +25,9 @@ BEN = "ben-calendar@group.calendar.google.com"
 ROBIN = "robin-calendar@group.calendar.google.com"
 SAM = "sam-calendar@group.calendar.google.com"
 JOINT = "joint-calendar@group.calendar.google.com"
+FAMILY = "family-calendar@group.calendar.google.com"
+"""The shared calendar every family event is on, each title starting with who it's for."""
+LUNCH = "lunch-calendar@group.calendar.google.com"
 
 CALENDARS = [
     {"id": ACCOUNT, "summary": ACCOUNT, "primary": True, "accessRole": "owner"},
@@ -33,6 +36,8 @@ CALENDARS = [
     {"id": ROBIN, "summary": "Robin", "accessRole": "owner"},
     {"id": SAM, "summary": "Sam", "accessRole": "writer"},
     {"id": JOINT, "summary": "Robin & Sam", "accessRole": "owner"},
+    {"id": FAMILY, "summary": "Family", "accessRole": "owner"},
+    {"id": LUNCH, "summary": "Lunches", "accessRole": "owner"},
 ]
 
 OPTIONS: dict[str, Any] = {
@@ -42,9 +47,10 @@ OPTIONS: dict[str, Any] = {
     "dad_aliases": [],
     "carpools": ["the Parkers"],
     "planner": dict(DEFAULT_PLANNER),
+    # The kids had calendars of their own before 0.19, and their ids are still the kids' ids.
     "kids": [{"calendar_id": AVA, "name": "Ava"}, {"calendar_id": BEN, "name": "Ben"}],
-    "mom_calendars": [ROBIN],
-    "dad_calendars": [SAM],
+    "events_calendar": FAMILY,
+    "lunch_calendar": LUNCH,
     # Off here so the tests of other changes see only their own saves. test_alerts turns it on.
     "calendar_reminders": False,
 }

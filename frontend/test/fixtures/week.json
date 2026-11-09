@@ -9,6 +9,7 @@
   "lookups_today": 3,
   "daily_limit": 150
  },
+ "needs_setup": null,
  "days": [
   {
    "date": "2026-11-05",
@@ -206,6 +207,8 @@
      }
     }
    ],
+   "all_day": [],
+   "unplaced": [],
    "drivers": {
     "mom": {
      "name": "Robin",
@@ -900,6 +903,42 @@
      }
     }
    ],
+   "all_day": [
+    {
+     "id": "trash",
+     "title": "Trash & Recycling Day",
+     "people": [],
+     "first": "2026-11-06",
+     "last": "2026-11-06",
+     "day_number": 1,
+     "days": 1,
+     "cancelled": false
+    },
+    {
+     "id": "jersey",
+     "title": "Wear the black jersey",
+     "people": [
+      "kid-b@group.calendar.google.com"
+     ],
+     "first": "2026-11-06",
+     "last": "2026-11-06",
+     "day_number": 1,
+     "days": 1,
+     "cancelled": false
+    }
+   ],
+   "unplaced": [
+    {
+     "id": "bid",
+     "title": "Garage floor bid",
+     "start": "2026-11-06T16:00:00",
+     "end": "2026-11-06T17:00:00",
+     "at": 960,
+     "reason": "nobody",
+     "word": null,
+     "people": []
+    }
+   ],
    "drivers": {
     "mom": {
      "name": "Robin",
@@ -1412,6 +1451,8 @@
      }
     }
    ],
+   "all_day": [],
+   "unplaced": [],
    "drivers": {
     "mom": {
      "name": "Robin",
@@ -1862,6 +1903,21 @@
      }
     }
    ],
+   "all_day": [
+    {
+     "id": "trip",
+     "title": "Indianapolis",
+     "people": [
+      "mom"
+     ],
+     "first": "2026-11-08",
+     "last": "2026-11-10",
+     "day_number": 1,
+     "days": 3,
+     "cancelled": false
+    }
+   ],
+   "unplaced": [],
    "drivers": {
     "mom": {
      "name": "Robin",
@@ -2278,6 +2334,21 @@
      }
     }
    ],
+   "all_day": [
+    {
+     "id": "trip",
+     "title": "Indianapolis",
+     "people": [
+      "mom"
+     ],
+     "first": "2026-11-08",
+     "last": "2026-11-10",
+     "day_number": 2,
+     "days": 3,
+     "cancelled": false
+    }
+   ],
+   "unplaced": [],
    "drivers": {
     "mom": {
      "name": "Robin",
@@ -2902,6 +2973,21 @@
      }
     }
    ],
+   "all_day": [
+    {
+     "id": "trip",
+     "title": "Indianapolis",
+     "people": [
+      "mom"
+     ],
+     "first": "2026-11-08",
+     "last": "2026-11-10",
+     "day_number": 3,
+     "days": 3,
+     "cancelled": false
+    }
+   ],
+   "unplaced": [],
    "drivers": {
     "mom": {
      "name": "Robin",
@@ -3198,7 +3284,6 @@
        "to": "home",
        "place": null,
        "kids": [
-        "kid-c@group.calendar.google.com",
         "kid-c@group.calendar.google.com"
        ],
        "event": null,
@@ -3293,17 +3378,6 @@
      "serves": [
       "tue-art"
      ]
-    },
-    {
-     "index": 4,
-     "kid": "kid-c@group.calendar.google.com",
-     "driver": "dad",
-     "start": 1140,
-     "end": 1151,
-     "own": true,
-     "serves": [
-      "tue-art"
-     ]
     }
    ],
    "kids": {
@@ -3367,13 +3441,6 @@
        "end": 1151,
        "clash": false,
        "ride": 3
-      },
-      {
-       "type": "ride",
-       "start": 1140,
-       "end": 1151,
-       "clash": false,
-       "ride": 4
       }
      ]
     }
@@ -3482,6 +3549,8 @@
      }
     }
    ],
+   "all_day": [],
+   "unplaced": [],
    "drivers": {
     "mom": {
      "name": "Robin",

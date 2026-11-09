@@ -9,11 +9,16 @@ from homeassistant.const import CONF_TOKEN
 from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_ALL_KIDS,
     CONF_CARPOOLS,
     CONF_DAD_ALIASES,
     CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
+    CONF_EVENTS_CALENDAR,
     CONF_KIDS,
+    CONF_LUNCH_CALENDAR,
+    CONF_LUNCH_DEFAULTS,
+    CONF_LUNCH_FEEDS,
     CONF_MOM_ALIASES,
     CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
@@ -31,8 +36,14 @@ TO_REDACT = {
     CONF_DAD_ALIASES,
     CONF_CARPOOLS,
     CONF_KIDS,
+    CONF_ALL_KIDS,
     CONF_MOM_CALENDARS,
     CONF_DAD_CALENDARS,
+    CONF_EVENTS_CALENDAR,
+    CONF_LUNCH_CALENDAR,
+    # Keyed by kid id, which can be the email-like id of a kid's old calendar.
+    CONF_LUNCH_DEFAULTS,
+    CONF_LUNCH_FEEDS,
     CONF_ROUTES_KEY,
 }
 
@@ -40,20 +51,22 @@ TO_REDACT = {
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> dict[str, Any]:
     coordinator = entry.runtime_data.coordinator
     data = coordinator.data
-    roles = entry.runtime_data.settings.roles
-    # Calendar ids are often email addresses, so they're shown by role and position only.
+    settings = entry.runtime_data.settings
+    roles = settings.roles
+    # Calendar ids are often email addresses, and kid ids can be too (a kid's id is the id of
+    # the calendar they had before 0.19), so they're shown by role and position only.
     alias = {k.calendar_id: f"kid {i + 1}" for i, k in enumerate(roles.kids)}
-    for driver, ids in roles.busy.items():
-        for i, cal_id in enumerate(ids):
-            alias.setdefault(cal_id, f"{driver} busy {i + 1}")
+    alias.update({d: d for d in roles.busy})
+    alias.update({settings.events_calendar: "family calendar", settings.lunch_calendar: "lunch calendar"})
     out: dict[str, Any] = {
         "entry": {
             "data": async_redact_data(dict(entry.data), TO_REDACT),
             "options": async_redact_data(dict(entry.options), TO_REDACT),
         },
         "calendars": {
+            "family": bool(settings.events_calendar),
+            "lunch": bool(settings.lunch_calendar),
             "kids": len(roles.kids),
-            "busy": {d: len(ids) for d, ids in roles.busy.items()},
         },
         "last_update_success": coordinator.last_update_success,
     }
@@ -72,6 +85,8 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: MyDashL
                     "problems": sum(1 for x in d["issues"] if x["level"] == "problem"),
                     "heads_ups": sum(1 for x in d["issues"] if x["level"] == "heads_up"),
                     "notes_problems": sum(len(e["problems"]) for e in d["events"]),
+                    "all_day": len(d.get("all_day", ())),
+                    "unplaced": len(d.get("unplaced", ())),
                 }
                 for d in data.days
             ],

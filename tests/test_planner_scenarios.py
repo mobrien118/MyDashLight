@@ -199,3 +199,15 @@ def test_kids_with_somewhere_to_be_leave_home_again() -> None:
     to_golf = segments[home + 1]
     assert (to_golf.type, to_golf.from_loc, to_golf.to_loc) == ("drive", "home", "golf")
     assert sorted(to_golf.kids) == ["ava", "ben", "cleo"]
+
+
+def test_a_kid_picked_up_twice_is_in_the_car_both_times() -> None:
+    # Robin brings Ava home from piano, Sam takes her to a party, and Robin fetches her again.
+    drive = _drive(
+        {frozenset({"home", "piano"}): 15, frozenset({"home", "party"}): 15, frozenset({"piano", "party"}): 20}
+    )
+    piano = RideEvent("piano", "ava", "Piano", "piano", 960, 1020, drop="mom", pick="mom")
+    party = RideEvent("party", "ava", "Party", "party", 1080, 1140, drop="dad", pick="mom")
+    plan = plan_all([piano, party], {}, drive)
+    home_rides = [g.kids for g in plan["mom"].segments if g.type == "drive" and g.to_loc == "home"]
+    assert home_rides == [[], ["ava"], ["ava"]]

@@ -1,7 +1,10 @@
-"""Reads each kid's calendar for school days off and lunch picks, and saves picks.
+"""Reads the lunch calendar for each kid's lunches and picks, and the family calendar for
+school days off, and saves picks and menus on the lunch calendar.
 
-The kids' calendars are read from the first of this month to the end of next month, so the
-Lunch tab can show both months and the chore engine knows the school days it plans for.
+Both are read from the first of this month to the end of next month, so the Lunch tab can show
+both months and the chore engine knows the school days it plans for. On the lunch calendar each
+title starts with the kid's name ("Ava Lunch: Pizza"); everything else here sees "Lunch: Pizza"
+as if it were on the kid's own calendar.
 """
 
 from __future__ import annotations
@@ -37,12 +40,14 @@ from .school import (
     MenuChange,
     SchoolCalendar,
     fold_old_picks,
+    is_no_school,
     lunch_payload,
     menu_changes,
     pick_changes,
     read_school,
 )
 from .settings import HubSettings
+from .shared import school_lanes
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -125,17 +130,17 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         first, last = lunch_window(dt_util.now(tz).date())
         start = datetime.combine(first, time.min, tz)
         end = datetime.combine(last + timedelta(days=1), time.min, tz)
-        kids = list(self.kids)
+        cal_ids = [c for c in (self.settings.lunch_calendar, self.settings.events_calendar) if c]
         results = await asyncio.gather(
-            *(self.api.async_list_events(kid, start, end) for kid in kids), return_exceptions=True
+            *(self.api.async_list_events(cal_id, start, end) for cal_id in cal_ids), return_exceptions=True
         )
-        events: dict[str, list[CalendarEvent]] = {}
-        for kid, result in zip(kids, results, strict=True):
+        read: dict[str, list[CalendarEvent]] = {}
+        for cal_id, result in zip(cal_ids, results, strict=True):
             if isinstance(result, GoogleAuthError):
                 raise ConfigEntryAuthFailed(translation_domain=DOMAIN, translation_key="auth_failed") from result
             if isinstance(result, GoogleCalendarUnavailable):
-                # The rides board already says this calendar can't be read; no school info for it.
-                events[kid] = []
+                # The rides board already says this calendar can't be read; no school info from it.
+                read[cal_id] = []
                 continue
             if isinstance(result, GoogleApiDisabled):
                 raise UpdateFailed(translation_domain=DOMAIN, translation_key="api_disabled") from result
@@ -147,7 +152,13 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
                 ) from result
             if isinstance(result, BaseException):
                 raise result
-            events[kid] = result
+            read[cal_id] = result
+        events = school_lanes(
+            read.get(self.settings.lunch_calendar, []),
+            read.get(self.settings.events_calendar, []),
+            self.settings.people,
+            is_no_school,
+        )
         return read_school(events, self.settings.lunch_defaults, first, last)  # type: ignore[arg-type]
 
     def payload(self) -> dict[str, Any] | None:
@@ -193,7 +204,7 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
             _LOGGER.warning("Couldn't move the lunch picks onto the lunch events: %s", err)
 
     async def async_set_menu(self, kids: Iterable[str], day: date, dish: str, details: str = "") -> None:
-        """Save the menu on ``day`` for each of ``kids``: a "Lunch: <dish>" event on the kid's
+        """Save the menu on ``day`` for each of ``kids``: a "<Kid> Lunch: <dish>" event on the lunch
         calendar, with ``details`` in its notes. An empty ``dish`` removes it."""
         kids = list(dict.fromkeys(kids))
 
@@ -204,18 +215,24 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         await self._async_write(apply)
 
     async def _async_menu_changes(self, kid: str, changes: list[MenuChange]) -> None:
+        cal_id = self.settings.lunch_calendar
+        if changes and not cal_id:
+            raise GoogleError("Pick a lunch calendar in MyDashLight's Configure > Calendars first")
+        name = self.kids.get(kid, kid)
         for change in changes:
             # A menu changed by hand stops following the feed; a pick leaves that as it is.
             private = None if change.from_feed is None else {MENU_MARK: MENU_FROM_FEED if change.from_feed else ""}
             if change.make:
                 title, notes = change.make
-                await self.api.async_add_all_day(kid, change.day, title, notes, private if change.from_feed else None)
+                await self.api.async_add_all_day(
+                    cal_id, change.day, f"{name} {title}", notes, private if change.from_feed else None
+                )
             elif change.update:
                 event_id, etag, title, notes = change.update
-                await self.api.async_set_notes(kid, event_id, etag, notes, title, private)
+                await self.api.async_set_notes(cal_id, event_id, etag, notes, f"{name} {title}", private)
             elif change.remove:
                 event_id, etag = change.remove
-                await self.api.async_delete_event(kid, event_id, etag)
+                await self.api.async_delete_event(cal_id, event_id, etag)
 
     async def async_sync_feeds(self) -> None:
         """Read each kid's menu feed and copy its lunches from today on onto their calendar."""
@@ -249,7 +266,7 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
         try:
             await self._async_write(apply)
         except GoogleError as err:
-            _LOGGER.warning("Couldn't copy the menu feeds onto the kids' calendars: %s", err)
+            _LOGGER.warning("Couldn't copy the menu feeds onto the lunch calendar: %s", err)
             for kid in menus:
                 self.feed_errors[kid] = f"Couldn't save the menus to the calendar: {err}"
             self.async_update_listeners()
@@ -268,7 +285,7 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
                     await self.async_refresh()
                     school = self.data
                     if school is None or not self.last_update_success:
-                        raise GoogleError("The kids' calendars couldn't be read")
+                        raise GoogleError("The lunch and family calendars couldn't be read")
                 try:
                     await apply(school)
                 except GoogleConflict:

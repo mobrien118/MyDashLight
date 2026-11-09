@@ -11,7 +11,18 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed, async_mock_service
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from .common import AVA, BEN, OPTIONS, ROBIN, ROUTES_KEY, FakeGoogle, FakeRoutes, make_entry, setup_credentials, timed
+from .common import (
+    AVA,
+    BEN,
+    FAMILY,
+    OPTIONS,
+    ROUTES_KEY,
+    FakeGoogle,
+    FakeRoutes,
+    make_entry,
+    setup_credentials,
+    timed,
+)
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time, a Tuesday
 PIANO = "Piano studio, 1 Elm St"
@@ -45,10 +56,10 @@ def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     # Robin takes Ava to piano at 4: a 15-minute drive, so Robin leaves at 3:38 and is
     # reminded at 3:23. The check that Robin has left is at 3:43, five minutes later.
     g.add(
-        AVA,
+        FAMILY,
         **timed(
             "piano",
-            "Piano",
+            "Ava Piano",
             "2026-11-03T16:00:00-06:00",
             "2026-11-03T17:00:00-06:00",
             location=PIANO,
@@ -233,10 +244,10 @@ async def test_own_trips(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     google.add(
-        ROBIN,
+        FAMILY,
         **timed(
             "dentist",
-            "Dentist",
+            "Robin Dentist",
             "2026-11-03T18:00:00-06:00",
             "2026-11-03T19:00:00-06:00",
             location="Smile Dental",
@@ -244,10 +255,10 @@ async def test_own_trips(
         ),
     )
     google.add(
-        ROBIN,
+        FAMILY,
         **timed(
             "game",
-            "Game",
+            "Robin Game",
             "2026-11-03T20:00:00-06:00",
             "2026-11-03T21:00:00-06:00",
             location="City park",

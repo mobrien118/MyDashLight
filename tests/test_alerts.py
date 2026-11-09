@@ -18,7 +18,7 @@ from custom_components.mydashlight.const import DOMAIN
 from custom_components.mydashlight.google import REMINDER_MARK
 from custom_components.mydashlight.settings import HubSettings
 
-from .common import AVA, BEN, OPTIONS, FakeGoogle, google_error, make_entry, setup_credentials, timed
+from .common import AVA, BEN, FAMILY, OPTIONS, FakeGoogle, google_error, make_entry, setup_credentials, timed
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time, a Tuesday
 PIANO = "Piano studio, 1 Elm St"
@@ -45,10 +45,10 @@ def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     # Robin aims to be there 7 minutes early, leaves at 3:38 and the reminder goes off at 3:23.
     # Nobody picks Ava up yet.
     g.add(
-        AVA,
+        FAMILY,
         **timed(
             "piano",
-            "Piano",
+            "Ava Piano",
             "2026-11-03T16:00:00-06:00",
             "2026-11-03T17:00:00-06:00",
             location=PIANO,
@@ -106,7 +106,7 @@ async def test_reminders(
     # before piano starts.
     assert reminder_patches(google) == [
         (
-            AVA,
+            FAMILY,
             "piano",
             {
                 "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": 37}]},
@@ -184,7 +184,7 @@ async def test_a_drive_moved_earlier_is_reminded_again(
     entry = await load(hass, {**REMINDERS, "no_driver_alerts": False})
     assert len(phones["robin"]) == 1
     # Piano moves to 3:50, so Robin now leaves at 3:28.
-    piano = google.event(AVA, "piano")
+    piano = google.event(FAMILY, "piano")
     assert piano is not None
     piano["start"] = {"dateTime": "2026-11-03T15:50:00-06:00"}
     await entry.runtime_data.coordinator.async_refresh()
@@ -244,8 +244,8 @@ async def test_missing_notify_service_is_logged_once(
     freezer.move_to("2026-11-03T19:00:00+00:00")  # 1 PM, so rides this afternoon need a driver
     entry = await load(hass, {**REMINDERS, "kid_notify": {}})
     google.add(
-        BEN,
-        **timed("swim", "Swim", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00", location="Pool"),
+        FAMILY,
+        **timed("swim", "Ben Swim", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00", location="Pool"),
     )
     await entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()

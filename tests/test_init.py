@@ -19,7 +19,20 @@ from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
 from custom_components.mydashlight.const import DOMAIN, OAUTH_TOKEN
 
-from .common import ACCOUNT, AVA, BEN, ROBIN, SAM, FakeGoogle, google_error, make_entry, setup_credentials, timed
+from .common import (
+    ACCOUNT,
+    AVA,
+    BEN,
+    FAMILY,
+    LUNCH,
+    OPTIONS,
+    FakeGoogle,
+    all_day,
+    google_error,
+    make_entry,
+    setup_credentials,
+    timed,
+)
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time
 
@@ -35,18 +48,18 @@ async def setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
 def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     g = FakeGoogle(aioclient_mock)
     g.add(
-        AVA,
+        FAMILY,
         **timed(
             "piano",
-            "Piano",
+            "Ava Piano",
             "2026-11-03T16:00:00-06:00",
             "2026-11-03T17:00:00-06:00",
             location="Piano studio, 1 Elm St",
             description="Drop-off: Robin\nPick-up: Robin",
         ),
     )
-    g.add(BEN, **timed("soccer", "Soccer", "2026-11-04T16:00:00-06:00", "2026-11-04T17:00:00-06:00"))
-    g.add(ROBIN, **timed("work", "Work", "2026-11-03T08:00:00-06:00", "2026-11-03T15:00:00-06:00"))
+    g.add(FAMILY, **timed("soccer", "Ben Soccer", "2026-11-04T16:00:00-06:00", "2026-11-04T17:00:00-06:00"))
+    g.add(FAMILY, **timed("work", "Robin Work", "2026-11-03T08:00:00-06:00", "2026-11-03T15:00:00-06:00"))
     return g
 
 
@@ -71,9 +84,9 @@ async def test_setup_sync_and_unload(hass: HomeAssistant, google: FakeGoogle, fr
     assert data.time_zone == "America/Chicago"
     assert data.days[0]["date"] == "2026-11-03"
     assert len(data.days) == 7
-    assert data.event_counts == {AVA: 1, BEN: 1, ROBIN: 1, SAM: 0}
-    # One request per calendar, for today until 6 AM a week from today. The kids' calendars
-    # are also read for lunches, from the 1st of this month to the end of next month.
+    assert data.event_counts == {AVA: 1, BEN: 1, "mom": 1, "dad": 0}
+    # One request for the family calendar, for today until 6 AM a week from today. It's also
+    # read with the lunch calendar for lunches, from the 1st of this month to the end of next month.
     rides = [u for u in google.calls if u.query["timeMin"] != "2026-11-01T00:00:00-05:00"]
     lunch = [u for u in google.calls if u.query["timeMin"] == "2026-11-01T00:00:00-05:00"]
     assert {u.query["timeMin"] for u in rides} == {"2026-11-03T00:00:00-06:00"}
@@ -81,7 +94,7 @@ async def test_setup_sync_and_unload(hass: HomeAssistant, google: FakeGoogle, fr
     assert {u.query["timeMax"] for u in lunch} == {"2027-01-01T00:00:00-06:00"}
     assert len(lunch) == 2
 
-    google.add(AVA, **timed("art", "Art", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00"))
+    google.add(FAMILY, **timed("art", "Ava Art", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00"))
     freezer.tick(timedelta(seconds=61))
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
@@ -118,6 +131,92 @@ async def test_get_plan(hass: HomeAssistant, google: FakeGoogle) -> None:
         await get_plan(hass, date="2026-11-09", days=2)
     assert err.value.translation_key == "date_not_planned"
     assert err.value.translation_placeholders == {"first": "2026-11-03", "last": "2026-11-09"}
+
+
+async def test_one_family_calendar(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        FAMILY,
+        **timed(
+            "dentist",
+            "Ava & Ben Dentist",
+            "2026-11-03T10:00:00-06:00",
+            "2026-11-03T11:00:00-06:00",
+            location="Smile Dental",
+        ),
+    )
+    google.add(FAMILY, **all_day("trash", "Trash & Recycling Day", "2026-11-03", "2026-11-04"))
+    google.add(FAMILY, **timed("bid", "Garage floor bid", "2026-11-03T16:00:00-06:00", "2026-11-03T17:00:00-06:00"))
+    await load(hass)
+
+    (today,) = (await get_plan(hass))["days"]
+    # One event, in both kids' lanes.
+    dentist = [(e["id"], e["kid"], e["title"]) for e in today["events"] if e["title"] == "Dentist"]
+    assert dentist == [("dentist", AVA, "Dentist"), ("dentist~2", BEN, "Dentist")]
+    assert [(i["id"], i["title"], i["people"]) for i in today["all_day"]] == [("trash", "Trash & Recycling Day", [])]
+    assert [(u["id"], u["reason"]) for u in today["unplaced"]] == [("bid", "nobody")]
+
+
+async def test_a_parent_named_with_the_kids_takes_them(hass: HomeAssistant, google: FakeGoogle) -> None:
+    shop = {"location": "Donut Shop, 1 Main St"}
+    google.add(
+        FAMILY,
+        **timed("donuts", "Sam, Ava & Ben Donuts", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00", **shop),
+    )
+    google.add(FAMILY, **timed("call", "Sam & Ben Call", "2026-11-03T12:00:00-06:00", "2026-11-03T13:00:00-06:00"))
+    await load(hass)
+
+    (today,) = (await get_plan(hass))["days"]
+    lines = {
+        e["id"]: (e["drop"], e["pick"], e["lines"]["drop"]["text"], e["lines"]["pick"]["text"])
+        for e in today["events"]
+        if e["title"] == "Donuts"
+    }
+    # Sam takes them both, in one car, and stays.
+    assert lines == {
+        "donuts": ("dad", "dad", "Sam stays · leaves 5:38", "Home 7:15 with Sam"),
+        "donuts~2": ("dad", "dad", "Sam stays · leaves 5:38", "Home 7:15 with Sam"),
+    }
+    dad = today["drivers"]["dad"]
+    assert [o["title"] for o in dad["outings"]] == ["Drive Ava and Ben to Donut Shop and stay"]
+    assert today["issues"] == []
+    # Taking them isn't busy time on top. A call can happen anywhere, so it needs no ride.
+    assert [b["title"] for b in dad["busy"]] == ["Call"]
+    (call,) = [e for e in today["events"] if e["title"] == "Call"]
+    assert (call["drop"], call["pick"]) == ("none", "none")
+
+
+async def test_the_notes_win_over_the_parent_named(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        FAMILY,
+        **timed(
+            "donuts",
+            "Sam, Ava & Ben Donuts",
+            "2026-11-03T18:00:00-06:00",
+            "2026-11-03T19:00:00-06:00",
+            location="Donut Shop, 1 Main St",
+            description="--- Rides ---\nPick-up: Robin",
+        ),
+    )
+    await load(hass)
+
+    (today,) = (await get_plan(hass))["days"]
+    sides = {(e["id"], e["drop"], e["pick"], e["stay"]) for e in today["events"] if e["title"] == "Donuts"}
+    # Sam still drops them off, Robin picks them up, and Sam doesn't stay.
+    assert sides == {("donuts", "dad", "mom", False), ("donuts~2", "dad", "mom", False)}
+    (home,) = [
+        g
+        for g in today["drivers"]["mom"]["segments"]
+        if g["type"] == "drive" and g["to"] == "home" and g["start"] >= 1140
+    ]
+    assert sorted(home["kids"]) == [AVA, BEN]
+    assert today["issues"] == []
+
+
+async def test_until_the_family_calendar_is_picked(hass: HomeAssistant, google: FakeGoogle) -> None:
+    await load(hass, make_entry({**OPTIONS, "events_calendar": None}))
+    plan = await get_plan(hass)
+    assert plan["needs_setup"] == "events_calendar"
+    assert all(d["events"] == [] for d in plan["days"])
 
 
 async def test_get_plan_when_not_loaded(hass: HomeAssistant, google: FakeGoogle) -> None:
@@ -162,7 +261,7 @@ async def test_token_refresh_fails(
 
 async def test_google_turns_down_the_token_later(hass: HomeAssistant, google: FakeGoogle) -> None:
     entry = await load(hass)
-    google.errors[AVA] = google_error(401, "authError")
+    google.errors[FAMILY] = google_error(401, "authError")
 
     await entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
@@ -178,7 +277,7 @@ async def test_google_turns_down_the_token_later(hass: HomeAssistant, google: Fa
 async def test_setup_retries_when_google_fails(
     hass: HomeAssistant, google: FakeGoogle, reply: tuple[int, dict[str, Any]], key: str
 ) -> None:
-    google.errors[ROBIN] = reply
+    google.errors[FAMILY] = reply
     entry = await load(hass)
     assert entry.state is ConfigEntryState.SETUP_RETRY
     assert entry.reason is not None
@@ -187,23 +286,23 @@ async def test_setup_retries_when_google_fails(
 async def test_unreadable_calendar_is_skipped(
     hass: HomeAssistant, google: FakeGoogle, caplog: pytest.LogCaptureFixture
 ) -> None:
-    google.errors[SAM] = google_error(404, "notFound")
+    google.errors[FAMILY] = google_error(404, "notFound")
     with caplog.at_level(logging.WARNING):
         entry = await load(hass)
 
     assert entry.state is ConfigEntryState.LOADED
-    assert entry.runtime_data.coordinator.data.unavailable == [SAM]
-    assert f"Can't read the calendar {SAM}" in caplog.text
-    assert (await get_plan(hass))["unavailable_calendars"] == [SAM]
+    assert entry.runtime_data.coordinator.data.unavailable == [FAMILY]
+    assert f"Can't read the calendar {FAMILY}" in caplog.text
+    assert (await get_plan(hass))["unavailable_calendars"] == [FAMILY]
 
     caplog.clear()
     await entry.runtime_data.coordinator.async_refresh()
     assert "Can't read the calendar" not in caplog.text  # said once, not every minute
 
-    del google.errors[SAM]
+    del google.errors[FAMILY]
     with caplog.at_level(logging.INFO):
         await entry.runtime_data.coordinator.async_refresh()
-    assert f"The calendar {SAM} can be read again" in caplog.text
+    assert f"The calendar {FAMILY} can be read again" in caplog.text
     assert entry.runtime_data.coordinator.data.unavailable == []
 
 
@@ -220,23 +319,25 @@ async def test_entry_from_before_sign_in(hass: HomeAssistant) -> None:
 
 
 async def test_diagnostics(hass: HomeAssistant, hass_client: ClientSessionGenerator, google: FakeGoogle) -> None:
-    google.errors[SAM] = google_error(404, "notFound")
+    google.errors[LUNCH] = google_error(404, "notFound")
     entry = await load(hass)
     assert await async_setup_component(hass, "diagnostics", {})
 
     diag = await get_diagnostics_for_config_entry(hass, hass_client, entry)
 
     text = str(diag)
-    for secret in ("mock-access-token", "mock-refresh-token", "Robin", "Sam", "Ava", AVA, ROBIN, SAM, ACCOUNT):
+    for secret in ("mock-access-token", "mock-refresh-token", "Robin", "Sam", "Ava", AVA, FAMILY, LUNCH, ACCOUNT):
         assert secret not in text
     assert diag["entry"]["data"]["token"] == "**REDACTED**"
-    assert diag["calendars"] == {"kids": 2, "busy": {"mom": 1, "dad": 1}}
-    assert diag["plan"]["events_read"] == {"kid 1": 1, "kid 2": 1, "mom busy 1": 1}
-    assert diag["plan"]["unavailable"] == ["dad busy 1"]
+    assert diag["calendars"] == {"family": True, "lunch": True, "kids": 2}
+    assert diag["plan"]["events_read"] == {"kid 1": 1, "kid 2": 1, "mom": 1, "dad": 0}
+    assert diag["plan"]["unavailable"] == []
     assert diag["plan"]["days"][0] == {
         "date": "2026-11-03",
         "events": 1,
         "problems": 0,
         "heads_ups": diag["plan"]["days"][0]["heads_ups"],
         "notes_problems": 0,
+        "all_day": 0,
+        "unplaced": 0,
     }

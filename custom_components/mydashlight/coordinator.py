@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import logging
@@ -27,6 +26,7 @@ from .lookups import RoutesLookups, Status
 from .payload import plan_week
 from .planner import RideEvent
 from .settings import HubSettings
+from .shared import Split, in_window, people_events, split_events
 from .travel import DriveTimes
 from .week import DayInput, EventRef, WeekInput, build_week, window
 
@@ -47,6 +47,9 @@ class PlanData:
     event_counts: dict[str, int] = field(default_factory=dict)
     drive_times: dict[str, Any] = field(default_factory=dict)
     """Where the drive times came from: see :data:`~.lookups.Status`."""
+    needs_setup: str | None = None
+    """``events_calendar`` until the shared family calendar is picked."""
+    split: Split = field(default_factory=Split)
 
     def as_dict(self, days: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """The plan as the app and ``get_plan`` see it: every day, or just ``days``."""
@@ -55,6 +58,7 @@ class PlanData:
             "time_zone": self.time_zone,
             "unavailable_calendars": list(self.unavailable),
             "drive_times": dict(self.drive_times),
+            "needs_setup": self.needs_setup,
             "days": self.days if days is None else days,
         }
 
@@ -86,35 +90,36 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
         tz = dt_util.get_default_time_zone()
         today = dt_util.now(tz).date()
         start, end = window(today, PLAN_DAYS, tz)
-        ids = self.settings.roles.calendar_ids
-        results = await asyncio.gather(
-            *(self.api.async_list_events(cal_id, start, end) for cal_id in ids), return_exceptions=True
-        )
-
-        events: dict[str, list[CalendarEvent]] = {}
+        cal_id = self.settings.events_calendar
+        events: list[CalendarEvent] = []
         unavailable: list[str] = []
-        for cal_id, result in zip(ids, results, strict=True):
-            if isinstance(result, GoogleAuthError):
-                raise ConfigEntryAuthFailed(translation_domain=DOMAIN, translation_key="auth_failed") from result
-            if isinstance(result, GoogleApiDisabled):
-                raise UpdateFailed(translation_domain=DOMAIN, translation_key="api_disabled") from result
-            if isinstance(result, GoogleCalendarUnavailable):
+        if cal_id:
+            try:
+                events = await self.api.async_list_events(cal_id, start, end)
+            except GoogleAuthError as err:
+                raise ConfigEntryAuthFailed(translation_domain=DOMAIN, translation_key="auth_failed") from err
+            except GoogleApiDisabled as err:
+                raise UpdateFailed(translation_domain=DOMAIN, translation_key="api_disabled") from err
+            except GoogleCalendarUnavailable:
                 unavailable.append(cal_id)
-                continue
-            if isinstance(result, GoogleError):
+            except GoogleError as err:
                 raise UpdateFailed(
                     translation_domain=DOMAIN,
                     translation_key="google_error",
-                    translation_placeholders={"error": str(result)},
-                ) from result
-            if isinstance(result, BaseException):
-                raise result
-            events[cal_id] = result
+                    translation_placeholders={"error": str(err)},
+                ) from err
         self._note_unavailable(unavailable)
 
+        settings = self.settings
+        split = split_events(events, settings.people, tz)
+        lanes = people_events(split, {**settings.people.kids, **settings.people.parents})
         week = build_week(
-            events, self.settings.roles, self.settings.directory, today, PLAN_DAYS, tz, self.settings.home_address
+            lanes, settings.roles, settings.directory, today, PLAN_DAYS, tz, settings.home_address, split.escorts
         )
+        shown = in_window(split, [d.day for d in week.days])
+        for day in week.days:
+            day.all_day = shown[day.day.isoformat()]["all_day"]
+            day.unplaced = shown[day.day.isoformat()]["unplaced"]
         now = dt_util.now(tz)
         days, drive = await self._async_plan(week, now)
         # Planning showed which trips it needs. Look those up, then plan again with them.
@@ -127,7 +132,9 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
             days=days,
             week=week,
             unavailable=unavailable,
-            event_counts={cal_id: len(evs) for cal_id, evs in events.items()},
+            event_counts={pid: len(evs) for pid, evs in lanes.items()},
+            needs_setup=None if cal_id else "events_calendar",
+            split=split,
             drive_times={
                 "source": status,
                 "looked_up": drive.used,

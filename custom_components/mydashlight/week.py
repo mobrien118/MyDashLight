@@ -1,7 +1,8 @@
 """Turns a week of Google Calendar events into the planner's input for each day.
 
-Kid calendars give the activities that need rides. Each parent's own calendars give the
-times they can't drive. Pure module, no Home Assistant imports.
+Each kid's events (their lane of the shared calendar, see :mod:`.shared`) give the activities
+that need rides. Each parent's own events give the times they can't drive. Each lane is passed
+in as if it were that person's own calendar, by their id. Pure module, no Home Assistant imports.
 
 An event at home needs no ride. Nor does one with no address, or an online one, since it can
 happen anywhere, unless its notes name a driver.
@@ -64,6 +65,7 @@ _STREET_WORDS: Final = {
 @dataclass(frozen=True, slots=True)
 class KidCalendar:
     calendar_id: str
+    """The kid's id. Before 0.19 each kid had a calendar, and this was its id."""
     name: str
 
 
@@ -112,6 +114,10 @@ class DayInput:
     problems: dict[str, tuple[str, ...]] = field(default_factory=dict)
     """Lines in an event's notes that couldn't be read, by ride event id."""
     busy: dict[str, list[BusyBlock]] = field(default_factory=dict)
+    all_day: list[dict[str, Any]] = field(default_factory=list)
+    """The day's all-day events, shown across the top of the day for nobody."""
+    unplaced: list[dict[str, Any]] = field(default_factory=list)
+    """The day's timed events whose titles don't say who they're for."""
 
 
 @dataclass(slots=True)
@@ -171,8 +177,14 @@ def build_week(
     days: int,
     tz: tzinfo,
     home_address: str = "",
+    escorts: Mapping[str, Sequence[str]] | None = None,
 ) -> WeekInput:
-    """Sort the events read from each calendar into each day's planner input."""
+    """Sort the events read from each calendar into each day's planner input.
+
+    ``escorts`` names, by event id, the parents going to a kid's event with them: the first one
+    drives both ways and stays, with the others along, wherever the notes don't name a driver.
+    """
+    escorts = escorts or {}
     # Kids taken along are named in the notes, so the notes need the kids' names.
     directory = replace(directory, kids={k.calendar_id: k.name for k in roles.kids})
     day_list = [today + timedelta(days=i) for i in range(days)]
@@ -180,6 +192,9 @@ def build_week(
     places: dict[str, str] = {}
     short: dict[str, str] = {}
     overrides: dict[str, int] = {}
+    # (event id, driver id): a parent taking the kids to an event they're named on with them.
+    # The drive and the wait cover that time, so it isn't busy time as well.
+    taking: set[tuple[str, str]] = set()
 
     for kid in roles.kids:
         for ev in sorted(events.get(kid.calendar_id, ()), key=_sort_key):
@@ -211,6 +226,10 @@ def build_week(
                     travel=None,
                 )
             elif kind == "place":
+                if ev.id in escorts and notes.attending:
+                    notes = _escorted(notes, tuple(escorts[ev.id]))
+                    riders = {notes.drop, notes.pick, *notes.drop_riders, *notes.pick_riders}
+                    taking.update((ev.id, p) for p in escorts[ev.id] if p in riders)
                 loc = place_key(ev.location or "")
                 places.setdefault(loc, ev.location or "")
                 short.setdefault(loc, short_place(ev.location or ""))
@@ -296,6 +315,9 @@ def build_week(
                 if notes.travel is not None and "drop" in sides:
                     overrides[ride.loc] = max(overrides.get(ride.loc, 0), notes.travel)
 
+    for target in by_day.values():
+        _ride_together(target)
+
     # A parent's own event at a place, at a set time on one day: they drive themselves there,
     # stay, and drive back, maybe with kids or the other parent along. Anything else on their
     # calendar is just time they can't drive.
@@ -309,6 +331,8 @@ def build_week(
                 if ev.declined or seen_key in seen:
                     continue
                 seen.add(seen_key)
+                if (ev.id, driver) in taking:
+                    continue
                 if seen_key in owned:
                     # On both parents' calendars: the second one goes along.
                     target, ride_id = owned[seen_key]
@@ -414,6 +438,48 @@ def addresses(week: WeekInput) -> list[str]:
     )
 
 
+def _ride_together(day: DayInput) -> None:
+    """Kids at the same event with the same driver go in the same car.
+
+    One event naming several kids is one ride: the first kid's drop-off takes the others
+    along, and when the driver stays, only the last one's stop is the wait, so the drop-offs
+    all come first.
+    """
+    groups: dict[tuple[str, str], list[int]] = {}
+    for i, e in enumerate(day.events):
+        ref = day.refs.get(e.id)
+        if ref is not None and e.own is None and e.takes is None:
+            groups.setdefault((ref.calendar_id, ref.event_id), []).append(i)
+    for idx in groups.values():
+        rides = [day.events[i] for i in idx]
+        if len(rides) < 2 or len({(e.start, e.loc) for e in rides}) > 1:
+            continue
+        drivers = {e.drop for e in rides}
+        if len(drivers) == 1 and next(iter(drivers)) not in (UNASSIGNED, NOT_NEEDED):
+            first = rides[0]
+            along = tuple(dict.fromkeys((*first.along, *(e.kid for e in rides[1:]))))
+            day.events[idx[0]] = replace(first, along=along)
+        if any(e.stay for e in rides) and len({(e.drop, e.pick) for e in rides}) == 1:
+            for i in idx[:-1]:
+                day.events[i] = replace(day.events[i], stay=False)
+            day.events[idx[-1]] = replace(day.events[idx[-1]], stay=True)
+
+
+def _escorted(notes: RideNotes, parents: tuple[str, ...]) -> RideNotes:
+    """A kid's notes when the event also names the parents going: the first named drives, with
+    the rest along, on each side the notes leave open. Driving both ways, they stay."""
+    driver, *others = parents
+    drop, pick = notes.drop == UNASSIGNED, notes.pick == UNASSIGNED
+    return replace(
+        notes,
+        drop=driver if drop else notes.drop,
+        pick=driver if pick else notes.pick,
+        stay=notes.stay or (drop and pick),
+        drop_riders=(*notes.drop_riders, *others) if drop else notes.drop_riders,
+        pick_riders=(*notes.pick_riders, *others) if pick else notes.pick_riders,
+    )
+
+
 def _sides(notes: RideNotes, directory: DriverDirectory) -> dict[str, Any]:
     def kids(riders: tuple[str, ...]) -> tuple[str, ...]:
         return tuple(r for r in riders if r in directory.kids)
@@ -511,7 +577,7 @@ def _minutes(moment: datetime, day: date, tz: tzinfo) -> int:
 
 
 def _unique_id(event_id: str, taken: Iterable[str]) -> str:
-    # The same event can be on two kids' calendars. Each kid gets their own ride event.
+    # One event can name two kids. Each kid gets their own ride event.
     used = set(taken)
     if event_id not in used:
         return event_id

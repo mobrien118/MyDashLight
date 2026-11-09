@@ -14,7 +14,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.mydashlight.const import DOMAIN
 
-from .common import AVA, BEN, ROBIN, FakeGoogle, google_error, make_entry, setup_credentials, timed
+from .common import AVA, BEN, FAMILY, FakeGoogle, google_error, make_entry, setup_credentials, timed
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time, a Tuesday
 PIANO = "Piano studio, 1 Elm St"
@@ -32,10 +32,10 @@ async def setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
 def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     g = FakeGoogle(aioclient_mock)
     g.add(
-        AVA,
+        FAMILY,
         **timed(
             "piano",
-            "Piano",
+            "Ava Piano",
             "2026-11-03T16:00:00-06:00",
             "2026-11-03T17:00:00-06:00",
             location=PIANO,
@@ -69,7 +69,7 @@ async def test_set_driver(hass: HomeAssistant, google: FakeGoogle) -> None:
     await call(hass, "set_ride", event="piano", side="drop", driver="dad")
 
     assert google.patches == [
-        (AVA, "piano", '"0"', {"description": "Bring the music book.\n\n--- Rides ---\nDrop-off: Sam"})
+        (FAMILY, "piano", '"0"', {"description": "Bring the music book.\n\n--- Rides ---\nDrop-off: Sam"})
     ]
     # Planned again straight away, from what Google now has.
     assert planned(entry, "piano")["drop"] == "dad"
@@ -78,7 +78,7 @@ async def test_set_driver(hass: HomeAssistant, google: FakeGoogle) -> None:
     # By name, both ways, and nothing is written when nothing changes.
     await call(hass, "set_ride", event="piano", side="both", driver="Sam")
     assert len(google.patches) == 2
-    assert google.event(AVA, "piano")["description"].endswith("Drop-off: Sam\nPick-up: Sam")
+    assert google.event(FAMILY, "piano")["description"].endswith("Drop-off: Sam\nPick-up: Sam")
     await call(hass, "set_ride", event="piano", side="pick", driver="sam")
     assert len(google.patches) == 2
 
@@ -86,18 +86,18 @@ async def test_set_driver(hass: HomeAssistant, google: FakeGoogle) -> None:
     await call(hass, "set_ride", event="piano", side="pick", driver="the parkers")
     assert planned(entry, "piano")["pick"] == "the Parkers"
     await call(hass, "set_ride", event="piano", side="both")
-    assert google.event(AVA, "piano")["description"] == "Bring the music book."
+    assert google.event(FAMILY, "piano")["description"] == "Bring the music book."
     assert planned(entry, "piano")["drop"] == ""
 
 
 async def test_stay_and_arrive_by(hass: HomeAssistant, google: FakeGoogle) -> None:
-    google.event(AVA, "piano")["description"] = "<b>Bring</b> the music book.<br>Drop-off: Robin<br>Pick-up: Robin"
+    google.event(FAMILY, "piano")["description"] = "<b>Bring</b> the music book.<br>Drop-off: Robin<br>Pick-up: Robin"
     entry = await load(hass)
 
     await call(hass, "set_stay", event="piano", stay=True)
     await call(hass, "set_arrive_by", event="piano", time="15:45")
 
-    assert google.event(AVA, "piano")["description"] == (
+    assert google.event(FAMILY, "piano")["description"] == (
         "<b>Bring</b> the music book.<br><br>--- Rides ---<br>Drop-off: Robin<br>Pick-up: Robin<br>Stay: yes"
         "<br>Arrive by: 3:45 PM"
     )
@@ -107,7 +107,7 @@ async def test_stay_and_arrive_by(hass: HomeAssistant, google: FakeGoogle) -> No
 
     await call(hass, "set_arrive_by", event="piano")
     assert planned(entry, "piano")["arrive_by"] is None
-    assert "Arrive by" not in google.event(AVA, "piano")["description"]
+    assert "Arrive by" not in google.event(FAMILY, "piano")["description"]
 
 
 async def test_someone_else_edits_at_the_same_time(hass: HomeAssistant, google: FakeGoogle) -> None:
@@ -117,7 +117,7 @@ async def test_someone_else_edits_at_the_same_time(hass: HomeAssistant, google: 
     await call(hass, "set_ride", event="piano", side="drop", driver="mom")
 
     # The first save was turned down; the change went on top of the other edit.
-    assert google.event(AVA, "piano")["description"] == (
+    assert google.event(FAMILY, "piano")["description"] == (
         "Bring the music book.\nEdited on a phone\n\n--- Rides ---\nDrop-off: Robin"
     )
     assert planned(entry, "piano")["drop"] == "mom"
@@ -130,13 +130,13 @@ async def test_someone_else_edits_at_the_same_time(hass: HomeAssistant, google: 
 
 def lessons(google: FakeGoogle) -> None:
     """Swim lessons every day this week. Thursday's was changed by itself."""
-    google.add_series(BEN, id="swim", summary="Swim", description="Goggles.")
+    google.add_series(FAMILY, id="swim", summary="Ben Swim", description="Goggles.")
     for day, description in (("03", "Goggles."), ("04", "Goggles."), ("05", "Goggles. Lane 4 on Thursday.")):
         google.add(
-            BEN,
+            FAMILY,
             **timed(
                 f"swim_202611{day}",
-                "Swim",
+                "Ben Swim",
                 f"2026-11-{day}T17:00:00-06:00",
                 f"2026-11-{day}T18:00:00-06:00",
                 location=SWIM,
@@ -166,8 +166,8 @@ async def test_every_one(hass: HomeAssistant, google: FakeGoogle) -> None:
 
     # The series, then Thursday's, which has its own notes and so doesn't follow the series.
     assert [p[1] for p in google.patches] == ["swim", "swim_20261105"]
-    assert google.event(BEN, "swim")["description"] == "Goggles.\n\n--- Rides ---\nPick-up: Sam"
-    assert google.event(BEN, "swim_20261105")["description"] == (
+    assert google.event(FAMILY, "swim")["description"] == "Goggles.\n\n--- Rides ---\nPick-up: Sam"
+    assert google.event(FAMILY, "swim_20261105")["description"] == (
         "Goggles. Lane 4 on Thursday.\n\n--- Rides ---\nPick-up: Sam"
     )
     assert [planned(entry, f"swim_202611{d}", i)["pick"] for i, d in enumerate(("03", "04", "05"))] == ["dad"] * 3
@@ -190,7 +190,7 @@ async def test_unknown_event(hass: HomeAssistant, google: FakeGoogle) -> None:
 
 async def test_an_event_at_home_takes_no_ride(hass: HomeAssistant, google: FakeGoogle) -> None:
     google.add(
-        AVA, **timed("tutor", "Tutor", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00", location="Home")
+        FAMILY, **timed("tutor", "Ava Tutor", "2026-11-03T18:00:00-06:00", "2026-11-03T19:00:00-06:00", location="Home")
     )
     await load(hass)
     with pytest.raises(ServiceValidationError) as err:
@@ -202,9 +202,13 @@ async def test_an_event_at_home_takes_no_ride(hass: HomeAssistant, google: FakeG
 
 async def test_a_parents_own_event(hass: HomeAssistant, google: FakeGoogle) -> None:
     google.add(
-        ROBIN,
+        FAMILY,
         **timed(
-            "dentist", "Dentist", "2026-11-03T14:00:00-06:00", "2026-11-03T15:00:00-06:00", location="Smile Dental"
+            "dentist",
+            "Robin Dentist",
+            "2026-11-03T14:00:00-06:00",
+            "2026-11-03T15:00:00-06:00",
+            location="Smile Dental",
         ),
     )
     entry = await load(hass)
@@ -254,12 +258,12 @@ async def test_not_loaded(hass: HomeAssistant, google: FakeGoogle) -> None:
 
 def driven_together(google: FakeGoogle) -> None:
     """Robin drops Ava at piano for 4:00, then Ben at the pool for 4:15."""
-    google.event(AVA, "piano")["description"] = "Drop-off: Robin\nPick-up: Robin"
+    google.event(FAMILY, "piano")["description"] = "Drop-off: Robin\nPick-up: Robin"
     google.add(
-        BEN,
+        FAMILY,
         **timed(
             "swim",
-            "Swim",
+            "Ben Swim",
             "2026-11-03T16:15:00-06:00",
             "2026-11-03T17:15:00-06:00",
             location=SWIM,
@@ -282,7 +286,7 @@ async def test_take_along(hass: HomeAssistant, google: FakeGoogle) -> None:
     await call(hass, "set_take_along", event="piano", kids=["ben"])
 
     # Riders go after the driver on the line.
-    assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin, Ben\nPick-up: Robin"
+    assert google.event(FAMILY, "piano")["description"] == "--- Rides ---\nDrop-off: Robin, Ben\nPick-up: Robin"
     assert planned(entry, "piano")["along"] == [BEN]
     # Now Ben rides along to Ava's drop-off, then on to the pool.
     assert first_drive(entry)["kids"] == [AVA, BEN]
@@ -290,22 +294,22 @@ async def test_take_along(hass: HomeAssistant, google: FakeGoogle) -> None:
     await call(hass, "set_take_along", event="piano")
     assert planned(entry, "piano")["along"] == []
     assert first_drive(entry)["kids"] == [AVA]
-    assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Robin"
+    assert google.event(FAMILY, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Robin"
 
     # Ben and Sam ride along on the pick-up instead.
     await call(hass, "set_take_along", event="piano", kids=["Ben", "Sam"], side="pick")
-    assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Robin, Ben, Sam"
+    assert google.event(FAMILY, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Robin, Ben, Sam"
     assert planned(entry, "piano")["pick_along"] == [BEN, "dad"]
 
 
 async def test_errand_minutes(hass: HomeAssistant, google: FakeGoogle) -> None:
     google.add(
-        ROBIN,
-        **timed("jersey", "Jersey", "2026-11-03T14:30:00-06:00", "2026-11-03T17:30:00-06:00", location="Gym"),
+        FAMILY,
+        **timed("jersey", "Robin Jersey", "2026-11-03T14:30:00-06:00", "2026-11-03T17:30:00-06:00", location="Gym"),
     )
     entry = await load(hass)
     await call(hass, "set_takes", event="jersey", minutes=10)
-    assert google.event(ROBIN, "jersey")["description"] == "--- Rides ---\nTakes: 10 min"
+    assert google.event(FAMILY, "jersey")["description"] == "--- Rides ---\nTakes: 10 min"
     assert planned(entry, "jersey")["takes"] == 10
     await call(hass, "set_takes", event="jersey")
     assert planned(entry, "jersey")["takes"] is None
@@ -325,14 +329,14 @@ def suggestions(entry: MockConfigEntry) -> list[dict[str, Any]]:
 
 
 async def test_apply_a_suggested_fix(hass: HomeAssistant, google: FakeGoogle) -> None:
-    google.event(AVA, "piano")["description"] = "Drop-off: Robin"
+    google.event(FAMILY, "piano")["description"] = "Drop-off: Robin"
     entry = await load(hass)
     ids = [s["id"] for s in suggestions(entry)]
     assert ids == ["2026-11-03|piano|pick|mom", "2026-11-03|piano|pick|dad"]
 
     await call(hass, "apply_suggestion", suggestion="2026-11-03|piano|pick|dad")
 
-    assert google.event(AVA, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Sam"
+    assert google.event(FAMILY, "piano")["description"] == "--- Rides ---\nDrop-off: Robin\nPick-up: Sam"
     assert planned(entry, "piano")["pick"] == "dad"
     assert suggestions(entry) == []
 
@@ -345,24 +349,24 @@ async def test_apply_a_take_along_fix(hass: HomeAssistant, google: FakeGoogle) -
     # Robin works until 3:30. Coming home for Ben between the drop-offs means leaving
     # during work; taking him along doesn't.
     driven_together(google)
-    google.add(ROBIN, **timed("work", "Work", "2026-11-03T09:00:00-06:00", "2026-11-03T15:30:00-06:00"))
+    google.add(FAMILY, **timed("work", "Robin Work", "2026-11-03T09:00:00-06:00", "2026-11-03T15:30:00-06:00"))
     entry = await load(hass)
     along = [s for s in suggestions(entry) if s["change"]["field"] == "along"]
     assert [(s["id"], s["label"]) for s in along] == [(f"2026-11-03|piano|along|{BEN}", "Take Ben along")]
 
     await call(hass, "apply_suggestion", suggestion=along[0]["id"])
 
-    assert google.event(AVA, "piano")["description"].endswith("Take along: Ben")
+    assert google.event(FAMILY, "piano")["description"].endswith("Take along: Ben")
     assert planned(entry, "piano")["along"] == [BEN]
     assert first_drive(entry)["kids"] == [AVA, BEN]
 
 
 async def test_not_attending(hass: HomeAssistant, google: FakeGoogle) -> None:
     google.add(
-        AVA,
+        FAMILY,
         **timed(
             "tap",
-            "NO Tap",
+            "NO Ava Tap",
             "2026-11-03T18:00:00-06:00",
             "2026-11-03T19:00:00-06:00",
             location="Home",
@@ -379,7 +383,7 @@ async def test_not_attending(hass: HomeAssistant, google: FakeGoogle) -> None:
 
     # Going again takes the old NO off the title too. Being at home doesn't stop this one.
     await call(hass, "set_attending", event="tap", attending=True)
-    assert google.patches[-1][3] == {"description": "", "summary": "Tap"}
+    assert google.patches[-1][3] == {"description": "", "summary": "Ava Tap"}
     tap = planned(entry, "tap")
     assert (tap["title"], tap["attending"]) == ("Tap", True)
 
