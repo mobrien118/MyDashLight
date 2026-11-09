@@ -543,7 +543,7 @@ export const styles = css`
     background: var(--bad);
   }
 
-  .banner {
+  .notice-bar {
     flex: none;
     padding: 10px 14px;
     border-radius: 10px;
@@ -736,14 +736,14 @@ export const styles = css`
     background: #d6d3cb;
   }
   /* All-day events, glued under the date line and floating with it. */
-  .allday {
+  .day-strip {
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
     gap: 4px;
     padding-bottom: 4px;
   }
-  .ad-chip {
+  .strip-chip {
     flex: none;
     box-sizing: border-box;
     display: inline-flex;
@@ -762,33 +762,33 @@ export const styles = css`
     line-height: 24px;
     white-space: nowrap;
   }
-  .ad-chip.plain {
+  .strip-chip.plain {
     border-color: var(--border);
     border-left-color: var(--faint);
     background: var(--surface);
   }
-  .ad-chip.warn {
+  .strip-chip.warn {
     border: 1px dashed var(--warn-ink);
     border-left: 4px solid var(--warn-ink);
     background: #fff6e0;
   }
-  .ad-chip.warn .ad-note {
+  .strip-chip.warn .strip-note {
     color: var(--warn-ink);
     font-weight: 700;
   }
-  .ad-chip.skipped .ad-title {
+  .strip-chip.skipped .strip-title {
     color: var(--muted);
     text-decoration: line-through;
     text-decoration-thickness: 2px;
   }
-  .ad-title {
+  .strip-title {
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 600;
   }
-  .ad-note {
+  .strip-note {
     flex: none;
     color: var(--muted);
     font-size: 11px;

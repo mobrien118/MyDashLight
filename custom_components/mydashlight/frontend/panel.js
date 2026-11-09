@@ -679,7 +679,7 @@ var To=Object.defineProperty;var vn=(s,t)=>()=>(s&&(t=s(s=0)),t);var Co=(s,t)=>{
     background: var(--bad);
   }
 
-  .banner {
+  .notice-bar {
     flex: none;
     padding: 10px 14px;
     border-radius: 10px;
@@ -872,14 +872,14 @@ var To=Object.defineProperty;var vn=(s,t)=>()=>(s&&(t=s(s=0)),t);var Co=(s,t)=>{
     background: #d6d3cb;
   }
   /* All-day events, glued under the date line and floating with it. */
-  .allday {
+  .day-strip {
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
     gap: 4px;
     padding-bottom: 4px;
   }
-  .ad-chip {
+  .strip-chip {
     flex: none;
     box-sizing: border-box;
     display: inline-flex;
@@ -898,33 +898,33 @@ var To=Object.defineProperty;var vn=(s,t)=>()=>(s&&(t=s(s=0)),t);var Co=(s,t)=>{
     line-height: 24px;
     white-space: nowrap;
   }
-  .ad-chip.plain {
+  .strip-chip.plain {
     border-color: var(--border);
     border-left-color: var(--faint);
     background: var(--surface);
   }
-  .ad-chip.warn {
+  .strip-chip.warn {
     border: 1px dashed var(--warn-ink);
     border-left: 4px solid var(--warn-ink);
     background: #fff6e0;
   }
-  .ad-chip.warn .ad-note {
+  .strip-chip.warn .strip-note {
     color: var(--warn-ink);
     font-weight: 700;
   }
-  .ad-chip.skipped .ad-title {
+  .strip-chip.skipped .strip-title {
     color: var(--muted);
     text-decoration: line-through;
     text-decoration-thickness: 2px;
   }
-  .ad-title {
+  .strip-title {
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 600;
   }
-  .ad-note {
+  .strip-note {
     flex: none;
     color: var(--muted);
     font-size: 11px;
@@ -2822,10 +2822,10 @@ var To=Object.defineProperty;var vn=(s,t)=>()=>(s&&(t=s(s=0)),t);var Co=(s,t)=>{
           <span><strong>Tap a ride to change it</strong>Changes are saved in the event’s notes in Google Calendar.</span>
         </li>
       </ol>
-    </div>`}renderBanner(e){if(e?.needs_setup==="events_calendar")return h`<div class="banner" role="status">
+    </div>`}renderBanner(e){if(e?.needs_setup==="events_calendar")return h`<div class="notice-bar" role="status">
         Pick your family calendar to see the week: in Home Assistant, open Settings &gt; Devices &amp; services &gt; MyDashLight &gt;
         Configure &gt; Calendars.
-      </div>`;let n=e?.unavailable_calendars.length??0;return n?h`<div class="banner" role="status">
+      </div>`;let n=e?.unavailable_calendars.length??0;return n?h`<div class="notice-bar" role="status">
       Couldn’t read ${n===1?"one calendar":`${n} calendars`} just now, so some activities may be missing. MyDashLight tries again every
       minute.
     </div>`:w}renderEmpty(){return this.error?h`<div class="empty-state">
@@ -2838,11 +2838,11 @@ var To=Object.defineProperty;var vn=(s,t)=>()=>(s&&(t=s(s=0)),t);var Co=(s,t)=>{
           >${e.sub}</span
         >
       </div>
-      ${e.allDay.length?h`<div class="allday" style="padding-left:${tt}px">
+      ${e.allDay.length?h`<div class="day-strip" style="padding-left:${tt}px">
             ${e.allDay.map(n=>h`<span
-                  class="ad-chip ${n.warn?"warn":""} ${n.cancelled?"skipped":""} ${n.color?"":"plain"}"
+                  class="strip-chip ${n.warn?"warn":""} ${n.cancelled?"skipped":""} ${n.color?"":"plain"}"
                   style=${n.color?`--c:${n.color.color};--rgb:${n.color.rgb};--ink:${n.color.ink}`:""}
-                  ><span class="ad-title">${n.title}</span>${n.note?h`<span class="ad-note">${n.note}</span>`:w}</span
+                  ><span class="strip-title">${n.title}</span>${n.note?h`<span class="strip-note">${n.note}</span>`:w}</span
                 >`)}
           </div>`:w}`}renderBoard(e){let n=this.sel,o=a=>!!a&&!!n&&a.day===n.day&&a.event===n.event,i=e.dayHeads.find(a=>a.date===this.pinDay)??e.dayHeads[0],r=e.width,l=100,c=[...e.links.map(a=>({t:"link",x:a,z:a.layer??0})),...e.preps.map(a=>({t:"prep",x:a,z:a.layer??l-1})),...e.cards.map(a=>({t:"card",x:a,z:a.layer??l})),...e.rides.map(a=>({t:"ride",x:a,z:a.layer??l+1}))].sort((a,d)=>a.z-d.z);return h`
       <div
