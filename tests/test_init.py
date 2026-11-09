@@ -212,6 +212,29 @@ async def test_the_notes_win_over_the_parent_named(hass: HomeAssistant, google: 
     assert today["issues"] == []
 
 
+async def test_kids_at_one_event_ride_in_one_car(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        FAMILY,
+        **timed(
+            "school",
+            "Ava & Ben Lighthouse",
+            "2026-11-03T08:00:00-06:00",
+            "2026-11-03T09:00:00-06:00",
+            location="Elm School, 5 Elm St",
+            description="--- Rides ---\nDrop-off: Robin",
+        ),
+    )
+    await load(hass)
+
+    (today,) = (await get_plan(hass))["days"]
+    (trip,) = [o for o in today["drivers"]["mom"]["outings"] if o["target"] == "school"]
+    # One stop for both of them.
+    assert trip["lines"] == ["7:53  Elm School, drop off Ava and Ben", "8:08  Home"]
+    # Each of them is in the car for their own event, not along for the other's.
+    rides = [(r["kid"], r["own"]) for r in today["rides"] if r["serves"] == ["school"]]
+    assert rides == [(AVA, True), (BEN, True)]
+
+
 async def test_until_the_family_calendar_is_picked(hass: HomeAssistant, google: FakeGoogle) -> None:
     await load(hass, make_entry({**OPTIONS, "events_calendar": None}))
     plan = await get_plan(hass)

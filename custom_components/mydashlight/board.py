@@ -10,7 +10,7 @@ same thing. The app only lays it out. Pure module, no Home Assistant imports.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -160,8 +160,9 @@ def build_day(
 ) -> DayBoard:
     """Plan the day and work out everything the board shows for it."""
     plan = plan_all(events, busy, travel, settings, drivers)
-    rides = _rides(plan, drivers)
-    kid_items = _kid_items(events, rides, kids)
+    goes = _goes_to(events)
+    rides = _rides(plan, drivers, goes)
+    kid_items = _kid_items(events, rides, kids, goes)
     return DayBoard(
         plan=plan,
         rides=rides,
@@ -172,7 +173,21 @@ def build_day(
     )
 
 
-def _rides(plan: DayPlan, drivers: Sequence[str]) -> list[Ride]:
+def _goes_to(events: Sequence[RideEvent]) -> Callable[[RideEvent, str], bool]:
+    """Whether a kid is at an event, or at the same calendar event in their own lane: kids
+    named on one event each have their own copy, but they're all going to the same thing."""
+    at: dict[str, set[str]] = {}
+    for e in events:
+        if e.own is None:
+            at.setdefault(same_event(e.id), set()).add(e.kid)
+
+    def goes(e: RideEvent, kid: str) -> bool:
+        return e.attends(kid) or kid in at.get(same_event(e.id), ())
+
+    return goes
+
+
+def _rides(plan: DayPlan, drivers: Sequence[str], goes: Callable[[RideEvent, str], bool]) -> list[Ride]:
     # Back-to-back legs in the same car are one ride, split where a kid stops riding along
     # for someone else's stop and starts heading to their own (or the other way round).
     rides: list[Ride] = []
@@ -188,7 +203,7 @@ def _rides(plan: DayPlan, drivers: Sequence[str]) -> list[Ride]:
                 # A ride belongs to a kid when it serves their own stop.
                 own = prev.own if prev else True
                 if g.serves is not None:
-                    own = g.serves.attends(k)
+                    own = goes(g.serves, k)
                 if prev is not None and prev.own == own:
                     prev.end = g.end
                     prev.legs.append(g)
@@ -197,7 +212,9 @@ def _rides(plan: DayPlan, drivers: Sequence[str]) -> list[Ride]:
     return rides
 
 
-def _kid_items(events: Sequence[RideEvent], rides: list[Ride], kids: Sequence[str]) -> dict[str, list[KidItem]]:
+def _kid_items(
+    events: Sequence[RideEvent], rides: list[Ride], kids: Sequence[str], goes: Callable[[RideEvent, str], bool]
+) -> dict[str, list[KidItem]]:
     # Activities plus time in a car. A late arrival is trimmed at the start time:
     # that's lateness, not a clash.
     items: dict[str, list[KidItem]] = {k: [] for k in kids}
@@ -209,7 +226,7 @@ def _kid_items(events: Sequence[RideEvent], rides: list[Ride], kids: Sequence[st
         s, en = r.start, r.end
         for g in r.legs:
             served = g.serves
-            if served is None or not served.attends(r.kid):
+            if served is None or not goes(served, r.kid):
                 continue
             if r.start < served.start < en:
                 en = served.start
@@ -263,6 +280,8 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         jobs: list[tuple[str, str, list[str]]] = []
         job_event: str | None = None
         riders: dict[str, str] = {}
+        # The last stop line, when it was a kid's: its kind, place, time, event and kids.
+        said: tuple[str, str, str, str | None, list[str]] | None = None
         name = labels.driver(d)
         first = o.legs[0]
         if first.type == "drive" and first.from_loc == HOME:
@@ -308,20 +327,35 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 # The other parent riding along hears when they leave too.
                 for x in s.event.pick_parents if s.kind == "pick" else s.event.parents:
                     o.parents.setdefault(x, f"Leave home at {fmt12(o.start)} with {name}")
-            if own and s.event is not None:
+            if s.kind in ("drop", "stay", "pick") and not own:
+                when = at if s.kind != "pick" else fmt(max(s.arrive, s.ready or 0))
+                kind, base = s.kind, same_event(s.event.id) if s.event is not None else None
+                if (
+                    said is not None
+                    and base is not None
+                    and said[1:4] == (place, when, base)
+                    and (said[0], kind) in (("drop", "drop"), ("drop", "stay"), ("pick", "pick"))
+                ):
+                    # Kids at the same event, there at the same time: one line for them all.
+                    lines.pop()
+                    who = [*said[4], k]
+                else:
+                    who = [k]
+                said = (kind, place, when, base, who)
+                text = {"drop": "drop off", "stay": "stay with", "pick": "pick up"}[kind]
+                lines.append(f"{when}  {place}, {text} {' and '.join(who)}")
+            elif own and s.event is not None:
+                said = None
                 jobs.append(("errand" if s.event.takes is not None else "go", place, [s.event.title]))
                 lines.append(f"{fmt(max(s.arrive, s.ready or 0))}  {place}, {s.event.title}")
-            elif s.kind == "drop":
-                lines.append(f"{at}  {place}, drop off {k}")
-            elif s.kind == "stay":
-                lines.append(f"{at}  {place}, stay with {k}")
-            elif s.kind == "pick":
-                lines.append(f"{fmt(max(s.arrive, s.ready or 0))}  {place}, pick up {k}")
             elif s.kind == "fetch":
                 lines.append(f"{at}  Home, get " + " and ".join(labels.kid(x) for x in s.car))
             elif s.kind == "end":
                 lines.append(f"{at}  Home")
+            if s.kind not in ("drop", "stay", "pick") or own:
+                said = None
             if s.kind == "stay" and s.after is not None and s.after < o.end:
+                said = None
                 lines.append(f"{fmt(s.after)}  Leave {place}")
         last = o.legs[-1]
         home_line = f"{fmt(o.end)}  Home"
