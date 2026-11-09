@@ -74,7 +74,8 @@ var nameOf = function (e) { return e.own ? PEOPLE[e.own] : K[e.kid].name; };
 // Minutes as written: whole, rounded half up.
 var wholeMin = function (v) { return Math.floor(v + 0.5); };
 var arriveEarly = function (loc) { return Math.min(Math.max(Math.floor(5 + travel('home', loc) / 6 + 1e-9), 5), 20); };
-var arriveAt = function (e) { return e.arriveBy != null ? e.arriveBy : e.start - arriveEarly(e.loc); };
+// Traffic margin before when they must be there (Arrive by, or else the start). Arrive by doesn't replace it.
+var arriveAt = function (e) { return (e.arriveBy != null ? e.arriveBy : e.start) - arriveEarly(e.loc); };
 
 // Minutes of driving as people read them (Marty, 2026-11-04): under an hour to the quarter minute
 // ("18¼ min"), an hour or more in hours and whole minutes ("1 hr 15 min").
@@ -368,7 +369,7 @@ function issueText(x) {
   var e = x.e, kid = e ? nameOf(e) : '';
   var who = x.d ? PEOPLE[x.d] : '';
   if (x.kind === 'busy') return { title: who + ' is still at ' + x.b.title, body: 'Leaving at ' + fmt(x.seg.start) + (e ? ' for ' + kid + '’s ' + e.title.toLowerCase() : '') + ' overlaps ' + x.b.title + ' until ' + fmt(x.b.end) + '.' };
-  if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + (e.arriveBy != null ? 'the ' + fmt(e.arriveBy) + ' arrive-by time.' : 'the ' + fmt(x.s.deadline) + ' target.') };
+  if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + 'the ' + fmt(x.s.deadline) + ' target' + (e.arriveBy != null && e.arriveBy > x.s.deadline ? ', ' + wholeMin(e.arriveBy - x.s.deadline) + ' min before the ' + fmt(e.arriveBy) + ' arrive-by time' : '') + '.' };
   if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after it ends.' };
   if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : ' ends at ' + fmt(e.end)) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
   if (x.kind === 'early') return { title: kid + ' waits ' + wholeMin(x.min) + ' min', body: who + ' gets ' + kid + ' to ' + e.title + ' at ' + fmt(x.s.arr) + ', well before the ' + fmt(e.start) + ' start.', note: kid + ' waits ' + wholeMin(x.min) + ' min at ' + e.title };

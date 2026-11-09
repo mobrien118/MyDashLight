@@ -92,7 +92,7 @@ test("timeline: the driver's trips, the clash with work, and now", () => {
   const b = layout(plan, "timeline", 1160, today);
   const sam = b.columns.find((c) => c.name === "Sam")!;
   const day0 = b.trips.filter((t) => t.key.startsWith(FIRST) && t.x > sam.x);
-  assert.ok(day0.some((t) => t.l1 === "Leave 4:25" && t.bad && t.kids.length === 2));
+  assert.ok(day0.some((t) => t.l1 === "Leave 4:20" && t.bad && t.kids.length === 2));
   assert.ok(b.overlaps.some((o) => o.key.startsWith(FIRST) && o.x > sam.x));
   assert.ok(b.busy.some((x) => x.label === "Work until 4:40"));
   assert.ok(b.preps.some((p) => p.label === "Arrive by 5:15"));
@@ -195,10 +195,10 @@ test("the next trip: leaving soon, under way, or tomorrow", () => {
   const soon = nextUp(plan, { date: FIRST, minutes: 16 * 60 })!;
   assert.equal(soon.ongoing, false);
   assert.equal(soon.name, "Sam");
-  assert.equal(soon.lead, "Leave 4:25");
-  assert.equal(soon.inMinutes, 25);
+  assert.equal(soon.lead, "Leave 4:20");
+  assert.equal(soon.inMinutes, 20);
   assert.equal(soon.warn, "Still at Work until 4:40");
-  assert.equal(soon.stop, "4:40 Soccer fields, drop off Cleo");
+  assert.equal(soon.stop, "4:35 Soccer fields, drop off Cleo");
   assert.ok(soon.target);
 
   // Someone is out, but the next one to leave matters more.

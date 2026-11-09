@@ -275,16 +275,17 @@ class IssueText:
 
 
 def arrive_at(event: RideEvent, settings: PlannerSettings, travel: TravelFn) -> int:
-    """When the driver aims to have the kid there: the Arrive by time, or a margin before the
-    start that grows with the drive from home (5 minutes early when it's 5 minutes away, 10
-    when it's 30, 15 when it's an hour, never more than 20)."""
-    if event.arrive_by is not None:
-        return event.arrive_by
-    return event.start - arrive_early(event.loc, settings, travel)
+    """When the driver aims to have the kid there: a margin for traffic before the time they
+    must be there (the Arrive by time, or else the start). The margin grows with the drive from
+    home: 5 minutes early when it's 5 minutes away, 10 when it's 30, 15 when it's an hour, never
+    more than 20. Arrive by doesn't replace it, because it's a different need: being there
+    earlier than the event says."""
+    due = event.arrive_by if event.arrive_by is not None else event.start
+    return due - arrive_early(event.loc, settings, travel)
 
 
 def arrive_early(loc: str, settings: PlannerSettings, travel: TravelFn) -> int:
-    """How long before the start to aim to be at ``loc``, with no Arrive by time."""
+    """How long before the start, or the Arrive by time, to aim to be at ``loc``."""
     least = settings.arrive_early
     if settings.arrive_early_per <= 0:
         return least
@@ -746,11 +747,10 @@ def issue_text(issue: Issue, labels: Labels) -> IssueText:
                 f"Leaving at {fmt(issue.segment.start)}{what} overlaps {b.title} until {fmt(b.end)}.",
             )
         case "late" if e and s and s.arrive is not None and s.deadline is not None:
-            target = (
-                f"the {fmt(e.arrive_by)} arrive-by time."
-                if e.arrive_by is not None
-                else f"the {fmt(s.deadline)} target."
-            )
+            target = f"the {fmt(s.deadline)} target"
+            if e.arrive_by is not None and e.arrive_by > s.deadline:
+                target += f", {minutes_text(e.arrive_by - s.deadline)} min before the {fmt(e.arrive_by)} arrive-by time"
+            target += "."
             return IssueText(
                 f"{kid} will be late to {e.title}",
                 f"{who} gets there at {fmt(s.arrive)}, {minutes_text(issue.minutes)} min after {target}",

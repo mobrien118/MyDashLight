@@ -63,10 +63,20 @@ def test_arrive_early_grows_with_the_drive() -> None:
     assert early == {0: 5, 5: 5, 12: 7, 30: 10, 59.9: 14, 60: 15, 90: 20, 200: 20}
     assert arrive_early("x", PlannerSettings(arrive_early_per=0), lambda _a, _b: 60) == 5
     assert arrive_early("x", PlannerSettings(arrive_early=10, arrive_early_max=8), lambda _a, _b: 60) == 10
-    # An Arrive by time still wins.
+    # Marty, 2026-11-08: Arrive by (be there earlier than the event says) and the traffic margin
+    # are different needs, so the margin still comes off the Arrive by time.
     e = RideEvent("e", "ava", "Piano", "piano", 960, 1020, arrive_by=930)
-    assert arrive_at(e, settings, lambda _a, _b: 60) == 930
+    assert arrive_at(e, settings, lambda _a, _b: 60) == 930 - 15
     assert arrive_at(replace(e, arrive_by=None), settings, lambda _a, _b: 60) == 945
+
+
+def test_arrive_by_keeps_the_traffic_margin() -> None:
+    # Marty, 2026-11-08: Arrive by 5:15 for a 5:30 game 30 minutes away. The traffic margin for a
+    # 30-minute drive is 10, so leave at 4:35, not 4:45.
+    game = RideEvent("game", "ben", "Game", "field", 1050, 1140, drop="mom", arrive_by=1035)
+    day = plan_driver("mom", [game], {}, lambda a, b: 0 if a == b else 30)
+    assert day.leave == 1035 - 10 - 30
+    assert day.issues == []
 
 
 def test_driving_text() -> None:
@@ -112,9 +122,10 @@ def test_same_place_drop_off_and_pick_up_in_one_stop() -> None:
 
 
 def test_a_few_seconds_late_is_not_late() -> None:
-    # Ben goes straight from soccer (ends 4:00) to piano (be there by 4:12).
+    # Ben goes straight from soccer (ends 4:00) to piano (Arrive by 4:18, less 6 min for traffic
+    # on a 10-minute drive: aim for 4:12).
     soccer = RideEvent("soccer", "ben", "Soccer", "soccer", 900, 960, drop="dad", pick="mom")
-    piano = RideEvent("piano", "ben", "Piano", "piano", 975, 1020, drop="mom", arrive_by=972)
+    piano = RideEvent("piano", "ben", "Piano", "piano", 975, 1020, drop="mom", arrive_by=978)
 
     def issues(drive: float) -> list[Issue]:
         return plan_driver(
@@ -125,7 +136,9 @@ def test_a_few_seconds_late_is_not_late() -> None:
     assert issues(12.2) == []
     (late,) = issues(12.6)
     assert late.kind == "late"
-    assert issue_text(late, LABELS).body == "Robin gets there at 4:13, 1 min after the 4:12 arrive-by time."
+    assert issue_text(late, LABELS).body == (
+        "Robin gets there at 4:13, 1 min after the 4:12 target, 6 min before the 4:18 arrive-by time."
+    )
     assert [minutes_text(v) for v in (15.200000000000045, 0.5, 2.0, None)] == ["15", "1", "2", "0"]
 
 
