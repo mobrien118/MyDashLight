@@ -78,7 +78,8 @@ and for the kids' names. Each event's title starts with who it's for:
 - **A parent named with kids**, as in "Sam, Ben & Cleo Donuts", means that parent takes them: Sam
   drives both ways and stays, unless the notes name someone else.
 
-All-day events go in a thin row across the top of each day they cover, such as "Trash Day" or a
+All-day events go in a thin row right under the date of each day they cover, and stay pinned with
+the date while you scroll through that day, such as "Trash Day" or a
 week of "Winter Break". They aren't assigned to anyone and never stop anyone driving; a name in
 the title just colours the chip. A trip that should keep a parent from driving needs times: "Robin
 Indianapolis" from 7 AM Tuesday to 7 PM Friday is one event in Robin's column.

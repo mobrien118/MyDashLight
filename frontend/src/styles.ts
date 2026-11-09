@@ -658,10 +658,13 @@ export const styles = css`
   }
   .pinned,
   .day-head {
-    height: 36px;
+    box-sizing: border-box;
     padding: 0 4px;
     background: var(--bg);
     border-bottom: 1px solid var(--line);
+  }
+  .dh-line {
+    height: 35px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -673,6 +676,7 @@ export const styles = css`
     margin-bottom: -36px;
     pointer-events: none;
     border-radius: 12px 0 0 0;
+    overflow: hidden;
   }
   .day-head {
     position: absolute;
@@ -731,24 +735,24 @@ export const styles = css`
     width: 1px;
     background: #d6d3cb;
   }
-  /* All-day events across the top of a day, for nobody. */
+  /* All-day events, glued under the date line and floating with it. */
   .allday {
-    position: absolute;
-    z-index: 1;
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
     gap: 4px;
-    overflow: hidden;
-    pointer-events: none;
+    padding-bottom: 4px;
   }
   .ad-chip {
+    flex: none;
+    box-sizing: border-box;
     display: inline-flex;
     align-items: baseline;
     gap: 6px;
     max-width: 100%;
     height: 26px;
     padding: 0 10px;
+    overflow: hidden;
     border-radius: 6px;
     border: 1px solid rgba(var(--rgb), 0.45);
     border-left: 4px solid var(--c);
@@ -778,6 +782,8 @@ export const styles = css`
     text-decoration-thickness: 2px;
   }
   .ad-title {
+    flex: 0 1 auto;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 600;
