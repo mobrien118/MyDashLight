@@ -73,7 +73,8 @@ class MyDashLightData:
     notifier: Notifier
     calendar_reminders: CalendarReminders
     write_lock: asyncio.Lock
-    """One change to Google at a time, so two taps don't race each other."""
+    """One change to the calendars at a time, so two taps don't race each other. Chores have
+    their own, since they're in Google Tasks."""
     chores: ChoreCoordinator
     lunch: LunchCoordinator
 
@@ -128,7 +129,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     lock = asyncio.Lock()
     reminders = CalendarReminders(hass, api, lock, settings.reminders)
     lunch = LunchCoordinator(hass, entry, api, settings, lock, websession)
-    chores = ChoreCoordinator(hass, entry, GoogleTasksApi(websession, tokens), settings, lock, lunch.school)
+    # Chores go to Google Tasks, so a long fill of the kids' lists never holds up a ride or
+    # lunch change on the calendars.
+    chores = ChoreCoordinator(hass, entry, GoogleTasksApi(websession, tokens), settings, asyncio.Lock(), lunch.school)
     entry.runtime_data = MyDashLightData(settings, api, coordinator, notifier, reminders, lock, chores, lunch)
 
     @callback

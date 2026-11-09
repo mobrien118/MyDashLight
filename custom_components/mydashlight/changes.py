@@ -18,7 +18,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Any, Final
 
-from .google import GoogleCalendarApi, GoogleConflict
+from .google import EventNotes, GoogleCalendarApi, GoogleConflict
 from .notes import KEEP, DriverDirectory, Keep, RideNotes, parse_notes, skip_prefix, write_notes
 
 TRIES: Final = 3
@@ -132,26 +132,37 @@ async def async_save(
     *,
     series: str | None = None,
     also: Iterable[Target] = (),
+    saved: list[tuple[str, EventNotes]] | None = None,
 ) -> int:
     """Save the change, returning how many events were actually written.
 
     With ``series`` (the repeating event's id), the change goes to the series first, then to
-    each of ``also`` that still needs it. Otherwise it goes to ``target`` alone.
+    each of ``also`` that still needs it. Otherwise it goes to ``target`` alone. Each event
+    written is added to ``saved`` (its calendar, and its notes as Google saved them).
     """
+    out = saved if saved is not None else []
+
+    async def save(t: Target, c: RideChange) -> int:
+        notes = await _async_save_one(api, directory, t, c)
+        if notes is None:
+            return 0
+        out.append((t.calendar_id, notes))
+        return 1
+
     if series is None:
-        return int(await _async_save_one(api, directory, target, change))
+        return await save(target, change)
     whole = Target(target.calendar_id, series, target.event_start)
     others = {o.event_id: o for o in also if o.event_id not in (series, target.event_id)}
     # Read before writing the series: Google can carry the series' new notes onto occurrences.
     before = await _async_notes(api, directory, whole)
     own = {event_id: await _async_notes(api, directory, o) for event_id, o in others.items()}
-    written = int(await _async_save_one(api, directory, whole, change))
+    written = await save(whole, change)
     if target.event_id != series:
-        written += await _async_save_one(api, directory, target, change)
+        written += await save(target, change)
     for event_id, other in others.items():
         theirs = change.unless_set_by_hand(before, own[event_id])
         if not theirs.empty:
-            written += await _async_save_one(api, directory, other, theirs)
+            written += await save(other, theirs)
     return written
 
 
@@ -166,19 +177,20 @@ async def _async_notes(api: GoogleCalendarApi, directory: DriverDirectory, targe
 
 async def _async_save_one(
     api: GoogleCalendarApi, directory: DriverDirectory, target: Target, change: RideChange
-) -> bool:
+) -> EventNotes | None:
+    """Write the change to one event, returning its notes as saved, or None when it already
+    had them."""
     for attempt in range(TRIES):
         event = await api.async_get_notes(target.calendar_id, target.event_id)
         description = change.apply(event.description, directory, target.event_start)
         title, prefixed = skip_prefix(event.title)
         new_title = title if change.attending is True and prefixed else None
         if description == event.description and new_title is None:
-            return False
+            return None
         try:
-            await api.async_set_notes(target.calendar_id, target.event_id, event.etag, description, new_title)
+            return await api.async_set_notes(target.calendar_id, target.event_id, event.etag, description, new_title)
         except GoogleConflict:
             if attempt == TRIES - 1:
                 raise
             continue
-        return True
     raise AssertionError("unreachable")  # pragma: no cover

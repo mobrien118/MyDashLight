@@ -92,6 +92,7 @@ class FakeGoogle:
         self.deleted: list[tuple[str, str]] = []
         """(calendar id, event id) for each event deleted."""
         self.tasks = FakeTasks(aioclient_mock)
+        self._listed: dict[str, list[dict[str, Any]]] | None = None
 
     def add(self, calendar_id: str, **event: Any) -> dict[str, Any]:
         item = {"etag": f'"{len(self.events.get(calendar_id, []))}"', **event}
@@ -102,6 +103,14 @@ class FakeGoogle:
         item = {"etag": self._next_etag(), **event}
         self.series.setdefault(calendar_id, {})[item["id"]] = item
         return item
+
+    def lag_lists(self) -> None:
+        """From now until :meth:`catch_up`, lists of events show them as they are now, the way
+        Google's list can be a moment behind a change. Reading one event stays current."""
+        self._listed = {cal: [dict(item) for item in items] for cal, items in self.events.items()}
+
+    def catch_up(self) -> None:
+        self._listed = None
 
     def event(self, calendar_id: str, event_id: str) -> dict[str, Any] | None:
         for item in self.events.get(calendar_id, []):
@@ -197,7 +206,8 @@ class FakeGoogle:
         cal_id = match.group(1)
         if cal_id not in self.events and cal_id not in self.errors and cal_id not in {c["id"] for c in self.calendars}:
             return AiohttpClientMockResponse(method, url, status=HTTPStatus.NOT_FOUND, json=_error(404, "notFound"))
-        return self._reply(method, url, cal_id, self.events.get(cal_id, []))
+        listed = self._listed if self._listed is not None else self.events
+        return self._reply(method, url, cal_id, listed.get(cal_id, []))
 
     def _reply(self, method: str, url: URL, key: str, items: list[dict[str, Any]]) -> AiohttpClientMockResponse:
         if key in self.errors:
