@@ -33,6 +33,8 @@ export interface PlanEvent {
   calendar_id: string;
   event_id: string;
   recurring: boolean;
+  /** "none" on both sides only because it has no address and no driver is named yet. Older plans leave it out. */
+  no_ride_unless_named?: boolean;
   /** Lines in the event's notes that couldn't be read. */
   problems: string[];
   lines: { drop: CardLine | null; pick: CardLine | null };

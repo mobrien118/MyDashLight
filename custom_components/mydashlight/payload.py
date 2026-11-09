@@ -148,6 +148,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "calendar_id": ref.calendar_id,
         "event_id": ref.event_id,
         "recurring": ref.recurring_id is not None,
+        "no_ride_unless_named": ref.no_ride_unless_named,
         "problems": list(day.problems.get(e.id, ())),
         "lines": {
             "drop": _line(lines.drop) if lines else None,

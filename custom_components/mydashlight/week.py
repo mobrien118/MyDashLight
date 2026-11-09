@@ -102,6 +102,8 @@ class EventRef:
     """The event's pop-up reminders, or None for the calendar's default."""
     private: tuple[tuple[str, str], ...] = ()
     """The event's private properties, where MyDashLight marks the reminder it set."""
+    no_ride_unless_named: bool = False
+    """It needs no ride only because it has no address and its notes name no driver yet."""
 
 
 @dataclass(slots=True)
@@ -211,6 +213,7 @@ def build_week(
                 notes = replace(notes, attending=False)
             notes = _kid_notes(notes, kid.calendar_id)
             base_id = ev.id
+            no_ride_unless_named = False
             kind = where(ev.location or "", home_address)
             if kind == "home":
                 # Home needs no ride, whatever the notes say.
@@ -238,6 +241,7 @@ def build_week(
                 if notes.drop == UNASSIGNED and notes.pick == UNASSIGNED:
                     # It can happen anywhere. Naming a driver in the notes plans it after all.
                     notes = replace(notes, drop=NOT_NEEDED, pick=NOT_NEEDED)
+                    no_ride_unless_named = True
             if not notes.attending:
                 # Still shown, but nobody drives and nothing clashes with it.
                 notes = replace(
@@ -308,7 +312,14 @@ def build_week(
                     ride = replace(ride, id=ride_id)
                 target.events.append(ride)
                 target.refs[ride_id] = EventRef(
-                    ev.calendar_id, ev.id, ev.etag, ev.recurring_id, sides, ev.popups, ev.private
+                    ev.calendar_id,
+                    ev.id,
+                    ev.etag,
+                    ev.recurring_id,
+                    sides,
+                    ev.popups,
+                    ev.private,
+                    no_ride_unless_named=no_ride_unless_named,
                 )
                 if notes.problems:
                     target.problems[ride_id] = notes.problems

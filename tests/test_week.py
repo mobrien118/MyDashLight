@@ -354,6 +354,9 @@ def test_events_with_no_address_need_no_ride_unless_the_notes_name_a_driver() ->
     assert w.labels.place("?class") == "Coding class"
     # Naming a driver plans the ride after all, so the drop-off still needs one.
     assert (party.drop, party.pick) == (UNASSIGNED, "dad")
+    # The board shows the no-address default as nothing picked yet, so it can be changed.
+    refs = w.days[0].refs
+    assert [refs[e].no_ride_unless_named for e in ("call", "class", "party")] == [True, True, False]
 
 
 def test_home_and_anywhere_on_the_board() -> None:
@@ -394,6 +397,8 @@ def test_home_and_anywhere_on_the_board() -> None:
     assert events["tutor"]["lines"] == {"drop": {"text": "At home", "tone": "muted"}, "pick": None}
     assert events["call"]["where"] == "anywhere"
     assert events["call"]["lines"]["drop"] == {"text": "No ride needed", "tone": "muted"}
+    assert events["call"]["no_ride_unless_named"] is True
+    assert events["soccer"]["no_ride_unless_named"] is False
     assert events["soccer"]["where"] == "place"
     assert [(c["kid"], c["a"]["event"], c["b"]["type"]) for c in tue["clashes"]] == [(AVA, "tutor", "ride")]
     assert not any(x["kind"] == "unassigned" for x in tue["issues"])

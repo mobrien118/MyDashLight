@@ -2265,12 +2265,15 @@ export class MyDashLightBoard extends LitElement {
     const side = (s: Side): TemplateResult | typeof nothing => {
       if (!e.sides.includes(s)) return nothing;
       const pend = pendingValue(s);
-      const v = pend !== undefined ? String(pend) : s === "drop" ? e.drop : e.pick;
+      const saved = s === "drop" ? e.drop : e.pick;
+      // With no address and nobody named, "none" is only the default: nothing is picked yet.
+      const v = pend !== undefined ? String(pend) : e.no_ride_unless_named && saved === "none" ? "" : saved;
+      const unset = v === "" && !(pend === undefined && e.no_ride_unless_named);
       const other = v && v !== "none" && !drivers.includes(v) ? v : "";
       const choose = (value: string): void => this.setRide(e, s, v === value ? "" : value);
       const main: [string, string][] = [...drivers.map((d): [string, string] => [d, whoName(plan, d)]), ["none", "Not needed"]];
       return html`<div class="field">
-        <span class="field-label">${s === "drop" ? "Drop-off" : "Pick-up"} ${v === "" ? html`<span class="nobody">· nobody yet</span>` : nothing}</span>
+        <span class="field-label">${s === "drop" ? "Drop-off" : "Pick-up"} ${unset ? html`<span class="nobody">· nobody yet</span>` : nothing}</span>
         <div role="group" aria-label=${s === "drop" ? "Drop-off driver" : "Pick-up driver"} class="choices" style="grid-template-columns:repeat(${main.length}, minmax(0, 1fr))">
           ${main.map(
             ([value, label]) =>
@@ -2350,8 +2353,9 @@ export class MyDashLightBoard extends LitElement {
       if (driver === "" && !with_.length) return;
       notes.push(`${label}: ${[driver === "" ? "TBD" : noteVal(driver), ...with_.map(who)].join(", ")}`);
     };
-    if (!e.own) line("Drop-off", e.drop, e.along);
-    if (!e.own) line("Pick-up", e.pick, e.pick_along ?? []);
+    const written = (v: string): string => (e.no_ride_unless_named && v === "none" ? "" : v);
+    if (!e.own) line("Drop-off", written(e.drop), e.along);
+    if (!e.own) line("Pick-up", written(e.pick), e.pick_along ?? []);
     if (!e.own && e.stay) notes.push("Stay: yes");
     if (errand) notes.push(`Takes: ${e.takes} min`);
     if (e.own && e.along.length) notes.push(`Take along: ${e.along.map(who).join(", ")}`);
@@ -2401,7 +2405,11 @@ export class MyDashLightBoard extends LitElement {
       </div>
       ${attending
         ? html`${e.where === "anywhere"
-              ? html`<p class="field-hint">No address, so it can happen anywhere and needs no ride. Pick a driver if it does.</p>`
+              ? html`<p class="field-hint">
+                  ${e.no_ride_unless_named
+                    ? "No address, so it can happen anywhere and needs no ride. Pick a driver if it does."
+                    : "No address, so the drive time is a guess. Add the place to the event in Google Calendar for the real one."}
+                </p>`
               : nothing}
             ${e.own
               ? html`<p class="field-hint">${this.ownHint(plan, e)}</p>`
