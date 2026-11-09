@@ -6,7 +6,8 @@ save and the change is applied again on top of their edit.
 
 A change to "every one" of a repeating event goes to the series. Occurrences someone already
 changed by themselves keep their own notes in Google, so those in ``also`` (the occurrences
-being planned) get the same change too.
+being planned) get the same change too, except on a line that occurrence was given by hand: one
+that differed from the series before the change. Those stay as they were.
 
 Pure module, no Home Assistant imports.
 """
@@ -14,11 +15,11 @@ Pure module, no Home Assistant imports.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import Final
+from dataclasses import dataclass, replace
+from typing import Any, Final
 
 from .google import GoogleCalendarApi, GoogleConflict
-from .notes import KEEP, DriverDirectory, Keep, skip_prefix, write_notes
+from .notes import KEEP, DriverDirectory, Keep, RideNotes, parse_notes, skip_prefix, write_notes
 
 TRIES: Final = 3
 
@@ -61,6 +62,19 @@ class RideChange:
             )
         )
 
+    def unless_set_by_hand(self, series: _Notes, own: _Notes) -> RideChange:
+        """This change, leaving out the lines where ``own`` (an occurrence) already differed
+        from ``series`` (the series it belongs to) before the change."""
+        kept: dict[str, Any] = {}
+        for name in _LINES:
+            if not isinstance(getattr(self, name), Keep) and not _same(name, series, own):
+                kept[name] = KEEP
+        return replace(self, **kept) if kept else self
+
+    @property
+    def empty(self) -> bool:
+        return not self.rides and isinstance(self.attending, Keep)
+
     def apply(self, description: str, directory: DriverDirectory, event_start: int | None) -> str:
         return write_notes(
             description,
@@ -76,6 +90,29 @@ class RideChange:
             takes=self.takes,
             event_start=event_start,
         )
+
+
+_LINES: Final = ("drop", "pick", "stay", "along", "arrive_by", "attending", "drop_riders", "pick_riders", "takes")
+
+
+@dataclass(frozen=True, slots=True)
+class _Notes:
+    """An event's ride lines as they were before a change, to tell the ones set by hand."""
+
+    rides: RideNotes
+    start: int | None
+    skipped: bool
+    """Whether the title has the old "NO" prefix."""
+
+
+def _same(name: str, a: _Notes, b: _Notes) -> bool:
+    if name == "attending":
+        return (a.rides.attending and not a.skipped) == (b.rides.attending and not b.skipped)
+    x, y = getattr(a.rides, name), getattr(b.rides, name)
+    if name == "arrive_by" and x is not None and y is not None and x != y:
+        # "15 min early" reads as a different clock time on an occurrence moved to another time.
+        return a.start is not None and b.start is not None and x - a.start == y - b.start
+    return bool(x == y)
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,14 +140,28 @@ async def async_save(
     """
     if series is None:
         return int(await _async_save_one(api, directory, target, change))
-    written = int(await _async_save_one(api, directory, Target(target.calendar_id, series, target.event_start), change))
-    seen = {series}
-    for other in (target, *also):
-        if other.event_id in seen:
-            continue
-        seen.add(other.event_id)
-        written += await _async_save_one(api, directory, other, change)
+    whole = Target(target.calendar_id, series, target.event_start)
+    others = {o.event_id: o for o in also if o.event_id not in (series, target.event_id)}
+    # Read before writing the series: Google can carry the series' new notes onto occurrences.
+    before = await _async_notes(api, directory, whole)
+    own = {event_id: await _async_notes(api, directory, o) for event_id, o in others.items()}
+    written = int(await _async_save_one(api, directory, whole, change))
+    if target.event_id != series:
+        written += await _async_save_one(api, directory, target, change)
+    for event_id, other in others.items():
+        theirs = change.unless_set_by_hand(before, own[event_id])
+        if not theirs.empty:
+            written += await _async_save_one(api, directory, other, theirs)
     return written
+
+
+async def _async_notes(api: GoogleCalendarApi, directory: DriverDirectory, target: Target) -> _Notes:
+    event = await api.async_get_notes(target.calendar_id, target.event_id)
+    return _Notes(
+        parse_notes(event.description, directory, target.event_start),
+        target.event_start,
+        skip_prefix(event.title)[1],
+    )
 
 
 async def _async_save_one(
