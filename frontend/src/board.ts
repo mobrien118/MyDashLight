@@ -1204,14 +1204,14 @@ export class MyDashLightBoard extends LitElement {
 
   private renderBanner(plan: Plan | null): TemplateResult | typeof nothing {
     if (plan?.needs_setup === "events_calendar") {
-      return html`<div class="banner" role="status">
+      return html`<div class="notice-bar" role="status">
         Pick your family calendar to see the week: in Home Assistant, open Settings &gt; Devices &amp; services &gt; MyDashLight &gt;
         Configure &gt; Calendars.
       </div>`;
     }
     const n = plan?.unavailable_calendars.length ?? 0;
     if (!n) return nothing;
-    return html`<div class="banner" role="status">
+    return html`<div class="notice-bar" role="status">
       Couldn’t read ${n === 1 ? "one calendar" : `${n} calendars`} just now, so some activities may be missing. MyDashLight tries again every
       minute.
     </div>`;
@@ -1237,13 +1237,13 @@ export class MyDashLightBoard extends LitElement {
         >
       </div>
       ${d.allDay.length
-        ? html`<div class="allday" style="padding-left:${GUTTER}px">
+        ? html`<div class="day-strip" style="padding-left:${GUTTER}px">
             ${d.allDay.map(
               (c) =>
                 html`<span
-                  class="ad-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
+                  class="strip-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
                   style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
-                  ><span class="ad-title">${c.title}</span>${c.note ? html`<span class="ad-note">${c.note}</span>` : nothing}</span
+                  ><span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}</span
                 >`,
             )}
           </div>`
