@@ -185,6 +185,33 @@ async def test_a_parent_named_with_the_kids_takes_them(hass: HomeAssistant, goog
     assert (call["drop"], call["pick"]) == ("none", "none")
 
 
+async def test_the_notes_win_over_the_parent_named(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        FAMILY,
+        **timed(
+            "donuts",
+            "Sam, Ava & Ben Donuts",
+            "2026-11-03T18:00:00-06:00",
+            "2026-11-03T19:00:00-06:00",
+            location="Donut Shop, 1 Main St",
+            description="--- Rides ---\nPick-up: Robin",
+        ),
+    )
+    await load(hass)
+
+    (today,) = (await get_plan(hass))["days"]
+    sides = {(e["id"], e["drop"], e["pick"], e["stay"]) for e in today["events"] if e["title"] == "Donuts"}
+    # Sam still drops them off, Robin picks them up, and Sam doesn't stay.
+    assert sides == {("donuts", "dad", "mom", False), ("donuts~2", "dad", "mom", False)}
+    (home,) = [
+        g
+        for g in today["drivers"]["mom"]["segments"]
+        if g["type"] == "drive" and g["to"] == "home" and g["start"] >= 1140
+    ]
+    assert sorted(home["kids"]) == [AVA, BEN]
+    assert today["issues"] == []
+
+
 async def test_until_the_family_calendar_is_picked(hass: HomeAssistant, google: FakeGoogle) -> None:
     await load(hass, make_entry({**OPTIONS, "events_calendar": None}))
     plan = await get_plan(hass)
