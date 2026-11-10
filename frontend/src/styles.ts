@@ -55,8 +55,8 @@ export const styles = css`
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 20px 28px 24px;
-    gap: 16px;
+    padding: 14px 28px 16px;
+    gap: 12px;
     min-height: 0;
   }
   .app.narrow {
@@ -72,7 +72,7 @@ export const styles = css`
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
   .narrow .col {
     gap: 10px;
@@ -82,8 +82,8 @@ export const styles = css`
     flex: none;
     display: flex;
     align-items: center;
-    gap: 24px;
-    min-height: 64px;
+    gap: 20px;
+    min-height: 60px;
   }
   .narrow header {
     flex-wrap: wrap;
@@ -108,8 +108,8 @@ export const styles = css`
     display: flex;
     align-items: baseline;
     gap: 6px;
-    font-size: 52px;
-    line-height: 52px;
+    font-size: 46px;
+    line-height: 46px;
     font-weight: 800;
     letter-spacing: -0.03em;
   }
@@ -129,6 +129,7 @@ export const styles = css`
   }
   .today-line {
     margin: 0;
+    white-space: nowrap;
     font-size: 17px;
     line-height: 22px;
     font-weight: 600;
@@ -140,6 +141,7 @@ export const styles = css`
   }
   .status {
     margin: 0;
+    font-weight: 500;
     font-size: 13px;
     line-height: 18px;
     color: var(--muted);
@@ -152,9 +154,9 @@ export const styles = css`
   .next {
     flex: 1 1 auto;
     min-width: 0;
-    max-width: 560px;
+    max-width: 760px;
     margin-right: auto;
-    padding: 12px 18px 13px;
+    padding: 9px 18px 10px;
     border-radius: 18px;
     border: 0;
     background: linear-gradient(160deg, var(--night-2), var(--night));
@@ -162,7 +164,7 @@ export const styles = css`
     text-align: left;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     box-shadow: 0 6px 20px rgba(27, 31, 38, 0.22);
     position: relative;
     overflow: hidden;
@@ -222,11 +224,29 @@ export const styles = css`
   .next.idle .next-eyebrow {
     color: var(--ok);
   }
+  /* The trip and where it goes share a line, so the card is two lines tall. */
   .next-main {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 10px;
     min-width: 0;
+  }
+  .next-main > .avatar,
+  .next-main > .next-kids {
+    align-self: center;
+  }
+  .next-main > .next-stop {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-left: 4px;
+  }
+  .narrow .next-main {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .narrow .next-main > .next-stop {
+    flex-basis: 100%;
+    margin-left: 0;
   }
   .next-lead {
     font-size: 24px;
@@ -237,6 +257,7 @@ export const styles = css`
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    flex: 0 1 auto;
   }
   .narrow .next-lead {
     font-size: 19px;
@@ -299,134 +320,6 @@ export const styles = css`
   .avatar.driver {
     background: var(--dark);
     box-shadow: none;
-  }
-
-  .week {
-    flex: none;
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .narrow .week {
-    gap: 6px;
-  }
-  .day-tile {
-    position: relative;
-    min-height: 68px;
-    padding: 7px 6px 8px;
-    border-radius: 14px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
-  }
-  .day-tile:active {
-    transform: scale(0.97);
-  }
-  .day-tile.in-view:not(.today) {
-    border-color: var(--ink-2);
-    box-shadow: 0 0 0 1px var(--ink-2), var(--shadow);
-  }
-  .day-tile.today {
-    background: linear-gradient(160deg, var(--night-2), var(--night));
-    border-color: var(--night);
-    color: #fff;
-  }
-  .dt-wd {
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .today .dt-wd {
-    color: #f5a524;
-  }
-  .dt-num {
-    font-size: 24px;
-    line-height: 28px;
-    font-weight: 800;
-  }
-  .dt-dots {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    min-height: 14px;
-  }
-  .dt-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 5px;
-  }
-  .today .dt-dot {
-    box-shadow: 0 0 0 1.5px var(--night);
-  }
-  .dt-free,
-  .dt-more {
-    font-size: 11px;
-    line-height: 14px;
-    font-weight: 600;
-    color: var(--faint);
-  }
-  .today .dt-free,
-  .today .dt-more {
-    color: #b7bdc7;
-  }
-  .dt-badge {
-    position: absolute;
-    top: -6px;
-    right: -4px;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 6px;
-    border-radius: 11px;
-    background: var(--bad);
-    color: #fff;
-    font-size: 12.5px;
-    font-weight: 800;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 0 2px var(--bg);
-  }
-  .phone .day-tile {
-    min-height: 58px;
-    padding: 5px 2px 6px;
-    border-radius: 11px;
-  }
-  .phone .dt-wd {
-    font-size: 10px;
-    line-height: 13px;
-    letter-spacing: 0.02em;
-  }
-  .phone .dt-num {
-    font-size: 18px;
-    line-height: 22px;
-  }
-  .phone .dt-dot {
-    width: 6px;
-    height: 6px;
-  }
-  .phone .dt-dots {
-    gap: 2px;
-  }
-  .phone .dt-free {
-    display: none;
-  }
-  .phone .dt-badge {
-    top: -5px;
-    right: -3px;
-    min-width: 17px;
-    height: 17px;
-    padding: 0 4px;
-    font-size: 10.5px;
   }
 
   .controls {
@@ -586,14 +479,14 @@ export const styles = css`
     position: sticky;
     top: 0;
     z-index: 6;
-    height: 72px;
+    height: 56px;
     background: var(--bg);
   }
   .col-head {
     position: absolute;
     top: 0;
-    height: 66px;
-    padding: 4px 8px 6px;
+    height: 52px;
+    padding: 2px 8px 6px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -604,7 +497,7 @@ export const styles = css`
     left: 6px;
     right: 6px;
     bottom: 0;
-    height: 4px;
+    height: 3px;
     border-radius: 2px;
     background: var(--c);
   }
@@ -614,7 +507,7 @@ export const styles = css`
     left: 6px;
     right: 6px;
     bottom: 0;
-    height: 4px;
+    height: 3px;
     border-radius: 2px;
     background: repeating-linear-gradient(90deg, var(--dark) 0 10px, transparent 10px 16px);
     opacity: 0.55;
@@ -624,9 +517,14 @@ export const styles = css`
     flex-direction: column;
     min-width: 0;
   }
+  .col-head .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+  }
   .col-head .name {
     font-size: 18px;
-    line-height: 23px;
+    line-height: 22px;
     font-weight: 800;
     white-space: nowrap;
     overflow: hidden;
@@ -650,8 +548,21 @@ export const styles = css`
     color: var(--muted);
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
+  }
+  /* Narrow columns get a second line, and the heading the room for it. */
+  .narrow .heads {
+    height: 70px;
+  }
+  .narrow .col-head {
+    height: 66px;
+  }
+  .narrow .col-head .sub {
+    -webkit-line-clamp: 2;
+  }
+  .narrow .pinned {
+    top: 70px;
   }
   .col-head .sub.warn {
     color: var(--warn-ink);
@@ -671,17 +582,34 @@ export const styles = css`
   }
   .pinned {
     position: sticky;
-    top: 72px;
+    top: 56px;
     z-index: 5;
     margin-bottom: -36px;
-    pointer-events: none;
-    border-radius: 12px 0 0 0;
     overflow: hidden;
   }
   .day-head {
     position: absolute;
     left: 0;
     z-index: 1;
+  }
+  /* The date is the way to a day now: tap it to go there and bring out the week. */
+  .dh-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    height: 32px;
+    margin-left: -6px;
+    padding: 0 8px 0 6px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+  }
+  .dh-jump:hover {
+    background: rgba(28, 30, 34, 0.05);
+  }
+  .dh-jump:active {
+    background: rgba(28, 30, 34, 0.1);
   }
   .pinned .label,
   .day-head .label {
@@ -2561,5 +2489,187 @@ export const styles = css`
   .narrow .month-title {
     min-width: 0;
     font-size: 19px;
+  }
+
+  /* The days down the board's edge: out while scrolling, tucked away to a small tab after. */
+  .rail-wrap {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 0;
+    height: 0;
+    z-index: 20;
+  }
+  /* The tab sits in the gap beside the board, so it never covers anything. */
+  .rail-tab {
+    position: absolute;
+    left: 0;
+    top: -48px;
+    width: 24px;
+    height: 96px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+  }
+  .narrow .rail-tab {
+    width: 12px;
+  }
+  .rail-tab span {
+    width: 6px;
+    height: 56px;
+    border-radius: 3px;
+    background: rgba(28, 30, 34, 0.24);
+  }
+  .rail-tab:hover span,
+  .rail-tab:active span {
+    background: rgba(28, 30, 34, 0.45);
+  }
+  .rail-wrap.out .rail-tab {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .rail {
+    position: absolute;
+    right: 12px;
+    top: 0;
+    translate: 0 -50%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgba(28, 30, 34, 0.18), 0 2px 6px rgba(28, 30, 34, 0.08);
+    opacity: 0;
+    transform: translateX(24px);
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease;
+  }
+  .rail-wrap.out .rail {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .rail-day {
+    position: relative;
+    width: 64px;
+    min-height: 56px;
+    padding: 5px 4px 6px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+  }
+  .rail-day:active {
+    background: var(--line-2);
+  }
+  .rail-day.here {
+    background: var(--night);
+    color: #fff;
+  }
+  .rd-wd {
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .rail-day.today .rd-wd {
+    color: #c26a00;
+  }
+  .rail-day.here .rd-wd {
+    color: #c9ced6;
+  }
+  .rail-day.here.today .rd-wd {
+    color: #ffc768;
+  }
+  .rd-num {
+    font-size: 20px;
+    line-height: 22px;
+    font-weight: 800;
+  }
+  .rd-dots {
+    display: flex;
+    gap: 3px;
+    height: 8px;
+    align-items: center;
+  }
+  .rd-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 4px;
+  }
+  .rail-day.here .rd-dot {
+    box-shadow: 0 0 0 1.5px var(--night);
+  }
+  .rd-free {
+    font-size: 10px;
+    line-height: 8px;
+    color: var(--faint);
+  }
+  .rail-day.here .rd-free {
+    color: #9aa1ab;
+  }
+  .rd-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--bad);
+    color: #fff;
+    font-size: 11px;
+    line-height: 18px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* Back to today: a small pill at the bottom once the board has scrolled away. */
+  .back-today {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    z-index: 20;
+    transform: translateX(-50%);
+    min-height: 44px;
+    padding: 0 18px 0 14px;
+    border: 0;
+    border-radius: 22px;
+    background: var(--night);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 6px 18px rgba(27, 31, 38, 0.28);
+    animation: back-in 0.18s ease;
+  }
+  @keyframes back-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 8px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rail,
+    .rail-tab,
+    .back-today {
+      transition: none;
+      animation: none;
+    }
   }
 `;

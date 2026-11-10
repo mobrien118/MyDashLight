@@ -29,6 +29,12 @@ test("the page can be set in the address", () => {
   assert.deepEqual(pageOptions("?page=menu"), {});
 });
 
+test("the day picker at the board's edge can be turned off in the address", () => {
+  assert.deepEqual(pageOptions("?daypicker=off"), { daypicker: false });
+  assert.deepEqual(pageOptions("?view=compact&daypicker=No"), { view: "compact", daypicker: false });
+  assert.deepEqual(pageOptions("?daypicker=on"), {});
+});
+
 test("unknown or missing settings leave the defaults", () => {
   assert.deepEqual(pageOptions(""), {});
   assert.deepEqual(pageOptions("?view=week"), {});
