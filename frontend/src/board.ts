@@ -2500,7 +2500,7 @@ export class MyDashLightBoard extends LitElement {
       if (!choices.length) return nothing;
       const label = s === "both" ? "Riding along, both ways" : "Riding along";
       return html`<div class="field-sub">
-        <span class="field-label">${label} <span class="field-hint">${s === "pick" ? "They come for the pick-up" : "They leave home in the same car"}</span></span>
+        <span class="field-label">${label} <span class="field-hint">${s === "pick" ? "Coming home too. Anyone already there just gets in." : s === "both" ? "In the car there and back." : "In the car too, from home unless they’re already out."}</span></span>
         <div role="group" aria-label=${s === "drop" ? "Riding along on the drop-off" : s === "pick" ? "Riding along on the pick-up" : "Riding along both ways"} class="chips">
           ${choices.map(
             (k) => html`<button type="button" class="chip" aria-pressed=${cur.includes(k) ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleAlong(e, k, s)}>

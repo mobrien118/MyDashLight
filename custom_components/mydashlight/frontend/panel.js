@@ -3538,7 +3538,7 @@ var Po=Object.defineProperty;var $n=(s,t)=>()=>(s&&(t=s(s=0)),t);var Mo=(s,t)=>{
         />
         ${!k&&G!==""&&G!=="none"?m(D,G):x}
       </div>`},m=(D,V)=>{let F=d(`along-${D}`),G=F!==void 0?F:D==="pick"?i.pick_along??[]:i.along,_e=[...we(e).filter(f=>f!==i.kid),...r.filter(f=>f!==V)];return _e.length?u`<div class="field-sub">
-        <span class="field-label">${D==="both"?"Riding along, both ways":"Riding along"} <span class="field-hint">${D==="pick"?"They come for the pick-up":"They leave home in the same car"}</span></span>
+        <span class="field-label">${D==="both"?"Riding along, both ways":"Riding along"} <span class="field-hint">${D==="pick"?"Coming home too. Anyone already there just gets in.":D==="both"?"In the car there and back.":"In the car too, from home unless they’re already out."}</span></span>
         <div role="group" aria-label=${D==="drop"?"Riding along on the drop-off":D==="pick"?"Riding along on the pick-up":"Riding along both ways"} class="chips">
           ${_e.map(f=>u`<button type="button" class="chip" aria-pressed=${G.includes(f)?"true":"false"} ?disabled=${a} @click=${()=>this.toggleAlong(i,f,D)}>
               ${r.includes(f)?se(e,f):re(e,f)}
