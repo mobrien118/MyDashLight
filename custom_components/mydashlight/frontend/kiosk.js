@@ -1667,10 +1667,11 @@ var Cr=Object.defineProperty;var Dn=(s,t)=>()=>(s&&(t=s(s=0)),t);var Ar=(s,t)=>{
     color: var(--muted);
     cursor: pointer;
   }
+  /* A long label ("Not needed", a carpool's name) wraps onto a second line in a narrow button. */
   .choice {
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 16px;
+    overflow-wrap: anywhere;
   }
   .notes-body {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -3396,7 +3397,7 @@ var Cr=Object.defineProperty;var Dn=(s,t)=>()=>(s&&(t=s(s=0)),t);var Ar=(s,t)=>{
       <span><span class="sw stay-sw"></span>Staying through the activity</span>
       <span><span class="sw busy-sw"></span>Busy on their own calendar</span>
       <span><span class="sw overlap-sw"></span>Overlap: can’t do both</span>
-    </div>`}ownHint(e,n){let o=gn(e,n);if(n.takes!=null){let r=n.planned!=null?`It’s fitted in at ${F(n.planned)}`:"It doesn’t fit anywhere yet";return`An errand: about ${n.takes} min any time from ${F(n.start)} to ${F(n.end)}. ${r}, around ${o}’s other trips. Errands go alone.`}let i=n.along.map(r=>_e(e).includes(r)?me(e,r):xe(e,r));return`${o} drives there and back${i.length?`, with ${mn(i)}`:""}.`}renderEditor(e){let n=this.findEvent(this.sel);if(!n)return f``;let{day:o,event:i}=n,r=_e(e),a=Gi(e,i),c=gn(e,i),l=!!this.pending,d=O=>this.pending?.key===O?this.pending.value:void 0,h=[...e.people?.carpools??[]];for(let O of e.days)for(let se of O.events)for(let te of[se.drop,se.pick])te&&te!=="none"&&!r.includes(te)&&!h.some(g=>g.toLowerCase()===te.toLowerCase())&&h.push(te);let u=O=>{if(!i.sides.includes(O))return _;let se=d(O)??d("both"),te=O==="drop"?i.drop:i.pick,g=se!==void 0?String(se):i.no_ride_unless_named&&te==="none"?"":te,B=g===""&&!(se===void 0&&i.no_ride_unless_named),U=g&&g!=="none"&&!r.includes(g)?g:"",D=C=>{this.otherOpen=null,this.setRide(i,O,g===C?"":C,r)},y=[...r.map(C=>[C,Zn(e,C)]),["none","No ride"]],T=`${i.id}|${O}`,A=this.otherOpen===T;return f`<div class="field ride-box">
+    </div>`}ownHint(e,n){let o=gn(e,n);if(n.takes!=null){let r=n.planned!=null?`It’s fitted in at ${F(n.planned)}`:"It doesn’t fit anywhere yet";return`An errand: about ${n.takes} min any time from ${F(n.start)} to ${F(n.end)}. ${r}, around ${o}’s other trips. Errands go alone.`}let i=n.along.map(r=>_e(e).includes(r)?me(e,r):xe(e,r));return`${o} drives there and back${i.length?`, with ${mn(i)}`:""}.`}renderEditor(e){let n=this.findEvent(this.sel);if(!n)return f``;let{day:o,event:i}=n,r=_e(e),a=Gi(e,i),c=gn(e,i),l=!!this.pending,d=O=>this.pending?.key===O?this.pending.value:void 0,h=[...e.people?.carpools??[]];for(let O of e.days)for(let se of O.events)for(let te of[se.drop,se.pick])te&&te!=="none"&&!r.includes(te)&&!h.some(g=>g.toLowerCase()===te.toLowerCase())&&h.push(te);let u=O=>{if(!i.sides.includes(O))return _;let se=d(O)??d("both"),te=O==="drop"?i.drop:i.pick,g=se!==void 0?String(se):i.no_ride_unless_named&&te==="none"?"":te,B=g===""&&!(se===void 0&&i.no_ride_unless_named),U=g&&g!=="none"&&!r.includes(g)?g:"",D=C=>{this.otherOpen=null,this.setRide(i,O,g===C?"":C,r)},y=[...r.map(C=>[C,Zn(e,C)]),["none","Not needed"]],T=`${i.id}|${O}`,A=this.otherOpen===T;return f`<div class="field ride-box">
         <span class="field-label">${O==="drop"?"Drop-off":"Pick-up"} ${B?f`<span class="nobody">· nobody yet</span>`:_}</span>
         <div role="group" aria-label=${O==="drop"?"Drop-off driver":"Pick-up driver"} class="choices" style="grid-template-columns:repeat(${y.length+1}, minmax(0, 1fr))">
           ${y.map(([C,G])=>f`<button type="button" class="choice" aria-pressed=${g===C?"true":"false"} ?disabled=${l} @click=${()=>D(C)}>
