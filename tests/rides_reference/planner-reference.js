@@ -242,9 +242,12 @@ function route(d, tasks, busy) {
     return LD;
   };
   var LD = backward(stops.map(function (s) { return s.deadline != null ? s.deadline : Infinity; }));
-  // Leaving times also get each kid picked up as their activity ends, even with a stop at home in
-  // between, so nobody is left waiting.
-  var leaveBy = backward(stops.map(function (s) { return s.deadline != null ? s.deadline : s.kind === 'pick' && s.ready != null ? s.ready : Infinity; }));
+  // Once the car has been back home partway through, leaving times also get each kid picked up as
+  // their activity ends, so a stop at home in between doesn't leave anyone waiting.
+  var leaveBy = backward(stops.map(function (s, i) {
+    var fetched = stops.slice(0, i).some(function (x) { return x.kind === 'fetch'; });
+    return s.deadline != null ? s.deadline : s.kind === 'pick' && s.ready != null && fetched ? s.ready : Infinity;
+  }));
   var target = function (j) {
     var v = leaveBy[j], nx = stops[j + 1];
     if (nx && nx.ready != null && !nx.late) v = Math.min(v, nx.ready - travel(stops[j].loc, nx.loc));

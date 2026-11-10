@@ -2304,7 +2304,7 @@
        "tone": "normal"
       },
       "pick": {
-       "text": "Home 7:20 with Sam",
+       "text": "Pick-up: Sam",
        "tone": "normal"
       }
      }
@@ -2328,7 +2328,7 @@
      "pick_along": [],
      "own": "dad",
      "takes": 10,
-     "planned": 1121,
+     "planned": 1149,
      "sides": [
       "drop",
       "pick"
@@ -2340,11 +2340,11 @@
      "problems": [],
      "lines": {
       "drop": {
-       "text": "Stop at 6:41",
+       "text": "Stop at 7:09",
        "tone": "normal"
       },
       "pick": {
-       "text": "Leaves 6:51",
+       "text": "Home 7:26",
        "tone": "normal"
       }
      }
@@ -2578,39 +2578,15 @@
     },
     "dad": {
      "name": "Sam",
-     "leave": 1114,
+     "leave": 1120,
      "drive": 36,
      "trips": 1,
      "segments": [
       {
        "type": "drive",
-       "start": 1114,
-       "end": 1121,
-       "from": "home",
-       "to": "dry cleaners, 40 main st",
-       "place": null,
-       "kids": [],
-       "event": null,
-       "serves": "mon-cleaners",
-       "overlaps_busy": false
-      },
-      {
-       "type": "stay",
-       "start": 1121,
-       "end": 1131,
-       "from": null,
-       "to": null,
-       "place": "dry cleaners, 40 main st",
-       "kids": [],
-       "event": "mon-cleaners",
-       "serves": "mon-cleaners",
-       "overlaps_busy": false
-      },
-      {
-       "type": "drive",
-       "start": 1131,
+       "start": 1120,
        "end": 1140,
-       "from": "dry cleaners, 40 main st",
+       "from": "home",
        "to": "football field, 90 stadium dr",
        "place": null,
        "kids": [],
@@ -2621,34 +2597,62 @@
       {
        "type": "drive",
        "start": 1140,
-       "end": 1160,
+       "end": 1149,
        "from": "football field, 90 stadium dr",
+       "to": "dry cleaners, 40 main st",
+       "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "mon-cleaners",
+       "overlaps_busy": false
+      },
+      {
+       "type": "stay",
+       "start": 1149,
+       "end": 1159,
+       "from": null,
+       "to": null,
+       "place": "dry cleaners, 40 main st",
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": "mon-cleaners",
+       "serves": "mon-cleaners",
+       "overlaps_busy": false
+      },
+      {
+       "type": "drive",
+       "start": 1159,
+       "end": 1166,
+       "from": "dry cleaners, 40 main st",
        "to": "home",
        "place": null,
        "kids": [
         "kid-b@group.calendar.google.com"
        ],
        "event": null,
-       "serves": "mon-football",
+       "serves": "mon-cleaners",
        "overlaps_busy": false
       }
      ],
      "outings": [
       {
-       "start": 1114,
-       "end": 1160,
-       "lead": "Leave 6:34",
-       "title": "Pick up dry cleaning at Dry cleaners, pick up Ben at Football field",
+       "start": 1120,
+       "end": 1166,
+       "lead": "Leave 6:40",
+       "title": "Pick up Ben at Football field, Pick up dry cleaning at Dry cleaners",
        "lines": [
-        "6:41  Dry cleaners, Pick up dry cleaning",
         "7:00  Football field, pick up Ben",
-        "7:20  Home"
+        "7:09  Dry cleaners, Pick up dry cleaning",
+        "7:26  Home"
        ],
        "kids": [
         "kid-b@group.calendar.google.com"
        ],
        "warn": null,
-       "target": "mon-cleaners",
+       "target": "mon-football",
        "first_drop": null,
        "riders": {
         "kid-b@group.calendar.google.com": "Sam picks you up at Football field at 7:00 PM"
@@ -2656,9 +2660,9 @@
        "go": {
         "from": "home",
         "from_name": "home",
-        "to": "dry cleaners, 40 main st",
-        "to_name": "Dry cleaners",
-        "due": 1160,
+        "to": "football field, 90 stadium dr",
+        "to_name": "Football field",
+        "due": 1140,
         "via_home": false
        },
        "parents": {},
@@ -2673,8 +2677,8 @@
        "event": null
       },
       {
-       "start": 1121,
-       "end": 1131,
+       "start": 1149,
+       "end": 1159,
        "title": "Pick up dry cleaning",
        "event": "mon-cleaners"
       }
@@ -2742,10 +2746,10 @@
      "kid": "kid-b@group.calendar.google.com",
      "driver": "dad",
      "start": 1140,
-     "end": 1160,
-     "own": true,
+     "end": 1166,
+     "own": false,
      "serves": [
-      "mon-football"
+      "mon-cleaners"
      ]
     }
    ],
@@ -2810,7 +2814,7 @@
       {
        "type": "ride",
        "start": 1140,
-       "end": 1160,
+       "end": 1166,
        "clash": false,
        "ride": 5
       }

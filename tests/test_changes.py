@@ -92,6 +92,24 @@ async def test_set_driver(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert planned(entry, "piano")["drop"] == ""
 
 
+async def test_the_driver_stays_both_ways_in_one_save(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.event(FAMILY, "piano")["description"] = "Drop-off: Robin\nPick-up: Sam"
+    entry = await load(hass)
+
+    await call(hass, "set_ride", event="piano", side="both", driver="mom", stay=True)
+
+    assert len(google.patches) == 1
+    assert google.event(FAMILY, "piano")["description"].endswith("Drop-off: Robin\nPick-up: Robin\nStay: yes")
+    e = planned(entry, "piano")
+    assert (e["drop"], e["pick"], e["stay"]) == ("mom", "mom", True)
+
+    # A carpool on one side can't stay, so it turns staying off in the same save.
+    await call(hass, "set_ride", event="piano", side="pick", driver="the parkers", stay=False)
+    assert len(google.patches) == 2
+    e = planned(entry, "piano")
+    assert (e["drop"], e["pick"], e["stay"]) == ("mom", "the Parkers", False)
+
+
 async def test_stay_and_arrive_by(hass: HomeAssistant, google: FakeGoogle) -> None:
     google.event(FAMILY, "piano")["description"] = "<b>Bring</b> the music book.<br>Drop-off: Robin<br>Pick-up: Robin"
     entry = await load(hass)

@@ -36,6 +36,10 @@ set_ride:
       example: mom
       selector:
         text:
+    stay:
+      required: false
+      selector:
+        boolean:
     scope:
       required: false
       default: this

@@ -67,6 +67,7 @@ SET_RIDE_SCHEMA = vol.Schema(
         **_EVENT_FIELDS,
         vol.Required(ATTR_SIDE): vol.In(["drop", "pick", "both"]),
         vol.Optional(ATTR_DRIVER, default=""): vol.Any(None, cv.string),
+        vol.Optional(ATTR_STAY): cv.boolean,
     }
 )
 SET_STAY_SCHEMA = vol.Schema({**_EVENT_FIELDS, vol.Required(ATTR_STAY): cv.boolean})
@@ -130,9 +131,11 @@ async def _async_get_plan(call: ServiceCall) -> ServiceResponse:
 async def _async_set_ride(call: ServiceCall) -> None:
     driver = call.data[ATTR_DRIVER] or ""
     side = call.data[ATTR_SIDE]
+    # Stay goes in the same save, so "the driver stays" and the driver both ways land together.
     change = RideChange(
         drop=driver if side in ("drop", "both") else KEEP,
         pick=driver if side in ("pick", "both") else KEEP,
+        stay=call.data.get(ATTR_STAY, KEEP),
     )
     await _async_change_event(call, change)
 

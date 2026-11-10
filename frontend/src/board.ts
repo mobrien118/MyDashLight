@@ -945,9 +945,19 @@ export class MyDashLightBoard extends LitElement {
     }
   }
 
-  private setRide(e: PlanEvent, side: Side, driver: string): void {
+  /** While the driver stays, the drop-off and pick-up go together: a parent picked for one is
+   * picked for both. Anyone else on one side can't stay, so staying turns off with it. */
+  private setRide(e: PlanEvent, side: Side, driver: string, drivers: string[]): void {
     if (!this.backend) return;
     const b = this.backend;
+    if (e.stay && e.drop === e.pick && drivers.includes(e.drop)) {
+      if (drivers.includes(driver)) {
+        void this.save("both", driver, () => b.setRide(e.id, "both", driver, this.scope));
+      } else {
+        void this.save(`${side}`, driver, () => b.setRide(e.id, side, driver, this.scope, false));
+      }
+      return;
+    }
     void this.save(`${side}`, driver, () => b.setRide(e.id, side, driver, this.scope));
   }
 
@@ -957,10 +967,15 @@ export class MyDashLightBoard extends LitElement {
     void this.save("attending", attending, () => b.setAttending(e.id, attending, this.scope));
   }
 
-  private toggleStay(e: PlanEvent): void {
+  /** Staying means the same parent both ways, so turning it on puts `driver` on both sides too. */
+  private toggleStay(e: PlanEvent, on: boolean, driver: string): void {
     if (!this.backend) return;
     const b = this.backend;
-    void this.save("stay", !e.stay, () => b.setStay(e.id, !e.stay, this.scope));
+    if (on && (e.drop !== driver || e.pick !== driver)) {
+      void this.save("stay", true, () => b.setRide(e.id, "both", driver, this.scope, true));
+      return;
+    }
+    void this.save("stay", on, () => b.setStay(e.id, on, this.scope));
   }
 
   /** Who rides along: on the drop-off, the pick-up, or both when the driver stays. */
@@ -2429,13 +2444,13 @@ export class MyDashLightBoard extends LitElement {
 
     const side = (s: Side): TemplateResult | typeof nothing => {
       if (!e.sides.includes(s)) return nothing;
-      const pend = pendingValue(s);
+      const pend = pendingValue(s) ?? pendingValue("both");
       const saved = s === "drop" ? e.drop : e.pick;
       // With no address and nobody named, "none" is only the default: nothing is picked yet.
       const v = pend !== undefined ? String(pend) : e.no_ride_unless_named && saved === "none" ? "" : saved;
       const unset = v === "" && !(pend === undefined && e.no_ride_unless_named);
       const other = v && v !== "none" && !drivers.includes(v) ? v : "";
-      const choose = (value: string): void => this.setRide(e, s, v === value ? "" : value);
+      const choose = (value: string): void => this.setRide(e, s, v === value ? "" : value, drivers);
       const main: [string, string][] = [...drivers.map((d): [string, string] => [d, whoName(plan, d)]), ["none", "Not needed"]];
       return html`<div class="field">
         <span class="field-label">${s === "drop" ? "Drop-off" : "Pick-up"} ${unset ? html`<span class="nobody">· nobody yet</span>` : nothing}</span>
@@ -2466,7 +2481,7 @@ export class MyDashLightBoard extends LitElement {
           enterkeyhint="done"
           @change=${(ev: Event) => {
             const t = (ev.target as HTMLInputElement).value.trim();
-            if (t && t !== v) this.setRide(e, s, t);
+            if (t && t !== v) this.setRide(e, s, t, drivers);
           }}
           @keydown=${(ev: KeyboardEvent) => {
             if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
@@ -2496,9 +2511,12 @@ export class MyDashLightBoard extends LitElement {
       </div>`;
     };
 
-    const stayPend = pendingValue("stay");
-    const stay = stayPend !== undefined ? Boolean(stayPend) : e.stay;
+    // Who stays: the parent driving there, or else the one picking up. Staying only counts with
+    // the same parent both ways.
+    const stayer = drivers.includes(e.drop) ? e.drop : drivers.includes(e.pick) ? e.pick : "";
     const canStay = e.drop === e.pick && drivers.includes(e.drop);
+    const stayPend = pendingValue("stay");
+    const stay = stayPend !== undefined ? Boolean(stayPend) : e.stay && canStay;
     const alongPend = pendingValue("along");
     const along = alongPend !== undefined ? (alongPend as string[]) : e.along;
     // On a parent's own event the other parent can go along too.
@@ -2580,9 +2598,22 @@ export class MyDashLightBoard extends LitElement {
               ? html`<p class="field-hint">${this.ownHint(plan, e)}</p>`
               : html`${side("drop")} ${side("pick")}
                   <div class="field">
-                    <button type="button" class="choice wide" aria-pressed=${stay ? "true" : "false"} ?disabled=${!canStay || busy} @click=${() => this.toggleStay(e)}>
-                      ${canStay ? (stay ? "Driver stays the whole time" : "Driver leaves and comes back") : "Staying needs the same driver both ways"}
+                    <button
+                      type="button"
+                      class="choice wide"
+                      aria-pressed=${stay ? "true" : "false"}
+                      ?disabled=${!stayer || busy}
+                      @click=${() => this.toggleStay(e, !stay, stayer)}
+                    >
+                      ${!stayer
+                        ? "Pick a parent to drive, and they can stay"
+                        : stay
+                          ? `${driverName(plan, stayer)} stays the whole time`
+                          : "Driver leaves and comes back"}
                     </button>
+                    ${stayer && !canStay && !stay
+                      ? html`<span class="field-hint">Tap to have ${driverName(plan, stayer)} drive both ways and stay.</span>`
+                      : nothing}
                     ${stay && canStay ? riders("both", e.drop) : nothing}
                   </div>`}
       ${e.own

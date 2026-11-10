@@ -389,12 +389,17 @@ def _route(
         return latest_depart
 
     latest_depart = backward([s.deadline if s.deadline is not None else INF for s in stops])
-    # Leaving times also get each kid picked up as their activity ends, even with a stop at
-    # home in between, so nobody is left waiting.
+    # Once the car has been back home partway through, leaving times also get each kid picked
+    # up as their activity ends, so a stop at home in between doesn't leave anyone waiting.
+    fetched = [any(x.kind == "fetch" for x in stops[:i]) for i in range(n)]
     leave_by = backward(
         [
-            s.deadline if s.deadline is not None else s.ready if s.kind == "pick" and s.ready is not None else INF
-            for s in stops
+            s.deadline
+            if s.deadline is not None
+            else s.ready
+            if s.kind == "pick" and s.ready is not None and fetched[i]
+            else INF
+            for i, s in enumerate(stops)
         ]
     )
 
