@@ -1523,6 +1523,13 @@ export const styles = css`
     flex-direction: column;
     gap: 8px;
   }
+  /* The drop-off and the pick-up each sit in their own box, so they read as two separate rides. */
+  .ride-box {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+  }
   .field-sub {
     display: flex;
     flex-direction: column;
@@ -1653,6 +1660,12 @@ export const styles = css`
     font-size: 12px;
     font-weight: 600;
     color: var(--muted);
+    cursor: pointer;
+  }
+  .choice {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .notes-body {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
