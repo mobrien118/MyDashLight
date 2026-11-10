@@ -681,19 +681,19 @@ def test_an_errand_fits_into_another_trip() -> None:
 
     [tue] = plan_week(w, lambda _day: make_travel({}, 15, base), PlannerSettings(), ("mom", "dad"))
     robin = tue["drivers"]["mom"]
-    # Robin picks Ava up at 5 and stops at the gym on the way home.
+    # Robin stops at the gym on the way to pick Ava up at 5, so Ava doesn't wait in the car.
     [outing] = robin["outings"]
-    assert outing["title"] == "Pick up Ava at Lincoln Elementary, Jersey pick-up at Middle school gym"
+    assert outing["title"] == "Jersey pick-up at Middle school gym, pick up Ava at Lincoln Elementary"
     assert outing["lines"] == [
+        "4:44  Middle school gym, Jersey pick-up",
         "5:00  Lincoln Elementary, pick up Ava",
-        "5:06  Middle school gym, Jersey pick-up",
-        "5:31  Home",
+        "5:15  Home",
     ]
     assert not outing["solo"]
     e = next(e for e in tue["events"] if e["id"] == "jersey")
-    assert (e["takes"], e["planned"]) == (10, 1026)
-    assert e["lines"]["drop"] == {"text": "Stop at 5:06", "tone": "normal"}
-    assert robin["busy"] == [{"start": 1026, "end": 1036, "title": "Jersey pick-up", "event": "jersey"}]
+    assert (e["takes"], e["planned"]) == (10, 1004)
+    assert e["lines"]["drop"] == {"text": "Stop at 4:44", "tone": "normal"}
+    assert robin["busy"] == [{"start": 1004, "end": 1014, "title": "Jersey pick-up", "event": "jersey"}]
     assert tue["issues"] == []
 
 

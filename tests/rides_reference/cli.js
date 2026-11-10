@@ -98,6 +98,13 @@ function scenarios() {
     { id: 'wed-hiphop2', day: 6, kid: 'ava', title: 'Hip Hop', loc: 'dance', start: 1200, end: 1245, drop: 'none', pick: 'mom', stay: false, arriveBy: null }
   ];
   out.push(scenario('Wednesday with Ava dropped early at the studio Cleo is picked up from', 6, t7));
+  // Ava's soccer, 9 minutes from the studio, is due just after Cleo's hip hop lets out: Ava is
+  // dropped off first instead of fetched from home late after the pick-up.
+  var t8 = [
+    { id: 'wed-hiphop', day: 6, kid: 'cleo', title: 'Hip Hop', loc: 'dance', start: 1080, end: 1125, drop: 'mom', pick: 'mom', stay: false, arriveBy: null },
+    { id: 'wed-soccer', day: 6, kid: 'ava', title: 'Soccer', loc: 'soccer', start: 1155, end: 1230, drop: 'mom', pick: 'none', stay: false, arriveBy: 1145 }
+  ];
+  out.push(scenario('Wednesday with Ava due at soccer just after Cleo’s pick-up nearby', 6, t8));
   return {
     note: "Expected planner output for the reference data in planner-reference.js. Times use the event day's local time. Travel times come from the DRIVE table there.",
     scenarios: out
