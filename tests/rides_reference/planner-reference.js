@@ -122,6 +122,16 @@ function planDriver(d, events, busy) {
       tasks[q] = tb; tasks[q + 1] = ta; q++;
     }
   }
+  // Another place a few minutes away: drop that kid off first when it makes for a better route,
+  // which it does when the car would otherwise go home for them after the pick-up and be late.
+  var cost = function (p) { return p.issues.length * 1000 + p.issues.reduce(function (a, x) { return a + (x.min || 0); }, 0) * 10 + p.drive; };
+  for (var r = 0; r + 1 < tasks.length; r++) {
+    var pa = tasks[r], pb = tasks[r + 1];
+    if (pa.type === 'pick' && pb.type !== 'pick' && !pb.e.own && pa.e.loc !== pb.e.loc && pa.e.kid !== pb.e.kid && pb.t - pa.t <= 15) {
+      var sw = tasks.slice(0, r).concat([pb, pa], tasks.slice(r + 2));
+      if (cost(route(d, sw, busy)) < cost(route(d, tasks, busy)) - 1e-9) { tasks[r] = pb; tasks[r + 1] = pa; r++; }
+    }
+  }
   errands.sort(function (a, b) { return a.t - b.t || (a.e.id < b.e.id ? -1 : a.e.id > b.e.id ? 1 : 0); });
   errands.forEach(function (k) {
     var best = null;
@@ -148,6 +158,8 @@ function route(d, tasks, busy) {
   var stops = [{ loc: 'home', kind: 'start', car: [] }];
   var car = [];
   var cur = function () { return stops[stops.length - 1]; };
+  // Where each kid dropped off on this route was left, and when their activity there ends.
+  var left = {};
   tasks.forEach(function (k, i) {
     var kid = k.e.kid;
     var nt = tasks[i + 1];
@@ -175,7 +187,10 @@ function route(d, tasks, busy) {
       return;
     }
     if (k.type !== 'pick') {
-      var missing = (k.e.along || []).filter(function (a, i, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === i; });
+      // A rider dropped off earlier on this route isn't at home, so nobody goes home for them.
+      // Dropped off here and done by now, they get in; otherwise they stay where they are.
+      var hereD = (k.e.along || []).filter(function (a, i, arr) { return left[a] && arr.indexOf(a) === i; });
+      var missing = (k.e.along || []).filter(function (a, i, arr) { return a !== kid && car.indexOf(a) < 0 && hereD.indexOf(a) < 0 && arr.indexOf(a) === i; });
       if (car.indexOf(kid) >= 0 && missing.length) {
         // Kids taken along who aren't in the car yet come from home.
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
@@ -186,23 +201,31 @@ function route(d, tasks, busy) {
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
         car = [kid];
         // The kids taken along on this drop-off leave home in the same car.
-        (k.e.along || []).forEach(function (a) { if (car.indexOf(a) < 0) car.push(a); });
+        (k.e.along || []).forEach(function (a) { if (car.indexOf(a) < 0 && hereD.indexOf(a) < 0) car.push(a); });
         cur().car = car.slice();
       }
+      hereD.forEach(function (a) { if (car.indexOf(a) < 0 && left[a].loc === k.e.loc && left[a].until <= k.t) { car.push(a); delete left[a]; } });
       car = car.filter(function (x) { return x !== kid; });
       var s = { loc: k.e.loc, kind: k.type, deadline: k.t, e: k.e };
+      if (k.type === 'drop') left[kid] = { loc: k.e.loc, until: k.e.end };
       if (k.type === 'stay') { s.after = k.e.end; if (car.indexOf(kid) < 0) car.push(kid); }
       s.car = car.slice();
       stops.push(s);
     } else {
-      var pm = (k.e.pickAlong || []).filter(function (a, x, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === x; });
+      var rs2 = (k.e.pickAlong || []).filter(function (a, x, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === x; });
+      // A rider dropped off earlier on this route isn't at home, so nobody goes home for them.
+      // Dropped off here and done by the pick-up, they get in; otherwise they stay where they are.
+      var here = rs2.filter(function (a) { return left[a]; });
+      var pm = rs2.filter(function (a) { return here.indexOf(a) < 0; });
       if (pm.length) {
         // Kids riding along on the pick-up leave home in the car.
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
         car = car.concat(pm);
         cur().car = car.slice();
       }
+      here.forEach(function (a) { if (left[a].loc === k.e.loc && left[a].until <= k.e.end) { car.push(a); delete left[a]; } });
       if (car.indexOf(kid) < 0) car.push(kid);
+      delete left[kid];
       stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, e: k.e, car: car.slice() });
     }
   });
@@ -210,14 +233,23 @@ function route(d, tasks, busy) {
 
   // Backward pass: the latest arrival and departure at each stop that still make every deadline.
   var n = stops.length;
-  var LA = stops.map(function (s) { return s.deadline != null ? s.deadline : Infinity; });
-  var LD = stops.map(function () { return Infinity; });
-  for (var i = n - 1; i >= 1; i--) {
-    LD[i - 1] = Math.min(LD[i - 1], LA[i] - travel(stops[i - 1].loc, stops[i].loc));
-    LA[i - 1] = Math.min(LA[i - 1], LD[i - 1] - (stops[i - 1].dwell || 0));
-  }
+  var backward = function (due) {
+    var LA = due.slice(), LD = stops.map(function () { return Infinity; });
+    for (var i = n - 1; i >= 1; i--) {
+      LD[i - 1] = Math.min(LD[i - 1], LA[i] - travel(stops[i - 1].loc, stops[i].loc));
+      LA[i - 1] = Math.min(LA[i - 1], LD[i - 1] - (stops[i - 1].dwell || 0));
+    }
+    return LD;
+  };
+  var LD = backward(stops.map(function (s) { return s.deadline != null ? s.deadline : Infinity; }));
+  // Once the car has been back home partway through, leaving times also get each kid picked up as
+  // their activity ends, so a stop at home in between doesn't leave anyone waiting.
+  var leaveBy = backward(stops.map(function (s, i) {
+    var fetched = stops.slice(0, i).some(function (x) { return x.kind === 'fetch'; });
+    return s.deadline != null ? s.deadline : s.kind === 'pick' && s.ready != null && fetched ? s.ready : Infinity;
+  }));
   var target = function (j) {
-    var v = LD[j], nx = stops[j + 1];
+    var v = leaveBy[j], nx = stops[j + 1];
     if (nx && nx.ready != null && !nx.late) v = Math.min(v, nx.ready - travel(stops[j].loc, nx.loc));
     return v;
   };

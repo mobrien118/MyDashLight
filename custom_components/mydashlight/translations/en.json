@@ -252,6 +252,10 @@
           "name": "Driver",
           "description": "mom or dad (the first or second parent, or their name), none when no ride is needed, a carpool driver's name, or empty for nobody yet."
         },
+        "stay": {
+          "name": "Stay",
+          "description": "Optional: also set whether the driver stays for the event, in the same save."
+        },
         "scope": {
           "name": "Repeating events",
           "description": "For a repeating event: change just this one, or every one."

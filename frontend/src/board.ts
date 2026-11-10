@@ -219,6 +219,8 @@ export class MyDashLightBoard extends LitElement {
     toast: { state: true },
     scope: { state: true },
     arriveDraft: { state: true },
+    otherOpen: { state: true },
+    stayDraft: { state: true },
     tick: { state: true },
     page: { state: true },
     chores: { state: true },
@@ -261,6 +263,10 @@ export class MyDashLightBoard extends LitElement {
   declare scope: Scope;
   /** An arrive-by time being tapped in, not saved yet. Undefined when there's none. */
   declare arriveDraft: number | null | undefined;
+  /** The ride side ("event|drop") whose "Other" driver choices are open. */
+  declare otherOpen: string | null;
+  /** The event whose "Stays" is picked but has no parent to stay yet. */
+  declare stayDraft: string | null;
   declare tick: number;
   /** Rides or chores. */
   declare page: Page;
@@ -945,9 +951,19 @@ export class MyDashLightBoard extends LitElement {
     }
   }
 
-  private setRide(e: PlanEvent, side: Side, driver: string): void {
+  /** While the driver stays, the drop-off and pick-up go together: a parent picked for one is
+   * picked for both. Anyone else on one side can't stay, so staying turns off with it. */
+  private setRide(e: PlanEvent, side: Side, driver: string, drivers: string[]): void {
     if (!this.backend) return;
     const b = this.backend;
+    if (e.stay && e.drop === e.pick && drivers.includes(e.drop)) {
+      if (drivers.includes(driver)) {
+        void this.save("both", driver, () => b.setRide(e.id, "both", driver, this.scope));
+      } else {
+        void this.save(`${side}`, driver, () => b.setRide(e.id, side, driver, this.scope, false));
+      }
+      return;
+    }
     void this.save(`${side}`, driver, () => b.setRide(e.id, side, driver, this.scope));
   }
 
@@ -957,10 +973,15 @@ export class MyDashLightBoard extends LitElement {
     void this.save("attending", attending, () => b.setAttending(e.id, attending, this.scope));
   }
 
-  private toggleStay(e: PlanEvent): void {
+  /** Staying means the same parent both ways, so turning it on puts `driver` on both sides too. */
+  private toggleStay(e: PlanEvent, on: boolean, driver: string): void {
     if (!this.backend) return;
     const b = this.backend;
-    void this.save("stay", !e.stay, () => b.setStay(e.id, !e.stay, this.scope));
+    if (on && (e.drop !== driver || e.pick !== driver)) {
+      void this.save("stay", true, () => b.setRide(e.id, "both", driver, this.scope, true));
+      return;
+    }
+    void this.save("stay", on, () => b.setStay(e.id, on, this.scope));
   }
 
   /** Who rides along: on the drop-off, the pick-up, or both when the driver stays. */
@@ -2429,25 +2450,42 @@ export class MyDashLightBoard extends LitElement {
 
     const side = (s: Side): TemplateResult | typeof nothing => {
       if (!e.sides.includes(s)) return nothing;
-      const pend = pendingValue(s);
+      const pend = pendingValue(s) ?? pendingValue("both");
       const saved = s === "drop" ? e.drop : e.pick;
       // With no address and nobody named, "none" is only the default: nothing is picked yet.
       const v = pend !== undefined ? String(pend) : e.no_ride_unless_named && saved === "none" ? "" : saved;
       const unset = v === "" && !(pend === undefined && e.no_ride_unless_named);
       const other = v && v !== "none" && !drivers.includes(v) ? v : "";
-      const choose = (value: string): void => this.setRide(e, s, v === value ? "" : value);
-      const main: [string, string][] = [...drivers.map((d): [string, string] => [d, whoName(plan, d)]), ["none", "Not needed"]];
-      return html`<div class="field">
+      const choose = (value: string): void => {
+        this.otherOpen = null;
+        this.setRide(e, s, v === value ? "" : value, drivers);
+      };
+      const main: [string, string][] = [...drivers.map((d): [string, string] => [d, whoName(plan, d)]), ["none", "No ride"]];
+      const key = `${e.id}|${s}`;
+      const open = this.otherOpen === key;
+      return html`<div class="field ride-box">
         <span class="field-label">${s === "drop" ? "Drop-off" : "Pick-up"} ${unset ? html`<span class="nobody">· nobody yet</span>` : nothing}</span>
-        <div role="group" aria-label=${s === "drop" ? "Drop-off driver" : "Pick-up driver"} class="choices" style="grid-template-columns:repeat(${main.length}, minmax(0, 1fr))">
+        <div role="group" aria-label=${s === "drop" ? "Drop-off driver" : "Pick-up driver"} class="choices" style="grid-template-columns:repeat(${main.length + 1}, minmax(0, 1fr))">
           ${main.map(
             ([value, label]) =>
               html`<button type="button" class="choice" aria-pressed=${v === value ? "true" : "false"} ?disabled=${busy} @click=${() => choose(value)}>
                 ${label}
               </button>`,
           )}
+          <button
+            type="button"
+            class="choice"
+            aria-pressed=${other ? "true" : "false"}
+            aria-expanded=${open ? "true" : "false"}
+            ?disabled=${busy}
+            @click=${() => (this.otherOpen = open ? null : key)}
+          >
+            ${other || "Other"}
+          </button>
         </div>
-        ${known.length
+        ${!open
+          ? nothing
+          : html`${known.length
           ? html`<div role="group" aria-label=${s === "drop" ? "Drop-off: someone else" : "Pick-up: someone else"} class="chips">
               ${known.map(
                 (name) =>
@@ -2466,12 +2504,12 @@ export class MyDashLightBoard extends LitElement {
           enterkeyhint="done"
           @change=${(ev: Event) => {
             const t = (ev.target as HTMLInputElement).value.trim();
-            if (t && t !== v) this.setRide(e, s, t);
+            if (t && t !== v) choose(t);
           }}
           @keydown=${(ev: KeyboardEvent) => {
             if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
           }}
-        />
+        />`}
         ${!stay && v !== "" && v !== "none" ? riders(s, v) : nothing}
       </div>`;
     };
@@ -2485,7 +2523,7 @@ export class MyDashLightBoard extends LitElement {
       if (!choices.length) return nothing;
       const label = s === "both" ? "Riding along, both ways" : "Riding along";
       return html`<div class="field-sub">
-        <span class="field-label">${label} <span class="field-hint">${s === "pick" ? "They come for the pick-up" : "They leave home in the same car"}</span></span>
+        <span class="field-label">${label} <span class="field-hint">${s === "pick" ? "Coming home too. Anyone already there just gets in." : s === "both" ? "In the car there and back." : "In the car too, from home unless they’re already out."}</span></span>
         <div role="group" aria-label=${s === "drop" ? "Riding along on the drop-off" : s === "pick" ? "Riding along on the pick-up" : "Riding along both ways"} class="chips">
           ${choices.map(
             (k) => html`<button type="button" class="chip" aria-pressed=${cur.includes(k) ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleAlong(e, k, s)}>
@@ -2496,9 +2534,12 @@ export class MyDashLightBoard extends LitElement {
       </div>`;
     };
 
-    const stayPend = pendingValue("stay");
-    const stay = stayPend !== undefined ? Boolean(stayPend) : e.stay;
+    // Who stays: the parent driving there, or else the one picking up. Staying only counts with
+    // the same parent both ways.
+    const stayer = drivers.includes(e.drop) ? e.drop : drivers.includes(e.pick) ? e.pick : "";
     const canStay = e.drop === e.pick && drivers.includes(e.drop);
+    const stayPend = pendingValue("stay");
+    const stay = stayPend !== undefined ? Boolean(stayPend) : e.stay && canStay;
     const alongPend = pendingValue("along");
     const along = alongPend !== undefined ? (alongPend as string[]) : e.along;
     // On a parent's own event the other parent can go along too.
@@ -2509,6 +2550,68 @@ export class MyDashLightBoard extends LitElement {
     const takes = takesPend !== undefined ? (takesPend as number | null) : (e.takes ?? null);
     const arrivePend = pendingValue("arrive");
     const arrive = this.arriveDraft !== undefined ? this.arriveDraft : arrivePend !== undefined ? (arrivePend as number | null) : e.arrive_by;
+
+    // Drop off and come back, or stay: staying is one parent both ways, so it's one choice.
+    const bothSides = e.sides.includes("drop") && e.sides.includes("pick");
+    const stayView = bothSides && (stay || this.stayDraft === e.id);
+    const rides = (): TemplateResult => {
+      const mode = bothSides
+        ? html`<div class="field">
+            <span class="field-label">Ride</span>
+            <div role="group" aria-label="Stay or not" class="choices" style="grid-template-columns:1fr 1fr">
+            <button
+              type="button"
+              class="choice"
+              aria-pressed=${stayView ? "false" : "true"}
+              ?disabled=${busy}
+              @click=${() => {
+                this.stayDraft = null;
+                if (e.stay) this.toggleStay(e, false, stayer);
+              }}
+            >
+              Drop off, pick up
+            </button>
+            <button
+              type="button"
+              class="choice"
+              aria-pressed=${stayView ? "true" : "false"}
+              ?disabled=${busy}
+              @click=${() => {
+                if (stayer) this.toggleStay(e, true, stayer);
+                else this.stayDraft = e.id;
+              }}
+            >
+              Stays the whole time
+            </button>
+          </div>
+          </div>`
+        : nothing;
+      if (!stayView) return html`${mode} ${side("drop")} ${side("pick")}`;
+      const who = stay && canStay ? e.drop : "";
+      return html`${mode}
+        <div class="field ride-box">
+          <span class="field-label">Drop-off and pick-up ${who ? nothing : html`<span class="nobody">· nobody yet</span>`}</span>
+          <div role="group" aria-label="Driver, both ways" class="choices" style="grid-template-columns:repeat(${drivers.length}, minmax(0, 1fr))">
+            ${drivers.map(
+              (d) => html`<button
+                type="button"
+                class="choice"
+                aria-pressed=${who === d ? "true" : "false"}
+                ?disabled=${busy}
+                @click=${() => {
+                  if (who === d || !this.backend) return;
+                  const b = this.backend;
+                  this.stayDraft = null;
+                  void this.save("stay", true, () => b.setRide(e.id, "both", d, this.scope, true));
+                }}
+              >
+                ${driverName(plan, d)}
+              </button>`,
+            )}
+          </div>
+          ${who ? riders("both", who) : nothing}
+        </div>`;
+    };
 
     const notes: string[] = [];
     const noteVal = (v: string): string => (v === "none" ? "Not needed" : whoName(plan, v));
@@ -2557,17 +2660,6 @@ export class MyDashLightBoard extends LitElement {
             </div>
           </div>`
         : nothing}
-      <div class="field">
-        <span class="field-label">${owner} is</span>
-        <div role="group" aria-label="Going or not" class="choices" style="grid-template-columns:1fr 1fr">
-          <button type="button" class="choice" aria-pressed=${attending ? "true" : "false"} ?disabled=${busy} @click=${() => this.setAttending(e, true)}>
-            Going
-          </button>
-          <button type="button" class="choice" aria-pressed=${attending ? "false" : "true"} ?disabled=${busy} @click=${() => this.setAttending(e, false)}>
-            Not attending
-          </button>
-        </div>
-      </div>
       ${attending
         ? html`${e.where === "anywhere"
               ? html`<p class="field-hint">
@@ -2576,15 +2668,7 @@ export class MyDashLightBoard extends LitElement {
                     : "No address, so the drive time is a guess. Add the place to the event in Google Calendar for the real one."}
                 </p>`
               : nothing}
-            ${e.own
-              ? html`<p class="field-hint">${this.ownHint(plan, e)}</p>`
-              : html`${side("drop")} ${side("pick")}
-                  <div class="field">
-                    <button type="button" class="choice wide" aria-pressed=${stay ? "true" : "false"} ?disabled=${!canStay || busy} @click=${() => this.toggleStay(e)}>
-                      ${canStay ? (stay ? "Driver stays the whole time" : "Driver leaves and comes back") : "Staying needs the same driver both ways"}
-                    </button>
-                    ${stay && canStay ? riders("both", e.drop) : nothing}
-                  </div>`}
+            ${e.own ? html`<p class="field-hint">${this.ownHint(plan, e)}</p>` : rides()}
       ${e.own
         ? html`<div class="field arrive">
             <span class="arrive-text">
@@ -2634,18 +2718,19 @@ export class MyDashLightBoard extends LitElement {
 `
         : html`<p class="field-hint">
             Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.
-            Its other ride settings stay saved in the notes, so tapping Going brings them all back.
+            Its ride settings stay saved, so they all come back when ${owner} is going again.
           </p>`}
-      <div class="notes">
-        <span class="notes-label">${this.backend?.saves === false ? "Would be saved" : "Saved"} to this event’s notes in Google Calendar</span>
-        <span class="notes-body">--- Rides ---\n${notes.length ? notes.join("\n") : "(no ride lines yet)"}</span>
-      </div>
+      <button type="button" class="chip clear" ?disabled=${busy} @click=${() => this.setAttending(e, !attending)}>
+        ${attending ? `${owner} isn’t going this time` : `${owner} is going after all`}
+      </button>
       ${e.problems.length
         ? html`<p class="field-hint bad">These lines in the notes couldn’t be read: ${e.problems.join("; ")}</p>`
         : nothing}
-      ${attending && !e.own
-        ? html`<p class="field-hint">Tap a selected driver again to clear it. Type any name for a carpool or a relative.</p>`
-        : nothing}
+      <details class="notes">
+        <summary class="notes-label">${this.backend?.saves === false ? "What would be saved" : "What’s saved"} in the event’s notes</summary>
+        <span class="notes-body">--- Rides ---\n${notes.length ? notes.join("\n") : "(no ride lines yet)"}</span>
+      </details>
+      ${attending && !e.own ? html`<p class="field-hint">Tap a selected driver again to clear it.</p>` : nothing}
     `;
   }
 }

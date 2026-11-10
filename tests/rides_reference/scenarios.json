@@ -2536,6 +2536,283 @@
           }
         ]
       }
+    },
+    {
+      "name": "Wednesday with Ava dropped early at the studio Cleo is picked up from",
+      "day": 6,
+      "input": {
+        "events": [
+          {
+            "id": "wed-hiphop",
+            "day": 6,
+            "kid": "cleo",
+            "title": "Hip Hop",
+            "loc": "dance",
+            "start": 1080,
+            "end": 1125,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": false,
+            "arriveBy": null,
+            "pickAlong": [
+              "ava"
+            ]
+          },
+          {
+            "id": "wed-tap",
+            "day": 6,
+            "kid": "ava",
+            "title": "Tap",
+            "loc": "dance",
+            "start": 1155,
+            "end": 1200,
+            "drop": "mom",
+            "pick": "none",
+            "stay": false,
+            "arriveBy": 1120
+          },
+          {
+            "id": "wed-hiphop2",
+            "day": 6,
+            "kid": "ava",
+            "title": "Hip Hop",
+            "loc": "dance",
+            "start": 1200,
+            "end": 1245,
+            "drop": "none",
+            "pick": "mom",
+            "stay": false,
+            "arriveBy": null
+          }
+        ],
+        "busy": {
+          "dad": [
+            {
+              "start": 540,
+              "end": 1020,
+              "title": "Work"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "mom": {
+          "first_leave": "5:43 PM",
+          "drive_min": 66,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "5:43 PM",
+              "end": "5:54 PM",
+              "from": "home",
+              "to": "dance",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "drive",
+              "start": "5:54 PM",
+              "end": "6:05 PM",
+              "from": "dance",
+              "to": "home",
+              "kids": [],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "home",
+              "start": "6:05 PM",
+              "end": "6:23 PM"
+            },
+            {
+              "type": "drive",
+              "start": "6:23 PM",
+              "end": "6:34 PM",
+              "from": "home",
+              "to": "dance",
+              "kids": [
+                "ava"
+              ],
+              "serves": "wed-tap"
+            },
+            {
+              "type": "wait",
+              "start": "6:34 PM",
+              "end": "6:45 PM",
+              "loc": "dance",
+              "kids": [],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "drive",
+              "start": "6:45 PM",
+              "end": "6:56 PM",
+              "from": "dance",
+              "to": "home",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "home",
+              "start": "6:56 PM",
+              "end": "8:34 PM"
+            },
+            {
+              "type": "drive",
+              "start": "8:34 PM",
+              "end": "8:45 PM",
+              "from": "home",
+              "to": "dance",
+              "kids": [],
+              "serves": "wed-hiphop2"
+            },
+            {
+              "type": "drive",
+              "start": "8:45 PM",
+              "end": "8:56 PM",
+              "from": "dance",
+              "to": "home",
+              "kids": [
+                "ava"
+              ],
+              "serves": "wed-hiphop2"
+            }
+          ]
+        },
+        "dad": {
+          "first_leave": null,
+          "drive_min": 0,
+          "segments": []
+        },
+        "issues": [],
+        "heads_ups": [],
+        "suggestions": []
+      }
+    },
+    {
+      "name": "Wednesday with Ava due at soccer just after Cleo’s pick-up nearby",
+      "day": 6,
+      "input": {
+        "events": [
+          {
+            "id": "wed-hiphop",
+            "day": 6,
+            "kid": "cleo",
+            "title": "Hip Hop",
+            "loc": "dance",
+            "start": 1080,
+            "end": 1125,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": false,
+            "arriveBy": null
+          },
+          {
+            "id": "wed-soccer",
+            "day": 6,
+            "kid": "ava",
+            "title": "Soccer",
+            "loc": "soccer",
+            "start": 1155,
+            "end": 1230,
+            "drop": "mom",
+            "pick": "none",
+            "stay": false,
+            "arriveBy": 1145
+          }
+        ],
+        "busy": {
+          "dad": [
+            {
+              "start": 540,
+              "end": 1020,
+              "title": "Work"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "mom": {
+          "first_leave": "5:43 PM",
+          "drive_min": 57,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "5:43 PM",
+              "end": "5:54 PM",
+              "from": "home",
+              "to": "dance",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "drive",
+              "start": "5:54 PM",
+              "end": "6:05 PM",
+              "from": "dance",
+              "to": "home",
+              "kids": [],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "home",
+              "start": "6:05 PM",
+              "end": "6:21 PM"
+            },
+            {
+              "type": "drive",
+              "start": "6:21 PM",
+              "end": "6:36 PM",
+              "from": "home",
+              "to": "soccer",
+              "kids": [
+                "ava"
+              ],
+              "serves": "wed-soccer"
+            },
+            {
+              "type": "drive",
+              "start": "6:36 PM",
+              "end": "6:45 PM",
+              "from": "soccer",
+              "to": "dance",
+              "kids": [],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "drive",
+              "start": "6:45 PM",
+              "end": "6:56 PM",
+              "from": "dance",
+              "to": "home",
+              "kids": [
+                "cleo"
+              ],
+              "serves": "wed-hiphop"
+            }
+          ]
+        },
+        "dad": {
+          "first_leave": null,
+          "drive_min": 0,
+          "segments": []
+        },
+        "issues": [],
+        "heads_ups": [
+          {
+            "kind": "early",
+            "driver": "mom",
+            "event": "wed-soccer",
+            "min": 39
+          }
+        ],
+        "suggestions": []
+      }
     }
   ]
 }

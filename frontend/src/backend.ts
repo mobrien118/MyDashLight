@@ -13,7 +13,8 @@ export interface Backend {
   watch(onPlan: (plan: Plan) => void, onError: (err: BackendError) => void): () => void;
   /** Reads the plan again now. */
   refresh(): Promise<void>;
-  setRide(event: string, side: Side | "both", driver: string, scope: Scope): Promise<void>;
+  /** With `stay`, also sets whether the driver stays, in the same save. */
+  setRide(event: string, side: Side | "both", driver: string, scope: Scope, stay?: boolean): Promise<void>;
   setStay(event: string, stay: boolean, scope: Scope): Promise<void>;
   /** `minutes` past midnight, or null to go back to a few minutes before the start. */
   setArriveBy(event: string, minutes: number | null, scope: Scope): Promise<void>;
@@ -207,8 +208,8 @@ export class HassBackend implements Backend {
     if (!this.pushing) await this.refresh();
   }
 
-  setRide(event: string, side: Side | "both", driver: string, scope: Scope): Promise<void> {
-    return this.call("set_ride", { event, side, driver, scope });
+  setRide(event: string, side: Side | "both", driver: string, scope: Scope, stay?: boolean): Promise<void> {
+    return this.call("set_ride", stay === undefined ? { event, side, driver, scope } : { event, side, driver, scope, stay });
   }
 
   setStay(event: string, stay: boolean, scope: Scope): Promise<void> {

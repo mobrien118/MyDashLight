@@ -52,6 +52,7 @@ test("reads the week's plan, and changes rides through the mydashlight actions",
 
   conn.sent = [];
   await b.setRide("soccer", "pick", "mom", "series");
+  await b.setRide("piano", "both", "dad", "this", true);
   await b.setArriveBy("football", 1035, "this");
   await b.setArriveBy("football", null, "this");
   await b.setStay("piano", false, "this");
@@ -65,6 +66,7 @@ test("reads the week's plan, and changes rides through the mydashlight actions",
     calls.map((m) => [m["service"], m["service_data"]]),
     [
       ["set_ride", { event: "soccer", side: "pick", driver: "mom", scope: "series" }],
+      ["set_ride", { event: "piano", side: "both", driver: "dad", scope: "this", stay: true }],
       ["set_arrive_by", { event: "football", time: "17:15:00", scope: "this" }],
       ["set_arrive_by", { event: "football", scope: "this" }],
       ["set_stay", { event: "piano", stay: false, scope: "this" }],
@@ -76,7 +78,7 @@ test("reads the week's plan, and changes rides through the mydashlight actions",
     ],
   );
   // Without live updates, each change reads the new plan.
-  assert.equal(conn.sent.filter((m) => m["service"] === "get_plan").length, 9);
+  assert.equal(conn.sent.filter((m) => m["service"] === "get_plan").length, 10);
   stop();
 });
 
