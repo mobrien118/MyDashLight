@@ -600,6 +600,8 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
     """Sort tasks into stops that start and end at home, tracking who is in the car."""
     stops = [Stop(HOME, "start")]
     car: list[str] = []
+    # Where each kid dropped off on this route was left, and when their activity there ends.
+    left: dict[str, tuple[str, int]] = {}
     for q, k in enumerate(tasks):
         kid = k.event.kid
         nxt = tasks[q + 1] if q + 1 < len(tasks) else None
@@ -651,6 +653,8 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
                 stops[-1].car = list(car)
             car = [x for x in car if x != kid]
             stop = Stop(k.event.loc, k.type, event=k.event, deadline=k.t)
+            if k.type == "drop":
+                left[kid] = (k.event.loc, k.event.end)
             if k.type == "stay":
                 stop.after = k.event.end
                 if kid not in car:
@@ -658,15 +662,25 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
             stop.car = list(car)
             stops.append(stop)
         else:
-            missing = [a for a in dict.fromkeys(k.event.pick_along) if a != kid and a not in car]
+            riders = [a for a in dict.fromkeys(k.event.pick_along) if a != kid and a not in car]
+            # A rider dropped off at this same place earlier is already there: they get in here
+            # when they're done by the pick-up, and otherwise stay for their activity. Either
+            # way, nobody goes home for them.
+            here = [a for a in riders if a in left and left[a][0] == k.event.loc]
+            missing = [a for a in riders if a not in here]
             if missing:
                 # Kids riding along on the pick-up leave home in the car.
                 if stops[-1].loc != HOME:
                     stops.append(Stop(HOME, "fetch"))
                 car += missing
                 stops[-1].car = list(car)
+            for a in here:
+                if left[a][1] <= k.event.end:
+                    car.append(a)
+                    del left[a]
             if kid not in car:
                 car.append(kid)
+            left.pop(kid, None)
             stops.append(Stop(k.event.loc, "pick", list(car), event=k.event, ready=k.event.end))
     if stops[-1].loc != HOME:
         stops.append(Stop(HOME, "end"))

@@ -148,6 +148,8 @@ function route(d, tasks, busy) {
   var stops = [{ loc: 'home', kind: 'start', car: [] }];
   var car = [];
   var cur = function () { return stops[stops.length - 1]; };
+  // Where each kid dropped off on this route was left, and when their activity there ends.
+  var left = {};
   tasks.forEach(function (k, i) {
     var kid = k.e.kid;
     var nt = tasks[i + 1];
@@ -191,18 +193,25 @@ function route(d, tasks, busy) {
       }
       car = car.filter(function (x) { return x !== kid; });
       var s = { loc: k.e.loc, kind: k.type, deadline: k.t, e: k.e };
+      if (k.type === 'drop') left[kid] = { loc: k.e.loc, until: k.e.end };
       if (k.type === 'stay') { s.after = k.e.end; if (car.indexOf(kid) < 0) car.push(kid); }
       s.car = car.slice();
       stops.push(s);
     } else {
-      var pm = (k.e.pickAlong || []).filter(function (a, x, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === x; });
+      var rs2 = (k.e.pickAlong || []).filter(function (a, x, arr) { return a !== kid && car.indexOf(a) < 0 && arr.indexOf(a) === x; });
+      // A rider dropped off at this same place earlier is already there: they get in here when
+      // they're done by the pick-up, and otherwise stay for their activity.
+      var here = rs2.filter(function (a) { return left[a] && left[a].loc === k.e.loc; });
+      var pm = rs2.filter(function (a) { return here.indexOf(a) < 0; });
       if (pm.length) {
         // Kids riding along on the pick-up leave home in the car.
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
         car = car.concat(pm);
         cur().car = car.slice();
       }
+      here.forEach(function (a) { if (left[a].until <= k.e.end) { car.push(a); delete left[a]; } });
       if (car.indexOf(kid) < 0) car.push(kid);
+      delete left[kid];
       stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, e: k.e, car: car.slice() });
     }
   });

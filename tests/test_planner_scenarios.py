@@ -53,7 +53,8 @@ def test_scenarios_cover_the_tricky_cases() -> None:
     assert any(e.get("along") for s in SCENARIOS for e in s["input"]["events"])
     assert "drop-off" in names
     assert any("double_booked" in s["expected"] for s in SCENARIOS)
-    assert len(SCENARIOS) == 13
+    assert any(e.get("pickAlong") for s in SCENARIOS for e in s["input"]["events"])
+    assert len(SCENARIOS) == 14
 
 
 def test_arrive_early_grows_with_the_drive() -> None:
@@ -119,6 +120,44 @@ def test_same_place_drop_off_and_pick_up_in_one_stop() -> None:
     again = RideEvent("again", "cleo", "Ballet", "dance", 1135, 1200, drop="mom", pick="mom")
     stops = plan_driver("mom", [hiphop, again], {}, travel).stops
     assert [s.kind for s in stops] == ["start", "drop", "pick", "drop", "pick", "end"]
+
+
+def test_a_rider_already_at_the_pick_up_is_not_fetched_from_home() -> None:
+    # Ava is dropped early for tap (Arrive by 6:40) at the studio Cleo's hip hop lets out of at
+    # 6:45, and Ava is also named as riding along on Cleo's pick-up. She is already there, still
+    # in tap, so Robin waits for Cleo instead of going home for Ava and picking Cleo up late.
+    hiphop = RideEvent("hiphop", "cleo", "Hip Hop", "dance", 1080, 1125, drop="mom", pick="mom", pick_along=("ava",))
+    tap = RideEvent("tap", "ava", "Tap", "dance", 1155, 1200, drop="mom", pick=NOT_NEEDED, arrive_by=1120)
+    plan = plan_driver("mom", [hiphop, tap], {}, travel)
+    assert plan.issues == []
+    assert [(s.kind, s.event.id if s.event else s.loc, s.car) for s in plan.stops] == [
+        ("start", "home", ["cleo"]),
+        ("drop", "hiphop", []),
+        ("fetch", "home", ["ava"]),
+        ("drop", "tap", []),
+        ("pick", "hiphop", ["cleo"]),
+        ("end", "home", []),
+    ]
+    # Done by the pick-up instead, Ava gets in the car there, still without a trip home for her.
+    short = replace(tap, start=1095, end=1120, arrive_by=None)
+    stops = plan_driver("mom", [hiphop, short], {}, travel).stops
+    assert [(s.kind, s.loc, s.car) for s in stops] == [
+        ("start", "home", ["cleo"]),
+        ("drop", "dance", []),
+        ("fetch", "home", ["ava"]),
+        ("drop", "dance", []),
+        ("pick", "dance", ["ava", "cleo"]),
+        ("end", "home", []),
+    ]
+    # A rider who wasn't dropped there still comes from home.
+    stops = plan_driver("mom", [hiphop], {}, travel).stops
+    assert [(s.kind, s.car) for s in stops] == [
+        ("start", ["cleo"]),
+        ("drop", []),
+        ("fetch", ["ava"]),
+        ("pick", ["ava", "cleo"]),
+        ("end", []),
+    ]
 
 
 def test_a_few_seconds_late_is_not_late() -> None:
