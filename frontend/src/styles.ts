@@ -1662,10 +1662,11 @@ export const styles = css`
     color: var(--muted);
     cursor: pointer;
   }
+  /* A long label ("Not needed", a carpool's name) wraps onto a second line in a narrow button. */
   .choice {
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 16px;
+    overflow-wrap: anywhere;
   }
   .notes-body {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

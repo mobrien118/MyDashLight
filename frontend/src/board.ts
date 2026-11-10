@@ -2460,7 +2460,7 @@ export class MyDashLightBoard extends LitElement {
         this.otherOpen = null;
         this.setRide(e, s, v === value ? "" : value, drivers);
       };
-      const main: [string, string][] = [...drivers.map((d): [string, string] => [d, whoName(plan, d)]), ["none", "No ride"]];
+      const main: [string, string][] = [...drivers.map((d): [string, string] => [d, whoName(plan, d)]), ["none", "Not needed"]];
       const key = `${e.id}|${s}`;
       const open = this.otherOpen === key;
       return html`<div class="field ride-box">
