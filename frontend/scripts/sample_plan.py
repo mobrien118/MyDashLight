@@ -138,6 +138,13 @@ BUSY: dict[int, dict[str, list[tuple[str, str, str]]]] = {
     6: {"dad": [("9:00 AM", "5:00 PM", "Work")], "mom": [("12:00 PM", "1:00 PM", "Dentist")]},
 }
 
+# A parent's events that only block their time, so they're never driven to: no address, at
+# home, or over more than a day. day, driver, id, title, place shown, start, end, why
+BUSY_ONLY: list[tuple[int, str, str, str, str, str, str | None, str]] = [
+    (3, "mom", "sun-rounds", "Grand rounds", "", "7:00 AM", "8:00 AM", "anywhere"),
+    (6, "dad", "wed-rental", "Car rental", "Airport", "8:00 PM", None, "days"),
+]
+
 # All-day events across the top of each day they cover: first day, last day, id, title, and who
 # the title names (kid indexes or driver ids), only for the colour.
 ALL_DAY: list[tuple[int, int, str, str, tuple[int | str, ...]]] = [
@@ -171,11 +178,12 @@ def main() -> None:
     if len(names) != 5:
         parser.error("--names takes three kids and two drivers")
 
+    busy_places = {f"?{b[2]}": b[4] or b[3] for b in BUSY_ONLY}
     labels = Labels(
         kids=dict(zip(KIDS, names[:3], strict=True)),
         drivers=dict(zip(DRIVERS, names[3:], strict=True)),
-        places={HOME: "Home", **{key(p): full for p, (full, _) in PLACES.items()}},
-        short_places={HOME: "Home", **{key(p): short for p, (_, short) in PLACES.items()}},
+        places={HOME: "Home", **{key(p): full for p, (full, _) in PLACES.items()}, **busy_places},
+        short_places={HOME: "Home", **{key(p): short for p, (_, short) in PLACES.items()}, **busy_places},
     )
     by_key = {key(p): p for p in PLACES}
     table = {}
@@ -241,6 +249,19 @@ def main() -> None:
             day.refs[ev_id] = EventRef(f"{driver}-calendar", f"{ev_id}-google", "etag", None, ("drop", "pick"))
         for driver, blocks in BUSY.get(offset, {}).items():
             day.busy[driver] = [BusyBlock(minutes(s), minutes(e), t) for s, e, t in blocks]
+        for d, driver, ev_id, title, _shown, start, end, why in BUSY_ONLY:
+            if d != offset:
+                continue
+            block = BusyBlock(minutes(start), minutes(end) if end else 1800, title)
+            day.busy.setdefault(driver, []).append(block)
+            day.busy[driver].sort(key=lambda b: (b.start, b.end, b.title))
+            loc = f"?{ev_id}"
+            day.events.append(
+                RideEvent(ev_id, driver, title, loc, block.start, block.end, drop="none", pick="none", own=driver)
+            )
+            day.refs[ev_id] = EventRef(
+                f"{driver}-calendar", f"{ev_id}-google", "etag", None, ("drop", "pick"), busy_only=why
+            )
         for first, last, ev_id, title, people in ALL_DAY:
             if first <= offset <= last:
                 item = DayItem(

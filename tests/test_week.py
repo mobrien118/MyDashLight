@@ -272,15 +272,15 @@ def test_plan_payload() -> None:
     assert [d["date"] for d in days] == ["2026-11-03", "2026-11-04"]
     tue = days[0]
     assert "along" not in tue
-    assert [e["id"] for e in tue["events"]] == ["piano", "soccer", "dance"]
-    piano = tue["events"][0]
+    assert [e["id"] for e in tue["events"]] == ["work", "piano", "soccer", "dance"]
+    piano = tue["events"][1]
     assert piano["place_name"] == SCHOOL
     assert piano["short_place"] == "Lincoln Elementary"
     assert piano["calendar_id"] == AVA
     assert piano["lines"]["drop"]["tone"] in ("normal", "problem")
     robin = tue["drivers"]["mom"]
     assert robin["name"] == "Robin"
-    assert robin["busy"] == [{"start": 480, "end": 955, "title": "Work", "event": None}]
+    assert robin["busy"] == [{"start": 480, "end": 955, "title": "Work", "event": "work"}]
     assert robin["segments"]
     assert robin["outings"][0]["lead"].startswith("Leave ")
     kinds = {(x["level"], x["kind"]) for x in tue["issues"]}
@@ -467,7 +467,7 @@ def test_parents_own_events_get_rides() -> None:
         }
     )
     tue = w.days[0]
-    [dentist] = tue.events
+    call, chores, dentist = tue.events
     assert dentist.kid == "mom"
     assert dentist.own == "mom"
     assert (dentist.drop, dentist.pick, dentist.stay) == ("mom", "mom", True)
@@ -477,11 +477,20 @@ def test_parents_own_events_get_rides() -> None:
     assert tue.refs["dentist"] == EventRef(ROBIN, "dentist", "", None, ("drop", "pick"))
     assert w.labels.short_places[dentist.loc] == "Smile Dental"
     assert w.travel_overrides == {dentist.loc: 25}
-    # Online, at home, overnight and all day are only busy time, as before.
+    # Online, at home, overnight and all day are only busy time, as before. The timed ones
+    # are also cards on the board, never driven to, so they can be marked not going.
     assert tue.busy["mom"] == [BusyBlock(540, 600, "Call"), BusyBlock(600, 660, "Chores")]
+    assert [(e.id, e.own, e.drop, e.pick, e.attending) for e in (call, chores)] == [
+        ("call", "mom", "none", "none", True),
+        ("chores", "mom", "none", "none", True),
+    ]
+    assert (tue.refs["call"].busy_only, tue.refs["chores"].busy_only) == ("anywhere", "home")
+    assert not tue.refs["dentist"].busy_only
     assert w.days[1].busy["mom"] == [BusyBlock(1320, 1800, "Night shift")]
+    assert [(e.id, e.start, e.end) for e in w.days[1].events] == [("shift", 1320, 1800)]
+    assert w.days[1].refs["shift"].busy_only == "days"
     assert w.days[3].busy["mom"] == [BusyBlock(0, 1440, "Denver")]
-    assert all(not d.events for d in w.days[1:])
+    assert w.days[3].events == []
 
 
 def test_an_event_on_both_parents_calendars_is_one_trip() -> None:

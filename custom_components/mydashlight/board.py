@@ -554,6 +554,9 @@ def _own_lines(e: RideEvent, plan: DayPlan, labels: Labels) -> CardLines:
         start = there.from_loc or HOME
         lead = "Leaves" if start == HOME else f"From {labels.short_place(start)}"
         drop = CardLine(f"{lead} {fmt(there.start)}{extra}", tone)
+    if drop is None and e.attending and e.drop == NOT_NEEDED:
+        # Only busy time: no drive, just time they can't drive.
+        drop = CardLine("Can’t drive then", "muted")
     pick: CardLine | None = None
     at = next(
         (i for i, g in enumerate(p.segments) if g.type == "stay" and g.event is not None and g.event.id == e.id), None

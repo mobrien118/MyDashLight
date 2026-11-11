@@ -104,6 +104,9 @@ class EventRef:
     """The event's private properties, where MyDashLight marks the reminder it set."""
     no_ride_unless_named: bool = False
     """It needs no ride only because it has no address and its notes name no driver yet."""
+    busy_only: Literal["", "days", "home", "anywhere"] = ""
+    """Why it's a parent's event that only blocks their time, or "" when it isn't one: over
+    more than a day, at home, or with no address. Shown and editable for Going, never driven to."""
 
 
 @dataclass(slots=True)
@@ -375,10 +378,53 @@ def build_week(
                     if notes.travel is not None and ride.attending:
                         overrides[ride.loc] = max(overrides.get(ride.loc, 0), notes.travel)
                     continue
+                # Only busy time: on the board as the parent's own card, to see and to mark not
+                # going, which frees their time. It's never driven to.
+                title, skipped = skip_prefix(ev.title or "Busy")
+                notes = parse_notes(ev.description, directory, None)
+                attending = notes.attending and not skipped
+                key = f"{NO_ADDRESS}{ev.id}"
+                at = where(ev.location or "", home_address)
+                why: Literal["days", "home", "anywhere"] = "days" if at == "place" else at
+                places.setdefault(key, ev.location or title)
+                short.setdefault(key, short_place(ev.location or "") or title)
                 for d in day_list:
                     block = _busy_on(ev, d, tz)
-                    if block is not None:
-                        by_day[d].busy.setdefault(driver, []).append(block)
+                    # A kid's event too: changed from the kid's card, so here it's only busy time.
+                    if block is None or ev.all_day or ev.id in kid_event_ids:
+                        if block is not None and attending:
+                            by_day[d].busy.setdefault(driver, []).append(block)
+                        continue
+                    target = by_day[d]
+                    if attending:
+                        target.busy.setdefault(driver, []).append(replace(block, title=title))
+                    ride_id = _unique_id(ev.id, target.refs)
+                    target.events.append(
+                        RideEvent(
+                            ride_id,
+                            driver,
+                            title,
+                            key,
+                            block.start,
+                            block.end,
+                            drop=NOT_NEEDED,
+                            pick=NOT_NEEDED,
+                            attending=attending,
+                            own=driver,
+                        )
+                    )
+                    target.refs[ride_id] = EventRef(
+                        ev.calendar_id,
+                        ev.id,
+                        ev.etag,
+                        ev.recurring_id,
+                        ("drop", "pick"),
+                        ev.popups,
+                        ev.private,
+                        busy_only=why,
+                    )
+                    if notes.problems:
+                        target.problems[ride_id] = notes.problems
     for d in day_list:
         by_day[d].events.sort(key=lambda e: (e.start, e.end, e.id))
         for blocks in by_day[d].busy.values():

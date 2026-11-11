@@ -98,7 +98,7 @@ async def test_setup_sync_and_unload(hass: HomeAssistant, google: FakeGoogle, fr
     freezer.tick(timedelta(seconds=61))
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
-    assert [e["id"] for e in entry.runtime_data.coordinator.data.days[0]["events"]] == ["piano", "art"]
+    assert [e["id"] for e in entry.runtime_data.coordinator.data.days[0]["events"]] == ["work", "piano", "art"]
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED
@@ -112,11 +112,15 @@ async def test_get_plan(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert plan["unavailable_calendars"] == []
     (today,) = plan["days"]
     assert today["date"] == "2026-11-03"
-    (piano,) = today["events"]
+    # Robin's work is only busy time: a card to see, and to mark not going, but no drive.
+    work, piano = today["events"]
+    assert (work["own"], work["busy_only"], work["busy_why"]) == ("mom", True, "anywhere")
+    assert (work["drop"], work["pick"]) == ("none", "none")
+    assert work["lines"]["drop"] == {"text": "Can’t drive then", "tone": "muted"}
     assert piano["kid"] == AVA
     assert piano["drop"] == "mom"
     assert today["kids"][AVA]["name"] == "Ava"
-    assert today["drivers"]["mom"]["busy"] == [{"start": 480, "end": 900, "title": "Work", "event": None}]
+    assert today["drivers"]["mom"]["busy"] == [{"start": 480, "end": 900, "title": "Work", "event": "work"}]
     assert today["drivers"]["mom"]["leave"] is not None
 
     plan = await get_plan(hass, date="2026-11-04", days=2)
@@ -357,7 +361,7 @@ async def test_diagnostics(hass: HomeAssistant, hass_client: ClientSessionGenera
     assert diag["plan"]["unavailable"] == []
     assert diag["plan"]["days"][0] == {
         "date": "2026-11-03",
-        "events": 1,
+        "events": 2,
         "problems": 0,
         "heads_ups": diag["plan"]["days"][0]["heads_ups"],
         "notes_problems": 0,
