@@ -27,6 +27,7 @@ import {
   minWidth,
   nextUp,
   problemCount,
+  spanText,
   tAt,
   tidyPlan,
   whoName,
@@ -2633,13 +2634,42 @@ export class MyDashLightBoard extends LitElement {
     if (e.attending === false) notes.splice(0, notes.length, "Attending: no");
 
     const ahead = day.date === this.today().date ? "" : `${shortDay(day.date)} · `;
+    const span = spanText(e);
     const head = html`<div class="ed-head">
         <div class="ed-titles">
           <span class="ed-title"><span class="dot" style="background:${color.color}"></span>${owner} · ${e.title}</span>
-          <span class="ed-meta">${ahead}${errand ? "any time " : ""}${clock(e.start)}–${clock(e.end)}${e.place_name && !e.place.startsWith("?") ? ` · ${e.place_name}` : ""}</span>
+          <span class="ed-meta">${ahead}${errand ? "any time " : ""}${span}${e.place_name && !e.place.startsWith("?") ? ` · ${e.place_name}` : ""}</span>
         </div>
         <button type="button" class="btn dark" @click=${() => this.closeEditor()}>Done</button>
       </div>`;
+    if (e.busy_only) {
+      const place = e.place_name && e.place_name !== e.title ? e.place_name : "";
+      const why =
+        e.busy_why === "days"
+          ? "It runs over more than a day, so no drive is planned for it."
+          : e.busy_why === "home"
+            ? "It’s at home, so no drive is planned for it."
+            : "It has no address, so no drive is planned for it.";
+      return html`${head}
+        ${this.pending ? html`<p class="saving" role="status">Saving to Google Calendar…</p>` : nothing}
+        ${place ? html`<div class="field"><span class="field-label">Where</span><span class="field-hint">${place}</span></div>` : nothing}
+        <p class="field-hint">
+          ${attending
+            ? `This blocks ${owner}’s time: ${owner} can’t drive then, so a ride that needs ${owner} shows as a problem.`
+            : `Not going, so it doesn’t block ${owner}’s time, and ${owner} can drive then.`}
+          ${why}
+        </p>
+        <button type="button" class="chip clear" ?disabled=${busy} @click=${() => this.setAttending(e, !attending)}>
+          ${attending ? `${owner} isn’t going this time` : `${owner} is going after all`}
+        </button>
+        ${e.problems.length
+          ? html`<p class="field-hint bad">These lines in the notes couldn’t be read: ${e.problems.join("; ")}</p>`
+          : nothing}
+        <details class="notes">
+          <summary class="notes-label">${this.backend?.saves === false ? "What would be saved" : "What’s saved"} in the event’s notes</summary>
+          <span class="notes-body">--- Rides ---\n${e.attending === false ? "Attending: no" : "(nothing yet)"}</span>
+        </details>`;
+    }
     if (e.where === "home") {
       return html`${head}
         <p class="field-hint">It’s at home, so it doesn’t need a ride. If ${owner} can’t get home in time, the board shows it as a clash.</p>`;

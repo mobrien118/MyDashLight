@@ -42,6 +42,8 @@
      "event_id": "piano-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -82,6 +84,8 @@
      "event_id": "soccer-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -122,6 +126,8 @@
      "event_id": "football-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -162,6 +168,8 @@
      "event_id": "volley-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -202,6 +210,8 @@
      "event_id": "tutor-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -821,6 +831,8 @@
      "event_id": "fri-soccer-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -861,6 +873,8 @@
      "event_id": "fri-party-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -901,6 +915,8 @@
      "event_id": "fri-sit-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -1369,6 +1385,8 @@
      "event_id": "sat-tourney-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -1409,6 +1427,8 @@
      "event_id": "sat-soccer-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -1449,6 +1469,8 @@
      "event_id": "sat-football-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -1860,6 +1882,8 @@
      "event_id": "sun-youth-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -1903,6 +1927,8 @@
      "event_id": "sun-golf-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -1913,6 +1939,45 @@
        "text": "Home 4:18",
        "tone": "normal"
       }
+     }
+    },
+    {
+     "id": "sun-rounds",
+     "kid": "mom",
+     "title": "Grand rounds",
+     "place": "?sun-rounds",
+     "place_name": "Grand rounds",
+     "short_place": "Grand rounds",
+     "where": "anywhere",
+     "attending": true,
+     "start": 420,
+     "end": 480,
+     "drop": "none",
+     "pick": "none",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "pick_along": [],
+     "own": "mom",
+     "takes": null,
+     "planned": null,
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "mom-calendar",
+     "event_id": "sun-rounds-google",
+     "recurring": false,
+     "no_ride_unless_named": false,
+     "busy_only": true,
+     "busy_why": "anywhere",
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Can’t drive then",
+       "tone": "muted"
+      },
+      "pick": null
      }
     }
    ],
@@ -1997,6 +2062,12 @@
       }
      ],
      "busy": [
+      {
+       "start": 420,
+       "end": 480,
+       "title": "Grand rounds",
+       "event": "sun-rounds"
+      },
       {
        "start": 757,
        "end": 978,
@@ -2257,6 +2328,8 @@
      "event_id": "mon-piano-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -2297,6 +2370,8 @@
      "event_id": "mon-football-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -2337,6 +2412,8 @@
      "event_id": "mon-cleaners-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -2860,6 +2937,8 @@
      "event_id": "tue-soccer-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -2900,6 +2979,8 @@
      "event_id": "tue-art-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -2940,6 +3021,8 @@
      "event_id": "tue-volley-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -2980,6 +3063,8 @@
      "event_id": "tue-book-google",
      "recurring": false,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -3518,6 +3603,8 @@
      "event_id": "wed-dance-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -3558,6 +3645,8 @@
      "event_id": "wed-football-google",
      "recurring": true,
      "no_ride_unless_named": false,
+     "busy_only": false,
+     "busy_why": null,
      "problems": [],
      "lines": {
       "drop": {
@@ -3568,6 +3657,45 @@
        "text": "Home 7:20 with Sam",
        "tone": "normal"
       }
+     }
+    },
+    {
+     "id": "wed-rental",
+     "kid": "dad",
+     "title": "Car rental",
+     "place": "?wed-rental",
+     "place_name": "Airport",
+     "short_place": "Airport",
+     "where": "anywhere",
+     "attending": true,
+     "start": 1200,
+     "end": 1800,
+     "drop": "none",
+     "pick": "none",
+     "stay": false,
+     "arrive_by": null,
+     "along": [],
+     "pick_along": [],
+     "own": "dad",
+     "takes": null,
+     "planned": null,
+     "sides": [
+      "drop",
+      "pick"
+     ],
+     "calendar_id": "dad-calendar",
+     "event_id": "wed-rental-google",
+     "recurring": false,
+     "no_ride_unless_named": false,
+     "busy_only": true,
+     "busy_why": "days",
+     "problems": [],
+     "lines": {
+      "drop": {
+       "text": "Can’t drive then",
+       "tone": "muted"
+      },
+      "pick": null
      }
     }
    ],
@@ -3851,6 +3979,12 @@
        "end": 1020,
        "title": "Work",
        "event": null
+      },
+      {
+       "start": 1200,
+       "end": 1800,
+       "title": "Car rental",
+       "event": "wed-rental"
       }
      ]
     }

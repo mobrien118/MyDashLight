@@ -285,6 +285,16 @@ export function whoName(plan: Plan, value: string): string {
 }
 
 /** Whose event it is: the kid's name, or the parent's on their own event. */
+/** When an event is on this day. Busy time over more than a day says only this day's part. */
+export function spanText(e: PlanEvent): string {
+  if (e.busy_why === "days") {
+    if (e.start <= 0 && e.end >= 1440) return "All day";
+    if (e.start <= 0) return `Until ${clock(e.end)}`;
+    if (e.end >= 1440) return `From ${clock(e.start)}`;
+  }
+  return `${clock(e.start)}–${clock(e.end)}`;
+}
+
 export function ownerName(plan: Plan, e: PlanEvent): string {
   return e.own ? driverName(plan, e.own) : kidName(plan, e.kid);
 }
@@ -729,7 +739,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       const time =
         (e.takes != null
           ? `${e.takes} min, any time ${clock(e.start)}–${clock(e.end)}`
-          : `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "")) +
+          : spanText(e) + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "")) +
         (going.length ? ` · with ${andList(going)}` : "");
       return {
         key: `${day.date}|card|${e.id}` + (e.own ? `|${colId}` : ""),
@@ -752,7 +762,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         showPick: !!ln.pick && (wrap || h >= 74),
         wrap,
         aria:
-          `${who}, ${e.title} ${e.takes != null ? `any time from ${clock(e.start)} to ${clock(e.end)}` : `${clock(e.start)} to ${clock(e.end)}`}. ` +
+          `${who}, ${e.title} ${e.takes != null ? `any time from ${clock(e.start)} to ${clock(e.end)}` : spanText(e).replace("–", " to ")}. ` +
           (e.attending === false && !ln.drop ? "Not attending. " : "") +
           [ln.drop, ln.pick]
             .filter((l): l is CardLine => !!l)
@@ -1172,7 +1182,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       // errand that didn't fit) gets a card, so it can still be changed.
       const cw = col.get(d)!.w;
       for (const e of day.events) {
-        if (e.own !== d || (e.attending !== false && (e.takes == null || e.planned != null))) continue;
+        if (e.own !== d || (!e.busy_only && e.attending !== false && (e.takes == null || e.planned != null))) continue;
         items.push({ col: d, s: ownSpan(e)[0], h: compactCardHeight(e, cw), kind: "own", event: e });
       }
       for (const o of dd.outings) {

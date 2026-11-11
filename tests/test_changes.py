@@ -64,6 +64,29 @@ def planned(entry: MockConfigEntry, ride_id: str, day: int = 0) -> dict[str, Any
     return next(e for e in days[day]["events"] if e["id"] == ride_id)
 
 
+async def test_a_parents_busy_time_can_be_marked_not_going(hass: HomeAssistant, google: FakeGoogle) -> None:
+    # Away for two days: only busy time, never driven to. Not going frees Robin's time.
+    google.add(
+        FAMILY,
+        **timed("trip", "Robin Car rental", "2026-11-03T08:00:00-06:00", "2026-11-04T18:00:00-06:00", location="Air"),
+    )
+    entry = await load(hass)
+    trip = planned(entry, "trip")
+    assert (trip["own"], trip["busy_only"], trip["attending"], trip["where"]) == ("mom", True, True, "anywhere")
+    assert (trip["place_name"], trip["busy_why"]) == ("Air", "days")
+    days = entry.runtime_data.coordinator.data.days
+    assert {"start": 480, "end": 1800, "title": "Car rental", "event": "trip"} in days[0]["drivers"]["mom"]["busy"]
+    assert planned(entry, "trip", day=1)["end"] == 1080
+
+    await call(hass, "set_attending", event="trip", attending=False)
+
+    assert google.patches[-1][3] == {"description": "--- Rides ---\nAttending: no"}
+    trip = planned(entry, "trip")
+    assert (trip["attending"], trip["lines"]["drop"]["text"]) == (False, "Not attending")
+    days = entry.runtime_data.coordinator.data.days
+    assert all(b["event"] != "trip" for d in days for b in d["drivers"]["mom"]["busy"])
+
+
 async def test_set_driver(hass: HomeAssistant, google: FakeGoogle) -> None:
     entry = await load(hass)
     assert planned(entry, "piano")["drop"] == ""

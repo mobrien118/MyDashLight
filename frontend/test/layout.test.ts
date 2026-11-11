@@ -561,3 +561,19 @@ test("all-day events go in the day's heading, under the date", () => {
   // Scrolling to a time leaves room for that day's heading.
   assert.equal(headAt(board, 1440 + 600), fri.h);
 });
+
+test("a parent's busy time from their calendar is a card in their column, in both views", () => {
+  for (const mode of ["timeline", "compact"] as const) {
+    const b = layout(plan, mode, 1160, { date: FIRST, minutes: 0 });
+    for (const [id, name] of [["sun-rounds", "Robin"], ["wed-rental", "Sam"]] as const) {
+      const date = dayOf(id).date;
+      const col = colOf(b, name);
+      const card = b.cards.find((c) => c.target.day === date && c.target.event === id);
+      assert.ok(card && inCol(card, col), `${mode} ${id}`);
+      assert.equal(card.drop?.text, "Can’t drive then");
+      // Drawn once, as the card, not again as grey busy time.
+      assert.ok(!b.busy.some((x) => x.key.startsWith(date) && inCol(x, col) && x.label.startsWith(card.title)), `${mode} ${id}`);
+      assert.equal(card.time, id === "wed-rental" ? "From 8:00" : "7:00–8:00");
+    }
+  }
+});

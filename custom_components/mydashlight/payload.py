@@ -100,7 +100,7 @@ def plan_day(
                 "trips": board.plan[d].trips,
                 "segments": [_segment(g) for g in board.plan[d].segments],
                 "outings": [_outing(o) for o in board.outings[d]],
-                "busy": _busy_for(d, day.events, board),
+                "busy": _busy_for(d, day, board),
             }
             for d in drivers
         },
@@ -149,6 +149,8 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "event_id": ref.event_id,
         "recurring": ref.recurring_id is not None,
         "no_ride_unless_named": ref.no_ride_unless_named,
+        "busy_only": bool(ref.busy_only),
+        "busy_why": ref.busy_only or None,
         "problems": list(day.problems.get(e.id, ())),
         "lines": {
             "drop": _line(lines.drop) if lines else None,
@@ -222,12 +224,18 @@ def _item(it: KidItem, rides: list[Ride]) -> dict[str, Any]:
     return out
 
 
-def _busy_for(driver: str, events: Sequence[RideEvent], board: DayBoard) -> list[dict[str, Any]]:
+def _busy_for(driver: str, day: DayInput, board: DayBoard) -> list[dict[str, Any]]:
     """A driver's busy times: their calendar, the trips they ride along on, and their own
-    events, which carry the event's id."""
-    out = [_busy(b) for b in board.plan.busy.get(driver, ())]
-    for e in events:
-        if e.own != driver or not e.attending:
+    events, which carry the event's id. An event that's only busy time carries its id too,
+    so the board draws it as the event's card."""
+    only = {
+        (e.start, e.end, e.title): e.id
+        for e in day.events
+        if e.own == driver and e.attending and day.refs[e.id].busy_only
+    }
+    out = [_busy(b, only.get((b.start, b.end, b.title))) for b in board.plan.busy.get(driver, ())]
+    for e in day.events:
+        if e.own != driver or not e.attending or day.refs[e.id].busy_only:
             continue
         if e.takes is None:
             out.append(_busy(BusyBlock(e.start, e.end, e.title), e.id))

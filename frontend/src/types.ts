@@ -35,6 +35,10 @@ export interface PlanEvent {
   recurring: boolean;
   /** "none" on both sides only because it has no address and no driver is named yet. Older plans leave it out. */
   no_ride_unless_named?: boolean;
+  /** A parent's event that only blocks their time, never driven to. Older plans leave it out. */
+  busy_only?: boolean;
+  /** Why it's only busy time: over more than a day, at home, or with no address. */
+  busy_why?: "days" | "home" | "anywhere" | null;
   /** Lines in the event's notes that couldn't be read. */
   problems: string[];
   lines: { drop: CardLine | null; pick: CardLine | null };
