@@ -5,7 +5,7 @@
 
 import { LitElement, html, nothing, svg, type PropertyValues, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
-import { BackendError, type Backend } from "./backend.ts";
+import { BackendError, problemLine, type Backend } from "./backend.ts";
 import { kidColor } from "./colors.ts";
 import { ago, clock, clockAmPm, dayLabel, duration, nowIn, shortDay } from "./format.ts";
 import {
@@ -1118,7 +1118,7 @@ export class MyDashLightBoard extends LitElement {
       const tz = plan.time_zone;
       const updated = new Date(plan.updated);
       if (this.error) {
-        status = html`<span class="bad">Can’t reach Home Assistant · showing the plan from ${ago(updated, new Date(), tz)}</span>`;
+        status = html`<span class="bad">${problemLine(this.error)} · showing the plan from ${ago(updated, new Date(), tz)}</span>`;
       } else if (plan.status && !plan.status.ok) {
         status = html`<span class="bad">Couldn’t read Google Calendar${plan.status.error ? `: ${plan.status.error}` : ""} · plan from ${ago(updated, new Date(), tz)}</span>`;
       } else if (!this.backend?.live) {

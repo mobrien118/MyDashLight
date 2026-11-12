@@ -61,6 +61,19 @@ export class BackendError extends Error {
   }
 }
 
+/** What the header says while the plan on screen may be old. */
+export function problemLine(err: BackendError): string {
+  switch (err.code) {
+    case "connection_lost":
+    case "timeout":
+      return "Can’t reach Home Assistant";
+    case "not_running":
+      return "MyDashLight isn’t running";
+    default:
+      return "Couldn’t get the latest plan";
+  }
+}
+
 /** The part of a Home Assistant WebSocket connection the board uses. */
 export interface HassConnection {
   sendMessagePromise<T>(message: Record<string, unknown>): Promise<T>;
@@ -69,6 +82,8 @@ export interface HassConnection {
     message: Record<string, unknown>,
     options?: { resubscribe?: boolean },
   ): Promise<() => Promise<void>>;
+  /** False while the socket is down (home-assistant-js-websocket). */
+  readonly connected?: boolean;
   addEventListener?(event: "ready" | "disconnected", cb: () => void): void;
   removeEventListener?(event: "ready" | "disconnected", cb: () => void): void;
 }
@@ -78,6 +93,8 @@ const DOMAIN = "mydashlight";
 export const DAYS = 7;
 /** How often to read the plan when Home Assistant can't push changes. It reads what's already planned, so it's cheap. */
 export const POLL_MS = 30_000;
+/** A read that hasn't answered by now is given up on, so the next one can go. */
+export const READ_TIMEOUT_MS = 30_000;
 
 function toError(err: unknown): BackendError {
   if (err instanceof BackendError) return err;
@@ -92,13 +109,115 @@ function toError(err: unknown): BackendError {
   return new BackendError("error", String(err));
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new BackendError("timeout", "Home Assistant didn’t answer.")), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+/**
+ * One live subscription that survives reconnects and Home Assistant restarts.
+ *
+ * home-assistant-js-websocket can subscribe again after a reconnect, but when that fails (right
+ * after a restart, before MyDashLight has loaded) it drops the subscription without a word, and
+ * the board would wait for pushes that never come. So this subscribes again itself: on every
+ * reconnect, and on every `open()` while it isn't open (the caller's poll), until it works.
+ */
+class LiveFeed<T> {
+  /** The subscription is open and Home Assistant has sent on it. */
+  live = false;
+  private unsub: (() => Promise<void>) | null = null;
+  private opening = false;
+  /** Bumped when the socket drops or the feed closes, so answers to older tries are ignored. */
+  private gen = 0;
+  private closed = false;
+  private readonly conn: HassConnection;
+  private readonly type: string;
+  private readonly onMessage: (msg: T) => void;
+  private readonly onFailed: (err: unknown) => void;
+  private readonly onReady = (): void => this.open();
+  private readonly onDisconnected = (): void => this.dropped();
+
+  constructor(conn: HassConnection, type: string, onMessage: (msg: T) => void, onFailed: (err: unknown) => void) {
+    this.conn = conn;
+    this.type = type;
+    this.onMessage = onMessage;
+    this.onFailed = onFailed;
+    conn.addEventListener?.("ready", this.onReady);
+    conn.addEventListener?.("disconnected", this.onDisconnected);
+  }
+
+  get isOpen(): boolean {
+    return this.unsub !== null || this.opening;
+  }
+
+  open(): void {
+    // Subscribing while the socket is down never answers; the reconnect opens it.
+    if (this.closed || this.isOpen || this.conn.connected === false) return;
+    const gen = ++this.gen;
+    this.opening = true;
+    this.conn
+      .subscribeMessage<T>(
+        (msg) => {
+          if (gen !== this.gen) return;
+          this.live = true;
+          this.onMessage(msg);
+        },
+        { type: this.type },
+        { resubscribe: false },
+      )
+      .then(
+        (unsub) => {
+          if (gen !== this.gen) {
+            void unsub().catch(() => undefined);
+            return;
+          }
+          this.opening = false;
+          this.unsub = unsub;
+        },
+        (err: unknown) => {
+          if (gen !== this.gen) return;
+          this.opening = false;
+          this.live = false;
+          this.onFailed(err);
+        },
+      );
+  }
+
+  /** The socket closed, and the subscription went with it. */
+  private dropped(): void {
+    this.gen++;
+    this.opening = false;
+    this.unsub = null;
+    this.live = false;
+  }
+
+  close(): void {
+    this.closed = true;
+    this.conn.removeEventListener?.("ready", this.onReady);
+    this.conn.removeEventListener?.("disconnected", this.onDisconnected);
+    const unsub = this.unsub;
+    this.dropped();
+    if (unsub) void unsub().catch(() => undefined);
+  }
+}
+
 export class HassBackend implements Backend {
   readonly saves = true;
   private readonly conn: HassConnection;
   private listeners = new Set<{ onPlan: (p: Plan) => void; onError: (e: BackendError) => void }>();
   private timer: ReturnType<typeof setInterval> | null = null;
-  private unsubscribe: (() => Promise<void>) | null = null;
-  private pushing = false;
+  private rides: LiveFeed<{ plan: Plan | null }> | null = null;
   private reading: Promise<void> | null = null;
   private readonly onVisible = (): void => {
     if (typeof document === "undefined" || document.visibilityState === "visible") void this.refresh();
@@ -108,7 +227,7 @@ export class HassBackend implements Backend {
     this.fail(new BackendError("connection_lost", "Lost the connection to Home Assistant."));
 
   get live(): boolean {
-    return this.pushing;
+    return this.rides?.live ?? false;
   }
 
   constructor(conn: HassConnection) {
@@ -128,9 +247,22 @@ export class HassBackend implements Backend {
 
   private start(): void {
     void this.refresh();
-    void this.trySubscribe();
+    // Live updates, when this version of MyDashLight pushes them (0.5 and later). Until they
+    // come, and whenever they stop, the board reads the plan every so often instead.
+    this.rides = new LiveFeed<{ plan: Plan | null }>(
+      this.conn,
+      `${DOMAIN}/rides/subscribe`,
+      (msg) => {
+        if (msg.plan) this.emit(msg.plan);
+        else this.fail(new BackendError("not_running", "MyDashLight isn’t running right now."));
+      },
+      () => undefined,
+    );
+    this.rides.open();
     this.timer = setInterval(() => {
-      if (!this.pushing) void this.refresh();
+      if (this.live) return;
+      void this.refresh();
+      this.rides?.open();
     }, POLL_MS);
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", this.onVisible);
     this.conn.addEventListener?.("ready", this.onReady);
@@ -143,27 +275,8 @@ export class HassBackend implements Backend {
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onVisible);
     this.conn.removeEventListener?.("ready", this.onReady);
     this.conn.removeEventListener?.("disconnected", this.onDisconnected);
-    const unsub = this.unsubscribe;
-    this.unsubscribe = null;
-    this.pushing = false;
-    if (unsub) void unsub().catch(() => undefined);
-  }
-
-  /** Live updates, when this version of MyDashLight pushes them (0.5 and later). Otherwise the board polls. */
-  private async trySubscribe(): Promise<void> {
-    try {
-      this.unsubscribe = await this.conn.subscribeMessage<{ plan: Plan | null }>(
-        (msg) => {
-          this.pushing = true;
-          if (msg.plan) this.emit(msg.plan);
-          else this.fail(new BackendError("not_running", "MyDashLight isn’t running right now."));
-        },
-        { type: `${DOMAIN}/rides/subscribe` },
-        { resubscribe: true },
-      );
-    } catch {
-      this.pushing = false;
-    }
+    this.rides?.close();
+    this.rides = null;
   }
 
   private fail(e: BackendError): void {
@@ -185,13 +298,16 @@ export class HassBackend implements Backend {
 
   private async read(): Promise<void> {
     try {
-      const res = await this.conn.sendMessagePromise<{ response: Plan }>({
-        type: "call_service",
-        domain: DOMAIN,
-        service: "get_plan",
-        service_data: { days: DAYS },
-        return_response: true,
-      });
+      const res = await withTimeout(
+        this.conn.sendMessagePromise<{ response: Plan }>({
+          type: "call_service",
+          domain: DOMAIN,
+          service: "get_plan",
+          service_data: { days: DAYS },
+          return_response: true,
+        }),
+        READ_TIMEOUT_MS,
+      );
       this.emit(res.response);
     } catch (err) {
       this.fail(toError(err));
@@ -205,7 +321,7 @@ export class HassBackend implements Backend {
       throw toError(err);
     }
     // The action replans before it returns; read the new plan unless it's pushed.
-    if (!this.pushing) await this.refresh();
+    if (!this.live) await this.refresh();
   }
 
   setRide(event: string, side: Side | "both", driver: string, scope: Scope, stay?: boolean): Promise<void> {
@@ -238,69 +354,74 @@ export class HassBackend implements Backend {
 
   watchChores(onChores: (chores: ChoresPayload | null) => void): () => void {
     let stopped = false;
-    let unsub: (() => Promise<void>) | null = null;
-    let timer: ReturnType<typeof setInterval> | null = null;
+    let seen = false;
     const read = async (): Promise<void> => {
       try {
-        const res = await this.conn.sendMessagePromise<{ response: ChoresPayload }>({
-          type: "call_service",
-          domain: DOMAIN,
-          service: "get_chores",
-          service_data: {},
-          return_response: true,
-        });
-        if (!stopped) onChores(res.response ?? null);
+        const res = await withTimeout(
+          this.conn.sendMessagePromise<{ response: ChoresPayload }>({
+            type: "call_service",
+            domain: DOMAIN,
+            service: "get_chores",
+            service_data: {},
+            return_response: true,
+          }),
+          READ_TIMEOUT_MS,
+        );
+        if (stopped) return;
+        seen = true;
+        onChores(res.response ?? null);
       } catch {
-        if (!stopped) onChores(null);
+        // Keep the chores on screen through a blip; only say there are none if they never came.
+        if (!stopped && !seen) onChores(null);
       }
     };
-    void (async () => {
-      try {
-        const u = await this.conn.subscribeMessage<{ chores: ChoresPayload | null }>(
-          (msg) => {
-            if (!stopped) onChores(msg.chores);
-          },
-          { type: `${DOMAIN}/chores/subscribe` },
-          { resubscribe: true },
-        );
-        if (stopped) void u().catch(() => undefined);
-        else unsub = u;
-      } catch {
-        // A version that can't push chores: read them now and then.
+    const feed = new LiveFeed<{ chores: ChoresPayload | null }>(
+      this.conn,
+      `${DOMAIN}/chores/subscribe`,
+      (msg) => {
         if (stopped) return;
-        void read();
-        timer = setInterval(() => void read(), POLL_MS);
-      }
-    })();
+        seen = true;
+        onChores(msg.chores);
+      },
+      // A version that can't push chores, or MyDashLight isn't loaded yet: read them now.
+      () => void read(),
+    );
+    feed.open();
+    // Until they're pushed, each try to subscribe that fails reads them instead.
+    const timer = setInterval(() => {
+      if (!feed.live) feed.open();
+    }, POLL_MS);
     return () => {
       stopped = true;
-      if (timer) clearInterval(timer);
-      if (unsub) void unsub().catch(() => undefined);
+      clearInterval(timer);
+      feed.close();
     };
   }
 
   watchLunch(onLunch: (lunch: LunchPayload | null) => void): () => void {
     let stopped = false;
-    let unsub: (() => Promise<void>) | null = null;
-    void (async () => {
-      try {
-        const u = await this.conn.subscribeMessage<{ lunch: LunchPayload | null }>(
-          (msg) => {
-            if (!stopped) onLunch(msg.lunch);
-          },
-          { type: `${DOMAIN}/lunch/subscribe` },
-          { resubscribe: true },
-        );
-        if (stopped) void u().catch(() => undefined);
-        else unsub = u;
-      } catch {
-        // A version of MyDashLight without lunches.
-        if (!stopped) onLunch(null);
-      }
-    })();
+    let seen = false;
+    const feed = new LiveFeed<{ lunch: LunchPayload | null }>(
+      this.conn,
+      `${DOMAIN}/lunch/subscribe`,
+      (msg) => {
+        if (stopped) return;
+        seen = true;
+        onLunch(msg.lunch);
+      },
+      () => {
+        // A version of MyDashLight without lunches. After a restart, keep what's on screen.
+        if (!stopped && !seen) onLunch(null);
+      },
+    );
+    feed.open();
+    const timer = setInterval(() => {
+      if (!feed.live) feed.open();
+    }, POLL_MS);
     return () => {
       stopped = true;
-      if (unsub) void unsub().catch(() => undefined);
+      clearInterval(timer);
+      feed.close();
     };
   }
 
