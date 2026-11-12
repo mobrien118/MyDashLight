@@ -28,8 +28,9 @@ const KID_GAP = 10;
 const SEP = 30;
 const DRIVER_GAP = 10;
 const MIN_KID = 150;
-const MIN_DRIVER = 200;
-const DRIVER_SHARE = 1.4;
+const MIN_DRIVER = 150;
+/** A parent's column next to a kid's. The same width: a kid's column holds as much. */
+const DRIVER_SHARE = 1;
 
 export interface Target {
   day: string;
@@ -1187,8 +1188,10 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       }
       for (const o of dd.outings) {
         if (o.start == null) continue;
-        const stops = o.lines.length - (homeAt(o.lines) ? 1 : 0);
-        items.push({ col: d, s: o.start, h: 30 + stops * 16 + (o.warn ? 16 : 0), kind: "out", out: o });
+        // Each stop wraps rather than getting cut off: the box is the column less its margins and padding.
+        const lines = homeAt(o.lines) ? o.lines.slice(0, -1) : o.lines;
+        const rows = [...lines, ...(o.warn ? [o.warn] : [])].reduce((n, t) => n + wrapRows(t, cw - 36, 7), 0);
+        items.push({ col: d, s: o.start, h: 30 + rows * 16, kind: "out", out: o });
       }
     }
     items.sort((a, b) => a.s - b.s || order.indexOf(a.col) - order.indexOf(b.col));

@@ -1006,9 +1006,7 @@ export const styles = css`
     font-size: 12px;
     line-height: 16px;
     color: #d5d8dd;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
     max-width: 100%;
   }
   .trip .stop.warn {
@@ -2259,6 +2257,12 @@ export const styles = css`
     padding: 0 7px;
     gap: 3px;
     font-size: 12px;
+  }
+  .lunch-chip.small.icon {
+    flex: none;
+    width: 26px;
+    padding: 0;
+    justify-content: center;
   }
   .lunch-chip.small svg {
     width: 13px;
