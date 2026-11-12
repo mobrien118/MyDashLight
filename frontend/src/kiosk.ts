@@ -13,6 +13,7 @@ import {
 import { HassBackend } from "./backend.ts";
 import "./board.ts";
 import { autoHideCursor } from "./cursor.ts";
+import { buildOf, reloadOnUpdate } from "./freshness.ts";
 import { keepAlive } from "./heartbeat.ts";
 import { useKeyboard } from "./keyboard.ts";
 import { pageOptions, withoutAuthParams } from "./options.ts";
@@ -80,6 +81,7 @@ async function connect(): Promise<void> {
     const conn = await createConnection({ auth });
     board.backend = new HassBackend(conn);
     keepAlive(conn);
+    reloadOnUpdate(conn, buildOf(import.meta.url), { reload: reloadFor, idleFor: () => Date.now() - lastTouch });
     // The sign-in was removed (say, from the profile page): pair again.
     conn.addEventListener("reconnect-error", (_conn, err) => {
       if (err === ERR_INVALID_AUTH) signedOut();
@@ -96,6 +98,25 @@ async function connect(): Promise<void> {
     );
     setTimeout(() => location.reload(), 60_000);
   }
+}
+
+/** When someone last touched the screen, so an update never reloads it mid-edit. */
+let lastTouch = Date.now();
+for (const type of ["pointerdown", "keydown", "wheel"]) {
+  document.addEventListener(type, () => (lastTouch = Date.now()), { capture: true, passive: true });
+}
+
+const RELOADED_FOR = "mydashlight-reloaded-for";
+
+/** Reloads for a new build, once: if the page still runs the old one after that, it doesn't keep trying. */
+function reloadFor(build: string): void {
+  try {
+    if (sessionStorage.getItem(RELOADED_FOR) === build) return;
+    sessionStorage.setItem(RELOADED_FOR, build);
+  } catch {
+    // Without storage, reload anyway: the new page asks for the new script by its address.
+  }
+  location.reload();
 }
 
 function signedOut(): void {

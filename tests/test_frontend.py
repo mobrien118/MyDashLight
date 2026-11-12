@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
-from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
+from pytest_homeassistant_custom_component.typing import ClientSessionGenerator, WebSocketGenerator
 
 from custom_components.mydashlight.frontend import FILES, FILES_URL, KITCHEN_URL, PANEL_URL
 
@@ -90,3 +90,23 @@ async def test_kitchen_page_and_files(
     res = await client.get(f"{FILES_URL}/panel.js")
     assert res.status == 200
     assert "mydashlight-panel" in await res.text()
+
+
+async def test_app_version_matches_the_kitchen_page(
+    hass: HomeAssistant,
+    hass_client_no_auth: ClientSessionGenerator,
+    hass_ws_client: WebSocketGenerator,
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    # An open kitchen screen compares this with its own script's ?v= and reloads after an update.
+    FakeGoogle(aioclient_mock)
+    await load(hass)
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": "mydashlight/app_version"})
+    msg = await ws.receive_json()
+    assert msg["success"]
+    served = msg["result"]
+    client = await hass_client_no_auth()
+    page = await (await client.get(KITCHEN_URL)).text()
+    assert f'src="{FILES_URL}/kiosk.js?v={served["kiosk.js"]}"' in page
+    assert len(served["panel.js"]) == 12
