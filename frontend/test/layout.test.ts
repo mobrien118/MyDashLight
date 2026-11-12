@@ -46,9 +46,9 @@ test("a column per kid, then one per driver, in the order set up in Home Assista
       ["driver", "Sam"],
     ],
   );
-  // The kitchen screen's widths: as in the design.
-  assert.equal(columns[0]!.w, 179);
-  assert.equal(columns[3]!.w, 251);
+  // Every column the same width: a parent's is no wider than a kid's.
+  assert.equal(columns[0]!.w, 208);
+  assert.equal(columns[3]!.w, 208);
   assert.equal(columns[0]!.sub, "Needs a ride · 7 this week");
   assert.equal(columns[0]!.subWarn, true);
   assert.match(columns[3]!.sub, /^\d+ trips this week · .* driving$/);
