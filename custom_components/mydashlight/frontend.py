@@ -20,6 +20,7 @@ from aiohttp import web
 from homeassistant.components import frontend, panel_custom, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.websocket_api.connection import ActiveConnection
+from homeassistant.components.websocket_api.decorators import websocket_command
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.http import HomeAssistantView
 import voluptuous as vol
@@ -66,7 +67,7 @@ async def async_setup_frontend(hass: HomeAssistant) -> None:
     async_setup_pairing(hass, KITCHEN_URL)
 
 
-@websocket_api.websocket_command({vol.Required("type"): WS_APP_VERSION})
+@websocket_command({vol.Required("type"): WS_APP_VERSION})
 @callback
 def _ws_app_version(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
     """The hash of each script being served, as on its ``?v=``."""
