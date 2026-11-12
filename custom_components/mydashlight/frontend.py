@@ -14,13 +14,16 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from aiohttp import web
-from homeassistant.components import frontend, panel_custom
+from homeassistant.components import frontend, panel_custom, websocket_api
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.core import HomeAssistant
+from homeassistant.components.websocket_api.connection import ActiveConnection
+from homeassistant.components.websocket_api.decorators import websocket_command
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.http import HomeAssistantView
+import voluptuous as vol
 
 from .const import DOMAIN
 from .pairing import async_setup_pairing
@@ -37,6 +40,8 @@ PANEL_ELEMENT: Final = "mydashlight-panel"
 
 FILES: Final = Path(__file__).parent / "frontend"
 _SERVED: Final = f"{DOMAIN}_frontend_served"
+WS_APP_VERSION: Final = f"{DOMAIN}/app_version"
+"""The build of the app being served, so an open kitchen screen can notice an update and reload."""
 
 
 def _versions() -> dict[str, str]:
@@ -58,7 +63,15 @@ async def async_setup_frontend(hass: HomeAssistant) -> None:
     await hass.http.async_register_static_paths([StaticPathConfig(FILES_URL, str(FILES), cache_headers=True)])
     page = page.replace("%SCRIPT%", f"{FILES_URL}/kiosk.js?v={versions['kiosk.js']}").replace("%FILES%", FILES_URL)
     hass.http.register_view(KitchenView(page))
+    websocket_api.async_register_command(hass, _ws_app_version)
     async_setup_pairing(hass, KITCHEN_URL)
+
+
+@websocket_command({vol.Required("type"): WS_APP_VERSION})
+@callback
+def _ws_app_version(hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]) -> None:
+    """The hash of each script being served, as on its ``?v=``."""
+    connection.send_result(msg["id"], dict(hass.data[f"{_SERVED}_versions"]))
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
