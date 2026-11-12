@@ -91,7 +91,8 @@ import { withoutPast } from "./past.ts";
 import { styles } from "./styles.ts";
 import type { Plan, PlanDay, PlanEvent, Scope, Side } from "./types.ts";
 
-const MODE_KEY = "mydashlight.rides.mode";
+// Renamed when Compact became the default, so every screen starts there once, then remembers.
+const MODE_KEY = "mydashlight.rides.view";
 /** Below this width the side panel becomes a sheet over the board. */
 const WIDE = 1100;
 /** What the side panel takes from the board: its width, the gap and the page's padding. */
@@ -161,9 +162,9 @@ function possessives(names: string[]): string {
 function readMode(): Mode {
   try {
     const v = localStorage.getItem(MODE_KEY);
-    return v === "compact" ? "compact" : "timeline";
+    return v === "timeline" ? "timeline" : "compact";
   } catch {
-    return "timeline";
+    return "compact";
   }
 }
 
