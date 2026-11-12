@@ -13,6 +13,7 @@ import {
 import { HassBackend } from "./backend.ts";
 import "./board.ts";
 import { autoHideCursor } from "./cursor.ts";
+import { keepAlive } from "./heartbeat.ts";
 import { useKeyboard } from "./keyboard.ts";
 import { pageOptions, withoutAuthParams } from "./options.ts";
 import "./pairing.ts";
@@ -78,6 +79,7 @@ async function connect(): Promise<void> {
     }
     const conn = await createConnection({ auth });
     board.backend = new HassBackend(conn);
+    keepAlive(conn);
     // The sign-in was removed (say, from the profile page): pair again.
     conn.addEventListener("reconnect-error", (_conn, err) => {
       if (err === ERR_INVALID_AUTH) signedOut();
