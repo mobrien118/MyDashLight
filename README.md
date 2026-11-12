@@ -222,8 +222,9 @@ each parent. A kid's column holds their activities and their time in a car; a pa
 holds their trips out of the house, with dots for who's in the car, and their busy times. A tinted band links a kid's car time to whoever is driving. Two views, switched at
 the top:
 
+- **Compact**, the default, drops the time scale: everything sits in start order, with each trip's
+  stops listed.
 - **Timeline** spaces everything by the clock, so overlaps and tight handoffs are easy to see.
-- **Compact** drops the time scale: everything sits in start order, with each trip's stops listed.
 
 What's over drops off, so more of the week fits on screen. An activity stays until it has ended
 and the drive home is done; a trip, a car ride or a busy time goes once it ends. In Timeline, today
@@ -302,7 +303,8 @@ Either address can pick the view it opens in, so each screen can have its own:
 For example, `<your Home Assistant URL>/mydashlight-kitchen?view=compact`, or
 `?page=chores&view=compact` for both. You can still switch by tapping; the kitchen screen goes back
 to its page and view after three minutes without a touch. Without a `view`, the board opens in
-whichever view was last picked in that browser; without a `page`, it opens on rides.
+whichever view was last picked in that browser, or Compact if none was; without a `page`, it opens
+on rides.
 
 The app is built from `frontend/` into `custom_components/mydashlight/frontend`, so a HACS update
 brings it along.

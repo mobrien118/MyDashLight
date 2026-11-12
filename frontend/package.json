@@ -1,7 +1,7 @@
 {
   "name": "mydashlight-frontend",
   "private": true,
-  "version": "0.20.5",
+  "version": "0.20.6",
   "description": "The MyDashLight kitchen app: the rides board, served by the Home Assistant integration",
   "type": "module",
   "scripts": {
