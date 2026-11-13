@@ -177,8 +177,8 @@ async def test_a_parent_named_with_the_kids_takes_them(hass: HomeAssistant, goog
     }
     # Sam takes them both, in one car, and stays.
     assert lines == {
-        "donuts": ("dad", "dad", "Sam stays · leaves 5:38", "Home 7:15 with Sam"),
-        "donuts~2": ("dad", "dad", "Sam stays · leaves 5:38", "Home 7:15 with Sam"),
+        "donuts": ("dad", "dad", "Sam stays · leaves 5:39", "Home 7:15 with Sam"),
+        "donuts~2": ("dad", "dad", "Sam stays · leaves 5:39", "Home 7:15 with Sam"),
     }
     dad = today["drivers"]["dad"]
     assert [o["title"] for o in dad["outings"]] == ["Drive Ava and Ben to Donut Shop and stay"]
@@ -233,7 +233,7 @@ async def test_kids_at_one_event_ride_in_one_car(hass: HomeAssistant, google: Fa
     (today,) = (await get_plan(hass))["days"]
     (trip,) = [o for o in today["drivers"]["mom"]["outings"] if o["target"] == "school"]
     # One stop for both of them.
-    assert trip["lines"] == ["7:53  Elm School, drop off Ava and Ben", "8:08  Home"]
+    assert trip["lines"] == ["7:54  Elm School, drop off Ava and Ben", "8:09  Home"]
     # Each of them is in the car for their own event, not along for the other's.
     rides = [(r["kid"], r["own"]) for r in today["rides"] if r["serves"] == ["school"]]
     assert rides == [(AVA, True), (BEN, True)]

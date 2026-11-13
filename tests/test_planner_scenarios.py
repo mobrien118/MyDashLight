@@ -19,6 +19,7 @@ from custom_components.mydashlight.planner import (
     arrive_at,
     arrive_early,
     driving_text,
+    early_for_drive,
     issue_text,
     minutes_text,
     plan_all,
@@ -58,25 +59,37 @@ def test_scenarios_cover_the_tricky_cases() -> None:
 
 
 def test_arrive_early_grows_with_the_drive() -> None:
-    # Marty, 2026-11-04: 5 early when it's 5 minutes away, 10 for 30, 15 for an hour, 20 at most.
+    # Marty, 2026-11-12: one smooth curve, about 3 for no drive, 5 for 10 minutes, 10 for 35, 15 for
+    # an hour and 20 for two, still growing past that for gas stops.
     settings = PlannerSettings()
-    early = {d: arrive_early("x", settings, lambda _a, _b, d=d: d) for d in (0, 5, 12, 30, 59.9, 60, 90, 200)}
-    assert early == {0: 5, 5: 5, 12: 7, 30: 10, 59.9: 14, 60: 15, 90: 20, 200: 20}
-    assert arrive_early("x", PlannerSettings(arrive_early_per=0), lambda _a, _b: 60) == 5
-    assert arrive_early("x", PlannerSettings(arrive_early=10, arrive_early_max=8), lambda _a, _b: 60) == 10
+    early = {d: arrive_early("x", settings, lambda _a, _b, d=d: d) for d in (0, 5, 10, 35, 60, 90, 120, 180, 240)}
+    assert early == {0: 3, 5: 4, 10: 5, 35: 10, 60: 14, 90: 17, 120: 20, 180: 24, 240: 27}
+    assert all(early_for_drive(d) <= early_for_drive(d + 1) for d in range(600))
+    assert arrive_early("x", PlannerSettings(fixed_early=5), lambda _a, _b: 60) == 5
     # Marty, 2026-11-08: Arrive by (be there earlier than the event says) and the traffic margin
     # are different needs, so the margin still comes off the Arrive by time.
     e = RideEvent("e", "ava", "Piano", "piano", 960, 1020, arrive_by=930)
-    assert arrive_at(e, settings, lambda _a, _b: 60) == 930 - 15
-    assert arrive_at(replace(e, arrive_by=None), settings, lambda _a, _b: 60) == 945
+    assert arrive_at(e, settings, lambda _a, _b: 60) == 930 - 14
+    assert arrive_at(replace(e, arrive_by=None), settings, lambda _a, _b: 60) == 946
+
+
+def test_a_pick_up_gets_the_traffic_margin_too() -> None:
+    # Marty, 2026-11-12: padding was only on drop-offs. A pick-up 30 minutes away aims to be there
+    # 9 minutes early, and the driver waits for the kid.
+    game = RideEvent("game", "ben", "Game", "field", 1050, 1140, pick="mom")
+    day = plan_driver("mom", [game], {}, lambda a, b: 0 if a == b else 30)
+    pick = next(s for s in day.stops if s.kind == "pick")
+    assert (day.leave, pick.arrive) == (1140 - 9 - 30, 1140 - 9)
+    assert [(g.type, g.start, g.end) for g in day.segments][:2] == [("drive", 1101, 1131), ("wait", 1131, 1140)]
+    assert day.issues == []
 
 
 def test_arrive_by_keeps_the_traffic_margin() -> None:
     # Marty, 2026-11-08: Arrive by 5:15 for a 5:30 game 30 minutes away. The traffic margin for a
-    # 30-minute drive is 10, so leave at 4:35, not 4:45.
+    # 30-minute drive is 9, so leave at 4:36, not 4:45.
     game = RideEvent("game", "ben", "Game", "field", 1050, 1140, drop="mom", arrive_by=1035)
     day = plan_driver("mom", [game], {}, lambda a, b: 0 if a == b else 30)
-    assert day.leave == 1035 - 10 - 30
+    assert day.leave == 1035 - 9 - 30
     assert day.issues == []
 
 
@@ -190,7 +203,7 @@ def test_a_rider_dropped_off_earlier_is_never_fetched_from_home() -> None:
 
 
 def test_a_drop_off_nearby_just_after_a_pick_up_goes_first() -> None:
-    # Ava has to be at the gym 5 minutes from the studio by 6:55 (6:49 with the traffic margin),
+    # Ava has to be at the gym 5 minutes from the studio by 6:55 (6:50 with the traffic margin),
     # just after Cleo's hip hop lets out at 6:45. Dropping Ava off first gets both there in time,
     # instead of picking Cleo up, going home for Ava and getting her there late.
     near = _drive({frozenset({"home", "dance"}): 8, frozenset({"home", "gym"}): 8, frozenset({"dance", "gym"}): 5})
@@ -206,24 +219,24 @@ def test_a_drop_off_nearby_just_after_a_pick_up_goes_first() -> None:
         ("pick", "dance"),
         ("end", "home"),
     ]
-    # Ava is there by 6:40, and Cleo is picked up right at 6:45.
-    assert [round(s.arrive or 0) for s in plan.stops if s.kind in ("drop", "pick")][1:] == [1120, 1125]
+    # Ava is there by 6:35, and Robin is at the studio at 6:40, the traffic margin early for Cleo.
+    assert [round(s.arrive or 0) for s in plan.stops if s.kind in ("drop", "pick")][1:] == [1115, 1120]
 
 
 def test_a_rider_from_home_doesnt_make_the_pick_up_late() -> None:
     # Ava rides along to Cleo's 6:45 pick-up and is dropped at tap there afterwards. The car
-    # leaves home in time for the pick-up, not just in time for tap.
+    # leaves home in time for the pick-up, the traffic margin early, not just in time for tap.
     hiphop = RideEvent("hiphop", "cleo", "Hip Hop", "dance", 1080, 1125, drop="mom", pick="mom", pick_along=("ava",))
     tap = RideEvent("tap", "ava", "Tap", "dance", 1155, 1200, drop="mom", pick=NOT_NEEDED)
     plan = plan_driver("mom", [hiphop, tap], {}, travel)
     assert plan.issues == []
     pick = next(s for s in plan.stops if s.kind == "pick")
-    assert pick.arrive == 1125
+    assert pick.arrive == 1125 - 5
 
 
 def test_a_few_seconds_late_is_not_late() -> None:
-    # Ben goes straight from soccer (ends 4:00) to piano (Arrive by 4:18, less 6 min for traffic
-    # on a 10-minute drive: aim for 4:12).
+    # Ben goes straight from soccer (ends 4:00) to piano (Arrive by 4:18, less 5 min for traffic
+    # on a 10-minute drive: aim for 4:13).
     soccer = RideEvent("soccer", "ben", "Soccer", "soccer", 900, 960, drop="dad", pick="mom")
     piano = RideEvent("piano", "ben", "Piano", "piano", 975, 1020, drop="mom", arrive_by=978)
 
@@ -232,12 +245,12 @@ def test_a_few_seconds_late_is_not_late() -> None:
             "mom", [soccer, piano], {}, lambda a, b: drive if {a, b} == {"soccer", "piano"} else 10
         ).issues
 
-    # 12 seconds late shows as 4:12 either way, so it isn't late.
-    assert issues(12.2) == []
-    (late,) = issues(12.6)
+    # 12 seconds late shows as 4:13 either way, so it isn't late.
+    assert issues(13.2) == []
+    (late,) = issues(13.6)
     assert late.kind == "late"
     assert issue_text(late, LABELS).body == (
-        "Robin gets there at 4:13, 1 min after the 4:12 target, 6 min before the 4:18 arrive-by time."
+        "Robin gets there at 4:14, 1 min after the 4:13 target, 5 min before the 4:18 arrive-by time."
     )
     assert [minutes_text(v) for v in (15.200000000000045, 0.5, 2.0, None)] == ["15", "1", "2", "0"]
 

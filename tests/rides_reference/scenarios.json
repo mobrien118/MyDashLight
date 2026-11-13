@@ -71,13 +71,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:29 PM",
+          "first_leave": "3:30 PM",
           "drive_min": 50,
           "segments": [
             {
               "type": "drive",
-              "start": "3:29 PM",
-              "end": "3:39 PM",
+              "start": "3:30 PM",
+              "end": "3:40 PM",
               "from": "home",
               "to": "piano",
               "kids": [
@@ -87,7 +87,7 @@
             },
             {
               "type": "stay",
-              "start": "3:39 PM",
+              "start": "3:40 PM",
               "end": "4:30 PM",
               "loc": "piano",
               "kids": [],
@@ -107,14 +107,22 @@
             {
               "type": "home",
               "start": "4:40 PM",
-              "end": "6:15 PM"
+              "end": "6:09 PM"
             },
             {
               "type": "drive",
-              "start": "6:15 PM",
-              "end": "6:30 PM",
+              "start": "6:09 PM",
+              "end": "6:24 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "wait",
+              "start": "6:24 PM",
+              "end": "6:30 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "soccer"
             },
@@ -132,13 +140,13 @@
           ]
         },
         "dad": {
-          "first_leave": "4:17 PM",
+          "first_leave": "4:18 PM",
           "drive_min": 110,
           "segments": [
             {
               "type": "drive",
-              "start": "4:17 PM",
-              "end": "4:32 PM",
+              "start": "4:18 PM",
+              "end": "4:33 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -149,8 +157,8 @@
             },
             {
               "type": "drive",
-              "start": "4:32 PM",
-              "end": "4:47 PM",
+              "start": "4:33 PM",
+              "end": "4:48 PM",
               "from": "soccer",
               "to": "home",
               "kids": [],
@@ -158,8 +166,8 @@
             },
             {
               "type": "drive",
-              "start": "4:47 PM",
-              "end": "5:07 PM",
+              "start": "4:48 PM",
+              "end": "5:08 PM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -169,8 +177,8 @@
             },
             {
               "type": "drive",
-              "start": "5:07 PM",
-              "end": "5:27 PM",
+              "start": "5:08 PM",
+              "end": "5:28 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -178,15 +186,23 @@
             },
             {
               "type": "home",
-              "start": "5:27 PM",
-              "end": "6:40 PM"
+              "start": "5:28 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "football"
             },
@@ -221,7 +237,7 @@
             "kind": "early",
             "driver": "dad",
             "event": "soccer",
-            "min": 28
+            "min": 27
           }
         ],
         "suggestions": [
@@ -308,13 +324,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "4:38 PM",
+          "first_leave": "4:39 PM",
           "drive_min": 60,
           "segments": [
             {
               "type": "drive",
-              "start": "4:38 PM",
-              "end": "4:53 PM",
+              "start": "4:39 PM",
+              "end": "4:54 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -324,8 +340,8 @@
             },
             {
               "type": "drive",
-              "start": "4:53 PM",
-              "end": "5:08 PM",
+              "start": "4:54 PM",
+              "end": "5:09 PM",
               "from": "soccer",
               "to": "home",
               "kids": [],
@@ -333,15 +349,23 @@
             },
             {
               "type": "home",
-              "start": "5:08 PM",
-              "end": "5:45 PM"
+              "start": "5:09 PM",
+              "end": "5:39 PM"
             },
             {
               "type": "drive",
-              "start": "5:45 PM",
-              "end": "6:00 PM",
+              "start": "5:39 PM",
+              "end": "5:54 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "fri-soccer"
+            },
+            {
+              "type": "wait",
+              "start": "5:54 PM",
+              "end": "6:00 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "fri-soccer"
             },
@@ -359,13 +383,13 @@
           ]
         },
         "dad": {
-          "first_leave": "5:45 PM",
+          "first_leave": "5:46 PM",
           "drive_min": 36,
           "segments": [
             {
               "type": "drive",
-              "start": "5:45 PM",
-              "end": "5:54 PM",
+              "start": "5:46 PM",
+              "end": "5:55 PM",
               "from": "home",
               "to": "party",
               "kids": [
@@ -375,8 +399,8 @@
             },
             {
               "type": "drive",
-              "start": "5:54 PM",
-              "end": "6:03 PM",
+              "start": "5:55 PM",
+              "end": "6:04 PM",
               "from": "party",
               "to": "home",
               "kids": [],
@@ -384,15 +408,23 @@
             },
             {
               "type": "home",
-              "start": "6:03 PM",
-              "end": "8:21 PM"
+              "start": "6:04 PM",
+              "end": "8:16 PM"
             },
             {
               "type": "drive",
-              "start": "8:21 PM",
-              "end": "8:30 PM",
+              "start": "8:16 PM",
+              "end": "8:25 PM",
               "from": "home",
               "to": "party",
+              "kids": [],
+              "serves": "fri-party"
+            },
+            {
+              "type": "wait",
+              "start": "8:25 PM",
+              "end": "8:30 PM",
+              "loc": "party",
               "kids": [],
               "serves": "fri-party"
             },
@@ -463,13 +495,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "10:12 AM",
+          "first_leave": "10:13 AM",
           "drive_min": 40,
           "segments": [
             {
               "type": "drive",
-              "start": "10:12 AM",
-              "end": "10:32 AM",
+              "start": "10:13 AM",
+              "end": "10:33 AM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -479,7 +511,7 @@
             },
             {
               "type": "stay",
-              "start": "10:32 AM",
+              "start": "10:33 AM",
               "end": "1:00 PM",
               "loc": "football",
               "kids": [],
@@ -499,13 +531,13 @@
           ]
         },
         "dad": {
-          "first_leave": "8:23 AM",
+          "first_leave": "8:24 AM",
           "drive_min": 46,
           "segments": [
             {
               "type": "drive",
-              "start": "8:23 AM",
-              "end": "8:38 AM",
+              "start": "8:24 AM",
+              "end": "8:39 AM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -515,7 +547,7 @@
             },
             {
               "type": "stay",
-              "start": "8:38 AM",
+              "start": "8:39 AM",
               "end": "10:15 AM",
               "loc": "soccer",
               "kids": [],
@@ -535,14 +567,22 @@
             {
               "type": "home",
               "start": "10:30 AM",
-              "end": "2:52 PM"
+              "end": "2:47 PM"
             },
             {
               "type": "drive",
-              "start": "2:52 PM",
-              "end": "3:00 PM",
+              "start": "2:47 PM",
+              "end": "2:55 PM",
               "from": "home",
               "to": "gym",
+              "kids": [],
+              "serves": "sat-tourney"
+            },
+            {
+              "type": "wait",
+              "start": "2:55 PM",
+              "end": "3:00 PM",
+              "loc": "gym",
               "kids": [],
               "serves": "sat-tourney"
             },
@@ -587,13 +627,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "5:41 PM",
+          "first_leave": "5:42 PM",
           "drive_min": 24,
           "segments": [
             {
               "type": "drive",
-              "start": "5:41 PM",
-              "end": "5:53 PM",
+              "start": "5:42 PM",
+              "end": "5:54 PM",
               "from": "home",
               "to": "church",
               "kids": [
@@ -603,8 +643,8 @@
             },
             {
               "type": "drive",
-              "start": "5:53 PM",
-              "end": "6:05 PM",
+              "start": "5:54 PM",
+              "end": "6:06 PM",
               "from": "church",
               "to": "home",
               "kids": [],
@@ -696,13 +736,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:29 PM",
+          "first_leave": "3:30 PM",
           "drive_min": 20,
           "segments": [
             {
               "type": "drive",
-              "start": "3:29 PM",
-              "end": "3:39 PM",
+              "start": "3:30 PM",
+              "end": "3:40 PM",
               "from": "home",
               "to": "piano",
               "kids": [
@@ -712,7 +752,7 @@
             },
             {
               "type": "stay",
-              "start": "3:39 PM",
+              "start": "3:40 PM",
               "end": "4:30 PM",
               "loc": "piano",
               "kids": [],
@@ -732,13 +772,13 @@
           ]
         },
         "dad": {
-          "first_leave": "5:02 PM",
+          "first_leave": "5:03 PM",
           "drive_min": 80,
           "segments": [
             {
               "type": "drive",
-              "start": "5:02 PM",
-              "end": "5:22 PM",
+              "start": "5:03 PM",
+              "end": "5:23 PM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -748,8 +788,8 @@
             },
             {
               "type": "drive",
-              "start": "5:22 PM",
-              "end": "5:42 PM",
+              "start": "5:23 PM",
+              "end": "5:43 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -757,15 +797,23 @@
             },
             {
               "type": "home",
-              "start": "5:42 PM",
-              "end": "6:40 PM"
+              "start": "5:43 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "mon-football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "mon-football"
             },
@@ -783,12 +831,7 @@
           ]
         },
         "issues": [],
-        "heads_ups": [
-          {
-            "kind": "tightBusy",
-            "driver": "dad"
-          }
-        ],
+        "heads_ups": [],
         "suggestions": []
       }
     },
@@ -836,13 +879,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "4:38 PM",
+          "first_leave": "4:39 PM",
           "drive_min": 46,
           "segments": [
             {
               "type": "drive",
-              "start": "4:38 PM",
-              "end": "4:53 PM",
+              "start": "4:39 PM",
+              "end": "4:54 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -852,8 +895,8 @@
             },
             {
               "type": "drive",
-              "start": "4:53 PM",
-              "end": "5:08 PM",
+              "start": "4:54 PM",
+              "end": "5:09 PM",
               "from": "soccer",
               "to": "home",
               "kids": [],
@@ -861,15 +904,23 @@
             },
             {
               "type": "home",
-              "start": "5:08 PM",
-              "end": "7:52 PM"
+              "start": "5:09 PM",
+              "end": "7:47 PM"
             },
             {
               "type": "drive",
-              "start": "7:52 PM",
-              "end": "8:00 PM",
+              "start": "7:47 PM",
+              "end": "7:55 PM",
               "from": "home",
               "to": "gym",
+              "kids": [],
+              "serves": "tue-volley"
+            },
+            {
+              "type": "wait",
+              "start": "7:55 PM",
+              "end": "8:00 PM",
+              "loc": "gym",
               "kids": [],
               "serves": "tue-volley"
             },
@@ -887,15 +938,23 @@
           ]
         },
         "dad": {
-          "first_leave": "6:15 PM",
+          "first_leave": "6:09 PM",
           "drive_min": 30,
           "segments": [
             {
               "type": "drive",
-              "start": "6:15 PM",
-              "end": "6:30 PM",
+              "start": "6:09 PM",
+              "end": "6:24 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "tue-soccer"
+            },
+            {
+              "type": "wait",
+              "start": "6:24 PM",
+              "end": "6:30 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "tue-soccer"
             },
@@ -961,13 +1020,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:43 PM",
+          "first_leave": "3:44 PM",
           "drive_min": 44,
           "segments": [
             {
               "type": "drive",
-              "start": "3:43 PM",
-              "end": "3:54 PM",
+              "start": "3:44 PM",
+              "end": "3:55 PM",
               "from": "home",
               "to": "dance",
               "kids": [
@@ -977,8 +1036,8 @@
             },
             {
               "type": "drive",
-              "start": "3:54 PM",
-              "end": "4:05 PM",
+              "start": "3:55 PM",
+              "end": "4:06 PM",
               "from": "dance",
               "to": "home",
               "kids": [],
@@ -986,15 +1045,23 @@
             },
             {
               "type": "home",
-              "start": "4:05 PM",
-              "end": "4:49 PM"
+              "start": "4:06 PM",
+              "end": "4:44 PM"
             },
             {
               "type": "drive",
-              "start": "4:49 PM",
-              "end": "5:00 PM",
+              "start": "4:44 PM",
+              "end": "4:55 PM",
               "from": "home",
               "to": "dance",
+              "kids": [],
+              "serves": "wed-dance"
+            },
+            {
+              "type": "wait",
+              "start": "4:55 PM",
+              "end": "5:00 PM",
+              "loc": "dance",
               "kids": [],
               "serves": "wed-dance"
             },
@@ -1012,13 +1079,13 @@
           ]
         },
         "dad": {
-          "first_leave": "5:02 PM",
+          "first_leave": "5:03 PM",
           "drive_min": 80,
           "segments": [
             {
               "type": "drive",
-              "start": "5:02 PM",
-              "end": "5:22 PM",
+              "start": "5:03 PM",
+              "end": "5:23 PM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -1028,8 +1095,8 @@
             },
             {
               "type": "drive",
-              "start": "5:22 PM",
-              "end": "5:42 PM",
+              "start": "5:23 PM",
+              "end": "5:43 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -1037,15 +1104,23 @@
             },
             {
               "type": "home",
-              "start": "5:42 PM",
-              "end": "6:40 PM"
+              "start": "5:43 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "wed-football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "wed-football"
             },
@@ -1063,12 +1138,7 @@
           ]
         },
         "issues": [],
-        "heads_ups": [
-          {
-            "kind": "tightBusy",
-            "driver": "dad"
-          }
-        ],
+        "heads_ups": [],
         "suggestions": []
       }
     },
@@ -1145,13 +1215,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:29 PM",
+          "first_leave": "3:30 PM",
           "drive_min": 50,
           "segments": [
             {
               "type": "drive",
-              "start": "3:29 PM",
-              "end": "3:39 PM",
+              "start": "3:30 PM",
+              "end": "3:40 PM",
               "from": "home",
               "to": "piano",
               "kids": [
@@ -1161,7 +1231,7 @@
             },
             {
               "type": "stay",
-              "start": "3:39 PM",
+              "start": "3:40 PM",
               "end": "4:30 PM",
               "loc": "piano",
               "kids": [],
@@ -1181,14 +1251,22 @@
             {
               "type": "home",
               "start": "4:40 PM",
-              "end": "6:15 PM"
+              "end": "6:09 PM"
             },
             {
               "type": "drive",
-              "start": "6:15 PM",
-              "end": "6:30 PM",
+              "start": "6:09 PM",
+              "end": "6:24 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "wait",
+              "start": "6:24 PM",
+              "end": "6:30 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "soccer"
             },
@@ -1206,13 +1284,13 @@
           ]
         },
         "dad": {
-          "first_leave": "4:38 PM",
+          "first_leave": "4:39 PM",
           "drive_min": 85,
           "segments": [
             {
               "type": "drive",
-              "start": "4:38 PM",
-              "end": "4:53 PM",
+              "start": "4:39 PM",
+              "end": "4:54 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -1224,8 +1302,8 @@
             },
             {
               "type": "wait",
-              "start": "4:53 PM",
-              "end": "4:57 PM",
+              "start": "4:54 PM",
+              "end": "4:58 PM",
               "loc": "soccer",
               "kids": [
                 "ben"
@@ -1234,8 +1312,8 @@
             },
             {
               "type": "drive",
-              "start": "4:57 PM",
-              "end": "5:07 PM",
+              "start": "4:58 PM",
+              "end": "5:08 PM",
               "from": "soccer",
               "to": "football",
               "kids": [
@@ -1245,8 +1323,8 @@
             },
             {
               "type": "drive",
-              "start": "5:07 PM",
-              "end": "5:27 PM",
+              "start": "5:08 PM",
+              "end": "5:28 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -1254,15 +1332,23 @@
             },
             {
               "type": "home",
-              "start": "5:27 PM",
-              "end": "6:40 PM"
+              "start": "5:28 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "football"
             },
@@ -1284,7 +1370,7 @@
             "kind": "busy",
             "driver": "dad",
             "event": "soccer",
-            "min": 2
+            "min": 1
           },
           {
             "kind": "unassigned",
@@ -1390,13 +1476,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:29 PM",
+          "first_leave": "3:30 PM",
           "drive_min": 80,
           "segments": [
             {
               "type": "drive",
-              "start": "3:29 PM",
-              "end": "3:39 PM",
+              "start": "3:30 PM",
+              "end": "3:40 PM",
               "from": "home",
               "to": "piano",
               "kids": [
@@ -1406,7 +1492,7 @@
             },
             {
               "type": "stay",
-              "start": "3:39 PM",
+              "start": "3:40 PM",
               "end": "4:30 PM",
               "loc": "piano",
               "kids": [],
@@ -1446,14 +1532,22 @@
             {
               "type": "home",
               "start": "5:10 PM",
-              "end": "6:15 PM"
+              "end": "6:09 PM"
             },
             {
               "type": "drive",
-              "start": "6:15 PM",
-              "end": "6:30 PM",
+              "start": "6:09 PM",
+              "end": "6:24 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "wait",
+              "start": "6:24 PM",
+              "end": "6:30 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "soccer"
             },
@@ -1471,13 +1565,13 @@
           ]
         },
         "dad": {
-          "first_leave": "4:47 PM",
+          "first_leave": "4:48 PM",
           "drive_min": 80,
           "segments": [
             {
               "type": "drive",
-              "start": "4:47 PM",
-              "end": "5:07 PM",
+              "start": "4:48 PM",
+              "end": "5:08 PM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -1487,8 +1581,8 @@
             },
             {
               "type": "drive",
-              "start": "5:07 PM",
-              "end": "5:27 PM",
+              "start": "5:08 PM",
+              "end": "5:28 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -1496,15 +1590,23 @@
             },
             {
               "type": "home",
-              "start": "5:27 PM",
-              "end": "6:40 PM"
+              "start": "5:28 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "football"
             },
@@ -1526,7 +1628,7 @@
             "kind": "late",
             "driver": "mom",
             "event": "soccer",
-            "min": 2
+            "min": 1
           },
           {
             "kind": "unassigned",
@@ -1632,13 +1734,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:29 PM",
+          "first_leave": "3:30 PM",
           "drive_min": 50,
           "segments": [
             {
               "type": "drive",
-              "start": "3:29 PM",
-              "end": "3:39 PM",
+              "start": "3:30 PM",
+              "end": "3:40 PM",
               "from": "home",
               "to": "piano",
               "kids": [
@@ -1648,7 +1750,7 @@
             },
             {
               "type": "stay",
-              "start": "3:39 PM",
+              "start": "3:40 PM",
               "end": "4:30 PM",
               "loc": "piano",
               "kids": [],
@@ -1668,14 +1770,22 @@
             {
               "type": "home",
               "start": "4:40 PM",
-              "end": "6:15 PM"
+              "end": "6:09 PM"
             },
             {
               "type": "drive",
-              "start": "6:15 PM",
-              "end": "6:30 PM",
+              "start": "6:09 PM",
+              "end": "6:24 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "wait",
+              "start": "6:24 PM",
+              "end": "6:30 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "soccer"
             },
@@ -1693,13 +1803,13 @@
           ]
         },
         "dad": {
-          "first_leave": "4:17 PM",
+          "first_leave": "4:18 PM",
           "drive_min": 110,
           "segments": [
             {
               "type": "drive",
-              "start": "4:17 PM",
-              "end": "4:32 PM",
+              "start": "4:18 PM",
+              "end": "4:33 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -1710,8 +1820,8 @@
             },
             {
               "type": "drive",
-              "start": "4:32 PM",
-              "end": "4:47 PM",
+              "start": "4:33 PM",
+              "end": "4:48 PM",
               "from": "soccer",
               "to": "home",
               "kids": [],
@@ -1719,8 +1829,8 @@
             },
             {
               "type": "drive",
-              "start": "4:47 PM",
-              "end": "5:07 PM",
+              "start": "4:48 PM",
+              "end": "5:08 PM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -1730,8 +1840,8 @@
             },
             {
               "type": "drive",
-              "start": "5:07 PM",
-              "end": "5:27 PM",
+              "start": "5:08 PM",
+              "end": "5:28 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -1739,15 +1849,23 @@
             },
             {
               "type": "home",
-              "start": "5:27 PM",
-              "end": "6:40 PM"
+              "start": "5:28 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "football"
             },
@@ -1782,7 +1900,7 @@
             "kind": "early",
             "driver": "dad",
             "event": "soccer",
-            "min": 28
+            "min": 27
           }
         ],
         "suggestions": [
@@ -1862,13 +1980,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "5:41 PM",
+          "first_leave": "5:42 PM",
           "drive_min": 24,
           "segments": [
             {
               "type": "drive",
-              "start": "5:41 PM",
-              "end": "5:53 PM",
+              "start": "5:42 PM",
+              "end": "5:54 PM",
               "from": "home",
               "to": "church",
               "kids": [
@@ -1878,8 +1996,8 @@
             },
             {
               "type": "drive",
-              "start": "5:53 PM",
-              "end": "6:05 PM",
+              "start": "5:54 PM",
+              "end": "6:06 PM",
               "from": "church",
               "to": "home",
               "kids": [],
@@ -1888,13 +2006,13 @@
           ]
         },
         "dad": {
-          "first_leave": "1:38 PM",
+          "first_leave": "1:39 PM",
           "drive_min": 30,
           "segments": [
             {
               "type": "drive",
-              "start": "1:38 PM",
-              "end": "1:53 PM",
+              "start": "1:39 PM",
+              "end": "1:54 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -1904,7 +2022,7 @@
             },
             {
               "type": "stay",
-              "start": "1:53 PM",
+              "start": "1:54 PM",
               "end": "4:00 PM",
               "loc": "soccer",
               "kids": [],
@@ -2043,13 +2161,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:29 PM",
+          "first_leave": "3:30 PM",
           "drive_min": 58,
           "segments": [
             {
               "type": "drive",
-              "start": "3:29 PM",
-              "end": "3:39 PM",
+              "start": "3:30 PM",
+              "end": "3:40 PM",
               "from": "home",
               "to": "piano",
               "kids": [
@@ -2059,7 +2177,7 @@
             },
             {
               "type": "stay",
-              "start": "3:39 PM",
+              "start": "3:40 PM",
               "end": "4:30 PM",
               "loc": "piano",
               "kids": [],
@@ -2100,14 +2218,22 @@
             {
               "type": "home",
               "start": "5:38 PM",
-              "end": "6:15 PM"
+              "end": "6:09 PM"
             },
             {
               "type": "drive",
-              "start": "6:15 PM",
-              "end": "6:30 PM",
+              "start": "6:09 PM",
+              "end": "6:24 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "wait",
+              "start": "6:24 PM",
+              "end": "6:30 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "soccer"
             },
@@ -2125,13 +2251,13 @@
           ]
         },
         "dad": {
-          "first_leave": "4:17 PM",
+          "first_leave": "4:18 PM",
           "drive_min": 110,
           "segments": [
             {
               "type": "drive",
-              "start": "4:17 PM",
-              "end": "4:32 PM",
+              "start": "4:18 PM",
+              "end": "4:33 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -2142,8 +2268,8 @@
             },
             {
               "type": "drive",
-              "start": "4:32 PM",
-              "end": "4:47 PM",
+              "start": "4:33 PM",
+              "end": "4:48 PM",
               "from": "soccer",
               "to": "home",
               "kids": [],
@@ -2151,8 +2277,8 @@
             },
             {
               "type": "drive",
-              "start": "4:47 PM",
-              "end": "5:07 PM",
+              "start": "4:48 PM",
+              "end": "5:08 PM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -2162,8 +2288,8 @@
             },
             {
               "type": "drive",
-              "start": "5:07 PM",
-              "end": "5:27 PM",
+              "start": "5:08 PM",
+              "end": "5:28 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -2171,15 +2297,23 @@
             },
             {
               "type": "home",
-              "start": "5:27 PM",
-              "end": "6:40 PM"
+              "start": "5:28 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "football"
             },
@@ -2201,7 +2335,7 @@
             "kind": "late",
             "driver": "mom",
             "event": "thu-errand",
-            "min": 16
+            "min": 15
           },
           {
             "kind": "busy",
@@ -2220,7 +2354,7 @@
             "kind": "early",
             "driver": "dad",
             "event": "soccer",
-            "min": 28
+            "min": 27
           }
         ],
         "suggestions": [
@@ -2336,13 +2470,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "3:11 PM",
+          "first_leave": "3:12 PM",
           "drive_min": 58,
           "segments": [
             {
               "type": "drive",
-              "start": "3:11 PM",
-              "end": "3:19 PM",
+              "start": "3:12 PM",
+              "end": "3:20 PM",
               "from": "home",
               "to": "gym",
               "kids": [
@@ -2352,8 +2486,8 @@
             },
             {
               "type": "stay",
-              "start": "3:19 PM",
-              "end": "3:29 PM",
+              "start": "3:20 PM",
+              "end": "3:30 PM",
               "loc": "gym",
               "kids": [
                 "ava"
@@ -2362,8 +2496,8 @@
             },
             {
               "type": "drive",
-              "start": "3:29 PM",
-              "end": "3:39 PM",
+              "start": "3:30 PM",
+              "end": "3:40 PM",
               "from": "gym",
               "to": "piano",
               "kids": [
@@ -2373,7 +2507,7 @@
             },
             {
               "type": "stay",
-              "start": "3:39 PM",
+              "start": "3:40 PM",
               "end": "4:30 PM",
               "loc": "piano",
               "kids": [],
@@ -2393,14 +2527,22 @@
             {
               "type": "home",
               "start": "4:40 PM",
-              "end": "6:15 PM"
+              "end": "6:09 PM"
             },
             {
               "type": "drive",
-              "start": "6:15 PM",
-              "end": "6:30 PM",
+              "start": "6:09 PM",
+              "end": "6:24 PM",
               "from": "home",
               "to": "soccer",
+              "kids": [],
+              "serves": "soccer"
+            },
+            {
+              "type": "wait",
+              "start": "6:24 PM",
+              "end": "6:30 PM",
+              "loc": "soccer",
               "kids": [],
               "serves": "soccer"
             },
@@ -2418,13 +2560,13 @@
           ]
         },
         "dad": {
-          "first_leave": "4:17 PM",
+          "first_leave": "4:18 PM",
           "drive_min": 110,
           "segments": [
             {
               "type": "drive",
-              "start": "4:17 PM",
-              "end": "4:32 PM",
+              "start": "4:18 PM",
+              "end": "4:33 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -2435,8 +2577,8 @@
             },
             {
               "type": "drive",
-              "start": "4:32 PM",
-              "end": "4:47 PM",
+              "start": "4:33 PM",
+              "end": "4:48 PM",
               "from": "soccer",
               "to": "home",
               "kids": [],
@@ -2444,8 +2586,8 @@
             },
             {
               "type": "drive",
-              "start": "4:47 PM",
-              "end": "5:07 PM",
+              "start": "4:48 PM",
+              "end": "5:08 PM",
               "from": "home",
               "to": "football",
               "kids": [
@@ -2455,8 +2597,8 @@
             },
             {
               "type": "drive",
-              "start": "5:07 PM",
-              "end": "5:27 PM",
+              "start": "5:08 PM",
+              "end": "5:28 PM",
               "from": "football",
               "to": "home",
               "kids": [],
@@ -2464,15 +2606,23 @@
             },
             {
               "type": "home",
-              "start": "5:27 PM",
-              "end": "6:40 PM"
+              "start": "5:28 PM",
+              "end": "6:33 PM"
             },
             {
               "type": "drive",
-              "start": "6:40 PM",
-              "end": "7:00 PM",
+              "start": "6:33 PM",
+              "end": "6:53 PM",
               "from": "home",
               "to": "football",
+              "kids": [],
+              "serves": "football"
+            },
+            {
+              "type": "wait",
+              "start": "6:53 PM",
+              "end": "7:00 PM",
+              "loc": "football",
               "kids": [],
               "serves": "football"
             },
@@ -2507,7 +2657,7 @@
             "kind": "early",
             "driver": "dad",
             "event": "soccer",
-            "min": 28
+            "min": 27
           }
         ],
         "suggestions": [
@@ -2597,13 +2747,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "5:43 PM",
+          "first_leave": "5:44 PM",
           "drive_min": 66,
           "segments": [
             {
               "type": "drive",
-              "start": "5:43 PM",
-              "end": "5:54 PM",
+              "start": "5:44 PM",
+              "end": "5:55 PM",
               "from": "home",
               "to": "dance",
               "kids": [
@@ -2613,8 +2763,8 @@
             },
             {
               "type": "drive",
-              "start": "5:54 PM",
-              "end": "6:05 PM",
+              "start": "5:55 PM",
+              "end": "6:06 PM",
               "from": "dance",
               "to": "home",
               "kids": [],
@@ -2622,13 +2772,13 @@
             },
             {
               "type": "home",
-              "start": "6:05 PM",
-              "end": "6:23 PM"
+              "start": "6:06 PM",
+              "end": "6:24 PM"
             },
             {
               "type": "drive",
-              "start": "6:23 PM",
-              "end": "6:34 PM",
+              "start": "6:24 PM",
+              "end": "6:35 PM",
               "from": "home",
               "to": "dance",
               "kids": [
@@ -2638,7 +2788,15 @@
             },
             {
               "type": "wait",
-              "start": "6:34 PM",
+              "start": "6:35 PM",
+              "end": "6:40 PM",
+              "loc": "dance",
+              "kids": [],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "wait",
+              "start": "6:40 PM",
               "end": "6:45 PM",
               "loc": "dance",
               "kids": [],
@@ -2658,14 +2816,22 @@
             {
               "type": "home",
               "start": "6:56 PM",
-              "end": "8:34 PM"
+              "end": "8:29 PM"
             },
             {
               "type": "drive",
-              "start": "8:34 PM",
-              "end": "8:45 PM",
+              "start": "8:29 PM",
+              "end": "8:40 PM",
               "from": "home",
               "to": "dance",
+              "kids": [],
+              "serves": "wed-hiphop2"
+            },
+            {
+              "type": "wait",
+              "start": "8:40 PM",
+              "end": "8:45 PM",
+              "loc": "dance",
               "kids": [],
               "serves": "wed-hiphop2"
             },
@@ -2736,13 +2902,13 @@
       },
       "expected": {
         "mom": {
-          "first_leave": "5:43 PM",
+          "first_leave": "5:44 PM",
           "drive_min": 57,
           "segments": [
             {
               "type": "drive",
-              "start": "5:43 PM",
-              "end": "5:54 PM",
+              "start": "5:44 PM",
+              "end": "5:55 PM",
               "from": "home",
               "to": "dance",
               "kids": [
@@ -2751,23 +2917,26 @@
               "serves": "wed-hiphop"
             },
             {
-              "type": "drive",
-              "start": "5:54 PM",
+              "type": "wait",
+              "start": "5:55 PM",
               "end": "6:05 PM",
+              "loc": "dance",
+              "kids": [],
+              "serves": "wed-soccer"
+            },
+            {
+              "type": "drive",
+              "start": "6:05 PM",
+              "end": "6:16 PM",
               "from": "dance",
               "to": "home",
               "kids": [],
-              "serves": "wed-hiphop"
-            },
-            {
-              "type": "home",
-              "start": "6:05 PM",
-              "end": "6:21 PM"
+              "serves": "wed-soccer"
             },
             {
               "type": "drive",
-              "start": "6:21 PM",
-              "end": "6:36 PM",
+              "start": "6:16 PM",
+              "end": "6:31 PM",
               "from": "home",
               "to": "soccer",
               "kids": [
@@ -2777,10 +2946,18 @@
             },
             {
               "type": "drive",
-              "start": "6:36 PM",
-              "end": "6:45 PM",
+              "start": "6:31 PM",
+              "end": "6:40 PM",
               "from": "soccer",
               "to": "dance",
+              "kids": [],
+              "serves": "wed-hiphop"
+            },
+            {
+              "type": "wait",
+              "start": "6:40 PM",
+              "end": "6:45 PM",
+              "loc": "dance",
               "kids": [],
               "serves": "wed-hiphop"
             },
@@ -2808,7 +2985,7 @@
             "kind": "early",
             "driver": "mom",
             "event": "wed-soccer",
-            "min": 39
+            "min": 44
           }
         ],
         "suggestions": []

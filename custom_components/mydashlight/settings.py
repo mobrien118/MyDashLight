@@ -12,9 +12,6 @@ from typing import Any
 from .const import (
     CONF_ALIASES,
     CONF_ALL_KIDS,
-    CONF_ARRIVE_EARLY,
-    CONF_ARRIVE_EARLY_MAX,
-    CONF_ARRIVE_EARLY_PER,
     CONF_CALENDAR_ID,
     CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
@@ -116,9 +113,6 @@ class HubSettings:
         }
         return cls(
             planner=PlannerSettings(
-                arrive_early=int(planner[CONF_ARRIVE_EARLY]),
-                arrive_early_max=int(planner[CONF_ARRIVE_EARLY_MAX]),
-                arrive_early_per=int(planner[CONF_ARRIVE_EARLY_PER]),
                 go_home_margin=int(planner[CONF_GO_HOME_MARGIN]),
                 take_along_window=int(planner[CONF_TAKE_ALONG_WINDOW]),
                 waiting_after=int(planner[CONF_WAITING_AFTER]),

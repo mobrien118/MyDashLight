@@ -166,7 +166,7 @@ Travel: 25 min
 | Drop-off, Pick-up | The driver first: a parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver). Then anyone riding along, by name, such as `Drop-off: Sam, Ben, Robin`. `TBD` holds the driver's place when riders are named but nobody is driving yet | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
 | Take along | Kids' names, and on a parent's own event the other parent | Nobody else rides along. On a parent's own event, everyone named goes there and back with that parent. On a kid's event, an older line still counts as riders on the drop-off |
-| Arrive by | A time, such as 5:15 PM, or 15 min early, when the kid has to be there before the event starts | They have to be there at the start. Either way, the driver aims to get there a margin early for traffic. It grows with the drive from home: 5 minutes for a 5-minute drive, 10 for 30, 15 for an hour, never more than 20 (set under Planner timing) |
+| Arrive by | A time, such as 5:15 PM, or 15 min early, when the kid has to be there before the event starts | They have to be there at the start. Either way, the driver aims to get there a margin early for traffic. It grows smoothly with the drive from home, 3 + 14 × ln(1 + drive ÷ 50) minutes: 3 with no drive, 5 for 10 minutes, 10 for 35, 14 for an hour, 20 for two. Pick-ups get the same margin, so the kid isn't left waiting |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
 | Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
@@ -504,9 +504,9 @@ the Home Assistant app adds for each phone. Anyone left on **No reminders** gets
   checked for the drives they're on. Only the driver is told, never the other parent.
   - At the leave reminder, a driver who isn't at the drive's starting point, and is farther from the
     first stop than it, gets a reminder that says when to leave from where they really are.
-  - The arrive-early margin after leave time (5 minutes unless **Arrive early, at least** says
-    otherwise), a driver still at the starting point gets "Time to go". One who has left but is
-    farther from the first stop than the starting point is told if they'll now be late.
+  - Five minutes after leave time, a driver still at the starting point gets "Time to go". One who
+    has left but is farther from the first stop than the starting point is told if they'll now be
+    late.
   - Distances are straight lines on the map, so they cost nothing. A drive time from where the
     driver is gets looked up only when the straight lines say they're somewhere unexpected, and it
     counts toward the daily limit. Locations are only read, never saved anywhere.

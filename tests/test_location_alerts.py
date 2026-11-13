@@ -53,7 +53,7 @@ async def setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
 @pytest.fixture
 def google(aioclient_mock: AiohttpClientMocker) -> FakeGoogle:
     g = FakeGoogle(aioclient_mock)
-    # Robin takes Ava to piano at 4: a 15-minute drive, so Robin leaves at 3:38 and is
+    # Robin takes Ava to piano at 4: a 15-minute drive, so Robin leaves at 3:39 and is
     # reminded at 3:23. The check that Robin has left is at 3:43, five minutes later.
     g.add(
         FAMILY,
@@ -121,13 +121,13 @@ async def test_still_home_after_leave_time(
 
     # 3:25: home, as planned, so the reminder is the usual one.
     await at(hass, freezer, "2026-11-03T21:25:00+00:00")
-    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 3:38 PM: Drive Ava to Piano studio"]
+    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 3:39 PM: Drive Ava to Piano studio"]
 
     # 3:44: still home, six minutes after leave time.
     await at(hass, freezer, "2026-11-03T21:44:00+00:00")
     assert phones["robin"][1].data == {
         "title": "Time to go: Drive Ava to Piano studio",
-        "message": "You were due to leave home at 3:38 PM to be at Piano studio by 4:00 PM.",
+        "message": "You were due to leave home at 3:39 PM to be at Piano studio by 4:00 PM.",
     }
     # Only Robin hears about it. Nothing about where Robin is cost a drive-time lookup.
     assert phones["sam"] == []
@@ -173,12 +173,12 @@ async def test_starting_from_somewhere_else(
     assert phones["robin"][0].data == {
         "title": "Leave by 3:30 PM: Drive Ava to Piano studio",
         "message": "You're not at home. From where you are, it's 30 min to Piano studio.\n"
-        "Leave 3:38\n3:53  Piano studio, drop off Ava\n4:08  Home",
+        "Leave 3:39\n3:54  Piano studio, drop off Ava\n4:09  Home",
     }
     assert [b["origin"] for b in routes.live] == [{"location": {"latLng": {"latitude": 39.95, "longitude": -86.95}}}]
     assert routes.live[0]["destination"] == {"address": PIANO}
     # Ava's reminder doesn't change.
-    assert phones["ava"][0].data["title"] == "Leave home at 3:38 PM with Robin"
+    assert phones["ava"][0].data["title"] == "Leave home at 3:39 PM with Robin"
 
     # 3:44: still at work, so Robin will be about 14 minutes late.
     await at(hass, freezer, "2026-11-03T21:44:00+00:00")
@@ -201,7 +201,7 @@ async def test_without_a_person_nothing_is_checked(
     await load(hass, {**OPTIONS_HERE, "mom_person": None})
     await at(hass, freezer, "2026-11-03T21:25:00+00:00")
     await at(hass, freezer, "2026-11-03T21:44:00+00:00")
-    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 3:38 PM: Drive Ava to Piano studio"]
+    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 3:39 PM: Drive Ava to Piano studio"]
     assert routes.live == []
 
 
@@ -216,7 +216,7 @@ async def test_without_a_location_nothing_is_said(
     await load(hass)
     await at(hass, freezer, "2026-11-03T21:25:00+00:00")
     await at(hass, freezer, "2026-11-03T21:44:00+00:00")
-    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 3:38 PM: Drive Ava to Piano studio"]
+    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 3:39 PM: Drive Ava to Piano studio"]
     assert routes.live == []
 
 
@@ -269,8 +269,8 @@ async def test_own_trips(
     entry = await load(hass)
     robin = entry.runtime_data.coordinator.data.days[0]["drivers"]["mom"]
     dentist, game = robin["outings"][-2:]
-    assert (dentist["title"], dentist["solo"], dentist["lead"]) == ("Dentist at Smile Dental", True, "Leave 5:44")
-    assert (game["title"], game["solo"], game["lead"]) == ("Game at City park", False, "Leave 7:44")
+    assert (dentist["title"], dentist["solo"], dentist["lead"]) == ("Dentist at Smile Dental", True, "Leave 5:45")
+    assert (game["title"], game["solo"], game["lead"]) == ("Game at City park", False, "Leave 7:45")
 
     # Robin's trip alone to the dentist: Robin knows, so nothing is sent, even with Robin
     # still home after leave time.
@@ -280,5 +280,5 @@ async def test_own_trips(
 
     # Sam goes to the game with Robin, so both hear when to leave.
     await at(hass, freezer, "2026-11-04T01:30:00+00:00")
-    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 7:44 PM: Game at City park"]
-    assert [c.data["title"] for c in phones["sam"]] == ["Leave home at 7:44 PM with Robin"]
+    assert [c.data["title"] for c in phones["robin"]] == ["Leave at 7:45 PM: Game at City park"]
+    assert [c.data["title"] for c in phones["sam"]] == ["Leave home at 7:45 PM with Robin"]
