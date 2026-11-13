@@ -91,13 +91,9 @@ class BusyBlock:
 class PlannerSettings:
     """Planner thresholds, in minutes. The defaults match the agreed design."""
 
-    arrive_early: int = 5
-    """With no Arrive by time, aim to arrive at least this long before the start."""
-    arrive_early_max: int = 20
-    """...and at most this long."""
-    arrive_early_per: int = 6
-    """One more minute early for every this many minutes of driving from home. 0 keeps it
-    at :attr:`arrive_early`."""
+    fixed_early: int | None = None
+    """A margin for traffic that doesn't grow with the drive, for tests and the sample week.
+    Unset, it's :func:`early_for_drive`."""
     go_home_margin: int = 15
     """Go home between stops when that frees at least this much more idle time."""
     take_along_window: int = 45
@@ -147,6 +143,8 @@ class Stop:
     """Latest arrival (drop-off and stay)."""
     ready: float | None = None
     """When the kid is ready to be collected (pick-up)."""
+    aim: float | None = None
+    """When to aim to arrive for a pick-up: the margin for traffic before ``ready``."""
     after: float | None = None
     """When a stay ends."""
     dwell: float = 0
@@ -276,22 +274,26 @@ class IssueText:
 
 def arrive_at(event: RideEvent, settings: PlannerSettings, travel: TravelFn) -> int:
     """When the driver aims to have the kid there: a margin for traffic before the time they
-    must be there (the Arrive by time, or else the start). The margin grows with the drive from
-    home: 5 minutes early when it's 5 minutes away, 10 when it's 30, 15 when it's an hour, never
-    more than 20. Arrive by doesn't replace it, because it's a different need: being there
-    earlier than the event says."""
+    must be there (the Arrive by time, or else the start). Arrive by doesn't replace it, because
+    it's a different need: being there earlier than the event says."""
     due = event.arrive_by if event.arrive_by is not None else event.start
     return due - arrive_early(event.loc, settings, travel)
 
 
 def arrive_early(loc: str, settings: PlannerSettings, travel: TravelFn) -> int:
-    """How long before the start, or the Arrive by time, to aim to be at ``loc``."""
-    least = settings.arrive_early
-    if settings.arrive_early_per <= 0:
-        return least
-    # The tiny nudge keeps 30 / 6 from landing just under 5 after a float sum.
-    early = math.floor(least + travel(HOME, loc) / settings.arrive_early_per + 1e-9)
-    return min(max(early, least), max(settings.arrive_early_max, least))
+    """How long before it's due to aim to be at ``loc``, for a drop-off or a pick-up."""
+    if settings.fixed_early is not None:
+        return settings.fixed_early
+    return early_for_drive(travel(HOME, loc))
+
+
+def early_for_drive(drive: float) -> int:
+    """The margin for traffic, from the drive from home: 3 + 14 ln(1 + drive / 50) minutes,
+    rounded down (Marty, 2026-11-12). Each minute of driving adds about 17 seconds at first,
+    7.5 at an hour and 5 at two hours, and it keeps growing for gas stops on a long trip:
+    3 for no drive, 5 for 10 minutes, 10 for 35, 14 for an hour, 20 for two, 24 for three."""
+    # The tiny nudge keeps a value that should be whole from landing just under it.
+    return math.floor(3 + 14 * math.log1p(max(drive, 0) / 50) + 1e-9)
 
 
 def fmt(minutes: float) -> str:
@@ -379,6 +381,11 @@ def _route(
 
     stops = _build_stops(tasks)
     n = len(stops)
+    # A pick-up gets the same margin for traffic as a drop-off (Marty, 2026-11-12), so the kid
+    # isn't left waiting when the drive runs slow. The driver waits there if it doesn't.
+    for st in stops:
+        if st.kind == "pick" and st.ready is not None:
+            st.aim = st.ready - arrive_early(st.loc, settings, travel)
 
     # Backward pass: the latest arrival and departure at each stop that still make every deadline.
     def backward(due: list[float]) -> list[float]:
@@ -394,11 +401,7 @@ def _route(
     fetched = [any(x.kind == "fetch" for x in stops[:i]) for i in range(n)]
     leave_by = backward(
         [
-            s.deadline
-            if s.deadline is not None
-            else s.ready
-            if s.kind == "pick" and s.ready is not None and fetched[i]
-            else INF
+            s.deadline if s.deadline is not None else s.aim if s.aim is not None and fetched[i] else INF
             for i, s in enumerate(stops)
         ]
     )
@@ -407,7 +410,7 @@ def _route(
         v = leave_by[j]
         nxt = stops[j + 1] if j + 1 < n else None
         if nxt is not None and nxt.ready is not None and not nxt.late:
-            v = min(v, nxt.ready - travel(stops[j].loc, nxt.loc))
+            v = min(v, (nxt.aim if nxt.aim is not None else nxt.ready) - travel(stops[j].loc, nxt.loc))
         return v
 
     def event_stop(q: int, step: int) -> Stop | None:
@@ -427,7 +430,8 @@ def _route(
     # Forward pass: leave each place as late as still works.
     t = target(0)
     if not math.isfinite(t):
-        t = (stops[1].ready if stops[1].ready is not None else 0) - travel(HOME, stops[1].loc)
+        due = stops[1].aim if stops[1].aim is not None else stops[1].ready
+        t = (due if due is not None else 0) - travel(HOME, stops[1].loc)
     out.leave = t
     here = HOME
     car_now = stops[0].car
@@ -795,7 +799,7 @@ def with_rides_along(
                 add(p, e.drop, arrive - there, (e.end if stays else arrive) + back, e.title)
         if e.pick not in (UNASSIGNED, NOT_NEEDED) and not stays:
             for p in e.pick_parents:
-                add(p, e.pick, e.end - there, e.end + back, e.title)
+                add(p, e.pick, e.end - arrive_early(e.loc, settings, travel) - there, e.end + back, e.title)
     for blocks in out.values():
         blocks.sort(key=lambda b: (b.start, b.end, b.title))
     return out

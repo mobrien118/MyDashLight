@@ -68,12 +68,12 @@ var isDriver = function (v) { return v === 'mom' || v === 'dad'; };
 // Whether a kid is at an event: their own activity, or a parent's own event they go along to.
 var attends = function (e, k) { return e.kid === k || (!!e.own && (e.along || []).indexOf(k) >= 0); };
 var nameOf = function (e) { return e.own ? PEOPLE[e.own] : K[e.kid].name; };
-// When the driver aims to have the kid there: the Arrive by time if one is set, otherwise a margin
-// before the start that grows with the drive from home: 5 + 1 minute per 6 minutes of driving, rounded
-// down, from 5 to 20. So 5 early for a 5-minute drive, 10 for 30, 15 for an hour (Marty, 2026-11-04).
+// A margin for traffic that grows smoothly with the drive from home, for drop-offs and pick-ups alike:
+// 3 + 14 ln(1 + drive / 50), rounded down. So 3 for no drive, 5 for 10 minutes, 10 for 35, 14 for an
+// hour, 20 for two, and it keeps growing past that for gas stops (Marty, 2026-11-12).
 // Minutes as written: whole, rounded half up.
 var wholeMin = function (v) { return Math.floor(v + 0.5); };
-var arriveEarly = function (loc) { return Math.min(Math.max(Math.floor(5 + travel('home', loc) / 6 + 1e-9), 5), 20); };
+var arriveEarly = function (loc) { return Math.floor(3 + 14 * Math.log1p(Math.max(travel('home', loc), 0) / 50) + 1e-9); };
 // Traffic margin before when they must be there (Arrive by, or else the start). Arrive by doesn't replace it.
 var arriveAt = function (e) { return (e.arriveBy != null ? e.arriveBy : e.start) - arriveEarly(e.loc); };
 
@@ -226,7 +226,7 @@ function route(d, tasks, busy) {
       here.forEach(function (a) { if (left[a].loc === k.e.loc && left[a].until <= k.e.end) { car.push(a); delete left[a]; } });
       if (car.indexOf(kid) < 0) car.push(kid);
       delete left[kid];
-      stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, e: k.e, car: car.slice() });
+      stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, aim: k.e.end - arriveEarly(k.e.loc), e: k.e, car: car.slice() });
     }
   });
   if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'end', car: [] });
@@ -246,17 +246,17 @@ function route(d, tasks, busy) {
   // their activity ends, so a stop at home in between doesn't leave anyone waiting.
   var leaveBy = backward(stops.map(function (s, i) {
     var fetched = stops.slice(0, i).some(function (x) { return x.kind === 'fetch'; });
-    return s.deadline != null ? s.deadline : s.kind === 'pick' && s.ready != null && fetched ? s.ready : Infinity;
+    return s.deadline != null ? s.deadline : s.aim != null && fetched ? s.aim : Infinity;
   }));
   var target = function (j) {
     var v = leaveBy[j], nx = stops[j + 1];
-    if (nx && nx.ready != null && !nx.late) v = Math.min(v, nx.ready - travel(stops[j].loc, nx.loc));
+    if (nx && nx.ready != null && !nx.late) v = Math.min(v, (nx.aim != null ? nx.aim : nx.ready) - travel(stops[j].loc, nx.loc));
     return v;
   };
 
   // Forward pass: leave each place as late as still works.
   var t = target(0);
-  if (!isFinite(t)) t = (stops[1].ready != null ? stops[1].ready : 0) - travel('home', stops[1].loc);
+  if (!isFinite(t)) t = (stops[1].aim != null ? stops[1].aim : stops[1].ready != null ? stops[1].ready : 0) - travel('home', stops[1].loc);
   out.leave = t;
   // Each bit of driving or waiting is tied to the drop-off or pick-up it serves.
   var evAt = function (q, dir) { for (; q >= 0 && q < n; q += dir) if (stops[q].e) return stops[q]; return null; };
@@ -374,7 +374,7 @@ function withRidesAlong(events, busy) {
     // Riding along on a kid's ride: from leaving home until back, staying if the driver does.
     var stays = e.stay && e.drop === e.pick;
     if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? e.end : arrive) + back, e.title); });
-    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, e.end - there, e.end + back, e.title); });
+    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, e.end - arriveEarly(e.loc) - there, e.end + back, e.title); });
   });
   Object.keys(out).forEach(function (d) {
     out[d].sort(function (a, b) { return a.start - b.start || a.end - b.end || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0); });

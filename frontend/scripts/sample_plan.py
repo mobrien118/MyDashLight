@@ -200,7 +200,7 @@ def main() -> None:
     travel = make_travel({}, 15, base)
     # A fixed 5 minutes early, so the sample week (and the app tests built on it) keep the times
     # they were written for. Real plans grow the margin with the drive.
-    settings = PlannerSettings(arrive_early_per=0)
+    settings = PlannerSettings(fixed_early=5)
 
     days = []
     for offset in range(7):

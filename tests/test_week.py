@@ -623,16 +623,16 @@ def test_own_event_payload() -> None:
     [tue] = plan_week(w, lambda _day: make_travel({}, 15), PlannerSettings(), ("mom", "dad"))
     [e] = tue["events"]
     assert (e["own"], e["kid"], e["along"]) == ("mom", "mom", [BEN, "dad"])
-    assert e["lines"]["drop"] == {"text": "Leaves 1:38", "tone": "normal"}
+    assert e["lines"]["drop"] == {"text": "Leaves 1:39", "tone": "normal"}
     assert e["lines"]["pick"] == {"text": "Home 3:15", "tone": "normal"}
     robin, sam = tue["drivers"]["mom"], tue["drivers"]["dad"]
     assert robin["busy"] == [{"start": 840, "end": 900, "title": "Dentist", "event": "dentist"}]
     # Sam rides along, so Sam is busy for the whole trip.
-    assert sam["busy"] == [{"start": 818, "end": 915, "title": "Dentist", "event": None}]
+    assert sam["busy"] == [{"start": 819, "end": 915, "title": "Dentist", "event": None}]
     [outing] = robin["outings"]
     assert outing["title"] == "Dentist at Smile Dental"
     assert outing["first_drop"] is None
-    assert outing["parents"] == {"dad": "Leave home at 1:38 PM with Robin"}
+    assert outing["parents"] == {"dad": "Leave home at 1:39 PM with Robin"}
     assert not outing["solo"]
     assert tue["kids"][BEN]["items"]
     assert tue["issues"] == []

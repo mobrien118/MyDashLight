@@ -257,13 +257,13 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
             "Ava's other names": ["Aves"],
             "Ben's other names": [],
             "all_kids": ["the kids"],
-            "planner": {**DEFAULT_PLANNER, "arrive_early": 10.0},
+            "planner": {**DEFAULT_PLANNER, "go_home_margin": 10.0},
         },
     )
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options["planner"]["arrive_early"] == 10
+    assert entry.options["planner"]["go_home_margin"] == 10
     assert entry.options["kids"] == [
         {"calendar_id": AVA, "name": "Ava", "aliases": ["Aves"]},
         {"calendar_id": BEN, "name": "Ben", "aliases": []},
@@ -271,7 +271,7 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
     assert "Ava's other names" not in entry.options
     assert entry.options["all_kids"] == ["the kids"]
     settings = entry.runtime_data.settings
-    assert settings.planner.arrive_early == 10
+    assert settings.planner.go_home_margin == 10
     assert settings.directory.resolve("rae") == "mom"
     assert settings.directory.resolve("the parkers") == "the Parkers"
     assert settings.home_address == "12 Oak St"

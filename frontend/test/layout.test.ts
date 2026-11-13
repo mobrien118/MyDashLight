@@ -215,12 +215,12 @@ test("the next trip: leaving soon, under way, or tomorrow", () => {
 
   // Someone is out, but the next one to leave matters more.
   const later = nextUp(plan, { date: FIRST, minutes: 17 * 60 })!;
-  assert.equal(later.lead, "Leave 6:15");
-  assert.equal(later.inMinutes, 75);
+  assert.equal(later.lead, "Leave 6:10");
+  assert.equal(later.inMinutes, 70);
 
   const out = nextUp(plan, { date: FIRST, minutes: 19 * 60 + 10 })!;
   assert.equal(out.ongoing, true);
-  assert.equal(out.lead, "Leave 6:40");
+  assert.equal(out.lead, "Leave 6:35");
 
   const tomorrow = nextUp(plan, { date: FIRST, minutes: 23 * 60 })!;
   assert.equal(tomorrow.ahead, 1);

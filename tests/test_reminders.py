@@ -30,7 +30,7 @@ PARK = "Park, 2 Oak St"
 def plan(w: WeekInput) -> list[dict[str, Any]]:
     travel = make_travel(w.travel_overrides, 15)
     # A fixed 5 minutes early keeps the times here easy to follow.
-    return plan_week(w, lambda _day: travel, PlannerSettings(arrive_early_per=0), DRIVERS)
+    return plan_week(w, lambda _day: travel, PlannerSettings(fixed_early=5), DRIVERS)
 
 
 def piano_and_soccer(**piano: Any) -> WeekInput:

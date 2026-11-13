@@ -274,7 +274,7 @@
       {
        "type": "home",
        "start": 1000,
-       "end": 1095,
+       "end": 1090,
        "from": null,
        "to": null,
        "place": null,
@@ -285,11 +285,23 @@
       },
       {
        "type": "drive",
-       "start": 1095,
-       "end": 1110,
+       "start": 1090,
+       "end": 1105,
        "from": "home",
        "to": "soccer fields, 2200 park rd",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1105,
+       "end": 1110,
+       "from": null,
+       "to": null,
+       "place": "soccer fields, 2200 park rd",
        "kids": [],
        "event": null,
        "serves": "soccer",
@@ -342,9 +354,9 @@
        "solo": false
       },
       {
-       "start": 1095,
+       "start": 1090,
        "end": 1125,
-       "lead": "Leave 6:15",
+       "lead": "Leave 6:10",
        "title": "Pick up Cleo at Soccer fields",
        "lines": [
         "6:30  Soccer fields, pick up Cleo",
@@ -434,7 +446,7 @@
       {
        "type": "home",
        "start": 1050,
-       "end": 1120,
+       "end": 1115,
        "from": null,
        "to": null,
        "place": null,
@@ -445,11 +457,23 @@
       },
       {
        "type": "drive",
-       "start": 1120,
-       "end": 1140,
+       "start": 1115,
+       "end": 1135,
        "from": "home",
        "to": "football field, 90 stadium dr",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1135,
+       "end": 1140,
+       "from": null,
+       "to": null,
+       "place": "football field, 90 stadium dr",
        "kids": [],
        "event": null,
        "serves": "football",
@@ -505,9 +529,9 @@
        "solo": false
       },
       {
-       "start": 1120,
+       "start": 1115,
        "end": 1160,
-       "lead": "Leave 6:40",
+       "lead": "Leave 6:35",
        "title": "Pick up Ben at Football field",
        "lines": [
         "7:00  Football field, pick up Ben",
@@ -999,7 +1023,7 @@
       {
        "type": "home",
        "start": 1030,
-       "end": 1065,
+       "end": 1060,
        "from": null,
        "to": null,
        "place": null,
@@ -1010,11 +1034,23 @@
       },
       {
        "type": "drive",
-       "start": 1065,
-       "end": 1080,
+       "start": 1060,
+       "end": 1075,
        "from": "home",
        "to": "soccer fields, 2200 park rd",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "fri-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1075,
+       "end": 1080,
+       "from": null,
+       "to": null,
+       "place": "soccer fields, 2200 park rd",
        "kids": [],
        "event": null,
        "serves": "fri-soccer",
@@ -1066,9 +1102,9 @@
        "solo": false
       },
       {
-       "start": 1065,
+       "start": 1060,
        "end": 1095,
-       "lead": "Leave 5:45",
+       "lead": "Leave 5:40",
        "title": "Pick up Cleo at Soccer fields",
        "lines": [
         "6:00  Soccer fields, pick up Cleo",
@@ -1132,7 +1168,7 @@
       {
        "type": "home",
        "start": 1084,
-       "end": 1221,
+       "end": 1216,
        "from": null,
        "to": null,
        "place": null,
@@ -1143,11 +1179,23 @@
       },
       {
        "type": "drive",
-       "start": 1221,
-       "end": 1230,
+       "start": 1216,
+       "end": 1225,
        "from": "home",
        "to": "liam's house, 31 oak ct",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "fri-party",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1225,
+       "end": 1230,
+       "from": null,
+       "to": null,
+       "place": "liam's house, 31 oak ct",
        "kids": [],
        "event": null,
        "serves": "fri-party",
@@ -1199,9 +1247,9 @@
        "solo": false
       },
       {
-       "start": 1221,
+       "start": 1216,
        "end": 1239,
-       "lead": "Leave 8:21",
+       "lead": "Leave 8:16",
        "title": "Pick up Ben at Liam's house",
        "lines": [
         "8:30  Liam's house, pick up Ben",
@@ -1617,7 +1665,7 @@
       {
        "type": "home",
        "start": 630,
-       "end": 892,
+       "end": 887,
        "from": null,
        "to": null,
        "place": null,
@@ -1628,11 +1676,23 @@
       },
       {
        "type": "drive",
-       "start": 892,
-       "end": 900,
+       "start": 887,
+       "end": 895,
        "from": "home",
        "to": "middle school gym, 15 school ln",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "sat-tourney",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 895,
+       "end": 900,
+       "from": null,
+       "to": null,
+       "place": "middle school gym, 15 school ln",
        "kids": [],
        "event": null,
        "serves": "sat-tourney",
@@ -1685,9 +1745,9 @@
        "solo": false
       },
       {
-       "start": 892,
+       "start": 887,
        "end": 908,
-       "lead": "Leave 2:52",
+       "lead": "Leave 2:47",
        "title": "Pick up Ava at Middle school gym",
        "lines": [
         "3:00  Middle school gym, pick up Ava",
@@ -2481,7 +2541,7 @@
       {
        "type": "home",
        "start": 950,
-       "end": 980,
+       "end": 975,
        "from": null,
        "to": null,
        "place": null,
@@ -2492,11 +2552,25 @@
       },
       {
        "type": "drive",
-       "start": 980,
-       "end": 990,
+       "start": 975,
+       "end": 985,
        "from": "home",
        "to": "piano studio, 410 elm st",
        "place": null,
+       "kids": [
+        "kid-b@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "mon-piano",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 985,
+       "end": 990,
+       "from": null,
+       "to": null,
+       "place": "piano studio, 410 elm st",
        "kids": [
         "kid-b@group.calendar.google.com"
        ],
@@ -2591,9 +2665,9 @@
        "solo": false
       },
       {
-       "start": 980,
+       "start": 975,
        "end": 1000,
-       "lead": "Leave 4:20",
+       "lead": "Leave 4:15",
        "title": "Pick up Ava at Piano studio",
        "lines": [
         "4:30  Piano studio, pick up Ava",
@@ -2607,7 +2681,7 @@
        "target": "mon-piano",
        "first_drop": null,
        "riders": {
-        "kid-b@group.calendar.google.com": "Leave home at 4:20 PM with Robin",
+        "kid-b@group.calendar.google.com": "Leave home at 4:15 PM with Robin",
         "kid-a@group.calendar.google.com": "Robin picks you up at Piano studio at 4:30 PM"
        },
        "go": {
@@ -2655,17 +2729,29 @@
     },
     "dad": {
      "name": "Sam",
-     "leave": 1120,
+     "leave": 1115,
      "drive": 36,
      "trips": 1,
      "segments": [
       {
        "type": "drive",
-       "start": 1120,
-       "end": 1140,
+       "start": 1115,
+       "end": 1135,
        "from": "home",
        "to": "football field, 90 stadium dr",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "mon-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1135,
+       "end": 1140,
+       "from": null,
+       "to": null,
+       "place": "football field, 90 stadium dr",
        "kids": [],
        "event": null,
        "serves": "mon-football",
@@ -2716,9 +2802,9 @@
      ],
      "outings": [
       {
-       "start": 1120,
+       "start": 1115,
        "end": 1166,
-       "lead": "Leave 6:40",
+       "lead": "Leave 6:35",
        "title": "Pick up Ben at Football field, Pick up dry cleaning at Dry cleaners",
        "lines": [
         "7:00  Football field, pick up Ben",
@@ -2789,7 +2875,7 @@
      "index": 2,
      "kid": "kid-b@group.calendar.google.com",
      "driver": "mom",
-     "start": 980,
+     "start": 975,
      "end": 1000,
      "own": false,
      "serves": [
@@ -2876,7 +2962,7 @@
       },
       {
        "type": "ride",
-       "start": 980,
+       "start": 975,
        "end": 1000,
        "clash": false,
        "ride": 2
@@ -3177,7 +3263,7 @@
       {
        "type": "home",
        "start": 1030,
-       "end": 1192,
+       "end": 1187,
        "from": null,
        "to": null,
        "place": null,
@@ -3188,11 +3274,23 @@
       },
       {
        "type": "drive",
-       "start": 1192,
-       "end": 1200,
+       "start": 1187,
+       "end": 1195,
        "from": "home",
        "to": "middle school gym, 15 school ln",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "tue-volley",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1195,
+       "end": 1200,
+       "from": null,
+       "to": null,
+       "place": "middle school gym, 15 school ln",
        "kids": [],
        "event": null,
        "serves": "tue-volley",
@@ -3271,9 +3369,9 @@
        "solo": false
       },
       {
-       "start": 1192,
+       "start": 1187,
        "end": 1208,
-       "lead": "Leave 7:52",
+       "lead": "Leave 7:47",
        "title": "Pick up Ava at Middle school gym",
        "lines": [
         "8:00  Middle school gym, pick up Ava",
@@ -3332,7 +3430,7 @@
       {
        "type": "wait",
        "start": 1075,
-       "end": 1101,
+       "end": 1096,
        "from": null,
        "to": null,
        "place": "dance studio, 88 main st",
@@ -3343,8 +3441,8 @@
       },
       {
        "type": "drive",
-       "start": 1101,
-       "end": 1110,
+       "start": 1096,
+       "end": 1105,
        "from": "dance studio, 88 main st",
        "to": "soccer fields, 2200 park rd",
        "place": null,
@@ -3355,8 +3453,20 @@
       },
       {
        "type": "wait",
+       "start": 1105,
+       "end": 1110,
+       "from": null,
+       "to": null,
+       "place": "soccer fields, 2200 park rd",
+       "kids": [],
+       "event": null,
+       "serves": "tue-soccer",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
        "start": 1110,
-       "end": 1131,
+       "end": 1126,
        "from": null,
        "to": null,
        "place": "soccer fields, 2200 park rd",
@@ -3369,11 +3479,25 @@
       },
       {
        "type": "drive",
-       "start": 1131,
-       "end": 1140,
+       "start": 1126,
+       "end": 1135,
        "from": "soccer fields, 2200 park rd",
        "to": "dance studio, 88 main st",
        "place": null,
+       "kids": [
+        "kid-c@group.calendar.google.com"
+       ],
+       "event": null,
+       "serves": "tue-art",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1135,
+       "end": 1140,
+       "from": null,
+       "to": null,
+       "place": "dance studio, 88 main st",
        "kids": [
         "kid-c@group.calendar.google.com"
        ],
@@ -3737,7 +3861,7 @@
       {
        "type": "home",
        "start": 966,
-       "end": 1009,
+       "end": 1004,
        "from": null,
        "to": null,
        "place": null,
@@ -3748,11 +3872,23 @@
       },
       {
        "type": "drive",
-       "start": 1009,
-       "end": 1020,
+       "start": 1004,
+       "end": 1015,
        "from": "home",
        "to": "dance studio, 88 main st",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "wed-dance",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1015,
+       "end": 1020,
+       "from": null,
+       "to": null,
+       "place": "dance studio, 88 main st",
        "kids": [],
        "event": null,
        "serves": "wed-dance",
@@ -3804,9 +3940,9 @@
        "solo": false
       },
       {
-       "start": 1009,
+       "start": 1004,
        "end": 1031,
-       "lead": "Leave 4:49",
+       "lead": "Leave 4:44",
        "title": "Pick up Cleo at Dance studio",
        "lines": [
         "5:00  Dance studio, pick up Cleo",
@@ -3877,7 +4013,7 @@
       {
        "type": "home",
        "start": 1065,
-       "end": 1120,
+       "end": 1115,
        "from": null,
        "to": null,
        "place": null,
@@ -3888,11 +4024,23 @@
       },
       {
        "type": "drive",
-       "start": 1120,
-       "end": 1140,
+       "start": 1115,
+       "end": 1135,
        "from": "home",
        "to": "football field, 90 stadium dr",
        "place": null,
+       "kids": [],
+       "event": null,
+       "serves": "wed-football",
+       "overlaps_busy": false
+      },
+      {
+       "type": "wait",
+       "start": 1135,
+       "end": 1140,
+       "from": null,
+       "to": null,
+       "place": "football field, 90 stadium dr",
        "kids": [],
        "event": null,
        "serves": "wed-football",
@@ -3944,9 +4092,9 @@
        "solo": false
       },
       {
-       "start": 1120,
+       "start": 1115,
        "end": 1160,
-       "lead": "Leave 6:40",
+       "lead": "Leave 6:35",
        "title": "Pick up Ben at Football field",
        "lines": [
         "7:00  Football field, pick up Ben",

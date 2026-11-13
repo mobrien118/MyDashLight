@@ -40,12 +40,12 @@ test("a trip goes once it's done, and one under way stays whole", () => {
   const mid = withoutPast(plan, at(16 * 60 + 25)).days[0]!;
   assert.deepEqual(
     mid.drivers["dad"]!.segments.filter((g) => g.type === "drive").map((g) => g.start),
-    [980, 995, 1010, 1030, 1120, 1140],
+    [980, 995, 1010, 1030, 1115, 1140],
   );
   assert.equal(mid.drivers["dad"]!.outings[0]!.lead, "Leave 4:20");
   // 5:55: that trip is over; the evening one is still to come.
   const later = withoutPast(plan, at(17 * 60 + 55)).days[0]!;
-  assert.deepEqual(later.drivers["dad"]!.outings.map((o) => o.lead), ["Leave 6:40"]);
+  assert.deepEqual(later.drivers["dad"]!.outings.map((o) => o.lead), ["Leave 6:35"]);
   assert.deepEqual(later.drivers["dad"]!.busy, []);
   // Ride items that are over leave the kids' columns; the rides list keeps its order.
   assert.equal(later.rides.length, plan.days[0]!.rides.length);

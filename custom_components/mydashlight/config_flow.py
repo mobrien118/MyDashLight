@@ -41,9 +41,6 @@ from .alerts import notify_services
 from .const import (
     CONF_ALIASES,
     CONF_ALL_KIDS,
-    CONF_ARRIVE_EARLY,
-    CONF_ARRIVE_EARLY_MAX,
-    CONF_ARRIVE_EARLY_PER,
     CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
     CONF_CHORE_DAYS,
@@ -111,9 +108,6 @@ def _minutes(maximum: int) -> NumberSelector:
 
 
 _PLANNER_LIMITS = {
-    CONF_ARRIVE_EARLY: 60,
-    CONF_ARRIVE_EARLY_MAX: 60,
-    CONF_ARRIVE_EARLY_PER: 60,
     CONF_GO_HOME_MARGIN: 120,
     CONF_TAKE_ALONG_WINDOW: 180,
     CONF_WAITING_AFTER: 60,
