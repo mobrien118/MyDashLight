@@ -451,3 +451,14 @@ def test_write_not_attending() -> None:
 )
 def test_skip_prefix(title: str, result: tuple[str, bool]) -> None:
     assert skip_prefix(title) == result
+
+
+def test_leave_by() -> None:
+    # No AM or PM: the reading during the event, after its 12:45 start.
+    assert parse("Leave by: 1:15", event_start=765).leave_by == 795
+    assert parse("Leave by: 1:15 PM").leave_by == 795
+    assert parse("--- Rides ---\nLeave by: whenever").problems == ("Leave by: “whenever” isn’t a time",)
+    text = write("Bring a gift", leave_by=795)
+    assert text == "Bring a gift\n\n--- Rides ---\nLeave by: 1:15 PM"
+    assert parse(text, event_start=765).leave_by == 795
+    assert write(text, leave_by=None) == "Bring a gift"

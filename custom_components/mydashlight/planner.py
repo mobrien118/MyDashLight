@@ -73,6 +73,14 @@ class RideEvent:
     """A parent's errand: the minutes it takes, any time from ``start`` to ``end``. The planner
     picks the time, fitting it into the parent's other trips where it can."""
 
+    leave_by: int | None = None
+    """When the kid has to leave, if it's before the end: they're picked up then instead."""
+
+    @property
+    def out(self) -> int:
+        """When the kid is done: the Leave by time if it's before the end, or else the end."""
+        return self.leave_by if self.leave_by is not None and self.start < self.leave_by < self.end else self.end
+
     def attends(self, kid: str) -> bool:
         """Whether ``kid`` is at this event: their own activity, or a parent's they go along to."""
         return self.kid == kid or (self.own is not None and kid in self.along)
@@ -243,13 +251,14 @@ class DayPlan:
 
 @dataclass(frozen=True, slots=True)
 class Change:
-    """A single edit to try: give one side of an event to a driver, or take kids along on it."""
+    """A single edit to try: give one side of an event to a driver, take kids along on it, or
+    leave it early (``leave_by``, minutes after midnight)."""
 
     event_id: str
-    field: Literal["drop", "pick", "along"]
-    value: str | tuple[str, ...]
+    field: Literal["drop", "pick", "along", "leave_by"]
+    value: str | tuple[str, ...] | int
 
-    def as_dict(self) -> dict[str, str | list[str]]:
+    def as_dict(self) -> dict[str, str | list[str] | int]:
         value = list(self.value) if isinstance(self.value, tuple) else self.value
         return {"id": self.event_id, "field": self.field, "value": value}
 
@@ -342,7 +351,7 @@ def plan_driver(
             if e.drop == driver:
                 tasks.append(_Task("drop", e, arrive_at(e, settings, travel)))
             if e.pick == driver:
-                tasks.append(_Task("pick", e, e.end))
+                tasks.append(_Task("pick", e, e.out))
     tasks.sort(key=lambda k: k.t)
     _same_place_first(tasks, settings)
     _nearby_first(driver, tasks, busy, travel, settings)
@@ -684,7 +693,7 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
                 stop.dwell = k.event.takes
                 stop.late = k.late
             else:
-                stop.after = k.event.end
+                stop.after = k.event.out
             stops.append(stop)
             continue
         if k.type != "pick":
@@ -713,9 +722,9 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
             car = [x for x in car if x != kid]
             stop = Stop(k.event.loc, k.type, event=k.event, deadline=k.t)
             if k.type == "drop":
-                left[kid] = (k.event.loc, k.event.end)
+                left[kid] = (k.event.loc, k.event.out)
             if k.type == "stay":
-                stop.after = k.event.end
+                stop.after = k.event.out
                 if kid not in car:
                     car.append(kid)
             stop.car = list(car)
@@ -734,13 +743,13 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
                 car += missing
                 stops[-1].car = list(car)
             for a in here:
-                if left[a][0] == k.event.loc and left[a][1] <= k.event.end:
+                if left[a][0] == k.event.loc and left[a][1] <= k.event.out:
                     car.append(a)
                     del left[a]
             if kid not in car:
                 car.append(kid)
             left.pop(kid, None)
-            stops.append(Stop(k.event.loc, "pick", list(car), event=k.event, ready=k.event.end))
+            stops.append(Stop(k.event.loc, "pick", list(car), event=k.event, ready=k.event.out))
     if stops[-1].loc != HOME:
         stops.append(Stop(HOME, "end"))
     return stops
@@ -790,16 +799,16 @@ def with_rides_along(
         arrive = arrive_at(e, settings, travel)
         if e.own is not None:
             for p in e.parents:
-                add(p, e.own, arrive - there, e.end + back, e.title)
+                add(p, e.own, arrive - there, e.out + back, e.title)
             continue
         # Riding along on a kid's ride: from leaving home until back, staying if the driver does.
         stays = e.stay and e.drop == e.pick
         if e.drop not in (UNASSIGNED, NOT_NEEDED):
             for p in e.parents:
-                add(p, e.drop, arrive - there, (e.end if stays else arrive) + back, e.title)
+                add(p, e.drop, arrive - there, (e.out if stays else arrive) + back, e.title)
         if e.pick not in (UNASSIGNED, NOT_NEEDED) and not stays:
             for p in e.pick_parents:
-                add(p, e.pick, e.end - arrive_early(e.loc, settings, travel) - there, e.end + back, e.title)
+                add(p, e.pick, e.out - arrive_early(e.loc, settings, travel) - there, e.out + back, e.title)
     for blocks in out.values():
         blocks.sort(key=lambda b: (b.start, b.end, b.title))
     return out
@@ -836,12 +845,14 @@ def issue_text(issue: Issue, labels: Labels) -> IssueText:
         case "waiting" if e and s and s.arrive is not None:
             return IssueText(
                 f"{kid} will be waiting",
-                f"{who} reaches {e.title} at {fmt(s.arrive)}, {minutes_text(issue.minutes)} min after it ends.",
+                f"{who} reaches {e.title} at {fmt(s.arrive)}, {minutes_text(issue.minutes)} min after "
+                + (f"the {fmt(e.out)} leave-by time." if e.out < e.end else "it ends."),
             )
         case "unassigned" if e:
             if issue.side == "drop":
                 return IssueText(f"No drop-off for {kid}", f"{e.title} starts at {fmt(e.start)}{_at(e, labels)}.")
-            return IssueText(f"No pick-up for {kid}", f"{e.title} ends at {fmt(e.end)}{_at(e, labels)}.")
+            ends = f"has to leave at {fmt(e.out)}" if e.out < e.end else f"ends at {fmt(e.end)}"
+            return IssueText(f"No pick-up for {kid}", f"{e.title} {ends}{_at(e, labels)}.")
         case "early" if e and s and s.arrive is not None:
             mins = minutes_text(issue.minutes)
             return IssueText(
@@ -899,6 +910,11 @@ def apply_change(
     drivers: Sequence[str] = DEFAULT_DRIVERS,
 ) -> list[RideEvent]:
     """Return the events with one change applied."""
+    if change.field == "leave_by":
+        # Leave by is saved on the calendar event, so every kid's copy of it (id~2, ...) gets it.
+        base, when = change.event_id.split("~")[0], change.value
+        assert isinstance(when, int)
+        return [replace(e, leave_by=when) if e.id.split("~")[0] == base else e for e in events]
     new_events: list[RideEvent] = []
     for e in events:
         if e.id != change.event_id:
@@ -906,7 +922,8 @@ def apply_change(
             continue
         n = e
         if change.field == "along":
-            n = replace(n, along=tuple(change.value))
+            assert isinstance(change.value, tuple)
+            n = replace(n, along=change.value)
         elif change.field == "drop":
             n = replace(n, drop=str(change.value) or UNASSIGNED)
         else:
@@ -969,6 +986,17 @@ def suggestions_for(
                 change = Change(f.id, "along", (*f.along, e.kid))
                 cands.append((None, change, d))
                 along_kid[change] = e.kid
+        # Leave an event early for the same kid's next one that starts before it ends, in time
+        # to get there straight from it, with a few minutes to spare (Marty, 2026-11-13). On the 5 minutes.
+        for f in events:
+            if f.own is not None or (f.pick != d and f.drop != d):
+                continue
+            for g in events:
+                if g is f or g.own is not None or g.kid != f.kid or g.drop != d or not f.start < g.start < f.out:
+                    continue
+                t = math.floor((arrive_at(g, settings, travel) - travel(f.loc, g.loc) - settings.tight_slack) / 5) * 5
+                if f.start < t < f.out:
+                    cands.append((f"Leave {f.title} at {fmt(t)}", Change(f.id, "leave_by", t), d))
 
     base_soft = {x.key for x in base.soft}
     key = issue.key

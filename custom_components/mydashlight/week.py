@@ -227,6 +227,7 @@ def build_week(
                     pick=NOT_NEEDED,
                     stay=False,
                     arrive_by=None,
+                    leave_by=None,
                     drop_riders=(),
                     pick_riders=(),
                     travel=None,
@@ -248,7 +249,14 @@ def build_week(
             if not notes.attending:
                 # Still shown, but nobody drives and nothing clashes with it.
                 notes = replace(
-                    notes, drop=NOT_NEEDED, pick=NOT_NEEDED, stay=False, arrive_by=None, drop_riders=(), pick_riders=()
+                    notes,
+                    drop=NOT_NEEDED,
+                    pick=NOT_NEEDED,
+                    stay=False,
+                    arrive_by=None,
+                    leave_by=None,
+                    drop_riders=(),
+                    pick_riders=(),
                 )
             riding = _sides(notes, directory)
             pieces: list[tuple[date, RideEvent, tuple[Side, ...]]] = []
@@ -549,6 +557,7 @@ def _sides(notes: RideNotes, directory: DriverDirectory) -> dict[str, Any]:
         "pick": notes.pick,
         "stay": notes.stay,
         "arrive_by": notes.arrive_by,
+        "leave_by": notes.leave_by,
         "along": kids(notes.drop_riders),
         "parents": parents(notes.drop_riders, notes.drop),
         "pick_along": kids(notes.pick_riders),
@@ -594,6 +603,7 @@ def _own_event(
         pick=side,
         stay=attending,
         arrive_by=notes.arrive_by if attending and not errand else None,
+        leave_by=notes.leave_by if attending and not errand else None,
         along=kids,
         attending=attending,
         own=driver,

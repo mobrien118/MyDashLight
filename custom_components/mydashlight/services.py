@@ -39,6 +39,7 @@ from .const import (
     SERVICE_GET_PLAN,
     SERVICE_SET_ARRIVE_BY,
     SERVICE_SET_ATTENDING,
+    SERVICE_SET_LEAVE_BY,
     SERVICE_SET_RIDE,
     SERVICE_SET_STAY,
     SERVICE_SET_TAKE_ALONG,
@@ -96,6 +97,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         (SERVICE_SET_STAY, _async_set_stay, SET_STAY_SCHEMA),
         (SERVICE_SET_ATTENDING, _async_set_attending, SET_ATTENDING_SCHEMA),
         (SERVICE_SET_ARRIVE_BY, _async_set_arrive_by, SET_ARRIVE_BY_SCHEMA),
+        (SERVICE_SET_LEAVE_BY, _async_set_leave_by, SET_ARRIVE_BY_SCHEMA),
         (SERVICE_SET_TAKE_ALONG, _async_set_take_along, SET_TAKE_ALONG_SCHEMA),
         (SERVICE_SET_TAKES, _async_set_takes, SET_TAKES_SCHEMA),
         (SERVICE_APPLY_SUGGESTION, _async_apply_suggestion, APPLY_SUGGESTION_SCHEMA),
@@ -153,6 +155,11 @@ async def _async_set_arrive_by(call: ServiceCall) -> None:
     await _async_change_event(call, RideChange(arrive_by=None if when is None else when.hour * 60 + when.minute))
 
 
+async def _async_set_leave_by(call: ServiceCall) -> None:
+    when: time | None = call.data.get(ATTR_TIME)
+    await _async_change_event(call, RideChange(leave_by=None if when is None else when.hour * 60 + when.minute))
+
+
 async def _async_set_take_along(call: ServiceCall) -> None:
     """Who rides along. On a kid's event they go after the driver on the Drop-off or Pick-up
     line, both when the driver stays; a parent's own event keeps its Take along line."""
@@ -196,6 +203,8 @@ async def _async_apply_suggestion(call: ServiceCall) -> None:
                         ride = RideChange(along=tuple(value))
                     elif change["field"] == "drop":
                         ride = RideChange(drop=value)
+                    elif change["field"] == "leave_by":
+                        ride = RideChange(leave_by=int(value))
                     else:
                         ride = RideChange(pick=value)
                     await _async_change_event(call, ride, ride_id=change["id"], day=day["date"])

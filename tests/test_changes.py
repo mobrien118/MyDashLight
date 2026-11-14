@@ -153,6 +153,53 @@ async def test_stay_and_arrive_by(hass: HomeAssistant, google: FakeGoogle) -> No
     assert "Arrive by" not in google.event(FAMILY, "piano")["description"]
 
 
+async def test_leave_by(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.event(FAMILY, "piano")["description"] = "Drop-off: Robin\nPick-up: Robin"
+    entry = await load(hass)
+
+    await call(hass, "set_leave_by", event="piano", time="16:30")
+
+    assert google.event(FAMILY, "piano")["description"] == (
+        "--- Rides ---\nDrop-off: Robin\nPick-up: Robin\nLeave by: 4:30 PM"
+    )
+    event = planned(entry, "piano")
+    assert event["leave_by"] == 16 * 60 + 30
+    # Picked up when Ava has to leave, not at the 5:00 end.
+    assert event["lines"]["pick"]["text"].startswith("Home 4:")
+
+    await call(hass, "set_leave_by", event="piano")
+    assert planned(entry, "piano")["leave_by"] is None
+    assert "Leave by" not in google.event(FAMILY, "piano")["description"]
+
+
+async def test_apply_a_leave_early_fix(hass: HomeAssistant, google: FakeGoogle) -> None:
+    # Robin stays at piano until 5:00, but Ava's swim starts at 4:45: the fix is leaving piano
+    # early and going straight there.
+    google.event(FAMILY, "piano")["description"] = "Drop-off: Robin\nPick-up: Robin\nStay: yes"
+    google.add(
+        FAMILY,
+        **timed(
+            "swim",
+            "Ava Swim",
+            "2026-11-03T16:45:00-06:00",
+            "2026-11-03T17:45:00-06:00",
+            location=SWIM,
+            description="Drop-off: Robin\nPick-up: Robin\nStay: yes",
+        ),
+    )
+    entry = await load(hass)
+    leave = [s for s in suggestions(entry) if s["change"]["field"] == "leave_by"]
+    assert leave, suggestions(entry)
+    fix = leave[0]
+    assert (fix["id"], fix["label"]) == ("2026-11-03|piano|leave_by|980", "Leave Piano at 4:20")
+
+    await call(hass, "apply_suggestion", suggestion=fix["id"])
+
+    assert google.event(FAMILY, "piano")["description"].endswith("Leave by: 4:20 PM")
+    assert planned(entry, "piano")["leave_by"] == fix["change"]["value"]
+    assert not [x for day in entry.runtime_data.coordinator.data.days for x in day["issues"] if x["level"] == "problem"]
+
+
 async def test_someone_else_edits_at_the_same_time(hass: HomeAssistant, google: FakeGoogle) -> None:
     entry = await load(hass)
     google.edits_in_between = 1

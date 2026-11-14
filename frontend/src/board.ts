@@ -101,8 +101,11 @@ const PANEL_SPACE = 360 + 24 + 56;
 const PHONE = 700;
 /** On the kitchen screen, go back to now after this long without a touch. */
 const IDLE_MS = 3 * 60_000;
-/** Arrive-by taps are saved together once they stop. */
+/** Arrive-by and leave-by taps are saved together once they stop. */
 const ARRIVE_SAVE_MS = 1200;
+/** Holding a time stepper's button repeats it after this long, then this often. */
+const HOLD_MS = 450;
+const REPEAT_MS = 110;
 
 function localZone(): string {
   try {
@@ -221,6 +224,7 @@ export class MyDashLightBoard extends LitElement {
     toast: { state: true },
     scope: { state: true },
     arriveDraft: { state: true },
+    leaveDraft: { state: true },
     otherOpen: { state: true },
     stayDraft: { state: true },
     tick: { state: true },
@@ -265,6 +269,8 @@ export class MyDashLightBoard extends LitElement {
   declare scope: Scope;
   /** An arrive-by time being tapped in, not saved yet. Undefined when there's none. */
   declare arriveDraft: number | null | undefined;
+  /** A leave-by time being tapped in, not saved yet. Undefined when there's none. */
+  declare leaveDraft: number | null | undefined;
   /** The ride side ("event|drop") whose "Other" driver choices are open. */
   declare otherOpen: string | null;
   /** The event whose "Stays" is picked but has no parent to stay yet. */
@@ -308,6 +314,12 @@ export class MyDashLightBoard extends LitElement {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private arriveTimer: ReturnType<typeof setTimeout> | null = null;
+  private leaveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** A held time-stepper button: the wait before repeating, then the repeat. */
+  private holdTimer: ReturnType<typeof setTimeout> | null = null;
+  private holdRepeat: ReturnType<typeof setInterval> | null = null;
+  /** Set once a hold has repeated, so the click that ends it isn't one more step. */
+  private held = false;
   private railTimer: ReturnType<typeof setTimeout> | null = null;
   /** When a finger, mouse or wheel last moved the board, so a scroll the app makes doesn't bring out the days. */
   private touchedAt = -Infinity;
@@ -355,6 +367,7 @@ export class MyDashLightBoard extends LitElement {
     this.toast = null;
     this.scope = "this";
     this.arriveDraft = undefined;
+    this.leaveDraft = undefined;
     this.tick = 0;
     this.page = this.urlPage ?? "rides";
     this.chores = undefined;
@@ -400,7 +413,8 @@ export class MyDashLightBoard extends LitElement {
     this.stopLunch = null;
     this.resize?.disconnect();
     this.resize = null;
-    for (const t of [this.idleTimer, this.toastTimer, this.arriveTimer, this.railTimer]) if (t) clearTimeout(t);
+    for (const t of [this.idleTimer, this.toastTimer, this.arriveTimer, this.leaveTimer, this.railTimer]) if (t) clearTimeout(t);
+    this.stopHold();
     if (this.clockTimer) clearInterval(this.clockTimer);
     this.removeEventListener("pointerdown", this.onActivity, { capture: true });
     this.removeEventListener("keydown", this.onKey);
@@ -911,10 +925,12 @@ export class MyDashLightBoard extends LitElement {
   private open(t: Target | null, reveal = false): void {
     if (!t) return;
     this.flushArrive();
+    this.flushLeave();
     this.closeChorePanels();
     this.sel = t;
     this.scope = "this";
     this.arriveDraft = undefined;
+    this.leaveDraft = undefined;
     if (reveal) this.reveal(t);
   }
 
@@ -928,8 +944,10 @@ export class MyDashLightBoard extends LitElement {
 
   private closeEditor(): void {
     this.flushArrive();
+    this.flushLeave();
     this.sel = null;
     this.arriveDraft = undefined;
+    this.leaveDraft = undefined;
   }
 
   private showToast(text: string): void {
@@ -1034,6 +1052,65 @@ export class MyDashLightBoard extends LitElement {
     void this.save("arrive", draft, () => b.setArriveBy(id, draft, scope)).then(() => {
       this.arriveDraft = undefined;
     });
+  }
+
+  private nudgeLeave(e: PlanEvent, by: number): void {
+    const cur = this.leaveDraft !== undefined ? this.leaveDraft : (e.leave_by ?? null);
+    let next: number | null;
+    // The first tap starts a quarter hour before the end; it never goes back to the start.
+    if (cur == null) next = by < 0 ? Math.max(e.start + 5, e.end - 15) : null;
+    else if (by < 0) next = Math.max(e.start + 5, cur - 5);
+    else next = cur + 5 >= e.end ? null : cur + 5;
+    this.leaveDraft = next;
+    if (this.leaveTimer) clearTimeout(this.leaveTimer);
+    this.leaveTimer = setTimeout(() => this.flushLeave(), ARRIVE_SAVE_MS);
+  }
+
+  private clearLeave(): void {
+    this.leaveDraft = null;
+    this.flushLeave();
+  }
+
+  private flushLeave(): void {
+    if (this.leaveTimer) clearTimeout(this.leaveTimer);
+    this.leaveTimer = null;
+    const draft = this.leaveDraft;
+    const t = this.sel;
+    if (draft === undefined || !t || !this.backend) return;
+    const found = this.findEvent(t);
+    if (!found || (found.event.leave_by ?? null) === draft) {
+      this.leaveDraft = undefined;
+      return;
+    }
+    const b = this.backend;
+    const id = found.event.id;
+    const scope = this.scope;
+    void this.save("leave", draft, () => b.setLeaveBy(id, draft, scope)).then(() => {
+      this.leaveDraft = undefined;
+    });
+  }
+
+  /** Holding a time stepper's button keeps stepping, so an hour earlier is one press. */
+  private startHold(step: () => void): void {
+    this.stopHold();
+    this.held = false;
+    this.holdTimer = setTimeout(() => {
+      this.held = true;
+      step();
+      this.holdRepeat = setInterval(step, REPEAT_MS);
+    }, HOLD_MS);
+  }
+
+  private stopHold(): void {
+    if (this.holdTimer) clearTimeout(this.holdTimer);
+    if (this.holdRepeat) clearInterval(this.holdRepeat);
+    this.holdTimer = this.holdRepeat = null;
+  }
+
+  /** A click on a time stepper's button: one step, unless it ends a hold that already stepped. */
+  private tapStep(step: () => void): void {
+    if (this.held) this.held = false;
+    else step();
   }
 
   private apply(id: string): void {
@@ -2529,7 +2606,9 @@ export class MyDashLightBoard extends LitElement {
     const riders = (s: Side | "both", driver: string): TemplateResult | typeof nothing => {
       const pend = pendingValue(`along-${s}`);
       const cur = pend !== undefined ? (pend as string[]) : s === "pick" ? (e.pick_along ?? []) : e.along;
-      const choices = [...kidIds(plan).filter((k) => k !== e.kid), ...drivers.filter((d) => d !== driver)];
+      // Kids at this same event have it as their own ride, so they aren't riders on it.
+      const atIt = new Set(day.events.filter((x) => x.event_id === e.event_id && !x.own).map((x) => x.kid));
+      const choices = [...kidIds(plan).filter((k) => k !== e.kid && !atIt.has(k)), ...drivers.filter((d) => d !== driver)];
       if (!choices.length) return nothing;
       const label = s === "both" ? "Riding along, both ways" : "Riding along";
       return html`<div class="field-sub">
@@ -2560,6 +2639,62 @@ export class MyDashLightBoard extends LitElement {
     const takes = takesPend !== undefined ? (takesPend as number | null) : (e.takes ?? null);
     const arrivePend = pendingValue("arrive");
     const arrive = this.arriveDraft !== undefined ? this.arriveDraft : arrivePend !== undefined ? (arrivePend as number | null) : e.arrive_by;
+    const leavePend = pendingValue("leave");
+    const leave = this.leaveDraft !== undefined ? this.leaveDraft : leavePend !== undefined ? (leavePend as number | null) : (e.leave_by ?? null);
+    // Arrive by and Leave by take a row each only once set; until then they're two small chips.
+    const timeRow = (kind: "arrive" | "leave", value: number): TemplateResult => {
+      const early = kind === "arrive";
+      const nudge = (by: number) => () => (early ? this.nudgeArrive(e, by) : this.nudgeLeave(e, by));
+      const stepBtn = (by: number, label: string, text: string, off: boolean): TemplateResult =>
+        html`<button
+          type="button"
+          class="step"
+          aria-label=${label}
+          ?disabled=${busy || off}
+          @pointerdown=${() => this.startHold(nudge(by))}
+          @pointerup=${() => this.stopHold()}
+          @pointerleave=${() => this.stopHold()}
+          @pointercancel=${() => this.stopHold()}
+          @click=${() => this.tapStep(nudge(by))}
+        >
+          ${text}
+        </button>`;
+      return html`<div class="field arrive">
+        <span class="arrive-text">
+          <span class="field-label">${early ? "Arrive by" : "Leave by"}</span>
+          <span class="field-hint">${early ? `${e.start - value} min before it starts` : `${e.end - value} min before it ends`}</span>
+        </span>
+        <span class="stepper">
+          ${stepBtn(-5, "Five minutes earlier", "−", !early && value - 5 <= e.start)}
+          <span class="arrive-value">${clock(value)}</span>
+          ${stepBtn(5, "Five minutes later", "+", false)}
+          <button
+            type="button"
+            class="step clear-time"
+            aria-label=${early ? "Clear arrive-by time" : "Clear leave-by time"}
+            ?disabled=${busy}
+            @click=${() => (early ? this.clearArrive() : this.clearLeave())}
+          >
+            ×
+          </button>
+        </span>
+      </div>`;
+    };
+    const canLeave = e.sides.includes("pick") || e.own != null;
+    const times = (): TemplateResult => html`${arrive != null ? timeRow("arrive", arrive) : nothing}
+      ${leave != null ? timeRow("leave", leave) : nothing}
+      ${arrive == null || (leave == null && canLeave)
+        ? html`<div class="field time-chips">
+            <div role="group" aria-label="Times" class="chips">
+              ${arrive == null
+                ? html`<button type="button" class="chip" ?disabled=${busy} @click=${() => this.nudgeArrive(e, -5)}>Arrive early</button>`
+                : nothing}
+              ${leave == null && canLeave
+                ? html`<button type="button" class="chip" ?disabled=${busy} @click=${() => this.nudgeLeave(e, -5)}>Leave early</button>`
+                : nothing}
+            </div>
+          </div>`
+        : nothing}`;
 
     // Drop off and come back, or stay: staying is one parent both ways, so it's one choice.
     const bothSides = e.sides.includes("drop") && e.sides.includes("pick");
@@ -2638,6 +2773,7 @@ export class MyDashLightBoard extends LitElement {
     if (errand) notes.push(`Takes: ${e.takes} min`);
     if (e.own && e.along.length) notes.push(`Take along: ${e.along.map(who).join(", ")}`);
     if (e.arrive_by != null) notes.push(`Arrive by: ${clockAmPm(e.arrive_by)}`);
+    if (e.leave_by != null) notes.push(`Leave by: ${clockAmPm(e.leave_by)}`);
     const attendPend = pendingValue("attending");
     const attending = attendPend !== undefined ? Boolean(attendPend) : e.attending !== false;
     if (e.attending === false) notes.splice(0, notes.length, "Attending: no");
@@ -2738,22 +2874,7 @@ export class MyDashLightBoard extends LitElement {
             </div>
           </div>`
         : nothing}
-      ${errand
-        ? nothing
-        : html`<div class="field arrive">
-        <span class="arrive-text">
-          <span class="field-label">Arrive by</span>
-          <span class="field-hint">${arrive != null ? `${e.start - arrive} min before it starts` : `Aims for a few minutes before ${clock(e.start)}`}</span>
-        </span>
-        <span class="stepper">
-          <button type="button" class="step" aria-label="Five minutes earlier" ?disabled=${busy} @click=${() => this.nudgeArrive(e, -5)}>−</button>
-          <span class="arrive-value">${arrive != null ? clock(arrive) : "Not set"}</span>
-          <button type="button" class="step" aria-label="Five minutes later" ?disabled=${busy || arrive == null} @click=${() => this.nudgeArrive(e, 5)}>+</button>
-        </span>
-      </div>
-      ${arrive != null
-        ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => this.clearArrive()}>Clear arrive-by time</button>`
-        : nothing}`}
+      ${errand ? nothing : times()}
 `
         : html`<p class="field-hint">
             Not going this time. It stays on the board, crossed out, with no rides planned, and it doesn’t count as a clash.

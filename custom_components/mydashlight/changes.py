@@ -44,6 +44,8 @@ class RideChange:
     """For a parent's errand: the minutes it takes, or None for an event at a set time."""
     pick_riders: tuple[str, ...] | Keep = KEEP
     """Who rides along on the pick-up."""
+    leave_by: int | Keep | None = KEEP
+    """When the kid has to leave, if before the end: minutes after midnight, or None for the end."""
 
     @property
     def rides(self) -> bool:
@@ -59,6 +61,7 @@ class RideChange:
                 self.drop_riders,
                 self.pick_riders,
                 self.takes,
+                self.leave_by,
             )
         )
 
@@ -85,6 +88,7 @@ class RideChange:
             stay=self.stay,
             along=self.along,
             arrive_by=self.arrive_by,
+            leave_by=self.leave_by,
             drop_riders=self.drop_riders,
             pick_riders=self.pick_riders,
             takes=self.takes,
@@ -92,7 +96,18 @@ class RideChange:
         )
 
 
-_LINES: Final = ("drop", "pick", "stay", "along", "arrive_by", "attending", "drop_riders", "pick_riders", "takes")
+_LINES: Final = (
+    "drop",
+    "pick",
+    "stay",
+    "along",
+    "arrive_by",
+    "leave_by",
+    "attending",
+    "drop_riders",
+    "pick_riders",
+    "takes",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +124,7 @@ def _same(name: str, a: _Notes, b: _Notes) -> bool:
     if name == "attending":
         return (a.rides.attending and not a.skipped) == (b.rides.attending and not b.skipped)
     x, y = getattr(a.rides, name), getattr(b.rides, name)
-    if name == "arrive_by" and x is not None and y is not None and x != y:
+    if name in ("arrive_by", "leave_by") and x is not None and y is not None and x != y:
         # "15 min early" reads as a different clock time on an occurrence moved to another time.
         return a.start is not None and b.start is not None and x - a.start == y - b.start
     return bool(x == y)

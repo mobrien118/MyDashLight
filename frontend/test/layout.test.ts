@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   attention,
+  leaveText,
   columnsFor,
   DAY_HEAD,
   headAt,
@@ -25,6 +26,7 @@ import {
 } from "../src/layout.ts";
 import { OWN_COLOR, andList, eventColor, ownerName } from "../src/layout.ts";
 import { sampleWeek } from "./helpers.ts";
+import type { PlanEvent } from "../src/types.ts";
 
 const plan = sampleWeek();
 const FIRST = plan.days[0]!.date;
@@ -576,4 +578,11 @@ test("a parent's busy time from their calendar is a card in their column, in bot
       assert.equal(card.time, id === "wed-rental" ? "From 8:00" : "7:00–8:00");
     }
   }
+});
+
+test("leaving early shows on the card's time line", () => {
+  const e = { start: 765, end: 885, leave_by: 795 } as PlanEvent;
+  assert.equal(leaveText(e), " · leave 1:15");
+  assert.equal(leaveText({ ...e, leave_by: null }), "");
+  assert.equal(leaveText({ ...e, leave_by: 885 }), "");
 });

@@ -105,6 +105,18 @@ function scenarios() {
     { id: 'wed-soccer', day: 6, kid: 'ava', title: 'Soccer', loc: 'soccer', start: 1155, end: 1230, drop: 'mom', pick: 'none', stay: false, arriveBy: 1145 }
   ];
   out.push(scenario('Wednesday with Ava due at soccer just after Cleo’s pick-up nearby', 6, t8));
+  // Ava's football game starts before Noah's party ends: the late drop-off offers leaving the
+  // party early, and with Leave by set Robin stays at the party until then and drives her straight
+  // there, with Ben (at the party too) along.
+  var t9 = function (leaveBy) {
+    return [
+      { id: 'sat-party', day: 2, kid: 'ava', title: 'Birthday party', loc: 'party', start: 765, end: 885, drop: 'mom', pick: 'mom', stay: false, arriveBy: null, along: ['ben'], leaveBy: leaveBy },
+      { id: 'sat-party~2', day: 2, kid: 'ben', title: 'Birthday party', loc: 'party', start: 765, end: 885, drop: 'mom', pick: 'mom', stay: true, arriveBy: null, leaveBy: leaveBy },
+      { id: 'sat-game', day: 2, kid: 'ava', title: 'Football game', loc: 'football', start: 840, end: 960, drop: 'mom', pick: 'mom', stay: true, arriveBy: 830, along: ['ben'], pickAlong: ['ben'] }
+    ];
+  };
+  out.push(scenario('Saturday with Ava’s game starting before the party she’s at ends', 2, t9(null)));
+  out.push(scenario('Saturday with Ava and Ben leaving the party early for her game', 2, t9(805)));
   return {
     note: "Expected planner output for the reference data in planner-reference.js. Times use the event day's local time. Travel times come from the DRIVE table there.",
     scenarios: out

@@ -287,6 +287,11 @@ export function whoName(plan: Plan, value: string): string {
 
 /** Whose event it is: the kid's name, or the parent's on their own event. */
 /** When an event is on this day. Busy time over more than a day says only this day's part. */
+/** " · leave 1:15" when the kid leaves before the end, or nothing. */
+export function leaveText(e: PlanEvent): string {
+  return e.leave_by != null && e.leave_by > e.start && e.leave_by < e.end ? ` · leave ${clock(e.leave_by)}` : "";
+}
+
 export function spanText(e: PlanEvent): string {
   if (e.busy_why === "days") {
     if (e.start <= 0 && e.end >= 1440) return "All day";
@@ -635,7 +640,7 @@ export function compactLines(lines: { drop: CardLine | null; pick: CardLine | nu
 /** A Compact card's height: everything on it shows, wrapped. */
 export function compactCardHeight(e: PlanEvent, colW: number): number {
   const inner = colW - 23; // padding, the color stripe and the border
-  const time = `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "");
+  const time = `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") + leaveText(e);
   let h = 15 + 18 + wrapRows(time, inner, 6.6) * 16;
   const ln = e.own ? e.lines : compactLines(e.lines);
   for (const l of [ln.drop, ln.pick]) if (l) h += 2 + wrapRows(l.text, inner, 7) * 16;
@@ -740,7 +745,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       const time =
         (e.takes != null
           ? `${e.takes} min, any time ${clock(e.start)}–${clock(e.end)}`
-          : spanText(e) + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "")) +
+          : spanText(e) + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") + leaveText(e)) +
         (going.length ? ` · with ${andList(going)}` : "");
       return {
         key: `${day.date}|card|${e.id}` + (e.own ? `|${colId}` : ""),

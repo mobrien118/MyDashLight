@@ -116,6 +116,28 @@ set_arrive_by:
             - this
             - series
 
+set_leave_by:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    time:
+      required: false
+      example: "13:15"
+      selector:
+        time:
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series
+
 set_take_along:
   fields:
     event:

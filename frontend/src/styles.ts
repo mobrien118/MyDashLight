@@ -1640,6 +1640,14 @@ export const styles = css`
     font-size: 20px;
     font-weight: 600;
   }
+  .step.clear-time {
+    width: 36px;
+    font-size: 18px;
+    color: var(--muted);
+  }
+  .time-chips .chips {
+    gap: 8px;
+  }
   .arrive-value {
     min-width: 64px;
     text-align: center;

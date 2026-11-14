@@ -158,6 +158,7 @@ Bring shin guards. Field 3.
 Drop-off: Sam, Ben
 Pick-up: the Parkers
 Arrive by: 5:15 PM
+Leave by: 6:30 PM
 Travel: 25 min
 ```
 
@@ -167,6 +168,7 @@ Travel: 25 min
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
 | Take along | Kids' names, and on a parent's own event the other parent | Nobody else rides along. On a parent's own event, everyone named goes there and back with that parent. On a kid's event, an older line still counts as riders on the drop-off |
 | Arrive by | A time, such as 5:15 PM, or 15 min early, when the kid has to be there before the event starts | They have to be there at the start. Either way, the driver aims to get there a margin early for traffic. It grows smoothly with the drive from home, 3 + 14 × ln(1 + drive ÷ 50) minutes: 3 with no drive, 5 for 10 minutes, 10 for 35, 14 for an hour, 20 for two. Pick-ups get the same margin, so the kid isn't left waiting |
+| Leave by | A time, such as 1:15 PM, when the kid has to leave before the event ends, like leaving a party early for a game | They leave at the end. With it, the pick-up is at that time, and a driver who stays leaves then. When one kid's events overlap, the warning offers leaving the first one early as a one-tap fix, in time to drive straight to the next |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
 | Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
@@ -200,6 +202,7 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_attending` | Whether the kid is going (`attending`). Going again also takes an old `NO` off the start of the title |
 | `mydashlight.set_arrive_by` | When the kid needs to be there, if it's before the start. The traffic margin still comes off it. No time means they need to be there at the start |
+| `mydashlight.set_leave_by` | When the kid has to leave, if it's before the end. The pick-up is then at that time. No time means they leave at the end |
 | `mydashlight.set_take_along` | Who rides along (`kids`, by name: other kids or the other parent) on the `side` you pick, `drop`, `pick` or `both`. When the driver stays, riders go both ways. On a parent's own event, they go there and back. Empty takes nobody along |
 | `mydashlight.set_takes` | How long a parent's errand takes (`minutes`). The errand then fits in any time between the event's start and end. No minutes makes it a set-time event again. Kids' events turn it down |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
