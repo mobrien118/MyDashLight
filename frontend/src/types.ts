@@ -186,9 +186,9 @@ export interface UnplacedEvent {
   word: string | null;
   /** Who it names that is in the family: kid ids and driver ids. */
   people: string[];
-  /** A repeating event (MyDashLight 0.21 and later). */
+  /** A repeating event (MyDashLight 0.22 and later). */
   recurring?: boolean;
-  /** Who it's for came from a "For:" line in its notes, not its title (MyDashLight 0.21 and later). */
+  /** Who it's for came from a "For:" line in its notes, not its title (MyDashLight 0.22 and later). */
   from_notes?: boolean;
 }
 
@@ -223,7 +223,7 @@ export interface Plan {
   needs_setup?: string | null;
   /** Set by the board when what's over is left off: every day as the plan had it, for the week's totals. */
   whole_week?: PlanDay[];
-  /** Who each timed event is for, by its Google event id (MyDashLight 0.21 and later). */
+  /** Who each timed event is for, by its Google event id (MyDashLight 0.22 and later). */
   who?: Record<string, { people: string[]; from_notes: boolean }>;
 }
 
