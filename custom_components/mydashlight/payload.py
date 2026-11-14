@@ -121,9 +121,35 @@ def suggestion_id(day: str, change: Change) -> str:
     return f"{day}|{change.event_id}|{change.field}|{value}"
 
 
+def _as_written(e: RideEvent, day: DayInput) -> tuple[bool, tuple[str, ...]]:
+    """Stay and who's taken along as the event's notes say, for each kid's copy of it.
+
+    To plan one car for kids at the same event, only the last copy stays and the first takes the
+    others along (``week._ride_together``). That's how the planner sees it, not what's written,
+    and every copy is the same event in the calendar, so each shows what's written.
+    """
+    ref = day.refs[e.id]
+    if e.own is not None or e.takes is not None:
+        return e.stay, e.along
+    copies = [
+        x
+        for x in day.events
+        if x.own is None
+        and x.takes is None
+        and (r := day.refs.get(x.id)) is not None
+        and (r.calendar_id, r.event_id) == (ref.calendar_id, ref.event_id)
+    ]
+    if len(copies) < 2:
+        return e.stay, e.along
+    kids = {x.kid for x in copies}
+    stay = e.stay or (any(x.stay for x in copies) and len({(x.drop, x.pick) for x in copies}) == 1)
+    return stay, tuple(a for a in e.along if a not in kids)
+
+
 def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict[str, Any]:
     ref = day.refs[e.id]
     lines = board.lines.get(e.id)
+    stay, along = _as_written(e, day)
     return {
         "id": e.id,
         "kid": e.kid,
@@ -137,10 +163,10 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "end": e.end,
         "drop": e.drop,
         "pick": e.pick,
-        "stay": e.stay,
+        "stay": stay,
         "arrive_by": e.arrive_by,
         "leave_by": e.leave_by,
-        "along": [*e.along, *e.parents],
+        "along": [*along, *e.parents],
         "pick_along": [*e.pick_along, *e.pick_parents],
         "own": e.own,
         "takes": e.takes,

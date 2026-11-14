@@ -180,6 +180,10 @@ async def test_a_parent_named_with_the_kids_takes_them(hass: HomeAssistant, goog
         "donuts": ("dad", "dad", "Sam stays · leaves 5:39", "Home 7:15 with Sam"),
         "donuts~2": ("dad", "dad", "Sam stays · leaves 5:39", "Home 7:15 with Sam"),
     }
+    # It's one event in the calendar, so both kids' copies show it as written: Sam stays, and
+    # neither kid is "taken along" on the other's copy.
+    written = {e["id"]: (e["stay"], e["along"]) for e in today["events"] if e["title"] == "Donuts"}
+    assert written == {"donuts": (True, []), "donuts~2": (True, [])}
     dad = today["drivers"]["dad"]
     assert [o["title"] for o in dad["outings"]] == ["Drive Ava and Ben to Donut Shop and stay"]
     assert today["issues"] == []
