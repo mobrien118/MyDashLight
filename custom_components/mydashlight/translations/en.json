@@ -519,6 +519,24 @@
           "description": "For a repeating event: change just this one, or every one."
         }
       }
+    },
+    "set_people": {
+      "name": "Set who an event is for",
+      "description": "Says who an event on the family calendar is for, in a \"For:\" line in its notes, so it shows in their lanes without changing its title. The For line wins over the names at the start of the title. No people takes the line away, so the title's names count again.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id: an \"id\" under \"unplaced\" in Get ride plan, or an event's \"id\" in the plan."
+        },
+        "people": {
+          "name": "People",
+          "description": "Who it's for, by name (or another name set up for them, such as Mom) or by id. Leave empty to go back to the names in the title."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
+        }
+      }
     }
   },
   "exceptions": {
@@ -592,7 +610,7 @@
       "message": "{name} isn't one of the kids in MyDashLight."
     },
     "unknown_person": {
-      "message": "{name} isn't one of the kids or parents in MyDashLight."
+      "message": "“{name}” isn't anyone in the family. Use a name set up under Configure > Names and planner timing."
     },
     "bad_days": {
       "message": "MyDashLight can't read the days \"{days}\". Try Mon-Fri, Thu, 15, 1st Sat or Any."

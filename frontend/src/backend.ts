@@ -27,6 +27,8 @@ export interface Backend {
   /** Going (true) or skipping this one (false). */
   setAttending(event: string, attending: boolean, scope: Scope): Promise<void>;
   applySuggestion(id: string): Promise<void>;
+  /** Who an event is for, saved as a "For:" line in its notes; none goes back to the names in its title. */
+  setPeople(event: string, people: string[], scope: Scope): Promise<void>;
   /**
    * Calls `onChores` with the chores now and whenever they change; null while they can't be
    * read (MyDashLight not running, or a version without chores). Returns a function that stops it.
@@ -358,6 +360,10 @@ export class HassBackend implements Backend {
     return this.call("apply_suggestion", { suggestion: id });
   }
 
+  setPeople(event: string, people: string[], scope: Scope): Promise<void> {
+    return this.call("set_people", { event, people, scope });
+  }
+
   watchChores(onChores: (chores: ChoresPayload | null) => void): () => void {
     let stopped = false;
     let seen = false;
@@ -622,6 +628,10 @@ export class PreviewBackend implements Backend {
   }
 
   applySuggestion(): Promise<void> {
+    return this.nope();
+  }
+
+  setPeople(): Promise<void> {
     return this.nope();
   }
 }

@@ -85,9 +85,12 @@ the title just colours the chip. A trip that should keep a parent from driving n
 Indianapolis" from 7 AM Tuesday to 7 PM Friday is one event in Robin's column.
 
 An event with times whose title doesn't start with a known name, like "Garage floor bid" or
-"Happy Hour Robin", is flagged in Needs attention as "Who is this for?" and shown in the top row
-until its title is fixed. So is a name MyDashLight doesn't know, as in "Ava & Zoe Sleepover",
-which still shows in Ava's column. Declined events and events marked Free don't count as busy.
+"Happy Hour Robin", is flagged in Needs attention as "Who is this for?" and shown in the top row.
+So is a name MyDashLight doesn't know, as in "Ava & Zoe Sleepover", which still shows in Ava's
+column. Tap the flag on the board to pick who it's for: that's saved as a `For:` line in the
+event's notes (see below), so the title stays as it is. A `For:` line wins over the names in
+the title, and an event's ride editor has a Change button for it. Declined events and events
+marked Free don't count as busy.
 
 A parent's own event at a set time and a real address, such as a dentist visit or a soccer game,
 gets a ride too: that parent drives there, stays, and drives back, and the drive counts as busy
@@ -155,6 +158,7 @@ end of the event's notes, after a `--- Rides ---` line:
 Bring shin guards. Field 3.
 
 --- Rides ---
+For: Ava & Ben
 Drop-off: Sam, Ben
 Pick-up: the Parkers
 Arrive by: 5:15 PM
@@ -164,6 +168,7 @@ Travel: 25 min
 
 | Line | Values | Without the line |
 | --- | --- | --- |
+| For | Who the event is for, by name, joined the same way as in titles: `Ava & Ben`, `Robin, Cleo`. Only read inside the Rides block, since copied event details often say things like "For: ages 6 to 10" | The names at the start of the title |
 | Drop-off, Pick-up | The driver first: a parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver). Then anyone riding along, by name, such as `Drop-off: Sam, Ben, Robin`. `TBD` holds the driver's place when riders are named but nobody is driving yet | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
 | Take along | Kids' names, and on a parent's own event the other parent | Nobody else rides along. On a parent's own event, everyone named goes there and back with that parent. On a kid's event, an older line still counts as riders on the drop-off |

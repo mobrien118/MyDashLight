@@ -196,6 +196,11 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
             "kids": [{"id": k.calendar_id, "name": k.name} for k in self.settings.roles.kids],
             "carpools": list(directory.carpools),
         }
+        # Who each event is for, by its Google id, so the app can show it and change it.
+        out["who"] = {
+            event_id: {"people": list(people), "from_notes": noted}
+            for event_id, (people, noted) in self.data.split.who.items()
+        }
         error = None if self.last_update_success or self.last_exception is None else str(self.last_exception)
         out["status"] = {"ok": self.last_update_success, "error": error}
         return out

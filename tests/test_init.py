@@ -152,7 +152,10 @@ async def test_one_family_calendar(hass: HomeAssistant, google: FakeGoogle) -> N
     google.add(FAMILY, **timed("bid", "Garage floor bid", "2026-11-03T16:00:00-06:00", "2026-11-03T17:00:00-06:00"))
     await load(hass)
 
-    (today,) = (await get_plan(hass))["days"]
+    plan = await get_plan(hass)
+    (today,) = plan["days"]
+    # Who each event is for, by its Google id, for the app.
+    assert plan["who"]["dentist"] == {"people": [AVA, BEN], "from_notes": False}
     # One event, in both kids' lanes.
     dentist = [(e["id"], e["kid"], e["title"]) for e in today["events"] if e["title"] == "Dentist"]
     assert dentist == [("dentist", AVA, "Dentist"), ("dentist~2", BEN, "Dentist")]

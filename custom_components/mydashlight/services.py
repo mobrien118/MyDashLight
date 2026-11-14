@@ -1,4 +1,4 @@
-"""MyDashLight's services: read the plan, and change rides.
+"""MyDashLight's services: read the plan, change rides, and say who an event is for.
 
 Ride changes are saved in the notes of the event on the kid's Google calendar, then the
 plan is read again, so the change shows the same everywhere: in the app, on phones and in
@@ -17,7 +17,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
-from .changes import RideChange, async_save
+from .changes import RideChange, Target, async_save
 from .const import (
     ATTR_ATTENDING,
     ATTR_DATE,
@@ -26,6 +26,7 @@ from .const import (
     ATTR_EVENT,
     ATTR_KIDS,
     ATTR_MINUTES,
+    ATTR_PEOPLE,
     ATTR_SCOPE,
     ATTR_SIDE,
     ATTR_STAY,
@@ -40,6 +41,7 @@ from .const import (
     SERVICE_SET_ARRIVE_BY,
     SERVICE_SET_ATTENDING,
     SERVICE_SET_LEAVE_BY,
+    SERVICE_SET_PEOPLE,
     SERVICE_SET_RIDE,
     SERVICE_SET_STAY,
     SERVICE_SET_TAKE_ALONG,
@@ -49,6 +51,7 @@ from .coordinator import target_for
 from .google import EventNotes, GoogleAuthError, GoogleCalendarUnavailable, GoogleConflict, GoogleError
 from .notes import KEEP, Keep
 from .planner import HOME
+from .who import names_text, read_names
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -85,6 +88,9 @@ SET_TAKES_SCHEMA = vol.Schema(
     {**_EVENT_FIELDS, vol.Optional(ATTR_MINUTES): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=1, max=600)))}
 )
 APPLY_SUGGESTION_SCHEMA = vol.Schema({vol.Required(ATTR_SUGGESTION): cv.string})
+SET_PEOPLE_SCHEMA = vol.Schema(
+    {**_EVENT_FIELDS, vol.Optional(ATTR_PEOPLE, default=[]): vol.All(cv.ensure_list, [cv.string])}
+)
 
 
 @callback
@@ -101,6 +107,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         (SERVICE_SET_TAKE_ALONG, _async_set_take_along, SET_TAKE_ALONG_SCHEMA),
         (SERVICE_SET_TAKES, _async_set_takes, SET_TAKES_SCHEMA),
         (SERVICE_APPLY_SUGGESTION, _async_apply_suggestion, APPLY_SUGGESTION_SCHEMA),
+        (SERVICE_SET_PEOPLE, _async_set_people, SET_PEOPLE_SCHEMA),
     ]
     for name, handler, schema in changes:
         hass.services.async_register(DOMAIN, name, handler, schema=schema)
@@ -238,6 +245,72 @@ async def _async_change_event(
     target = target_for(ride, ref)
     series = ref.recurring_id if call.data.get(ATTR_SCOPE) == SCOPE_SERIES else None
     also = coordinator.occurrences(ref.calendar_id, series) if series else []
+    await _async_save(call.hass, entry, target, change, series, also, ride.title)
+
+
+async def _async_set_people(call: ServiceCall) -> None:
+    """Say who an event is for, in a For line in its notes, so its title can stay as it is.
+
+    Works on an event the board couldn't place (its title names nobody) as well as on one it
+    did. No people takes the line away, so the names in the title count again.
+    """
+    entry = _loaded_entry(call.hass)
+    coordinator = entry.runtime_data.coordinator
+    people = coordinator.settings.people
+    known = {**people.kids, **people.parents}
+    ids: list[str] = []
+    for value in call.data[ATTR_PEOPLE]:
+        if value in known:
+            found: tuple[str, ...] = (value,)
+        else:
+            found, unknown = read_names(value, people)
+            if unknown is not None or not found:
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="unknown_person",
+                    translation_placeholders={"name": unknown or value},
+                )
+        ids.extend(i for i in found if i not in ids)
+    event_id = call.data[ATTR_EVENT]
+    wanted_series = call.data.get(ATTR_SCOPE) == SCOPE_SERIES
+    strays = coordinator.data.split.unplaced if coordinator.data else []
+    stray = next((u for u in strays if u.id == event_id), None)
+    also: list[Target] = []
+    if stray is not None:
+        title = stray.title
+        target = Target(stray.calendar_id or coordinator.settings.events_calendar, stray.id)
+        series = stray.recurring_id if wanted_series else None
+        if series:
+            also = [Target(u.calendar_id or target.calendar_id, u.id) for u in strays if u.recurring_id == series]
+    else:
+        planned = coordinator.find(event_id)
+        if planned is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="event_not_found",
+                translation_placeholders={"event": event_id},
+            )
+        _, ride, ref = planned
+        title = ride.title
+        target = Target(ref.calendar_id, ref.event_id)
+        series = ref.recurring_id if wanted_series else None
+    if series:
+        also = [*also, *coordinator.occurrences(target.calendar_id, series)]
+    change = RideChange(people=names_text(ids, people) or None)
+    await _async_save(call.hass, entry, target, change, series, also, title)
+
+
+async def _async_save(
+    hass: HomeAssistant,
+    entry: MyDashLightConfigEntry,
+    target: Target,
+    change: RideChange,
+    series: str | None,
+    also: list[Target],
+    title: str,
+) -> None:
+    """Save a change to an event's notes on Google, then plan again so it shows everywhere."""
+    coordinator = entry.runtime_data.coordinator
     saved: list[tuple[str, EventNotes]] = []
     async with entry.runtime_data.write_lock:
         try:
@@ -251,7 +324,7 @@ async def _async_change_event(
                 saved=saved,
             )
         except GoogleAuthError as err:
-            entry.async_start_reauth(call.hass)
+            entry.async_start_reauth(hass)
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="auth_failed") from err
         except GoogleConflict as err:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="write_conflict") from err
@@ -259,7 +332,7 @@ async def _async_change_event(
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="cant_change_event",
-                translation_placeholders={"title": ride.title},
+                translation_placeholders={"title": title},
             ) from err
         except GoogleError as err:
             raise HomeAssistantError(

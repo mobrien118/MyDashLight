@@ -363,3 +363,25 @@ set_takes:
           options:
             - this
             - series
+set_people:
+  fields:
+    event:
+      required: true
+      example: abc123def456
+      selector:
+        text:
+    people:
+      required: false
+      example: '["Ava", "Ben"]'
+      selector:
+        text:
+          multiple: true
+    scope:
+      required: false
+      default: this
+      selector:
+        select:
+          translation_key: scope
+          options:
+            - this
+            - series

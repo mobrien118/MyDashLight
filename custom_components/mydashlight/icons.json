@@ -41,6 +41,9 @@
     },
     "set_lunch_menu": {
       "service": "mdi:food-variant"
+    },
+    "set_people": {
+      "service": "mdi:account-multiple-check"
     }
   }
 }

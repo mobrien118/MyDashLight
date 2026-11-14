@@ -140,10 +140,12 @@ test("the needs-attention list", () => {
       "Tue · Cleo is double-booked",
     ],
   );
-  // An event whose title names nobody says how to fix it, with the family's own names.
+  // An event whose title names nobody opens the picker for who it's for, and says the other fix
+  // with the family's own names.
   const nobody = all.items.find((i) => i.key.endsWith("|unplaced|bid"))!;
   assert.equal(nobody.target, null);
-  assert.match(nobody.body, /such as “Ava Piano”, or “Ava & Ben Piano” for both/);
+  assert.deepEqual(nobody.pick, { day: plan.days[1]!.date, id: "bid" });
+  assert.match(nobody.body, /Tap to pick who it’s for, or start the title in Google Calendar with a name, such as “Ava Piano”/);
   // Normally only the next two days: later problems are counted, not listed.
   const { items, problems, later, laterUnassigned } = attention(plan, today);
   assert.equal(problems, 3);
@@ -534,11 +536,12 @@ test("all-day events go in the day's heading, under the date", () => {
   const heads = new Map(board.dayHeads.map((h) => [h.date, h]));
   const fri = heads.get(plan.days[1]!.date)!;
   assert.deepEqual(
-    fri.allDay.map((c) => [c.title, c.note, c.warn]),
+    fri.allDay.map((c) => [c.title, c.note, c.warn, c.pick]),
     [
-      ["Trash & Recycling Day", "", false],
-      ["Wear the black jersey", "", false],
-      ["4:00 Garage floor bid", "Who is this for?", true],
+      ["Trash & Recycling Day", "", false, null],
+      ["Wear the black jersey", "", false, null],
+      // Tapping the one for nobody picks who it's for.
+      ["4:00 Garage floor bid", "Who is this for?", true, "bid"],
     ],
   );
   // Nobody's all-day event is plain; one naming someone takes their colour.
