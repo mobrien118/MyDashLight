@@ -13,6 +13,8 @@ Every event's title starts with who it's for (see :mod:`.who`). From there:
   covers, for nobody. A name in its title only gives it that person's colour, and it never
   stops anyone driving.
 * A timed event that names nobody can't be placed, so it's flagged, never guessed.
+* A "For:" line in the event's Rides notes block names who it's for instead, and wins over the
+  title. That's how the board saves a pick made on screen without changing the title.
 
 Pure module, no Home Assistant imports.
 """
@@ -24,7 +26,8 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, tzinfo
 
 from .google import CalendarEvent
-from .who import People, Who, read_title
+from .notes import read_for
+from .who import People, Who, read_names, read_title
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +73,10 @@ class Unplaced:
     people: tuple[str, ...] = ()
     at: int = 0
     """Its start, in minutes after midnight on its day."""
+    calendar_id: str = ""
+    recurring_id: str | None = None
+    from_notes: bool = False
+    """Who it's for came from the For line in its notes, not its title."""
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -81,6 +88,8 @@ class Unplaced:
             "reason": self.reason,
             "word": self.word,
             "people": list(self.people),
+            "recurring": self.recurring_id is not None,
+            "from_notes": self.from_notes,
         }
 
 
@@ -90,6 +99,8 @@ class Split:
     """Each person's timed events, by kid id or driver id."""
     day_items: list[DayItem] = field(default_factory=list)
     unplaced: list[Unplaced] = field(default_factory=list)
+    who: dict[str, tuple[tuple[str, ...], bool]] = field(default_factory=dict)
+    """Who each timed event is for, by Google event id, and whether that came from its notes."""
     escorts: dict[str, tuple[str, ...]] = field(default_factory=dict)
     """The parents a kid's event also names, by event id, in title order: "Sam, Ben & Cleo
     Donuts" means Sam takes them, so Sam drives both ways unless the notes say otherwise."""
@@ -107,7 +118,7 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
     for ev in events:
         if ev.declined:
             continue
-        who = read_title(ev.title, people)
+        who, from_notes = read_who(ev, people)
         if ev.all_day:
             out.day_items.append(_day_item(ev, who))
             continue
@@ -122,13 +133,17 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
                     local.date(),
                     ev.start,
                     ev.end,
-                    "unknown" if who.people else "nobody",
+                    "unknown" if who.unknown is not None else "nobody",
                     who.unknown,
                     who.people,
                     local.hour * 60 + local.minute,
+                    ev.calendar_id,
+                    ev.recurring_id,
+                    from_notes,
                 )
             )
         if who.people:
+            out.who[ev.id] = (who.people, from_notes)
             # In a person's lane their name goes without saying: "Ava Piano" shows as "Piano".
             # A NO in front still means they aren't going.
             shown = lane_title(who)
@@ -138,6 +153,22 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
             if parents and any(p in people.kids for p in who.people):
                 out.escorts[ev.id] = parents
     return out
+
+
+def read_who(ev: CalendarEvent, people: People) -> tuple[Who, bool]:
+    """Who an event is for, and whether that came from the For line in its notes.
+
+    A For line wins over the names in the title. The title then keeps its own names off the
+    front only when the For line names all of them too, so "Ava Piano" for Ava and Ben shows as
+    "Piano", while "Sam Golf" for Cleo keeps its whole title in Cleo's lane.
+    """
+    who = read_title(ev.title, people)
+    said = read_for(ev.description)
+    if said is None:
+        return who, False
+    ids, unknown = read_names(said, people)
+    titled = who.people and set(who.people) <= set(ids)
+    return replace(who, people=ids, unknown=unknown, rest=who.rest if titled else who.title), True
 
 
 def lane_title(who: Who) -> str:

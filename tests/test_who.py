@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.mydashlight.who import People, initials, read_title
+from custom_components.mydashlight.who import People, initials, names_text, read_names, read_title
 
 PEOPLE = People(
     kids={"ava": "Ava", "ben": "Ben", "cleo": "Cleo"},
@@ -107,3 +107,33 @@ def test_one_kid_has_no_all_kids_shortcut() -> None:
 )
 def test_the_rest_of_the_title(title: str, rest: str) -> None:
     assert read_title(title, PEOPLE).rest == rest
+
+
+@pytest.mark.parametrize(
+    ("text", "people", "unknown"),
+    [
+        ("Ava", ("ava",), None),
+        ("Ava & Ben", ("ava", "ben"), None),
+        ("ava, ben & cleo", ("ava", "ben", "cleo"), None),
+        ("Mom & Clee", ("mom", "cleo"), None),
+        ("AB&C", ("ava", "ben", "cleo"), None),
+        ("Ava, Zoe", ("ava",), "Zoe"),
+        ("Ava Zoe", ("ava",), "Zoe"),
+        ("Zoe", (), "Zoe"),
+        ("Ben.", ("ben",), None),
+        ("nobody", (), None),
+        ("", (), None),
+        (None, (), None),
+    ],
+)
+def test_read_names(text: str | None, people: tuple[str, ...], unknown: str | None) -> None:
+    assert read_names(text, PEOPLE) == (people, unknown)
+
+
+def test_names_text() -> None:
+    assert names_text([], PEOPLE) == ""
+    assert names_text(["ava"], PEOPLE) == "Ava"
+    assert names_text(["ava", "mom"], PEOPLE) == "Ava & Robin"
+    assert names_text(["ava", "ben", "cleo", "ben"], PEOPLE) == "Ava, Ben & Cleo"
+    # Read back, the same people in the same order.
+    assert read_names(names_text(["dad", "cleo", "ava"], PEOPLE), PEOPLE) == (("dad", "cleo", "ava"), None)

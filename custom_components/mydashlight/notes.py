@@ -5,6 +5,7 @@ The ride lines live in a block at the end of the event's description, after a he
     Bring shin guards. Field 3.
 
     --- Rides ---
+    For: Ava & Ben
     Drop-off: Sam
     Pick-up: the Parkers
     Stay: yes
@@ -20,7 +21,11 @@ Reading:
 * When the notes have a Rides block, only lines inside it count. Text above it is never read
   as a ride, so a coach's "Pick-up: bring cleats" can't be mistaken for a driver.
 * When there is no block, ``Label: value`` lines anywhere count, so a quick line typed on a
-  phone still works. The next write moves them into a new block.
+  phone still works. The next write moves them into a new block. The For line is the
+  exception: it only counts inside the block, since copied event details often say things
+  like "For: ages 6 to 10".
+* ``For`` says who the event is for, by name, in place of the names at the start of the title
+  (see :mod:`.shared`). This module keeps it as the text it is; :mod:`.who` reads the names.
 * Google stores the description as HTML once someone edits it on the web. Line breaks come
   from ``<br>``, ``<p>``, ``<div>`` and ``<li>``, and other tags are ignored.
 
@@ -44,8 +49,9 @@ from .planner import NOT_NEEDED, UNASSIGNED, fmt12
 
 RIDES_HEADER: Final = "--- Rides ---"
 
-Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "leave_by", "travel", "takes"]
+Field = Literal["people", "attending", "drop", "pick", "stay", "along", "arrive_by", "leave_by", "travel", "takes"]
 FIELDS: Final[tuple[Field, ...]] = (
+    "people",
     "attending",
     "drop",
     "pick",
@@ -56,9 +62,14 @@ FIELDS: Final[tuple[Field, ...]] = (
     "travel",
     "takes",
 )
+BLOCK_ONLY: Final[frozenset[Field]] = frozenset({"people"})
+"""Fields only read inside the Rides block, never from a loose line."""
 
 
 _LABELS: Final[dict[str, Field]] = {
+    "for": "people",
+    "whofor": "people",
+    "who": "people",
     "attending": "attending",
     "attend": "attending",
     "dropoff": "drop",
@@ -74,6 +85,7 @@ _LABELS: Final[dict[str, Field]] = {
     "duration": "takes",
 }
 _WRITE_LABELS: Final[dict[Field, str]] = {
+    "people": "For",
     "attending": "Attending",
     "drop": "Drop-off",
     "pick": "Pick-up",
@@ -202,6 +214,8 @@ class RideNotes:
     """Who rides along on the drop-off, after the driver on its line: kid ids and driver ids."""
     pick_riders: tuple[str, ...] = ()
     """Who rides along on the pick-up, after the driver on its line."""
+    people: str | None = None
+    """Who the event is for, as the For line says it ("Ava & Ben"), or None with no such line."""
     has_block: bool = False
     problems: tuple[str, ...] = ()
     """Lines that couldn't be read, worded for people."""
@@ -249,6 +263,17 @@ def parse_notes(description: str | None, directory: DriverDirectory, event_start
     return _read(_split(description or ""), directory, event_start)
 
 
+def read_for(description: str | None) -> str | None:
+    """The For line's text in the Rides block ("Ava & Ben"), or None when there isn't one."""
+    doc = _split(description or "")
+    found = _locate(doc)["people"]
+    if not found:
+        return None
+    m = _LINE_RE.match(doc.lines[found[-1]].text)
+    assert m is not None
+    return " ".join(m.group(2).split()) or None
+
+
 def write_notes(
     description: str | None,
     directory: DriverDirectory,
@@ -264,12 +289,15 @@ def write_notes(
     takes: int | Keep | None = KEEP,
     drop_riders: Iterable[str] | Keep = KEEP,
     pick_riders: Iterable[str] | Keep = KEEP,
+    people: str | Keep | None = KEEP,
     event_start: int | None = None,
 ) -> str:
     """Return the description with ride settings changed.
 
     A driver line holds the driver, then whoever rides along on that side, such as
     "Drop-off: Sam, Ben". Riders with no driver yet are written after "TBD".
+
+    ``people`` is the For line's text, already worded ("Ava & Ben"); None takes the line away.
 
     Returns the description unchanged when no value actually changes, so callers can skip
     the write to Google.
@@ -281,6 +309,7 @@ def write_notes(
     current["drop"] = (notes.drop, notes.drop_riders)
     current["pick"] = (notes.pick, notes.pick_riders)
     wanted: dict[Field, object] = {
+        "people": people,
         "attending": attending,
         "drop": _side(drop, drop_riders, notes.drop, notes.drop_riders),
         "pick": _side(pick, pick_riders, notes.pick, notes.pick_riders),
@@ -319,7 +348,8 @@ def write_notes(
                     block.append(_ours(text, doc))
         for f in FIELDS:
             if f in changed and f not in placed and (text := rendered[f]) is not None:
-                block.append(_ours(text, doc))
+                # Who it's for heads the block; other new lines go at its end.
+                block.insert(0 if f == "people" else len(block), _ours(text, doc))
         body = _join(doc, doc.lines[: doc.header])
     else:
         # First write: move the loose ride lines that counted into a new block.
@@ -423,7 +453,7 @@ def _field_of(text: str) -> Field | None:
 def _locate(doc: _Doc) -> dict[Field, list[int]]:
     found: dict[Field, list[int]] = {f: [] for f in FIELDS}
     for i in doc.scope:
-        if (fld := _field_of(doc.lines[i].text)) is not None:
+        if (fld := _field_of(doc.lines[i].text)) is not None and (doc.header is not None or fld not in BLOCK_ONLY):
             found[fld].append(i)
     return found
 
@@ -438,6 +468,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     leave_by: int | None = None
     travel: int | None = None
     takes: int | None = None
+    people: str | None = None
     problems: list[str] = []
     found = _locate(doc)
     for fld in FIELDS:
@@ -448,7 +479,9 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         assert m is not None
         raw = m.group(2)
         label = _WRITE_LABELS[fld]
-        if fld in ("drop", "pick"):
+        if fld == "people":
+            people = " ".join(raw.split()) or None
+        elif fld in ("drop", "pick"):
             first, *rest = raw.split(",") if "," in raw else [raw]
             drivers[fld] = UNASSIGNED if rest and first.strip().casefold() in _TBD_WORDS else directory.resolve(first)
             for name in filter(None, (r.strip() for r in rest)):
@@ -499,6 +532,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         leave_by=leave_by,
         travel=travel,
         takes=takes,
+        people=people,
         has_block=doc.header is not None,
         problems=tuple(problems),
     )
@@ -515,6 +549,8 @@ def _side(driver: str | Keep, riders: Iterable[str] | Keep, now_driver: str, now
 
 
 def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
+    if fld == "people":
+        return None if value is None else (" ".join(str(value).split()) or None)
     if fld in ("drop", "pick"):
         assert isinstance(value, tuple)
         driver = directory.resolve(str(value[0] or ""))
@@ -534,6 +570,8 @@ def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
 def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None:
     """The line for a value, or None when the value is the default and needs no line."""
     label = _WRITE_LABELS[fld]
+    if fld == "people":
+        return f"{label}: {value}" if value else None
     if fld in ("drop", "pick"):
         assert isinstance(value, tuple)
         driver, riders = str(value[0]), value[1]

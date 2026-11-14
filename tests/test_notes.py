@@ -10,6 +10,7 @@ from custom_components.mydashlight.notes import (
     parse_clock,
     parse_duration,
     parse_notes,
+    read_for,
     skip_prefix,
     write_notes,
 )
@@ -462,3 +463,46 @@ def test_leave_by() -> None:
     assert text == "Bring a gift\n\n--- Rides ---\nLeave by: 1:15 PM"
     assert parse(text, event_start=765).leave_by == 795
     assert write(text, leave_by=None) == "Bring a gift"
+
+
+# Who it's for
+
+
+def test_for_line_in_the_block() -> None:
+    text = "Party at the Lees.\n\n--- Rides ---\nFor: Ava &  Ben\nDrop-off: Sam"
+    assert parse(text).people == "Ava & Ben"
+    assert read_for(text) == "Ava & Ben"
+    assert parse(text).drop == "dad"
+    assert read_for("--- Rides ---\nWho for: Cleo") == "Cleo"
+    assert read_for("--- Rides ---\nFor:") is None
+
+
+def test_for_line_only_counts_inside_the_block() -> None:
+    # Copied event details say things like this; they're not who the event is for.
+    assert read_for("For: ages 6 to 10\nDrop-off: Sam") is None
+    assert parse("For: ages 6 to 10\nDrop-off: Sam").people is None
+    assert read_for("For: ages 6 to 10\n\n--- Rides ---\nDrop-off: Sam") is None
+    assert read_for(None) is None
+
+
+def test_write_for_line() -> None:
+    # A new block, with the ride lines that were loose moved in. Loose "For:" text stays put.
+    assert write("For: ages 6 to 10\nDrop-off: Sam", people="Ava") == (
+        "For: ages 6 to 10\n\n--- Rides ---\nFor: Ava\nDrop-off: Sam"
+    )
+    # Added to a block, it goes first.
+    assert write("--- Rides ---\nDrop-off: Robin", people="Ava & Ben") == (
+        "--- Rides ---\nFor: Ava & Ben\nDrop-off: Robin"
+    )
+    # Changed in place, then taken away (and the empty block with it).
+    text = "Gym.\n\n--- Rides ---\nFor: Ava"
+    assert write(text, people="Ben") == "Gym.\n\n--- Rides ---\nFor: Ben"
+    assert write(text, people=None) == "Gym."
+    assert write(text, people="Ava") == text
+    assert write("Gym.", people=None) == "Gym."
+
+
+def test_write_for_line_in_html_notes() -> None:
+    text = "<p>Party at the Lees.</p>"
+    assert write(text, people="Ava & Ben") == "<p>Party at the Lees.</p><br><br>--- Rides ---<br>For: Ava &amp; Ben"
+    assert read_for(write(text, people="Ava & Ben")) == "Ava & Ben"

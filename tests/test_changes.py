@@ -467,6 +467,79 @@ async def test_errand_minutes(hass: HomeAssistant, google: FakeGoogle) -> None:
     assert err.value.translation_key == "errand_on_kid"
 
 
+async def test_pick_who_an_event_is_for(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(
+        FAMILY,
+        **timed(
+            "party",
+            "Patrick's Birthday Party",
+            "2026-11-03T12:45:00-06:00",
+            "2026-11-03T14:45:00-06:00",
+            location="Gym, 5 Oak St",
+            description="Bring a gift.",
+        ),
+    )
+    entry = await load(hass)
+    data = entry.runtime_data.coordinator.data
+    assert [u["id"] for u in data.days[0]["unplaced"]] == ["party"]
+
+    await call(hass, "set_people", event="party", people=["ava", "Ben"])
+
+    # Saved in the notes; the title stays as it is.
+    assert google.patches[-1][3] == {"description": "Bring a gift.\n\n--- Rides ---\nFor: Ava & Ben"}
+    assert google.event(FAMILY, "party")["summary"] == "Patrick's Birthday Party"
+    data = entry.runtime_data.coordinator.data
+    assert data.days[0]["unplaced"] == []
+    party = planned(entry, "party")
+    assert party["title"] == "Patrick's Birthday Party"
+
+    # Now it's on the board, its ride lines go in the same block, and it can be changed again.
+    await call(hass, "set_ride", event="party", side="drop", driver="dad")
+    assert google.event(FAMILY, "party")["description"] == (
+        "Bring a gift.\n\n--- Rides ---\nFor: Ava & Ben\nDrop-off: Sam"
+    )
+    await call(hass, "set_people", event="party", people=["Ben"])
+    assert google.event(FAMILY, "party")["description"] == ("Bring a gift.\n\n--- Rides ---\nFor: Ben\nDrop-off: Sam")
+
+    # Nobody takes the line away, so the title counts again, and nobody it names is flagged.
+    await call(hass, "set_people", event="party", people=[])
+    assert google.event(FAMILY, "party")["description"] == "Bring a gift.\n\n--- Rides ---\nDrop-off: Sam"
+    assert [u["id"] for u in entry.runtime_data.coordinator.data.days[0]["unplaced"]] == ["party"]
+
+
+async def test_pick_who_with_names_that_are_not_anyone(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add(FAMILY, **timed("bid", "Garage bid", "2026-11-03T16:00:00-06:00", "2026-11-03T17:00:00-06:00"))
+    await load(hass)
+    with pytest.raises(ServiceValidationError) as err:
+        await call(hass, "set_people", event="bid", people=["Zoe"])
+    assert err.value.translation_key == "unknown_person"
+    with pytest.raises(ServiceValidationError) as err:
+        await call(hass, "set_people", event="nope", people=["Ava"])
+    assert err.value.translation_key == "event_not_found"
+    assert google.patches == []
+
+
+async def test_pick_who_for_every_time_it_repeats(hass: HomeAssistant, google: FakeGoogle) -> None:
+    google.add_series(FAMILY, id="bid", summary="Garage bid", description="")
+    for day in ("03", "04"):
+        google.add(
+            FAMILY,
+            **timed(
+                f"bid_202611{day}",
+                "Garage bid",
+                f"2026-11-{day}T16:00:00-06:00",
+                f"2026-11-{day}T17:00:00-06:00",
+                recurringEventId="bid",
+            ),
+        )
+    entry = await load(hass)
+    await call(hass, "set_people", event="bid_20261103", people=["Robin"], scope="series")
+    assert google.event(FAMILY, "bid")["description"] == "--- Rides ---\nFor: Robin"
+    for day in (0, 1):
+        assert entry.runtime_data.coordinator.data.days[day]["unplaced"] == []
+        assert planned(entry, f"bid_202611{day + 3:02d}", day)["own"] == "mom"
+
+
 def suggestions(entry: MockConfigEntry) -> list[dict[str, Any]]:
     return [
         s

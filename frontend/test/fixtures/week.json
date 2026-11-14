@@ -992,7 +992,9 @@
      "at": 960,
      "reason": "nobody",
      "word": null,
-     "people": []
+     "people": [],
+     "recurring": false,
+     "from_notes": false
     }
    ],
    "drivers": {

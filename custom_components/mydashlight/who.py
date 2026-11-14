@@ -8,7 +8,10 @@ as "AB&C". The kids' initials work as that shortcut without being set up: "AB&C"
 
 Only the start of the title counts. A name later on ("Happy hour with Ben") is left alone,
 since it's often someone else's event about that person, so the event is for nobody and
-whoever shows it says so. Pure module, no Home Assistant imports.
+whoever shows it says so.
+
+The same names can be written in a "For:" line in the event's notes instead (see
+:func:`read_names`), which wins over the title. Pure module, no Home Assistant imports.
 """
 
 from __future__ import annotations
@@ -112,6 +115,38 @@ def read_title(title: str | None, people: People) -> Who:
         pos = join.end()
     rest = " ".join(text[rest_at:].split()) if found else " ".join(text.split())
     return Who(tuple(found), " ".join(plain.split()), cancelled, unknown, rest)
+
+
+_NOBODY: Final = frozenset({"", "nobody", "no one", "none", "-"})
+
+
+def read_names(text: str | None, people: People) -> tuple[tuple[str, ...], str | None]:
+    """Who a list of names means, as written in a For line: "Ava & Ben", "Mom, Cleo", "AB&C".
+
+    Returns their ids in the order written, and the first word that isn't anyone in the family
+    (None when every name is known). Unlike a title, nothing may follow the names.
+    """
+    plain = " ".join((text or "").split())
+    if plain.casefold() in _NOBODY:
+        return (), None
+    who = read_title(plain, people)
+    if not who.people:
+        word = re.match(r"[\w'’-]+", plain)
+        return (), word.group(0) if word else plain
+    if who.unknown is not None:
+        return who.people, who.unknown
+    leftover = who.rest.strip(" &,+.")
+    word = re.match(r"[\w'’-]+", leftover)
+    return who.people, (word.group(0) if word else None) if leftover else None
+
+
+def names_text(ids: Iterable[str], people: People) -> str:
+    """Names for a For line, the way the family writes them: "Ava", "Ava & Ben", "Ava, Ben & Cleo"."""
+    known = {**people.kids, **people.parents}
+    names = [known.get(i, i) for i in dict.fromkeys(ids)]
+    if len(names) < 2:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " & " + names[-1]
 
 
 def _key(label: str) -> str:

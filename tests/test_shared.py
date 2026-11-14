@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -122,6 +123,58 @@ def test_events_for_nobody_are_flagged() -> None:
     assert [e.title for e in split.lanes["ava"]] == ["Zoe Sleepover"]
     days = in_window(split, [date(2026, 11, 3)])
     assert [u["id"] for u in days["2026-11-03"]["unplaced"]] == ["bid", "happy"]
+
+
+def test_the_for_line_in_the_notes_wins_over_the_title() -> None:
+    def noted(event_id: str, title: str, names: str) -> CalendarEvent:
+        ev = timed(event_id, title, "2026-11-14T12:45", "2026-11-14T14:45")
+        return replace(ev, description=f"At the gym.\n\n--- Rides ---\nFor: {names}")
+
+    split = split_events(
+        [
+            noted("party", "Patrick's 5th Birthday Party", "Ava & Ben"),
+            noted("piano", "Ava Piano", "Ava & Cleo"),
+            noted("golf", "Sam Golf", "Cleo"),
+            noted("sleepover", "Ava & Zoe Sleepover", "Ava"),
+            noted("typo", "Bid", "Ava, Zoey"),
+            noted("ghost", "Ghost tour", "Zoe"),
+            replace(
+                all_day("jersey", "Wear the black jersey", "2026-11-14", "2026-11-15"),
+                description="--- Rides ---\nFor: Ben",
+            ),
+        ],
+        PEOPLE,
+        TZ,
+    )
+    titles = {pid: [(e.id, e.title) for e in evs] for pid, evs in split.lanes.items()}
+    assert titles == {
+        "ava": [
+            ("party", "Patrick's 5th Birthday Party"),
+            ("piano", "Piano"),
+            ("sleepover", "Zoe Sleepover"),
+            ("typo", "Bid"),
+        ],
+        "ben": [("party", "Patrick's 5th Birthday Party")],
+        # The title's names stay on only when the For line doesn't name them all.
+        "cleo": [("piano", "Piano"), ("golf", "Sam Golf")],
+        "mom": [],
+        "dad": [],
+    }
+    # A name in the For line that isn't anyone is flagged, the same as one in a title.
+    assert [(u.id, u.reason, u.word, u.people, u.from_notes) for u in split.unplaced] == [
+        ("typo", "unknown", "Zoey", ("ava",), True),
+        ("ghost", "unknown", "Zoe", (), True),
+    ]
+    assert [(i.id, i.people) for i in split.day_items] == [("jersey", ("ben",))]
+
+
+def test_unplaced_says_where_to_save() -> None:
+    split = split_events(
+        [timed("bid_1", "Garage floor bid", "2026-11-14T16:00", "2026-11-14T17:00", recurring_id="bid")], PEOPLE, TZ
+    )
+    (bid,) = split.unplaced
+    assert (bid.calendar_id, bid.recurring_id, bid.from_notes) == (FAMILY, "bid", False)
+    assert bid.as_dict()["recurring"] is True
 
 
 def test_school_lanes() -> None:

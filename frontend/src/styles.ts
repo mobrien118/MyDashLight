@@ -704,6 +704,27 @@ export const styles = css`
     color: var(--warn-ink);
     font-weight: 700;
   }
+  /* An event for nobody: tap it to pick who it's for. */
+  button.strip-chip {
+    font: inherit;
+    font-size: 12px;
+    line-height: 24px;
+    text-align: left;
+    cursor: pointer;
+  }
+  button.strip-chip.pick:hover,
+  button.strip-chip.pick:focus-visible {
+    background: #ffeec2;
+  }
+  button.strip-chip.pick::after {
+    content: "›";
+    align-self: center;
+    margin-left: -2px;
+    color: var(--warn-ink);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+  }
   .strip-chip.skipped .strip-title {
     color: var(--muted);
     text-decoration: line-through;
@@ -1599,6 +1620,9 @@ export const styles = css`
   .chip.clear {
     align-self: flex-end;
   }
+  .chip.all-kids {
+    align-self: flex-start;
+  }
   input[type="text"] {
     min-height: 44px;
     padding: 0 12px;
@@ -2162,6 +2186,26 @@ export const styles = css`
   .who-chip[aria-pressed="true"] .avatar {
     background: var(--c);
     color: #fff;
+  }
+  .ed-for {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .ed-for-change {
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
   }
   .ed-icon {
     font-size: 24px;

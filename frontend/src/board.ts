@@ -89,7 +89,7 @@ import {
 import { pageOptions, type Page } from "./options.ts";
 import { withoutPast } from "./past.ts";
 import { styles } from "./styles.ts";
-import type { Plan, PlanDay, PlanEvent, Scope, Side } from "./types.ts";
+import type { Plan, PlanDay, PlanEvent, Scope, Side, UnplacedEvent } from "./types.ts";
 
 // Renamed when Compact became the default, so every screen starts there once, then remembers.
 const MODE_KEY = "mydashlight.rides.view";
@@ -198,6 +198,30 @@ interface MenuEdit {
   busy: boolean;
 }
 
+/** A kid's or a parent's name, by their id. */
+function personName(plan: Plan, id: string): string {
+  return driverIds(plan).includes(id) ? driverName(plan, id) : kidName(plan, id);
+}
+
+/** Picking who an event is for: one for nobody, or one on the board already. */
+interface ForPick {
+  day: string;
+  /** Its id in the day's `unplaced`, or in the plan's events when `placed`. */
+  id: string;
+  placed: boolean;
+  /** "4:00 Garage floor bid" */
+  label: string;
+  recurring: boolean;
+  /** A name it gives that isn't anyone in the family. */
+  word: string | null;
+  /** Who it's for comes from a For line in its notes, which can be taken away. */
+  fromNotes: boolean;
+  /** Who's picked so far: kid ids and driver ids. */
+  people: string[];
+  scope: Scope;
+  busy: boolean;
+}
+
 /** Nothing on any kid's calendar all week. */
 function quietWeek(plan: Plan): boolean {
   return plan.days.every((d) => !d.events.length);
@@ -244,6 +268,7 @@ export class MyDashLightBoard extends LitElement {
     lunchKid: { state: true },
     menuMode: { state: true },
     menuEdit: { state: true },
+    forPick: { state: true },
   };
 
   declare backend: Backend | null;
@@ -307,6 +332,8 @@ export class MyDashLightBoard extends LitElement {
   declare menuMode: boolean;
   /** A day's menu being added or changed in the panel. */
   declare menuEdit: MenuEdit | null;
+  /** An event for nobody whose people are being picked in the panel. */
+  declare forPick: ForPick | null;
 
   private stopWatching: (() => void) | null = null;
   private resize: ResizeObserver | null = null;
@@ -385,6 +412,7 @@ export class MyDashLightBoard extends LitElement {
     this.lunchKid = null;
     this.menuMode = false;
     this.menuEdit = null;
+    this.forPick = null;
   }
 
   override connectedCallback(): void {
@@ -777,6 +805,7 @@ export class MyDashLightBoard extends LitElement {
   }
 
   private closeChorePanels(): void {
+    this.forPick = null;
     this.menuEdit = null;
     this.choreEdit = null;
     this.choreBusy = false;
@@ -909,10 +938,193 @@ export class MyDashLightBoard extends LitElement {
 
   private onKey = (e: KeyboardEvent): void => {
     if (e.key !== "Escape") return;
-    if (this.choreEdit || this.whoFor) this.closeChorePanels();
+    if (this.choreEdit || this.whoFor || this.forPick) this.closeChorePanels();
     else if (this.sel) this.closeEditor();
     else this.sheet = false;
   };
+
+  // Who an event is for
+
+  private findUnplaced(day: string, id: string): UnplacedEvent | null {
+    return this.plan?.days.find((d) => d.date === day)?.unplaced?.find((u) => u.id === id) ?? null;
+  }
+
+  /** Opens the panel to pick who an event for nobody is for, starting from whoever it does name. */
+  private openForPick(day: string, id: string): void {
+    const u = this.findUnplaced(day, id);
+    const plan = this.plan;
+    if (!u || !plan) return;
+    this.closeEditor();
+    this.closeChorePanels();
+    this.sheet = false;
+    const known = new Set([...kidIds(plan), ...driverIds(plan)]);
+    this.forPick = {
+      day,
+      id,
+      placed: false,
+      label: `${clock(u.at)} ${u.title}`,
+      recurring: !!u.recurring,
+      word: u.reason === "unknown" ? u.word : null,
+      fromNotes: !!u.from_notes,
+      people: u.people.filter((p) => known.has(p)),
+      scope: "this",
+      busy: false,
+    };
+  }
+
+  /** Opens the same panel from the ride editor, to change who an event on the board is for. */
+  private changeForPick(plan: Plan, day: PlanDay, e: PlanEvent): void {
+    const who = plan.who?.[e.event_id];
+    const people = who?.people ?? [e.own ?? e.kid];
+    this.closeEditor();
+    this.forPick = {
+      day: day.date,
+      id: e.id,
+      placed: true,
+      label: `${clock(e.start)} ${e.title}`,
+      recurring: e.recurring,
+      word: null,
+      fromNotes: !!who?.from_notes,
+      people,
+      scope: "this",
+      busy: false,
+    };
+  }
+
+  /** Saves who it's for; `people` empty takes the For line away, back to the names in the title. */
+  private async saveForPick(clear = false): Promise<void> {
+    const f = this.forPick;
+    const plan = this.plan;
+    if (!f || !plan || !this.backend || (!clear && !f.people.length)) return;
+    const people = clear ? [] : f.people;
+    this.forPick = { ...f, busy: true };
+    try {
+      await this.backend.setPeople(f.id, people, f.scope);
+      this.forPick = null;
+      const title = f.label.replace(/^\S+ /, "");
+      const names = people.map((p) => personName(plan, p));
+      this.showToast(
+        clear
+          ? `Saved. ${title} goes by the names in its title again.`
+          : `Saved. ${title} is in ${andList(names)}’s ${names.length > 1 ? "lanes" : "lane"} now.`,
+      );
+    } catch (err) {
+      if (this.forPick) this.forPick = { ...this.forPick, busy: false };
+      const e = err instanceof BackendError ? err : new BackendError("error", String(err));
+      this.showToast(e.code === "preview" ? e.message : `Couldn’t save that. ${e.message}`);
+    }
+  }
+
+  /** Who is this for? Everyone in the family to pick from, kids first, saved as a For line in the notes. */
+  private renderForPick(f: ForPick): TemplateResult {
+    const plan = this.plan;
+    const there = f.placed
+      ? plan?.days.some((d) => d.date === f.day && d.events.some((e) => e.id === f.id))
+      : !!this.findUnplaced(f.day, f.id);
+    const cancel = html`<button type="button" class="btn" ?disabled=${f.busy} @click=${() => this.closeChorePanels()}>Cancel</button>`;
+    if (!plan || (!there && !f.busy)) {
+      return html`<div class="ed-head">
+          <div class="ed-titles"><span class="ed-title">Who is this for?</span></div>
+          ${cancel}
+        </div>
+        <p class="field-hint">This event is sorted now: someone changed it in Google Calendar, or it’s over.</p>`;
+    }
+    const busy = f.busy;
+    const change = (c: Partial<ForPick>): void => {
+      if (this.forPick) this.forPick = { ...this.forPick, ...c };
+    };
+    const toggle = (id: string): void =>
+      change({ people: f.people.includes(id) ? f.people.filter((x) => x !== id) : [...f.people, id] });
+    const colors = kidColors(plan);
+    const kids = kidIds(plan);
+    const allKids = kids.length > 1 && kids.every((k) => f.people.includes(k));
+    const order = [...kids, ...driverIds(plan)];
+    const picked = order.filter((p) => f.people.includes(p));
+    const names = picked.map((p) => personName(plan, p));
+    const line = names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+    const chip = (id: string, name: string, color: { color: string; rgb: string }, parent: boolean): TemplateResult => html`<button
+      type="button"
+      class="who-chip"
+      style="--c:${color.color};--rgb:${color.rgb}"
+      aria-pressed=${f.people.includes(id) ? "true" : "false"}
+      ?disabled=${busy}
+      @click=${() => toggle(id)}
+    >
+      <span class="avatar ${parent ? "driver" : ""}" aria-hidden="true">${initial(name)}</span>${name}
+    </button>`;
+    return html`
+      <div class="ed-head">
+        <div class="ed-titles">
+          <span class="ed-title">Who is this for?</span>
+          <span class="ed-meta">${dayLabel(f.day)} · ${f.label}</span>
+        </div>
+        ${cancel}
+      </div>
+      ${f.word ? html`<p class="field-hint">“${f.word}” isn’t anyone in the family. Pick who it’s for instead.</p>` : nothing}
+      ${f.recurring
+        ? html`<div class="field">
+            <span class="field-label">Change</span>
+            <div role="group" aria-label="Which ones to change" class="choices" style="grid-template-columns:1fr 1fr">
+              <button type="button" class="choice" aria-pressed=${f.scope === "this" ? "true" : "false"} ?disabled=${busy} @click=${() => change({ scope: "this" })}>
+                Just ${shortDay(f.day)}’s
+              </button>
+              <button type="button" class="choice" aria-pressed=${f.scope === "series" ? "true" : "false"} ?disabled=${busy} @click=${() => change({ scope: "series" })}>
+                Every time
+              </button>
+            </div>
+          </div>`
+        : nothing}
+      <div class="field">
+        <span class="field-label">Kids</span>
+        <div role="group" aria-label="Kids it’s for" class="who-chips">
+          ${kids.map((k) => chip(k, kidName(plan, k), colors.get(k) ?? kidColor(0), false))}
+        </div>
+        ${kids.length > 1
+          ? html`<button
+              type="button"
+              class="chip all-kids"
+              aria-pressed=${allKids ? "true" : "false"}
+              ?disabled=${busy}
+              @click=${() =>
+                change({ people: allKids ? f.people.filter((p) => !kids.includes(p)) : [...kids, ...f.people.filter((p) => !kids.includes(p))] })}
+            >
+              All the kids
+            </button>`
+          : nothing}
+      </div>
+      <div class="field">
+        <span class="field-label">Parents</span>
+        <div role="group" aria-label="Parents it’s for" class="who-chips">
+          ${driverIds(plan).map((d) => chip(d, driverName(plan, d), OWN_COLOR, true))}
+        </div>
+      </div>
+      <p class="field-hint">
+        ${picked.length
+          ? html`Saved in the event’s notes as <strong>For: ${line}</strong>, so its title stays as it is. It shows in ${picked.length > 1 ? "their lanes" : `${names[0]}’s lane`}${picked.some((p) => kids.includes(p)) ? ", and rides are planned for the kids" : ""}.`
+          : "Saved in the event’s notes, so its title stays as it is."}
+      </p>
+      ${f.fromNotes
+        ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => void this.saveForPick(true)}>
+            Go by the names in the title instead
+          </button>`
+        : nothing}
+      <div class="ed-foot">
+        <button type="button" class="btn dark save" ?disabled=${busy || !picked.length} @click=${() => void this.saveForPick()}>
+          ${busy ? "Saving to Google Calendar…" : picked.length ? "Save" : "Pick who it’s for"}
+        </button>
+      </div>
+    `;
+  }
+
+  /** In the ride editor: who the event is for, with a button to change it. Only once MyDashLight says. */
+  private renderForLine(plan: Plan, day: PlanDay, e: PlanEvent): TemplateResult | typeof nothing {
+    const who = plan.who?.[e.event_id];
+    if (!who) return nothing;
+    const names = who.people.map((p) => personName(plan, p));
+    return html`<span class="ed-for"
+      >For ${andList(names)}<button type="button" class="ed-for-change" @click=${() => this.changeForPick(plan, day, e)}>Change</button></span
+    >`;
+  }
 
   // Selecting and changing an event
 
@@ -1131,24 +1343,28 @@ export class MyDashLightBoard extends LitElement {
       : { items: [], problems: 0, unassigned: 0, later: 0, laterUnassigned: 0 };
     const wide = this.wide;
     const todo = this.chores ? choresNeedingAttention(this.chores, this.today().minutes).filter((c) => !this.choreDone(c)) : [];
-    const chorePanel = this.menuEdit
-      ? this.renderMenuEditor(this.menuEdit)
-      : this.choreEdit
-        ? this.renderChoreEditor(this.choreEdit)
-        : this.whoFor
-          ? this.renderWhoDidIt(this.whoFor)
-          : null;
-    const label = this.menuEdit
-      ? "Lunch menu"
-      : this.choreEdit
-        ? this.choreEdit.template
-          ? "Change a chore"
-          : "Add a chore"
-        : this.whoFor
-          ? "Who did it"
-          : this.sel
-            ? "Change this ride"
-            : "Needs attention";
+    const chorePanel = this.forPick
+      ? this.renderForPick(this.forPick)
+      : this.menuEdit
+        ? this.renderMenuEditor(this.menuEdit)
+        : this.choreEdit
+          ? this.renderChoreEditor(this.choreEdit)
+          : this.whoFor
+            ? this.renderWhoDidIt(this.whoFor)
+            : null;
+    const label = this.forPick
+      ? "Who is this for?"
+      : this.menuEdit
+        ? "Lunch menu"
+        : this.choreEdit
+          ? this.choreEdit.template
+            ? "Change a chore"
+            : "Add a chore"
+          : this.whoFor
+            ? "Who did it"
+            : this.sel
+              ? "Change this ride"
+              : "Needs attention";
     const panel = html`<aside class="panel" aria-label=${label}>
       ${chorePanel ?? (this.sel && plan ? this.renderEditor(plan) : this.renderAttention(att, todo))}
     </aside>`;
@@ -1169,7 +1385,7 @@ export class MyDashLightBoard extends LitElement {
               : this.page === "lunch"
                 ? html`<section class="board-area chores-area" aria-label="Lunch">${this.renderLunch()}</section>`
                 : html`<section class="board-area chores-area" aria-label="Chores">${this.renderChores()}</section>`}
-            ${!wide && (this.sheet || this.sel || this.choreEdit || this.whoFor || this.menuEdit)
+            ${!wide && (this.sheet || this.sel || this.choreEdit || this.whoFor || this.menuEdit || this.forPick)
               ? html`<div class="backdrop" @click=${() => this.closePanel()}></div>
                   ${panel}`
               : nothing}
@@ -1501,14 +1717,25 @@ export class MyDashLightBoard extends LitElement {
       </div>
       ${d.allDay.length
         ? html`<div class="day-strip" style="padding-left:${GUTTER}px">
-            ${d.allDay.map(
-              (c) =>
-                html`<span
-                  class="strip-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
-                  style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
-                  ><span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}</span
-                >`,
-            )}
+            ${d.allDay.map((c) => {
+              const inside = html`<span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}`;
+              const pick = c.pick;
+              return pick
+                ? html`<button
+                    type="button"
+                    class="strip-chip warn plain pick"
+                    tabindex=${pinned ? -1 : 0}
+                    aria-label=${`${c.title}: ${c.note} Pick who it’s for`}
+                    @click=${() => this.openForPick(d.date, pick)}
+                  >
+                    ${inside}
+                  </button>`
+                : html`<span
+                    class="strip-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
+                    style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
+                    >${inside}</span
+                  >`;
+            })}
           </div>`
         : nothing}`;
   }
@@ -1752,9 +1979,11 @@ export class MyDashLightBoard extends LitElement {
           <div class="issue-main">
             <span class="glyph" aria-hidden="true">${it.tone === "heads_up" ? "i" : "!"}</span>
             <div class="issue-text">
-              ${it.target
-                ? html`<button type="button" class="issue-title" @click=${() => this.open(it.target, true)}>${it.title}</button>`
-                : html`<strong class="issue-title">${it.title}</strong>`}
+              ${it.pick
+                ? html`<button type="button" class="issue-title" @click=${() => it.pick && this.openForPick(it.pick.day, it.pick.id)}>${it.title}</button>`
+                : it.target
+                  ? html`<button type="button" class="issue-title" @click=${() => this.open(it.target, true)}>${it.title}</button>`
+                  : html`<strong class="issue-title">${it.title}</strong>`}
               <span class="issue-body"
                 >${it.parts
                   ? it.parts.map((part) =>
@@ -2793,6 +3022,7 @@ export class MyDashLightBoard extends LitElement {
         <div class="ed-titles">
           <span class="ed-title"><span class="dot" style="background:${color.color}"></span>${owner} · ${e.title}</span>
           <span class="ed-meta">${ahead}${errand ? "any time " : ""}${span}${e.place_name && !e.place.startsWith("?") ? ` · ${e.place_name}` : ""}</span>
+          ${this.renderForLine(plan, day, e)}
         </div>
         <button type="button" class="btn dark" @click=${() => this.closeEditor()}>Done</button>
       </div>`;

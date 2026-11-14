@@ -193,6 +193,8 @@ export interface AllDayChip {
   cancelled: boolean;
   /** A timed event whose title doesn't say who it's for. */
   warn: boolean;
+  /** For such an event, its id: tapping the chip picks who it's for. */
+  pick: string | null;
 }
 
 export interface AllDayRow {
@@ -1346,6 +1348,8 @@ export interface AttentionItem {
   parts?: BodyPart[];
   target: Target | null;
   suggestions: { id: string; label: string; note: string }[];
+  /** An event for nobody: tapping the title picks who it's for (`id` in that day's `unplaced`). */
+  pick?: { day: string; id: string };
 }
 
 const QUARTERS = ["", "¼", "½", "¾"];
@@ -1523,16 +1527,18 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
       }
       problems++;
       const named = u.people.map((p) => (drivers.has(p) ? driverName(plan, p) : kidName(plan, p)));
+      const where = u.from_notes ? "The For line in its notes" : "Its title";
       items.push({
         key: `${day.date}|unplaced|${u.id}`,
         tone: "problem",
         title: `${pre}${clock(u.at)} ${u.title}: ${unplacedNote(u).toLowerCase()}`,
         body:
           u.reason === "unknown" && u.word
-            ? `“${u.word}” isn’t anyone in the family, so this is only in ${andList(named)}’s lane. If it’s a misspelt name, fix the title in Google Calendar.`
-            : `Its title doesn’t start with anyone’s name, so it isn’t on the board. Start the title in Google Calendar with who it’s for, such as “${example[0]} Piano”, or “${example.join(" & ")} Piano” for both.`,
+            ? `${where} names “${u.word}”, who isn’t anyone in the family, so ${named.length ? `it’s only in ${andList(named)}’s lane` : "it isn’t on the board"}. Tap to pick who it’s for.`
+            : `Its title doesn’t start with anyone’s name, so it isn’t on the board. Tap to pick who it’s for, or start the title in Google Calendar with a name, such as “${example[0]} Piano”.`,
         target: null,
         suggestions: [],
+        pick: { day: day.date, id: u.id },
       });
     }
     for (const e of day.events) {
@@ -1580,6 +1586,7 @@ export function allDayRow(
       color: colorOf(i.people),
       cancelled: i.cancelled,
       warn: false,
+      pick: null,
     })),
     ...(day.unplaced ?? []).map((u) => ({
       key: `${day.date}|unplaced|${u.id}`,
@@ -1588,6 +1595,7 @@ export function allDayRow(
       color: null,
       cancelled: false,
       warn: true,
+      pick: u.id,
     })),
   ];
   if (!chips.length) return null;
