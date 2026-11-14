@@ -55,7 +55,7 @@ def test_scenarios_cover_the_tricky_cases() -> None:
     assert "drop-off" in names
     assert any("double_booked" in s["expected"] for s in SCENARIOS)
     assert any(e.get("pickAlong") for s in SCENARIOS for e in s["input"]["events"])
-    assert len(SCENARIOS) == 15
+    assert len(SCENARIOS) == 17
 
 
 def test_arrive_early_grows_with_the_drive() -> None:

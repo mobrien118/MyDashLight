@@ -12,6 +12,9 @@
     "set_arrive_by": {
       "service": "mdi:clock-check-outline"
     },
+    "set_leave_by": {
+      "service": "mdi:clock-end"
+    },
     "set_take_along": {
       "service": "mdi:car-multiple"
     },

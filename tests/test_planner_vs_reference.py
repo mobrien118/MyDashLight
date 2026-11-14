@@ -57,6 +57,7 @@ def random_day(rng: random.Random, n: int) -> dict[str, Any]:
                 "pick": pick,
                 "stay": drop == pick and drop in ("mom", "dad") and rng.random() < 0.5,
                 "arriveBy": start - rng.choice([10, 15, 20, 30]) if rng.random() < 0.3 else None,
+                "leaveBy": end - rng.choice([15, 30, 45]) if rng.random() < 0.2 else None,
                 "along": along,
                 "pickAlong": pick_along,
                 "parents": parents,

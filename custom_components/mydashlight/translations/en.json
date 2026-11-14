@@ -310,6 +310,24 @@
         }
       }
     },
+    "set_leave_by": {
+      "name": "Set leave by",
+      "description": "Sets when the kid has to leave, if it's before the end, such as leaving a party early for a game. The pick-up is then at this time. Leave the time empty to go back to the end.",
+      "fields": {
+        "event": {
+          "name": "Event",
+          "description": "The event's id in the plan (an event's \"id\" in Get ride plan)."
+        },
+        "time": {
+          "name": "Time",
+          "description": "When to leave. Empty clears it."
+        },
+        "scope": {
+          "name": "Repeating events",
+          "description": "For a repeating event: change just this one, or every one."
+        }
+      }
+    },
     "set_take_along": {
       "name": "Set take-along",
       "description": "Sets who rides along: on a kid's event, the people after the driver on the Drop-off or Pick-up line (both when the driver stays); on a parent's own event, the kids or the other parent going too.",

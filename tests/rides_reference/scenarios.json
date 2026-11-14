@@ -2990,6 +2990,365 @@
         ],
         "suggestions": []
       }
+    },
+    {
+      "name": "Saturday with Ava’s game starting before the party she’s at ends",
+      "day": 2,
+      "input": {
+        "events": [
+          {
+            "id": "sat-party",
+            "day": 2,
+            "kid": "ava",
+            "title": "Birthday party",
+            "loc": "party",
+            "start": 765,
+            "end": 885,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": false,
+            "arriveBy": null,
+            "along": [
+              "ben"
+            ],
+            "leaveBy": null
+          },
+          {
+            "id": "sat-party~2",
+            "day": 2,
+            "kid": "ben",
+            "title": "Birthday party",
+            "loc": "party",
+            "start": 765,
+            "end": 885,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": null,
+            "leaveBy": null
+          },
+          {
+            "id": "sat-game",
+            "day": 2,
+            "kid": "ava",
+            "title": "Football game",
+            "loc": "football",
+            "start": 840,
+            "end": 960,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": 830,
+            "along": [
+              "ben"
+            ],
+            "pickAlong": [
+              "ben"
+            ]
+          }
+        ],
+        "busy": {}
+      },
+      "expected": {
+        "mom": {
+          "first_leave": "12:31 PM",
+          "drive_min": 62,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "12:31 PM",
+              "end": "12:40 PM",
+              "from": "home",
+              "to": "party",
+              "kids": [
+                "ava",
+                "ben"
+              ],
+              "serves": "sat-party"
+            },
+            {
+              "type": "stay",
+              "start": "12:40 PM",
+              "end": "2:45 PM",
+              "loc": "party",
+              "kids": [],
+              "serves": "sat-party~2"
+            },
+            {
+              "type": "drive",
+              "start": "2:45 PM",
+              "end": "2:54 PM",
+              "from": "party",
+              "to": "home",
+              "kids": [
+                "ben"
+              ],
+              "serves": "sat-game"
+            },
+            {
+              "type": "drive",
+              "start": "2:54 PM",
+              "end": "3:14 PM",
+              "from": "home",
+              "to": "football",
+              "kids": [
+                "ava",
+                "ben"
+              ],
+              "serves": "sat-game"
+            },
+            {
+              "type": "stay",
+              "start": "3:14 PM",
+              "end": "4:00 PM",
+              "loc": "football",
+              "kids": [
+                "ben"
+              ],
+              "serves": "sat-game"
+            },
+            {
+              "type": "drive",
+              "start": "4:00 PM",
+              "end": "4:15 PM",
+              "from": "football",
+              "to": "party",
+              "kids": [
+                "ben",
+                "ava"
+              ],
+              "serves": "sat-party"
+            },
+            {
+              "type": "drive",
+              "start": "4:15 PM",
+              "end": "4:24 PM",
+              "from": "party",
+              "to": "home",
+              "kids": [
+                "ben",
+                "ava"
+              ],
+              "serves": "sat-party"
+            }
+          ]
+        },
+        "dad": {
+          "first_leave": null,
+          "drive_min": 0,
+          "segments": []
+        },
+        "issues": [
+          {
+            "kind": "late",
+            "driver": "mom",
+            "event": "sat-game",
+            "min": 91
+          },
+          {
+            "kind": "waiting",
+            "driver": "mom",
+            "event": "sat-party",
+            "min": 90
+          }
+        ],
+        "heads_ups": [],
+        "suggestions": [
+          {
+            "for": "late|mom|sat-game||",
+            "options": [
+              {
+                "label": "Leave Birthday party at 1:25",
+                "change": {
+                  "id": "sat-party",
+                  "field": "leave_by",
+                  "value": 805
+                },
+                "note": "18 min less driving"
+              },
+              {
+                "label": "Sam does Ava’s drop-off",
+                "change": {
+                  "id": "sat-game",
+                  "field": "drop",
+                  "value": "dad"
+                },
+                "note": "+40 min round trip"
+              }
+            ]
+          },
+          {
+            "for": "waiting|mom|sat-party||",
+            "options": [
+              {
+                "label": "Leave Birthday party at 1:25",
+                "change": {
+                  "id": "sat-party",
+                  "field": "leave_by",
+                  "value": 805
+                },
+                "note": "18 min less driving"
+              },
+              {
+                "label": "Sam does Ava’s drop-off",
+                "change": {
+                  "id": "sat-game",
+                  "field": "drop",
+                  "value": "dad"
+                },
+                "note": "+40 min round trip"
+              }
+            ]
+          }
+        ],
+        "double_booked": [
+          {
+            "kid": "ava",
+            "a": "sat-party",
+            "b": "sat-game"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Saturday with Ava and Ben leaving the party early for her game",
+      "day": 2,
+      "input": {
+        "events": [
+          {
+            "id": "sat-party",
+            "day": 2,
+            "kid": "ava",
+            "title": "Birthday party",
+            "loc": "party",
+            "start": 765,
+            "end": 885,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": false,
+            "arriveBy": null,
+            "along": [
+              "ben"
+            ],
+            "leaveBy": 805
+          },
+          {
+            "id": "sat-party~2",
+            "day": 2,
+            "kid": "ben",
+            "title": "Birthday party",
+            "loc": "party",
+            "start": 765,
+            "end": 885,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": null,
+            "leaveBy": 805
+          },
+          {
+            "id": "sat-game",
+            "day": 2,
+            "kid": "ava",
+            "title": "Football game",
+            "loc": "football",
+            "start": 840,
+            "end": 960,
+            "drop": "mom",
+            "pick": "mom",
+            "stay": true,
+            "arriveBy": 830,
+            "along": [
+              "ben"
+            ],
+            "pickAlong": [
+              "ben"
+            ]
+          }
+        ],
+        "busy": {}
+      },
+      "expected": {
+        "mom": {
+          "first_leave": "12:31 PM",
+          "drive_min": 44,
+          "segments": [
+            {
+              "type": "drive",
+              "start": "12:31 PM",
+              "end": "12:40 PM",
+              "from": "home",
+              "to": "party",
+              "kids": [
+                "ava",
+                "ben"
+              ],
+              "serves": "sat-party"
+            },
+            {
+              "type": "stay",
+              "start": "12:40 PM",
+              "end": "1:25 PM",
+              "loc": "party",
+              "kids": [],
+              "serves": "sat-party~2"
+            },
+            {
+              "type": "wait",
+              "start": "1:25 PM",
+              "end": "1:28 PM",
+              "loc": "party",
+              "kids": [
+                "ben",
+                "ava"
+              ],
+              "serves": "sat-game"
+            },
+            {
+              "type": "drive",
+              "start": "1:28 PM",
+              "end": "1:43 PM",
+              "from": "party",
+              "to": "football",
+              "kids": [
+                "ben",
+                "ava"
+              ],
+              "serves": "sat-game"
+            },
+            {
+              "type": "stay",
+              "start": "1:43 PM",
+              "end": "4:00 PM",
+              "loc": "football",
+              "kids": [
+                "ben"
+              ],
+              "serves": "sat-game"
+            },
+            {
+              "type": "drive",
+              "start": "4:00 PM",
+              "end": "4:20 PM",
+              "from": "football",
+              "to": "home",
+              "kids": [
+                "ben",
+                "ava"
+              ],
+              "serves": "sat-game"
+            }
+          ]
+        },
+        "dad": {
+          "first_leave": null,
+          "drive_min": 0,
+          "segments": []
+        },
+        "issues": [],
+        "heads_ups": [],
+        "suggestions": []
+      }
     }
   ]
 }

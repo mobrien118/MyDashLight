@@ -221,7 +221,7 @@ def _kid_items(
     for e in events:
         # A parent's own event is in the column of each kid going along, not a kid's of its own.
         for k in e.along if e.own is not None else (e.kid,):
-            items.setdefault(k, []).append(KidItem("act", e.start, e.end, event=e))
+            items.setdefault(k, []).append(KidItem("act", e.start, e.out, event=e))
     for r in rides:
         s, en = r.start, r.end
         for g in r.legs:
@@ -230,8 +230,8 @@ def _kid_items(
                 continue
             if r.start < served.start < en:
                 en = served.start
-            if r.end > served.end > s:
-                s = served.end
+            if r.end > served.out > s:
+                s = served.out
         if en > s:
             items.setdefault(r.kid, []).append(KidItem("ride", s, en, ride=r))
     return items
@@ -282,6 +282,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         riders: dict[str, str] = {}
         # The last stop line, when it was a kid's: its kind, place, time, event and kids.
         said: tuple[str, str, str, str | None, list[str]] | None = None
+        left: tuple[str, str, str | None, list[str]] | None = None
         name = labels.driver(d)
         first = o.legs[0]
         if first.type == "drive" and first.from_loc == HOME:
@@ -343,7 +344,10 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                     who = [k]
                 said = (kind, place, when, base, who)
                 text = {"drop": "drop off", "stay": "stay with", "pick": "pick up"}[kind]
-                lines.append(f"{when}  {place}, {text} {' and '.join(who)}")
+                if not (kind == "pick" and left is not None and left[:3] == (place, when, base) and k in left[3]):
+                    # A kid the driver stayed with, leaving with them from that same event, needs
+                    # no pick-up line after "Leave ...".
+                    lines.append(f"{when}  {place}, {text} {' and '.join(who)}")
             elif own and s.event is not None:
                 said = None
                 jobs.append(("errand" if s.event.takes is not None else "go", place, [s.event.title]))
@@ -354,7 +358,10 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 lines.append(f"{at}  Home")
             if s.kind not in ("drop", "stay", "pick") or own:
                 said = None
+            left = None
             if s.kind == "stay" and s.after is not None and s.after < o.end:
+                if said is not None and said[0] == "stay":
+                    left = (place, fmt(s.after), said[3], said[4])
                 said = None
                 lines.append(f"{fmt(s.after)}  Leave {place}")
         last = o.legs[-1]

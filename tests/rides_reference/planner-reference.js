@@ -75,6 +75,8 @@ var nameOf = function (e) { return e.own ? PEOPLE[e.own] : K[e.kid].name; };
 var wholeMin = function (v) { return Math.floor(v + 0.5); };
 var arriveEarly = function (loc) { return Math.floor(3 + 14 * Math.log1p(Math.max(travel('home', loc), 0) / 50) + 1e-9); };
 // Traffic margin before when they must be there (Arrive by, or else the start). Arrive by doesn't replace it.
+// When the kid is done: the Leave by time if it's before the end, so they're picked up then.
+var outAt = function (e) { return e.leaveBy != null && e.leaveBy > e.start && e.leaveBy < e.end ? e.leaveBy : e.end; };
 var arriveAt = function (e) { return (e.arriveBy != null ? e.arriveBy : e.start) - arriveEarly(e.loc); };
 
 // Minutes of driving as people read them (Marty, 2026-11-04): under an hour to the quarter minute
@@ -110,7 +112,7 @@ function planDriver(d, events, busy) {
     } else if (e.stay && e.drop === d && e.pick === d) tasks.push({ type: 'stay', e: e, t: arriveAt(e) });
     else {
       if (e.drop === d) tasks.push({ type: 'drop', e: e, t: arriveAt(e) });
-      if (e.pick === d) tasks.push({ type: 'pick', e: e, t: e.end });
+      if (e.pick === d) tasks.push({ type: 'pick', e: e, t: outAt(e) });
     }
   });
   tasks.sort(function (a, b) { return a.t - b.t; });
@@ -183,7 +185,7 @@ function route(d, tasks, busy) {
         cur().car = car.slice();
       }
       if (k.e.takes != null) stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, ready: k.e.start, dwell: k.e.takes, late: k.late, car: car.slice() });
-      else stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, after: k.e.end, car: car.slice() });
+      else stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, after: outAt(k.e), car: car.slice() });
       return;
     }
     if (k.type !== 'pick') {
@@ -207,8 +209,8 @@ function route(d, tasks, busy) {
       hereD.forEach(function (a) { if (car.indexOf(a) < 0 && left[a].loc === k.e.loc && left[a].until <= k.t) { car.push(a); delete left[a]; } });
       car = car.filter(function (x) { return x !== kid; });
       var s = { loc: k.e.loc, kind: k.type, deadline: k.t, e: k.e };
-      if (k.type === 'drop') left[kid] = { loc: k.e.loc, until: k.e.end };
-      if (k.type === 'stay') { s.after = k.e.end; if (car.indexOf(kid) < 0) car.push(kid); }
+      if (k.type === 'drop') left[kid] = { loc: k.e.loc, until: outAt(k.e) };
+      if (k.type === 'stay') { s.after = outAt(k.e); if (car.indexOf(kid) < 0) car.push(kid); }
       s.car = car.slice();
       stops.push(s);
     } else {
@@ -223,10 +225,10 @@ function route(d, tasks, busy) {
         car = car.concat(pm);
         cur().car = car.slice();
       }
-      here.forEach(function (a) { if (left[a].loc === k.e.loc && left[a].until <= k.e.end) { car.push(a); delete left[a]; } });
+      here.forEach(function (a) { if (left[a].loc === k.e.loc && left[a].until <= outAt(k.e)) { car.push(a); delete left[a]; } });
       if (car.indexOf(kid) < 0) car.push(kid);
       delete left[kid];
-      stops.push({ loc: k.e.loc, kind: 'pick', ready: k.e.end, aim: k.e.end - arriveEarly(k.e.loc), e: k.e, car: car.slice() });
+      stops.push({ loc: k.e.loc, kind: 'pick', ready: outAt(k.e), aim: outAt(k.e) - arriveEarly(k.e.loc), e: k.e, car: car.slice() });
     }
   });
   if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'end', car: [] });
@@ -368,13 +370,13 @@ function withRidesAlong(events, busy) {
     if (e.takes != null) return;
     var there = travel('home', e.loc), back = travel(e.loc, 'home'), arrive = arriveAt(e);
     if (e.own) {
-      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, e.end + back, e.title); });
+      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, outAt(e) + back, e.title); });
       return;
     }
     // Riding along on a kid's ride: from leaving home until back, staying if the driver does.
     var stays = e.stay && e.drop === e.pick;
-    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? e.end : arrive) + back, e.title); });
-    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, e.end - arriveEarly(e.loc) - there, e.end + back, e.title); });
+    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? outAt(e) : arrive) + back, e.title); });
+    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, outAt(e) - arriveEarly(e.loc) - there, outAt(e) + back, e.title); });
   });
   Object.keys(out).forEach(function (d) {
     out[d].sort(function (a, b) { return a.start - b.start || a.end - b.end || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0); });
@@ -404,8 +406,8 @@ function issueText(x) {
   var who = x.d ? PEOPLE[x.d] : '';
   if (x.kind === 'busy') return { title: who + ' is still at ' + x.b.title, body: 'Leaving at ' + fmt(x.seg.start) + (e ? ' for ' + kid + '’s ' + e.title.toLowerCase() : '') + ' overlaps ' + x.b.title + ' until ' + fmt(x.b.end) + '.' };
   if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + 'the ' + fmt(x.s.deadline) + ' target' + (e.arriveBy != null && e.arriveBy > x.s.deadline ? ', ' + wholeMin(e.arriveBy - x.s.deadline) + ' min before the ' + fmt(e.arriveBy) + ' arrive-by time' : '') + '.' };
-  if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after it ends.' };
-  if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : ' ends at ' + fmt(e.end)) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
+  if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + (outAt(e) < e.end ? 'the ' + fmt(outAt(e)) + ' leave-by time' : 'it ends') + '.' };
+  if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : (outAt(e) < e.end ? ' has to leave at ' + fmt(outAt(e)) : ' ends at ' + fmt(e.end))) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
   if (x.kind === 'early') return { title: kid + ' waits ' + wholeMin(x.min) + ' min', body: who + ' gets ' + kid + ' to ' + e.title + ' at ' + fmt(x.s.arr) + ', well before the ' + fmt(e.start) + ' start.', note: kid + ' waits ' + wholeMin(x.min) + ' min at ' + e.title };
   if (x.kind === 'tight') return { title: 'No time to spare', body: who + ' has to leave ' + e.title + ' right at ' + fmt(x.at) + ' to make the next stop.', note: who + ' leaves ' + e.title + ' right at ' + fmt(x.at) };
   if (x.kind === 'tightBusy') return { title: 'No time to spare', body: who + ' has to leave right when ' + x.b.title + ' ends at ' + fmt(x.b.end) + '.', note: who + ' leaves right as ' + x.b.title + ' ends' };
@@ -414,6 +416,8 @@ function issueText(x) {
 
 function applyChange(events, c) {
   var ev = events.map(function (e) {
+    // Leave by is saved on the calendar event, so every kid's copy of it (id~2, ...) gets it.
+    if (c.field === 'leave_by') return String(e.id).split('~')[0] === String(c.id).split('~')[0] ? Object.assign({}, e, { leaveBy: c.value }) : e;
     if (!c.id || e.id !== c.id) return e;
     var n = Object.assign({}, e);
     if (c.field) n[c.field] = c.value;
@@ -449,6 +453,17 @@ function suggestionsFor(issue, events, base, busy) {
         if (f.own) return;
         if ((f.along || []).indexOf(e.kid) >= 0) return;
         cands.push({ label: null, change: { id: f.id, field: 'along', value: (f.along || []).concat([e.kid]) }, who: d, kid: e.kid });
+      });
+    });
+    // Leave an event early for the same kid's next one that starts before it ends, in time to
+    // get there straight from it, with 3 minutes to spare (Marty, 2026-11-13). On the 5 minutes.
+    events.forEach(function (f) {
+      if (f.own || f.pick !== d && f.drop !== d) return;
+      events.forEach(function (g) {
+        if (g === f || g.own || g.kid !== f.kid || g.drop !== d || !(f.start < g.start && g.start < outAt(f))) return;
+        var t = Math.floor((arriveAt(g) - travel(f.loc, g.loc) - 3) / 5) * 5;
+        if (t <= f.start || t >= outAt(f)) return;
+        cands.push({ label: 'Leave ' + f.title + ' at ' + fmt(t), change: { id: f.id, field: 'leave_by', value: t }, who: d });
       });
     });
   }
@@ -548,14 +563,14 @@ function buildDay(i, evs) {
   var kidItems = {};
   KIDS.forEach(function (k) { kidItems[k] = []; });
   // A parent's own event is in the column of each kid going along.
-  evs.forEach(function (e) { (e.own ? (e.along || []) : [e.kid]).forEach(function (k) { kidItems[k].push({ type: 'act', e: e, s: e.start, en: e.end }); }); });
+  evs.forEach(function (e) { (e.own ? (e.along || []) : [e.kid]).forEach(function (k) { kidItems[k].push({ type: 'act', e: e, s: e.start, en: outAt(e) }); }); });
   rideList.forEach(function (r) {
     var s = r.s, en = r.en;
     r.legs.forEach(function (g) {
       var e = g.anchor && g.anchor.e;
       if (!e || !attends(e, r.kid)) return;
       if (r.s < e.start && en > e.start) en = e.start;
-      if (r.en > e.end && s < e.end) s = e.end;
+      if (r.en > outAt(e) && s < outAt(e)) s = outAt(e);
     });
     if (en > s) kidItems[r.kid].push({ type: 'ride', r: r, s: s, en: en });
   });

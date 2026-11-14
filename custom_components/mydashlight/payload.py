@@ -139,6 +139,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "pick": e.pick,
         "stay": e.stay,
         "arrive_by": e.arrive_by,
+        "leave_by": e.leave_by,
         "along": [*e.along, *e.parents],
         "pick_along": [*e.pick_along, *e.pick_parents],
         "own": e.own,

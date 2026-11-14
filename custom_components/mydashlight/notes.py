@@ -10,6 +10,7 @@ The ride lines live in a block at the end of the event's description, after a he
     Stay: yes
     Take along: Ben
     Arrive by: 5:15 PM
+    Leave by: 6:30 PM
     Travel: 25 min
 
 Reading:
@@ -43,8 +44,18 @@ from .planner import NOT_NEEDED, UNASSIGNED, fmt12
 
 RIDES_HEADER: Final = "--- Rides ---"
 
-Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "travel", "takes"]
-FIELDS: Final[tuple[Field, ...]] = ("attending", "drop", "pick", "stay", "along", "arrive_by", "travel", "takes")
+Field = Literal["attending", "drop", "pick", "stay", "along", "arrive_by", "leave_by", "travel", "takes"]
+FIELDS: Final[tuple[Field, ...]] = (
+    "attending",
+    "drop",
+    "pick",
+    "stay",
+    "along",
+    "arrive_by",
+    "leave_by",
+    "travel",
+    "takes",
+)
 
 
 _LABELS: Final[dict[str, Field]] = {
@@ -56,6 +67,7 @@ _LABELS: Final[dict[str, Field]] = {
     "takealong": "along",
     "along": "along",
     "arriveby": "arrive_by",
+    "leaveby": "leave_by",
     "travel": "travel",
     "traveltime": "travel",
     "takes": "takes",
@@ -68,6 +80,7 @@ _WRITE_LABELS: Final[dict[Field, str]] = {
     "stay": "Stay",
     "along": "Take along",
     "arrive_by": "Arrive by",
+    "leave_by": "Leave by",
     "travel": "Travel",
     "takes": "Takes",
 }
@@ -179,6 +192,8 @@ class RideNotes:
     home for them."""
     arrive_by: int | None = None
     """Minutes after midnight."""
+    leave_by: int | None = None
+    """When the kid has to leave, if before the end, in minutes after midnight."""
     travel: int | None = None
     """A manual drive time in minutes, overriding the computed one."""
     takes: int | None = None
@@ -243,6 +258,7 @@ def write_notes(
     stay: bool | Keep = KEEP,
     along: Iterable[str] | Keep = KEEP,
     arrive_by: int | Keep | None = KEEP,
+    leave_by: int | Keep | None = KEEP,
     travel: int | Keep | None = KEEP,
     attending: bool | Keep = KEEP,
     takes: int | Keep | None = KEEP,
@@ -271,6 +287,7 @@ def write_notes(
         "stay": stay,
         "along": along,
         "arrive_by": arrive_by,
+        "leave_by": leave_by,
         "travel": travel,
         "takes": takes,
     }
@@ -348,6 +365,20 @@ def parse_clock(value: str, event_start: int | None = None) -> int | None:
     return t
 
 
+def parse_leave_clock(value: str, event_start: int | None = None) -> int | None:
+    """Like :func:`parse_clock`, for a Leave by time: with no AM or PM, such as ``1:15``, it's
+    the first reading at or after the event's start (``event_start``), since it's during it."""
+    m = _CLOCK_RE.match(value.strip())
+    if m and not m.group(3) and m.group(2) is not None and event_start is not None and 1 <= int(m.group(1)) <= 12:
+        if int(m.group(2)) > 59:
+            return None
+        t = int(m.group(1)) * 60 + int(m.group(2))
+        readings = [t % 720, t % 720 + 720]
+        after = [r for r in readings if r >= event_start]
+        return min(after) if after else max(readings)
+    return parse_clock(value)
+
+
 def parse_duration(value: str) -> int | None:
     """Minutes for a duration such as ``25 min``, ``25``, ``1 hr`` or ``1h 10m``."""
     m = _DURATION_RE.match(value.strip())
@@ -404,6 +435,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
     stay = False
     along: list[str] = []
     arrive_by: int | None = None
+    leave_by: int | None = None
     travel: int | None = None
     takes: int | None = None
     problems: list[str] = []
@@ -446,6 +478,9 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         elif fld == "arrive_by":
             if raw and (arrive_by := parse_clock(raw, event_start)) is None:
                 problems.append(f"{label}: “{raw}” isn’t a time")
+        elif fld == "leave_by":
+            if raw and (leave_by := parse_leave_clock(raw, event_start)) is None:
+                problems.append(f"{label}: “{raw}” isn’t a time")
         elif fld == "takes":
             if raw and not (takes := parse_duration(raw)):
                 takes = None
@@ -461,6 +496,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         stay=stay,
         along=tuple(along),
         arrive_by=arrive_by,
+        leave_by=leave_by,
         travel=travel,
         takes=takes,
         has_block=doc.header is not None,
@@ -515,7 +551,7 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
         return f"{label}: {', '.join(kids)}" if value else None
     if not isinstance(value, int):
         return None
-    if fld == "arrive_by":
+    if fld in ("arrive_by", "leave_by"):
         return f"{label}: {fmt12(value)}"
     return f"{label}: {value} min"
 

@@ -25,6 +25,8 @@ export interface PlanEvent {
   pick: string;
   stay: boolean;
   arrive_by: number | null;
+  /** When the kid has to leave, if before the end: the pick-up is then. Older plans leave it out. */
+  leave_by?: number | null;
   /** Who rides along on the drop-off: kids, then the other parent (their driver id). On a parent's own event, who goes there and back. */
   along: string[];
   /** Who rides along on the pick-up, the same way. Older plans leave it out. */
