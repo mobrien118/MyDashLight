@@ -1515,7 +1515,16 @@ export class MyDashLightBoard extends LitElement {
 
   private renderBoard(b: Board): TemplateResult {
     const sel = this.sel;
-    const isSel = (t: Target | null): boolean => !!t && !!sel && t.day === sel.day && t.event === sel.event;
+    // Each kid's copy of one calendar event lights up together: it's one event to change.
+    const found = sel ? this.findEvent(sel) : null;
+    const selIds = new Set(
+      !found
+        ? []
+        : found.event.own
+          ? [found.event.id]
+          : found.day.events.filter((x) => !x.own && x.event_id === found.event.event_id).map((x) => x.id),
+    );
+    const isSel = (t: Target | null): boolean => !!t && !!sel && t.day === sel.day && selIds.has(t.event);
     const pinned = b.dayHeads.find((h) => h.date === this.pinDay) ?? b.dayHeads[0];
     const W = b.width;
     // Cards and the add-ons built onto them, drawn back to front so each add-on tucks behind.
