@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ago, clock, clockAmPm, dayLabel, duration, hourLabel, nowIn, rangeLabel, timeField } from "../src/format.ts";
+import { ago, clock, clockAmPm, dayLabel, duration, hourLabel, nowIn, offsetText, rangeLabel, timeField } from "../src/format.ts";
 
 test("clock times", () => {
   assert.equal(clock(945), "3:45");
@@ -43,4 +43,12 @@ test("how long ago", () => {
   assert.equal(ago(new Date("2026-11-03T23:59:40Z"), now, "America/Chicago"), "just now");
   assert.equal(ago(new Date("2026-11-03T23:45:00Z"), now, "America/Chicago"), "15 min ago");
   assert.equal(ago(new Date("2026-11-03T22:00:00Z"), now, "America/Chicago"), "at 4:00 PM");
+});
+
+test("early or late against an event's own time, as the notes write it", () => {
+  assert.equal(offsetText(-15), "15 min early");
+  assert.equal(offsetText(10), "10 min late");
+  assert.equal(offsetText(-60), "1 hr early");
+  assert.equal(offsetText(70), "1 hr 10 min late");
+  assert.equal(offsetText(0), "on time");
 });

@@ -142,7 +142,7 @@ async def test_stay_and_arrive_by(hass: HomeAssistant, google: FakeGoogle) -> No
 
     assert google.event(FAMILY, "piano")["description"] == (
         "<b>Bring</b> the music book.<br><br>--- Rides ---<br>Drop-off: Robin<br>Pick-up: Robin<br>Stay: yes"
-        "<br>Arrive by: 3:45 PM"
+        "<br>Arrive: 15 min early"
     )
     event = planned(entry, "piano")
     assert event["stay"] is True
@@ -150,7 +150,7 @@ async def test_stay_and_arrive_by(hass: HomeAssistant, google: FakeGoogle) -> No
 
     await call(hass, "set_arrive_by", event="piano")
     assert planned(entry, "piano")["arrive_by"] is None
-    assert "Arrive by" not in google.event(FAMILY, "piano")["description"]
+    assert "Arrive" not in google.event(FAMILY, "piano")["description"]
 
 
 async def test_leave_by(hass: HomeAssistant, google: FakeGoogle) -> None:
@@ -160,7 +160,7 @@ async def test_leave_by(hass: HomeAssistant, google: FakeGoogle) -> None:
     await call(hass, "set_leave_by", event="piano", time="16:30")
 
     assert google.event(FAMILY, "piano")["description"] == (
-        "--- Rides ---\nDrop-off: Robin\nPick-up: Robin\nLeave by: 4:30 PM"
+        "--- Rides ---\nDrop-off: Robin\nPick-up: Robin\nLeave: 30 min early"
     )
     event = planned(entry, "piano")
     assert event["leave_by"] == 16 * 60 + 30
@@ -169,7 +169,7 @@ async def test_leave_by(hass: HomeAssistant, google: FakeGoogle) -> None:
 
     await call(hass, "set_leave_by", event="piano")
     assert planned(entry, "piano")["leave_by"] is None
-    assert "Leave by" not in google.event(FAMILY, "piano")["description"]
+    assert "Leave" not in google.event(FAMILY, "piano")["description"]
 
 
 async def test_apply_a_leave_early_fix(hass: HomeAssistant, google: FakeGoogle) -> None:
@@ -195,7 +195,7 @@ async def test_apply_a_leave_early_fix(hass: HomeAssistant, google: FakeGoogle) 
 
     await call(hass, "apply_suggestion", suggestion=fix["id"])
 
-    assert google.event(FAMILY, "piano")["description"].endswith("Leave by: 4:20 PM")
+    assert google.event(FAMILY, "piano")["description"].endswith("Leave: 40 min early")
     assert planned(entry, "piano")["leave_by"] == fix["change"]["value"]
     assert not [x for day in entry.runtime_data.coordinator.data.days for x in day["issues"] if x["level"] == "problem"]
 
@@ -297,7 +297,7 @@ async def test_every_one_keeps_what_one_occurrence_was_given_by_hand(hass: HomeA
     await call(hass, "set_stay", event="swim_20261104", stay=True, scope="series")
 
     assert google.event(FAMILY, "swim")["description"] == (
-        "Goggles.\n\n--- Rides ---\nDrop-off: Sam\nArrive by: 4:50 PM\nStay: yes"
+        "Goggles.\n\n--- Rides ---\nDrop-off: Sam\nArrive: 10 min early\nStay: yes"
     )
     # Thursday follows the series only on Stay, the one line it hadn't been given by hand.
     assert google.event(FAMILY, "swim_20261105")["description"] == (

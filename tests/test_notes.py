@@ -9,9 +9,11 @@ from custom_components.mydashlight.notes import (
     DriverDirectory,
     RideNotes,
     human_notes,
+    offset_text,
     parse_clock,
     parse_duration,
     parse_notes,
+    parse_offset,
     read_for,
     skip_prefix,
     write_notes,
@@ -208,7 +210,7 @@ def test_unreadable_values_are_reported_not_guessed() -> None:
     assert notes.travel is None
     assert notes.problems == (
         "Stay: “maybe” isn’t yes or no",
-        "Arrive by: “soonish” isn’t a time",
+        "Arrive: “soonish” isn’t a time, or minutes early or late",
         "Travel: “a while” isn’t a number of minutes",
     )
 
@@ -460,11 +462,116 @@ def test_leave_by() -> None:
     # No AM or PM: the reading during the event, after its 12:45 start.
     assert parse("Leave by: 1:15", event_start=765).leave_by == 795
     assert parse("Leave by: 1:15 PM").leave_by == 795
-    assert parse("--- Rides ---\nLeave by: whenever").problems == ("Leave by: “whenever” isn’t a time",)
+    assert parse("--- Rides ---\nLeave by: whenever").problems == (
+        "Leave: “whenever” isn’t a time, or minutes early or late",
+    )
     text = write("Bring a gift", leave_by=795)
     assert text == "Bring a gift\n\n--- Rides ---\nLeave by: 1:15 PM"
     assert parse(text, event_start=765).leave_by == 795
     assert write(text, leave_by=None) == "Bring a gift"
+
+
+# Arrive and Leave, early or late
+
+
+@pytest.mark.parametrize(
+    ("value", "minutes"),
+    [
+        ("15 min early", -15),
+        ("15 MIN EARLY", -15),
+        ("  15   minutes   early ", -15),
+        ("15m early", -15),
+        ("15 early", -15),
+        ("20 mins before", -20),
+        ("20 min before the start", -20),
+        ("10 min late", 10),
+        ("10 min after", 10),
+        ("1 hr early", -60),
+        ("1 hr 10 min late", 70),
+        ("1h10m late", 70),
+        ("2 hours late", 120),
+        ("-15", -15),
+        ("- 15 min", -15),
+        ("\u221215", -15),
+        ("+10", 10),
+        ("+1 hr", 60),
+        ("on time", 0),
+        ("On Time", 0),
+        ("0 min", 0),
+        ("0", 0),
+    ],
+)
+def test_minutes_early_or_late(value: str, minutes: int) -> None:
+    assert parse_offset(value) == minutes
+
+
+@pytest.mark.parametrize("value", ["soon", "early", "an hour early", "15", "5:15", "5 pm", "15 min", "late 10 min", ""])
+def test_not_minutes_early_or_late(value: str) -> None:
+    assert parse_offset(value) is None
+
+
+def test_offsets_read_back_as_written() -> None:
+    for n in range(-180, 181, 5):
+        assert parse_offset(offset_text(n)) == n
+    assert [offset_text(n) for n in (-15, 10, -60, 70, 0)] == [
+        "15 min early",
+        "10 min late",
+        "1 hr early",
+        "1 hr 10 min late",
+        "on time",
+    ]
+
+
+def test_arrive_and_leave_go_early_or_late() -> None:
+    # Marty, 2026-11-17: sometimes they get there late, or are picked up late. One line each,
+    # against the event's own start (4:00) and end (5:00).
+    at = {"event_start": 960, "event_end": 1020}
+    notes = parse("--- Rides ---\nArrive: 10 min late\nLeave: 15 min late", **at)
+    assert (notes.arrive_by, notes.leave_by, notes.problems) == (970, 1035, ())
+    notes = parse("--- Rides ---\nArrive: 15 min early\nLeave: 30 min early", **at)
+    assert (notes.arrive_by, notes.leave_by) == (945, 990)
+    # Marty's own names for them read the same.
+    notes = parse("--- Rides ---\nArrive adjust: -15\nPick-up adjust: +10", **at)
+    assert (notes.arrive_by, notes.leave_by, notes.drop) == (945, 1030, UNASSIGNED)
+    # On time is the event's own time.
+    assert parse("--- Rides ---\nArrive: on time", **at).arrive_by == 960
+    # Written against the event, and the line goes when it's back to the event's own time.
+    text = write_notes("", DIRECTORY, arrive_by=970, leave_by=1035, **at)
+    assert text == "--- Rides ---\nArrive: 10 min late\nLeave: 15 min late"
+    assert write_notes(text, DIRECTORY, arrive_by=900, **at).endswith("Arrive: 1 hr early\nLeave: 15 min late")
+    assert write_notes(text, DIRECTORY, arrive_by=960, leave_by=1020, **at) == ""
+
+
+def test_old_clock_times_still_work_and_switch_when_changed() -> None:
+    at = {"event_start": 960, "event_end": 1020}
+    old = "--- Rides ---\nDrop-off: Sam\nArrive by: 3:45 PM\nLeave by: 4:30"
+    notes = parse(old, **at)
+    assert (notes.arrive_by, notes.leave_by) == (945, 990)
+    # Changing something else leaves them as they were.
+    assert write_notes(old, DIRECTORY, stay=True, **at) == old + "\nStay: yes"
+    # Changing one writes it the new way, in its place.
+    assert write_notes(old, DIRECTORY, arrive_by=950, **at) == (
+        "--- Rides ---\nDrop-off: Sam\nArrive: 10 min early\nLeave by: 4:30"
+    )
+    # A clock time typed by hand after the start or end is late, and works too.
+    assert parse("--- Rides ---\nArrive by: 4:10 PM\nLeave by: 5:20 PM", **at).leave_by == 1040
+
+
+def test_an_old_and_a_new_line_for_the_same_time() -> None:
+    # Both on one event: the last line wins, as for every line, and a change leaves just one.
+    at = {"event_start": 960, "event_end": 1020}
+    both = "--- Rides ---\nArrive by: 3:45 PM\nArrive: 5 min late"
+    assert parse(both, **at).arrive_by == 965
+    assert write_notes(both, DIRECTORY, arrive_by=950, **at) == "--- Rides ---\nArrive: 10 min early"
+
+
+def test_minutes_early_need_the_event_time() -> None:
+    # Without the event's time, minutes early can't become a time: it's reported, not guessed.
+    notes = parse("--- Rides ---\nArrive: 15 min early")
+    assert notes.arrive_by is None
+    assert notes.problems
+    # And a time is written as a clock time.
+    assert write_notes("", DIRECTORY, arrive_by=945) == "--- Rides ---\nArrive by: 3:45 PM"
 
 
 # Who it's for

@@ -215,7 +215,7 @@ def build_week(
             start = _minutes(ev.start, first, tz)
             end = max(_minutes(ev.end, first, tz), start)
             title, skipped = skip_prefix(ev.title or NO_TITLE)
-            notes = parse_notes(ev.description, directory, start)
+            notes = parse_notes(ev.description, directory, start, end)
             written = human_notes(ev.description)
             if skipped:
                 notes = replace(notes, attending=False)
@@ -601,7 +601,7 @@ def _own_event(
     if end > NEXT_MORNING:
         return None
     title, skipped = skip_prefix(ev.title or NO_TITLE)
-    notes = parse_notes(ev.description, directory, start)
+    notes = parse_notes(ev.description, directory, start, end)
     attending = notes.attending and not skipped
     errand = notes.takes is not None
     takes = min(notes.takes, end - start) if notes.takes is not None else None

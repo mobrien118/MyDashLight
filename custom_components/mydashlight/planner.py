@@ -74,12 +74,12 @@ class RideEvent:
     picks the time, fitting it into the parent's other trips where it can."""
 
     leave_by: int | None = None
-    """When the kid has to leave, if it's before the end: they're picked up then instead."""
+    """When the kid is picked up instead of at the end: earlier (they have to leave) or later."""
 
     @property
     def out(self) -> int:
-        """When the kid is done: the Leave by time if it's before the end, or else the end."""
-        return self.leave_by if self.leave_by is not None and self.start < self.leave_by < self.end else self.end
+        """When the kid is done: the Leave time if it's after the start, or else the end."""
+        return self.leave_by if self.leave_by is not None and self.start < self.leave_by else self.end
 
     def attends(self, kid: str) -> bool:
         """Whether ``kid`` is at this event: their own activity, or a parent's they go along to."""
@@ -846,12 +846,12 @@ def issue_text(issue: Issue, labels: Labels) -> IssueText:
             return IssueText(
                 f"{kid} will be waiting",
                 f"{who} reaches {e.title} at {fmt(s.arrive)}, {minutes_text(issue.minutes)} min after "
-                + (f"the {fmt(e.out)} leave-by time." if e.out < e.end else "it ends."),
+                + (f"the {fmt(e.out)} leave time." if e.out != e.end else "it ends."),
             )
         case "unassigned" if e:
             if issue.side == "drop":
                 return IssueText(f"No drop-off for {kid}", f"{e.title} starts at {fmt(e.start)}{_at(e, labels)}.")
-            ends = f"has to leave at {fmt(e.out)}" if e.out < e.end else f"ends at {fmt(e.end)}"
+            ends = f"has to leave at {fmt(e.out)}" if e.out != e.end else f"ends at {fmt(e.end)}"
             return IssueText(f"No pick-up for {kid}", f"{e.title} {ends}{_at(e, labels)}.")
         case "early" if e and s and s.arrive is not None:
             mins = minutes_text(issue.minutes)

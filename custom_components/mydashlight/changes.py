@@ -81,7 +81,9 @@ class RideChange:
     def empty(self) -> bool:
         return not self.rides and isinstance(self.attending, Keep) and isinstance(self.people, Keep)
 
-    def apply(self, description: str, directory: DriverDirectory, event_start: int | None) -> str:
+    def apply(
+        self, description: str, directory: DriverDirectory, event_start: int | None, event_end: int | None = None
+    ) -> str:
         return write_notes(
             description,
             directory,
@@ -97,6 +99,7 @@ class RideChange:
             takes=self.takes,
             people=self.people,
             event_start=event_start,
+            event_end=event_end,
         )
 
 
@@ -123,6 +126,7 @@ class _Notes:
     start: int | None
     skipped: bool
     """Whether the title has the old "NO" prefix."""
+    end: int | None = None
 
 
 def _same(name: str, a: _Notes, b: _Notes) -> bool:
@@ -131,17 +135,20 @@ def _same(name: str, a: _Notes, b: _Notes) -> bool:
     x, y = getattr(a.rides, name), getattr(b.rides, name)
     if name in ("arrive_by", "leave_by") and x is not None and y is not None and x != y:
         # "15 min early" reads as a different clock time on an occurrence moved to another time.
-        return a.start is not None and b.start is not None and x - a.start == y - b.start
+        ax, bx = (a.start, b.start) if name == "arrive_by" else (a.end, b.end)
+        return ax is not None and bx is not None and x - ax == y - bx
     return bool(x == y)
 
 
 @dataclass(frozen=True, slots=True)
 class Target:
-    """An event to change: its calendar, its Google id, and its start for reading times."""
+    """An event to change: its calendar, its Google id, and its start and end for reading and
+    writing times against ("15 min early")."""
 
     calendar_id: str
     event_id: str
     event_start: int | None = None
+    event_end: int | None = None
 
 
 async def async_save(
@@ -171,7 +178,7 @@ async def async_save(
 
     if series is None:
         return await save(target, change)
-    whole = Target(target.calendar_id, series, target.event_start)
+    whole = Target(target.calendar_id, series, target.event_start, target.event_end)
     others = {o.event_id: o for o in also if o.event_id not in (series, target.event_id)}
     # Read before writing the series: Google can carry the series' new notes onto occurrences.
     before = await _async_notes(api, directory, whole)
@@ -189,9 +196,10 @@ async def async_save(
 async def _async_notes(api: GoogleCalendarApi, directory: DriverDirectory, target: Target) -> _Notes:
     event = await api.async_get_notes(target.calendar_id, target.event_id)
     return _Notes(
-        parse_notes(event.description, directory, target.event_start),
+        parse_notes(event.description, directory, target.event_start, target.event_end),
         target.event_start,
         skip_prefix(event.title)[1],
+        target.event_end,
     )
 
 
@@ -202,7 +210,7 @@ async def _async_save_one(
     had them."""
     for attempt in range(TRIES):
         event = await api.async_get_notes(target.calendar_id, target.event_id)
-        description = change.apply(event.description, directory, target.event_start)
+        description = change.apply(event.description, directory, target.event_start, target.event_end)
         title, prefixed = skip_prefix(event.title)
         new_title = title if change.attending is True and prefixed else None
         if description == event.description and new_title is None:

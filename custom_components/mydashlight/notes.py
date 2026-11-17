@@ -10,8 +10,8 @@ The ride lines live in a block at the end of the event's description, after a he
     Pick-up: the Parkers
     Stay: yes
     Take along: Ben
-    Arrive by: 5:15 PM
-    Leave by: 6:30 PM
+    Arrive: 15 min early
+    Leave: 10 min late
     Travel: 25 min
 
 Reading:
@@ -26,6 +26,12 @@ Reading:
   like "For: ages 6 to 10".
 * ``For`` says who the event is for, by name, in place of the names at the start of the title
   (see :mod:`.shared`). This module keeps it as the text it is; :mod:`.who` reads the names.
+* ``Arrive`` and ``Leave`` move when the kid has to be there and when they're picked up (or the
+  driver who stayed leaves with them), early or late: ``15 min early``, ``10 min late``,
+  ``1 hr early``. That's against the event's own start and end, so it still holds when the
+  event moves. A clock time also works (``Arrive by: 3:50``, ``Leave by: 1:15 PM``), as
+  MyDashLight wrote them before 0.25: those lines are read as they are and written the new way
+  the next time that setting changes.
 * Google stores the description as HTML once someone edits it on the web. Line breaks come
   from ``<br>``, ``<p>``, ``<div>`` and ``<li>``, and other tags are ignored.
 
@@ -81,8 +87,13 @@ _LABELS: Final[dict[str, Field]] = {
     "stay": "stay",
     "takealong": "along",
     "along": "along",
+    "arrive": "arrive_by",
     "arriveby": "arrive_by",
+    "arriveadjust": "arrive_by",
+    "leave": "leave_by",
     "leaveby": "leave_by",
+    "leaveadjust": "leave_by",
+    "pickupadjust": "leave_by",
     "travel": "travel",
     "traveltime": "travel",
     "takes": "takes",
@@ -126,7 +137,12 @@ _TRAILING_HTML_GAP: Final = re.compile(
     re.IGNORECASE,
 )
 _CLOCK_RE: Final = re.compile(r"^(\d{1,2})(?::(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?$", re.IGNORECASE)
-_BEFORE_RE: Final = re.compile(r"^(\d{1,3})\s*(?:m|mins?|minutes?)?\s*(?:early|before(?: the start)?)$", re.IGNORECASE)
+_OFFSET_RE: Final = re.compile(
+    r"^(?:(?P<sign>[-+])\s*(?P<signed>.+?)"
+    r"|(?P<amount>.+?)\s+(?P<way>early|before|late|after)(?: the (?:start|end))?)$",
+    re.IGNORECASE,
+)
+_ON_TIME: Final = frozenset({"on time", "0", "0 min", "none"})
 _DURATION_RE: Final = re.compile(
     r"^(?:(\d{1,2})\s*(?:h|hrs?|hours?))?\s*(?:(\d{1,3})\s*(?:m|mins?|minutes?)?)?$", re.IGNORECASE
 )
@@ -211,9 +227,10 @@ class RideNotes:
     too. On a kid's drop-off, the driver can go on to the other kids' drop-offs without coming
     home for them."""
     arrive_by: int | None = None
-    """Minutes after midnight."""
+    """When the kid has to be there, in minutes after midnight: before the start, or after it."""
     leave_by: int | None = None
-    """When the kid has to leave, if before the end, in minutes after midnight."""
+    """When the kid is picked up instead of at the end, in minutes after midnight: before the end,
+    or after it."""
     travel: int | None = None
     """A manual drive time in minutes, overriding the computed one."""
     takes: int | None = None
@@ -262,13 +279,19 @@ def skip_prefix(title: str) -> tuple[str, bool]:
     return (title[m.end() :], True) if m else (title, False)
 
 
-def parse_notes(description: str | None, directory: DriverDirectory, event_start: int | None = None) -> RideNotes:
+def parse_notes(
+    description: str | None,
+    directory: DriverDirectory,
+    event_start: int | None = None,
+    event_end: int | None = None,
+) -> RideNotes:
     """Read the ride settings from an event's description.
 
-    ``event_start`` (minutes after midnight) lets an Arrive by time with no AM or PM, such as
-    ``5:15``, be read as the one just before the event, and allows ``15 min early``.
+    ``event_start`` and ``event_end`` (minutes after midnight) read Arrive and Leave lines such as
+    ``15 min early`` against the event, and a clock time with no AM or PM, such as ``5:15``, as
+    the reading nearest the event.
     """
-    return _read(_split(description or ""), directory, event_start)
+    return _read(_split(description or ""), directory, event_start, event_end)
 
 
 def read_for(description: str | None) -> str | None:
@@ -330,6 +353,7 @@ def write_notes(
     pick_riders: Iterable[str] | Keep = KEEP,
     people: str | Keep | None = KEEP,
     event_start: int | None = None,
+    event_end: int | None = None,
 ) -> str:
     """Return the description with ride settings changed.
 
@@ -338,12 +362,16 @@ def write_notes(
 
     ``people`` is the For line's text, already worded ("Ava & Ben"); None takes the line away.
 
+    ``arrive_by`` and ``leave_by`` are clock times. With ``event_start`` and ``event_end`` known
+    they're written against the event ("Arrive: 15 min early", "Leave: 10 min late"), and the
+    line goes when the time is the event's own.
+
     Returns the description unchanged when no value actually changes, so callers can skip
     the write to Google.
     """
     original = description or ""
     doc = _split(original)
-    notes = _read(doc, directory, event_start)
+    notes = _read(doc, directory, event_start, event_end)
     current: dict[Field, object] = {f: getattr(notes, f) for f in FIELDS}
     current["drop"] = (notes.drop, notes.drop_riders)
     current["pick"] = (notes.pick, notes.pick_riders)
@@ -368,7 +396,8 @@ def write_notes(
         return original
 
     found = _locate(doc)
-    rendered = {f: _render(f, v, directory) for f, v in changed.items()}
+    ends = (event_start, event_end)
+    rendered = {f: _render(f, v, directory, ends) for f, v in changed.items()}
 
     if doc.header is not None:
         # Rebuild the block in place: keep its order and any lines we don't recognise.
@@ -397,7 +426,7 @@ def write_notes(
             if f in changed:
                 if (text := rendered[f]) is not None:
                     block.append(_ours(text, doc))
-            elif found[f] and (text := _render(f, current[f], directory)) is not None:
+            elif found[f] and (text := _render(f, current[f], directory, ends)) is not None:
                 block.append(_ours(text, doc))
         remove = {i for f in FIELDS for i in found[f]}
         body = _join(doc, _without(doc, remove))
@@ -408,8 +437,8 @@ def write_notes(
 def parse_clock(value: str, event_start: int | None = None) -> int | None:
     """Minutes after midnight for a time such as ``5:15 PM``, ``5pm`` or ``17:15``."""
     value = value.strip()
-    if event_start is not None and (m := _BEFORE_RE.match(value)):
-        return event_start - int(m.group(1))
+    if event_start is not None and (off := parse_offset(value)) is not None:
+        return event_start + off
     m = _CLOCK_RE.match(value)
     if not m:
         return None
@@ -446,6 +475,31 @@ def parse_leave_clock(value: str, event_start: int | None = None) -> int | None:
         after = [r for r in readings if r >= event_start]
         return min(after) if after else max(readings)
     return parse_clock(value)
+
+
+def parse_offset(value: str) -> int | None:
+    """Signed minutes for how early or late, such as ``15 min early`` (-15), ``10 min late``
+    (10), ``1 hr before``, ``-15``, ``+10`` or ``on time`` (0). None when it isn't one."""
+    value = " ".join(value.replace("−", "-").split()).casefold()
+    if value in _ON_TIME:
+        return 0
+    m = _OFFSET_RE.match(value)
+    if not m:
+        return None
+    if m.group("sign"):
+        n = parse_duration(m.group("signed"))
+        return None if n is None else (-n if m.group("sign") == "-" else n)
+    n = parse_duration(m.group("amount"))
+    return None if n is None else (-n if m.group("way") in ("early", "before") else n)
+
+
+def offset_text(minutes: int) -> str:
+    """How early or late, such as ``15 min early``, ``1 hr 10 min late`` or ``on time``."""
+    if not minutes:
+        return "on time"
+    h, m = divmod(abs(minutes), 60)
+    amount = " ".join([*([f"{h} hr"] if h else []), *([f"{m} min"] if m else [])])
+    return f"{amount} {'early' if minutes < 0 else 'late'}"
 
 
 def parse_duration(value: str) -> int | None:
@@ -497,7 +551,7 @@ def _locate(doc: _Doc) -> dict[Field, list[int]]:
     return found
 
 
-def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> RideNotes:
+def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None, event_end: int | None = None) -> RideNotes:
     drivers = {"drop": UNASSIGNED, "pick": UNASSIGNED}
     riders: dict[str, list[str]] = {"drop": [], "pick": []}
     attending = True
@@ -548,11 +602,11 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
             elif word not in _NO:
                 problems.append(f"{label}: “{raw}” isn’t yes or no")
         elif fld == "arrive_by":
-            if raw and (arrive_by := parse_clock(raw, event_start)) is None:
-                problems.append(f"{label}: “{raw}” isn’t a time")
+            if raw and (arrive_by := _when(raw, event_start, parse_clock(raw, event_start))) is None:
+                problems.append(f"Arrive: “{raw}” isn’t a time, or minutes early or late")
         elif fld == "leave_by":
-            if raw and (leave_by := parse_leave_clock(raw, event_start)) is None:
-                problems.append(f"{label}: “{raw}” isn’t a time")
+            if raw and (leave_by := _when(raw, event_end, parse_leave_clock(raw, event_start))) is None:
+                problems.append(f"Leave: “{raw}” isn’t a time, or minutes early or late")
         elif fld == "takes":
             if raw and not (takes := parse_duration(raw)):
                 takes = None
@@ -575,6 +629,15 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None) -> Rid
         has_block=doc.header is not None,
         problems=tuple(problems),
     )
+
+
+def _when(raw: str, base: int | None, clock: int | None) -> int | None:
+    """An Arrive or Leave line's clock time: minutes early or late against ``base`` (the event's
+    start or end), or else a clock time."""
+    off = parse_offset(raw)
+    if off is not None and base is not None:
+        return base + off
+    return clock
 
 
 def _side(driver: str | Keep, riders: Iterable[str] | Keep, now_driver: str, now_riders: tuple[str, ...]) -> object:
@@ -606,7 +669,9 @@ def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
     return None
 
 
-def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None:
+def _render(
+    fld: Field, value: object, directory: DriverDirectory, ends: tuple[int | None, int | None] = (None, None)
+) -> str | None:
     """The line for a value, or None when the value is the default and needs no line."""
     label = _WRITE_LABELS[fld]
     if fld == "people":
@@ -629,7 +694,12 @@ def _render(fld: Field, value: object, directory: DriverDirectory) -> str | None
     if not isinstance(value, int):
         return None
     if fld in ("arrive_by", "leave_by"):
-        return f"{label}: {fmt12(value)}"
+        base = ends[0] if fld == "arrive_by" else ends[1]
+        if base is None:
+            # The event's time isn't known here: a clock time, as before.
+            return f"{label}: {fmt12(value)}"
+        word = "Arrive" if fld == "arrive_by" else "Leave"
+        return f"{word}: {offset_text(value - base)}" if value != base else None
     return f"{label}: {value} min"
 
 

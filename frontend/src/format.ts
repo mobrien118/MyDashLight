@@ -29,6 +29,12 @@ export function duration(m: number): string {
   return mm ? `${h} hr ${mm} min` : `${h} hr`;
 }
 
+/** How early or late against an event's own time: "15 min early", "1 hr 10 min late", "on time". */
+export function offsetText(m: number): string {
+  if (!m) return "on time";
+  return `${duration(Math.abs(m))} ${m < 0 ? "early" : "late"}`;
+}
+
 /** "HH:MM:SS", as Home Assistant's time fields take it. */
 export function timeField(m: number): string {
   const h = Math.floor(m / 60) % 24;

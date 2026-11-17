@@ -331,7 +331,7 @@ export function whoName(plan: Plan, value: string): string {
 /** When an event is on this day. Busy time over more than a day says only this day's part. */
 /** " · leave 1:15" when the kid leaves before the end, or nothing. */
 export function leaveText(e: PlanEvent): string {
-  return e.leave_by != null && e.leave_by > e.start && e.leave_by < e.end ? ` · leave ${clock(e.leave_by)}` : "";
+  return e.leave_by != null && e.leave_by > e.start && e.leave_by !== e.end ? ` · leave ${clock(e.leave_by)}` : "";
 }
 
 export function spanText(e: PlanEvent): string {
