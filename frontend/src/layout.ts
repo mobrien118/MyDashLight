@@ -600,7 +600,7 @@ function rideBit(text: string, side: "drop" | "pick"): RideBit | "needed" | null
   if (side === "drop") {
     if ((m = /^Leaves (\d+:\d\d) with (.+?)(, .+)?$/.exec(text))) return bit(m[1]!, m[2]!, m[3]);
     if ((m = /^(.+?) stays · leaves (\d+:\d\d)(, .+)?$/.exec(text))) return bit(m[2]!, m[1]!, m[3], true);
-    if ((m = /^(?:Drop-off: |Goes with )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
+    if ((m = /^(?:Drop-off: |Goes with |With )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
   } else {
     if ((m = /^(?:Home (\d+:\d\d) with|Picked up (\d+:\d\d) by) (.+?)(, .+)?$/.exec(text))) return bit(m[1] ?? m[2]!, m[3]!, m[4]);
     if ((m = /^(?:Pick-up: |Home with )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
@@ -633,6 +633,8 @@ export function compactLines(lines: { drop: CardLine | null; pick: CardLine | nu
   if (d && p && d !== "needed" && p !== "needed" && d.who === p.who && !d.extra && !p.extra) {
     const who = `${CAR} ${d.who}${d.stays ? " stays" : ""}`;
     if (!d.at && !p.at) return { drop: { text: `${who} both ways`, tone }, pick: null };
+    // Only one side has a time yet: no bare arrow with nothing after it.
+    if (!d.at || !p.at) return { drop: { text: `${who} both ways · ${d.at ? `↓${d.at}` : `↑${p.at}`}`, tone }, pick: null };
     return { drop: { text: `${who} ↓${d.at} ↑${p.at}`.trimEnd(), tone }, pick: null };
   }
   const part = (b: RideBit | "needed", arrow: string): string =>
@@ -741,7 +743,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       const c = mine ? OWN_COLOR : (colors.get(colId) ?? kidColor(0));
       const who = mine ? nameOfDriver(colId) : nameOfKid(colId);
       const ln: { drop: CardLine | null; pick: CardLine | null } = along
-        ? { drop: { text: `With ${nameOfDriver(e.own!)}`, tone: e.attending === false ? "muted" : "normal" }, pick: null }
+        ? { drop: { text: `${wrap ? `${CAR} ` : ""}With ${nameOfDriver(e.own!)}`, tone: e.attending === false ? "muted" : "normal" }, pick: null }
         : wrap && !e.own
           ? compactLines(e.lines)
           : e.lines;

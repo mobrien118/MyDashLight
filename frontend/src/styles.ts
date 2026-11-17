@@ -923,6 +923,10 @@ export const styles = css`
     text-overflow: ellipsis;
     max-width: 100%;
   }
+  /* Compact: the lines follow one another, with no gap opening up when the card is taller. */
+  .card.wrap {
+    justify-content: flex-start;
+  }
   .card.wrap .line {
     white-space: normal;
     font-size: 12px;
