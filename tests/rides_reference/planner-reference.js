@@ -89,6 +89,12 @@ function drivingText(v) {
   var q = Math.floor(v * 4 + 0.5), whole = Math.floor(q / 4), part = ['', '¼', '½', '¾'][q % 4];
   return (whole || !part ? whole : '') + part + ' min';
 }
+var LONG_DRIVE = 120;
+function span(min) {
+  var t = Math.floor(min + 0.5), h = Math.floor(t / 60), m = t % 60;
+  return [].concat(h ? [h + ' hr'] : [], m || !h ? [m + ' min'] : []).join(' ');
+}
+
 function travel(a, b) {
   if (a === b) return 0;
   var v = DRIVE[a + '|' + b];
@@ -619,6 +625,12 @@ function buildDay(i, evs) {
       if (last.type === 'drive' && last.to === 'home' && lines[lines.length - 1] !== fmt(o.en) + '  Home') lines.push(fmt(o.en) + '  Home');
       var warn = '';
       (plan.busy[d] || []).forEach(function (b) { if (b.start < o.en && b.end > o.s) warn = 'Still at ' + b.title + ' until ' + fmt(b.end); });
+      // A very long drive is most often the wrong place found on the map: say how long it is.
+      var far = o.legs.filter(function (g) { return g.type === 'drive' && g.end - g.start >= LONG_DRIVE; })[0];
+      if (far) {
+        var trip = span(far.end - far.start) + ' drive to ' + SHORT[far.to] + '. Is the address right?';
+        warn = warn ? trip + ' ' + warn : trip;
+      }
       var first = o.legs[0];
       o.lead = first.type === 'drive' && first.from === 'home' ? 'Leave ' + fmt(o.s) : 'From ' + SHORT[first.from || first.loc] + ' ' + fmt(o.s);
       o.lines = lines; o.kids = kids; o.warn = warn;

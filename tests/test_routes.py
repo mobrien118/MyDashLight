@@ -24,6 +24,7 @@ from custom_components.mydashlight.routes import (
     RoutesQuotaError,
     TravelCache,
     next_departure,
+    vague_address,
 )
 
 TZ = ZoneInfo("America/Chicago")
@@ -159,13 +160,38 @@ def test_cache_round_trip_and_junk() -> None:
     assert again == cache
 
     junk = TravelCache.from_dict(
-        {"entries": {"a": [1], "b": ["x", 5], "c": "no"}, "calls": "many", "spots": {"s": [1, 2], "t": [1, "x", 3]}}
+        {
+            "entries": {"a": [1], "b": ["x", 5], "c": "no"},
+            "calls": "many",
+            "spots": {"s": [1, 2], "t": [1, "x", 3]},
+            "version": 2,
+        }
     )
     assert list(junk.entries) == ["b"]
     assert junk.entries["b"].minutes is None
     assert junk.calls == 0
     assert junk.spots == {}
     assert TravelCache.from_dict(None) == TravelCache()
+
+
+def test_places_given_by_name_are_looked_up_again() -> None:
+    # Before version 2, "chesterfield elementary" was looked up anywhere and matched a school
+    # of that name 14 hours away. What was found for places given only by name goes.
+    old = {
+        "entries": {
+            "home|chesterfield elementary|1|18": [875.8, 100.0],
+            "home|rj's dance, 17371 edison ave|1|18": [7.5, 100.0],
+            "home|?abc|1|18": [None, 100.0],
+        },
+        "spots": {"chesterfield elementary": [1, 2, 3], "rj's dance, 17371 edison ave": [4, 5, 6]},
+    }
+    cache = TravelCache.from_dict(old)
+    assert list(cache.entries) == ["home|rj's dance, 17371 edison ave|1|18", "home|?abc|1|18"]
+    assert list(cache.spots) == ["rj's dance, 17371 edison ave"]
+    # Saved again, it's kept as it is.
+    assert TravelCache.from_dict(cache.as_dict()) == cache
+    assert vague_address("Chesterfield Elementary")
+    assert not vague_address("Pheasant Run Golf Course, Sportspark Dr, O'Fallon, MO 63368")
 
 
 def test_next_departure() -> None:
