@@ -312,6 +312,13 @@ test("compact: ride lines are a car and arrows on one line", () => {
     L("🚗 ↓4:25 Sam · 5 min late · ↑6:00 Robin", "problem"),
   );
   assert.deepEqual(compactLines({ drop: L("Drop-off: Sam"), pick: L("Pick-up: Sam") }).drop, L("🚗 Sam both ways"));
+  // Marty, 2026-11-17: a ride straight from another activity ("With Sam") and another family's
+  // pick-up ("Home with Robin") read like every other ride line, on one line.
+  assert.deepEqual(compactLines({ drop: L("With Sam"), pick: L("Home with Robin") }), {
+    drop: L("🚗 ↓ Sam · ↑ Robin"),
+    pick: null,
+  });
+  assert.deepEqual(compactLines({ drop: L("With Sam, 5 min late", "problem"), pick: null }).drop, L("🚗 ↓ Sam · 5 min late", "problem"));
   // Not rides: left alone.
   const none = { drop: L("No ride needed"), pick: null };
   assert.deepEqual(compactLines(none), none);

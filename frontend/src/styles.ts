@@ -894,6 +894,10 @@ export const styles = css`
     text-overflow: ellipsis;
     max-width: 100%;
   }
+  /* Compact: the ride line sits right under the time, not pushed down to the card's end time. */
+  .card.wrap {
+    justify-content: flex-start;
+  }
   .card.wrap .line {
     white-space: normal;
     font-size: 12px;

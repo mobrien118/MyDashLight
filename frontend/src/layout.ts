@@ -598,7 +598,9 @@ function rideBit(text: string, side: "drop" | "pick"): RideBit | "needed" | null
   if (side === "drop") {
     if ((m = /^Leaves (\d+:\d\d) with (.+?)(, .+)?$/.exec(text))) return bit(m[1]!, m[2]!, m[3]);
     if ((m = /^(.+?) stays · leaves (\d+:\d\d)(, .+)?$/.exec(text))) return bit(m[2]!, m[1]!, m[3], true);
-    if ((m = /^(?:Drop-off: |Goes with )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
+    // "With Sam": the ride there starts somewhere other than home, such as straight from
+    // another activity, so it has no leave-home time.
+    if ((m = /^(?:Drop-off: |Goes with |With )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
   } else {
     if ((m = /^(?:Home (\d+:\d\d) with|Picked up (\d+:\d\d) by) (.+?)(, .+)?$/.exec(text))) return bit(m[1] ?? m[2]!, m[3]!, m[4]);
     if ((m = /^(?:Pick-up: |Home with )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);

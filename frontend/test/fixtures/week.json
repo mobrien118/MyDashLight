@@ -2457,7 +2457,7 @@
        "tone": "normal"
       },
       "pick": {
-       "text": "Pick-up: Sam",
+       "text": "Picked up 7:00 by Sam",
        "tone": "normal"
       }
      }
@@ -3052,7 +3052,7 @@
        "tone": "normal"
       },
       "pick": {
-       "text": "Pick-up: Sam",
+       "text": "Picked up 6:30 by Sam",
        "tone": "normal"
       }
      }
