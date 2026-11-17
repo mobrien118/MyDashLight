@@ -151,6 +151,23 @@ var na=Object.defineProperty;var Vn=(s,t)=>()=>(s&&(t=s(s=0)),t);var sa=(s,t)=>{
     line-height: 18px;
     color: var(--muted);
   }
+  /* A problem line under the date wraps to the width the clock and date already take, so it never
+     widens the column and squeezes the next trip beside it. */
+  .titles > .status {
+    width: 0;
+    min-width: 100%;
+  }
+  /* Narrower screens put the next trip on its own row, so there it can take the room it needs. */
+  .narrow .titles > .status {
+    width: auto;
+    min-width: 0;
+  }
+  .titles .line {
+    display: block;
+  }
+  .titles .keep {
+    white-space: nowrap;
+  }
   .titles .bad {
     color: var(--bad-ink);
     font-weight: 600;
@@ -2979,7 +2996,7 @@ var na=Object.defineProperty;var Vn=(s,t)=>()=>(s&&(t=s(s=0)),t);var sa=(s,t)=>{
         ${r?h:E}
         ${this.toast?f`<div class="toast" role="status">${this.toast}</div>`:E}
       </div>
-    `}closePanel(){this.closeEditor(),this.closeChorePanels(),this.sheet=!1}renderHeader(e,n,o){let i=n.problems+o;this.tick;let r=this.today(),a="";if(e){let u=e.time_zone,b=new Date(e.updated);this.error?a=f`<span class="bad">${Li(this.error)} · showing the plan from ${ln(b,new Date,u)}</span>`:e.status&&!e.status.ok?a=f`<span class="bad">Couldn’t read Google Calendar${e.status.error?`: ${e.status.error}`:""} · plan from ${ln(b,new Date,u)}</span>`:this.backend?.live||(a=`Updated ${ln(b,new Date,u)}`)}let c=(u,b,_,m)=>f`
+    `}closePanel(){this.closeEditor(),this.closeChorePanels(),this.sheet=!1}renderHeader(e,n,o){let i=n.problems+o;this.tick;let r=this.today(),a="";if(e){let u=e.time_zone,b=new Date(e.updated);this.error?a=f`<span class="bad"><span class="line">${Li(this.error)}</span><span class="line keep">Plan from ${ln(b,new Date,u)}</span></span>`:e.status&&!e.status.ok?a=f`<span class="bad"><span class="line">Couldn’t read Google Calendar${e.status.error?`: ${e.status.error}`:""}</span><span class="line keep">Plan from ${ln(b,new Date,u)}</span></span>`:this.backend?.live||(a=`Updated ${ln(b,new Date,u)}`)}let c=(u,b,_,m)=>f`
       <button type="button" class="seg-btn" title=${m} aria-pressed=${this.mode===u?"true":"false"} @click=${()=>this.setMode(u)}>
         ${_}<span class="seg-label">${b}</span>
       </button>
