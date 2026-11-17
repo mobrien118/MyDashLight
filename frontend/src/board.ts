@@ -1958,6 +1958,14 @@ export class MyDashLightBoard extends LitElement {
             (x) =>
               html`<span class="mark" style="left:${x.x}px;top:${x.y}px;${x.right ? "transform:translateX(-100%)" : ""}">${x.text}</span>`,
           )}
+          ${repeat(
+            b.folds,
+            (x) => x.key,
+            (x) => html`<div class="fold" style="top:${x.y}px;width:${W - 60}px;height:${x.h}px" aria-hidden="true">
+                ${foldEdges(W - 60, x.h)}
+              </div>
+              <span class="fold-label" style="top:${x.y + x.h / 2 - 9}px" title="${clockAmPm(x.from)} to ${clockAmPm(x.to)}">${x.label}</span>`,
+          )}
           ${b.now
             ? html`<div class="now-line" aria-hidden="true" style="top:${b.now.y - 1.5}px;width:${W - 56}px"></div>
                 <span class="now-label" aria-hidden="true" style="top:${b.now.y - 9}px">${b.now.label}</span>`
@@ -3162,4 +3170,25 @@ declare global {
   interface HTMLElementTagNameMap {
     "mydashlight-board": MyDashLightBoard;
   }
+}
+
+/** The torn strip over a folded stretch of Timeline: zigzag edges top and bottom, filled in between. */
+function foldEdges(w: number, h: number): TemplateResult {
+  const tooth = 14;
+  const depth = 5;
+  const n = Math.max(1, Math.round(w / tooth));
+  const step = w / n;
+  const top: string[] = [];
+  const bottom: string[] = [];
+  for (let i = 0; i <= n; i++) {
+    const x = +(i * step).toFixed(1);
+    top.push(`${x},${i % 2 ? depth : 0}`);
+    bottom.push(`${x},${h - (i % 2 ? 0 : depth)}`);
+  }
+  const fill = `M${top.join(" L")} L${[...bottom].reverse().join(" L")} Z`;
+  return html`<svg width=${w} height=${h} viewBox="0 0 ${w} ${h}">
+    ${svg`<path class="fold-fill" d=${fill}></path>
+      <path class="fold-edge" d=${`M${top.join(" L")}`}></path>
+      <path class="fold-edge" d=${`M${bottom.join(" L")}`}></path>`}
+  </svg>`;
 }
