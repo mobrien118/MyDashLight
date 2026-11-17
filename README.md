@@ -238,7 +238,10 @@ holds their trips out of the house, with dots for who's in the car, and their bu
 the top:
 
 - **Compact**, the default, drops the time scale: everything sits in start order, with each trip's
-  stops listed.
+  stops listed. Nothing is cut off: long titles wrap onto a second line, and each card and trip is
+  just as tall as what's on it. To save room, a note that isn't about a ride goes on the end of the
+  time line ("6:30–9:30 · No ride needed"), and trip stops use the cards' arrows: "Soccer fields
+  ↓ Cleo" for a drop-off, "↑ Cleo" for a pick-up, "Home ↑ Ben" to collect someone at home.
 - **Timeline** spaces everything by the clock, so overlaps and tight handoffs are easy to see.
 
 What's over drops off, so more of the week fits on screen. An activity stays until it has ended

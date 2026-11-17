@@ -7,6 +7,11 @@ import {
   DAY_HEAD,
   headAt,
   compactCardHeight,
+  compactHeight,
+  compactTripHeight,
+  foldsIntoTime,
+  terseStop,
+  useMeasure,
   dayTag,
   layout,
   minWidth,
@@ -205,6 +210,76 @@ test("wrapped text in Compact gets room for every line", () => {
   assert.equal(wrapRows("Supercalifragilistic", 70, 7), 2);
   const e = plan.days[0]!.events[0]!;
   assert.ok(compactCardHeight(e, 150) > compactCardHeight(e, 300));
+});
+
+test("measured text wraps where the browser would, and a no-break space holds words together", () => {
+  // 10px a character, spaces included.
+  useMeasure((t) => t.length * 10);
+  try {
+    // Half a pixel is kept spare for the browser's rounding.
+    assert.equal(wrapRows("abc def", 71, 7, "f"), 1);
+    assert.equal(wrapRows("abc def", 70, 7, "f"), 2);
+    assert.equal(wrapRows("abcdefghij", 51, 7, "f"), 2);
+    assert.equal(wrapRows("field ↓\u00a0Cleo", 100, 7, "f"), 2);
+    // No font given: still guessed.
+    assert.equal(wrapRows("Robin stays · leaves 3:30", 130, 7), 2);
+  } finally {
+    useMeasure(null);
+  }
+  // A font the browser can't read: guessed instead.
+  useMeasure(() => null);
+  try {
+    assert.equal(wrapRows("Supercalifragilistic", 70, 7, "f"), 2);
+  } finally {
+    useMeasure(null);
+  }
+});
+
+test("Compact cards show the whole title, and are as tall as what's on them", () => {
+  useMeasure((t) => t.length * 10);
+  try {
+    const L = (text: string, tone: "normal" | "muted" = "normal") => ({ text, tone });
+    // 100px wide: 76px inside, so 7 characters a line.
+    const base = { title: "Hip Hop", time: "6:00", drop: L("Car Sam"), pick: null, inline: false };
+    // Border 2, padding 10, one title line 18, the time 1 + 16, the ride line 1 + 16, 1 spare.
+    assert.equal(compactHeight(base, 100), 65);
+    assert.equal(compactHeight({ ...base, title: "Hip Hop ride there" }, 100), 65 + 2 * 18);
+    // The note mark takes room at the end of the title.
+    assert.equal(compactHeight({ ...base, title: "Hip Hop" }, 100, { noted: true }), 65 + 18);
+    // "No ride needed" on the end of the time line: one line fewer when it fits.
+    assert.equal(compactHeight({ ...base, time: "6", drop: L("Hi", "muted"), inline: true }, 100), 65 - 17);
+    // When it doesn't fit, it wraps onto the next line: no room saved, but none lost.
+    assert.equal(compactHeight({ ...base, time: "6:00", drop: L("At home", "muted"), inline: true }, 100), 64);
+    assert.equal(compactHeight(base, 100, { clash: true }), 67);
+  } finally {
+    useMeasure(null);
+  }
+});
+
+test("Compact folds a line that isn't about a ride into the time line", () => {
+  const L = (text: string, tone: "normal" | "muted" | "pending" = "normal") => ({ text, tone });
+  assert.equal(foldsIntoTime({ drop: L("No ride needed", "muted"), pick: null }, false), true);
+  assert.equal(foldsIntoTime({ drop: L("At home", "muted"), pick: null }, false), true);
+  // Struck through when not attending: it keeps its own line.
+  assert.equal(foldsIntoTime({ drop: L("Not attending", "muted"), pick: null }, true), false);
+  assert.equal(foldsIntoTime({ drop: L("🚗 Sam ↓4:25 ↑6:10"), pick: null }, false), false);
+  assert.equal(foldsIntoTime({ drop: L("🚗 No rides yet", "pending"), pick: null }, false), false);
+});
+
+test("Compact trip stops use the card's arrows", () => {
+  assert.equal(terseStop("4:35  Soccer fields, drop off Cleo"), "4:35  Soccer fields ↓\u00a0Cleo");
+  assert.equal(terseStop("6:30  Soccer fields, pick up Cleo and Ben"), "6:30  Soccer fields ↑\u00a0Cleo and Ben");
+  assert.equal(terseStop("4:50  Home, get Ben"), "4:50  Home ↑\u00a0Ben");
+  assert.equal(terseStop("3:40  Piano studio, stay with Ava"), "3:40  Piano studio, stay with Ava");
+  assert.equal(terseStop("4:30  Leave Piano studio"), "4:30  Leave Piano studio");
+  assert.equal(terseStop("7:09  Cleaners, Pick up dry cleaning"), "7:09  Cleaners, Pick up dry cleaning");
+  useMeasure((t) => t.length * 10);
+  try {
+    // 6px padding top and bottom, the 16px lead, then 16px a line, a pixel apart, 1 spare.
+    assert.equal(compactTripHeight(["abc", "abc def"], 90), 12 + 16 + 2 + 3 * 16 + 1);
+  } finally {
+    useMeasure(null);
+  }
 });
 
 test("the next trip: leaving soon, under way, or tomorrow", () => {

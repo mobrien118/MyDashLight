@@ -923,14 +923,31 @@ export const styles = css`
     text-overflow: ellipsis;
     max-width: 100%;
   }
-  /* Compact: the lines follow one another, with no gap opening up when the card is taller. */
+  /* Compact: everything shows in full, wrapped, and the lines follow one another with no gap
+     opening up when the card is taller. The layout measures these same fonts and sizes. */
   .card.wrap {
     justify-content: flex-start;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .card.wrap .title {
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+  .card.wrap .time {
+    overflow-wrap: anywhere;
   }
   .card.wrap .line {
     white-space: normal;
     font-size: 12px;
     line-height: 16px;
+    overflow-wrap: anywhere;
+  }
+  /* "No ride needed" on the end of the time line. */
+  .card.wrap .line.inline {
+    display: inline;
+    overflow: visible;
   }
   .card .tone-pending {
     color: var(--warn-ink);
