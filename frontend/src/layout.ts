@@ -24,6 +24,15 @@ const LINK_TUCK = 16;
 const MAIN_LAYER = 100;
 /** Left gutter for the hour labels. */
 export const GUTTER = 60;
+/** Timeline folds away a stretch of a day at least this long where nothing starts or ends. */
+export const FOLD_MIN = 120;
+/** The height of a folded stretch: a torn strip saying how much time it hides. */
+export const FOLD_H = 44;
+/** How much of something's start and end stays in view, so its labels and edges still read. */
+const HOLD_BEFORE = 20;
+const HOLD_START = 45;
+const HOLD_END = 30;
+const HOLD_AFTER = 20;
 const KID_GAP = 10;
 const SEP = 30;
 const DRIVER_GAP = 10;
@@ -162,6 +171,17 @@ export interface Mark {
   right: boolean;
 }
 
+/** A folded stretch in Timeline: the time between ``from`` and ``to`` drawn as a short torn strip. */
+export interface Fold {
+  key: string;
+  y: number;
+  h: number;
+  from: number;
+  to: number;
+  /** "4 hrs", "2½ hrs". */
+  label: string;
+}
+
 export interface DayHead {
   date: string;
   y: number;
@@ -222,6 +242,8 @@ export interface Board {
   empties: { key: string; y: number; text: string }[];
   grid: { key: string; y: number; strong: boolean }[];
   hours: { key: string; y: number; label: string }[];
+  /** Timeline's folded stretches: long quiet parts of a day, drawn short. */
+  folds: Fold[];
   cards: CardBox[];
   rides: RideBox[];
   bands: BandBox[];
@@ -675,6 +697,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     empties: [],
     grid: [],
     hours: [],
+    folds: [],
     cards: [],
     rides: [],
     bands: [],
@@ -847,8 +870,24 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       // Still on the board but over before the top (an event whose trip home is still going).
       const above = (end: number | null | undefined): boolean => from != null && n(end) <= r0;
       const cut = (start: number | null | undefined): boolean => from != null && n(start) < r0;
-      const Y = (t: number): number => Math.round(top + (Math.max(r0, Math.min(r1, t)) - r0) * PPM);
-      board.anchors.push({ t: base + r0, y: Y(r0) }, { t: base + r1, y: Y(r1) });
+      // Long quiet stretches fold down to a short torn strip, so a day with a gap in the middle
+      // doesn't take a screenful of empty rows. Everything else keeps its true spacing.
+      const folds = foldsFor(heldSpans(day, drivers, ownSpan, day.date === today.date ? today.minutes : null), r0, r1);
+      const Y = (t: number): number => Math.round(top + foldedOffset(Math.max(r0, Math.min(r1, t)) - r0, folds, r0));
+      board.anchors.push({ t: base + r0, y: Y(r0) });
+      for (const f of folds) {
+        board.anchors.push({ t: base + f.from, y: Y(f.from) }, { t: base + f.to, y: Y(f.to) });
+        board.folds.push({
+          key: `${day.date}|fold|${f.from}`,
+          y: Y(f.from),
+          h: Y(f.to) - Y(f.from),
+          from: f.from,
+          to: f.to,
+          label: foldLabel(f.to - f.from),
+        });
+      }
+      board.anchors.push({ t: base + r1, y: Y(r1) });
+      const folded = (t: number, edges: boolean): boolean => folds.some((f) => (edges ? t >= f.from && t <= f.to : t > f.from && t < f.to));
 
       for (const kid of kids) {
         const c = col.get(kid)!;
@@ -1146,9 +1185,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
 
       let lastLabel = -Infinity;
       for (let t = r0; t <= r1; t += 30) {
-        board.grid.push({ key: `${day.date}|grid|${t}`, y: Y(t), strong: t % 60 === 0 });
-        if (t % 60 === 0 && Y(t) - lastLabel >= 22) {
-          board.hours.push({ key: `${day.date}|hour|${t}`, y: Y(t) - 8, label: hourLabel(t) });
+        // A fold's torn edges stand in for the lines there. Its edges are labeled even on the
+        // half hour, so the time on each side of it reads.
+        if (!folded(t, true)) board.grid.push({ key: `${day.date}|grid|${t}`, y: Y(t), strong: t % 60 === 0 });
+        const edge = folds.some((f) => f.from === t || f.to === t);
+        if ((edge || (t % 60 === 0 && !folded(t, false))) && Y(t) - lastLabel >= 22) {
+          board.hours.push({ key: `${day.date}|hour|${t}`, y: Y(t) - 8, label: t % 60 === 0 ? hourLabel(t) : clockAmPm(t) });
           lastLabel = Y(t);
         }
       }
@@ -1334,6 +1376,86 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
 
   board.height = y;
   return board;
+}
+
+/**
+ * The parts of a Timeline day that have to stay at true scale: everything drawn, near its start
+ * and its end. Something long (a parent's all-day rental, a day at work, a tournament) keeps
+ * only its edges, so the time it covers can fold if nothing else happens then. ``now`` keeps
+ * the time around it, so the now line never sits in a fold.
+ */
+export function heldSpans(
+  day: PlanDay,
+  drivers: string[],
+  ownSpan: (e: PlanEvent) => [number, number],
+  now: number | null,
+): [number, number][] {
+  const spans: [number, number][] = [];
+  const add = (s: number | null | undefined, e: number | null | undefined): void => {
+    if (s == null || e == null) return;
+    spans.push([s - HOLD_BEFORE, Math.min(e, s + HOLD_START) + HOLD_AFTER], [Math.max(s, e - HOLD_END) - HOLD_BEFORE, e + HOLD_AFTER]);
+  };
+  for (const e of day.events) {
+    if (e.own) {
+      add(...ownSpan(e));
+      if (e.takes != null) add(e.start, e.end);
+    } else add(e.arrive_by ?? e.start, e.end);
+  }
+  for (const k of Object.values(day.kids)) for (const it of k.items ?? []) add(it.start, it.end);
+  for (const d of drivers) {
+    const dd = day.drivers[d];
+    if (!dd) continue;
+    for (const g of dd.segments) if (g.type !== "home") add(g.start, g.end);
+    for (const o of dd.outings) add(o.start, o.end);
+    for (const b of dd.busy) add(b.start, b.end);
+  }
+  if (now != null) spans.push([now - 30, now + 30]);
+  return spans;
+}
+
+/**
+ * The stretches between ``r0`` and ``r1`` that nothing holds, on the half hour, of at least
+ * ``FOLD_MIN`` minutes.
+ */
+export function foldsFor(held: [number, number][], r0: number, r1: number): { from: number; to: number }[] {
+  const spans = held
+    .map(([s, e]): [number, number] => [Math.max(r0, s), Math.min(r1, e)])
+    .filter(([s, e]) => e > s)
+    .sort((a, b) => a[0] - b[0]);
+  const folds: { from: number; to: number }[] = [];
+  let edge = r0;
+  const gap = (s: number, e: number): void => {
+    const from = Math.ceil(s / 30) * 30;
+    const to = Math.floor(e / 30) * 30;
+    if (to - from >= FOLD_MIN) folds.push({ from, to });
+  };
+  // The ends of the day are already trimmed to what's on, so only gaps between held parts fold.
+  let started = false;
+  for (const [s, e] of spans) {
+    if (started && s > edge) gap(edge, s);
+    edge = started ? Math.max(edge, e) : e;
+    started = true;
+  }
+  return folds;
+}
+
+/** Pixels from the top of a Timeline day for ``m`` minutes after its first row, with folds drawn short. */
+function foldedOffset(m: number, folds: { from: number; to: number }[], r0: number): number {
+  let y = m * PPM;
+  const t = r0 + m;
+  for (const f of folds) {
+    const len = f.to - f.from;
+    if (t >= f.to) y -= len * PPM - FOLD_H;
+    else if (t > f.from) y -= (t - f.from) * PPM - ((t - f.from) / len) * FOLD_H;
+  }
+  return y;
+}
+
+/** "2 hrs", "2½ hrs", "4 hrs": how long a fold hides. */
+export function foldLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const half = minutes % 60 >= 30;
+  return `${h}${half ? "½" : ""} hrs`;
 }
 
 // The "Needs attention" list, across the week.

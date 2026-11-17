@@ -786,6 +786,38 @@ export const styles = css`
   .grid.strong {
     background: var(--line);
   }
+  /* A folded stretch of Timeline: a torn strip over the quiet time, saying how long it hides. */
+  .fold {
+    left: 60px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .fold svg {
+    display: block;
+    overflow: visible;
+  }
+  .fold-fill {
+    fill: var(--bg);
+  }
+  .fold-edge {
+    fill: none;
+    stroke: #cfccc4;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+  .fold-label {
+    left: 0;
+    padding: 1px 6px;
+    border-radius: 9px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+    font-size: 11.5px;
+    line-height: 15px;
+    font-weight: 700;
+    color: var(--muted);
+    z-index: 2;
+  }
   .hour {
     left: 0;
     width: 52px;
