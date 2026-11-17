@@ -86,6 +86,8 @@ export interface CardBox extends Box {
   showPick: boolean;
   /** Lines wrap (Compact) instead of being cut off. */
   wrap: boolean;
+  /** Compact: the drop line goes on the end of the time line ("4:00–5:00 · No ride needed"). */
+  inline?: boolean;
   /** Under way at the top of today: it started before the time shown, which is over. */
   cut?: boolean;
   aria: string;
@@ -577,12 +579,34 @@ function n(v: number | null | undefined, fallback = 0): number {
   return v == null || !Number.isFinite(v) ? fallback : v;
 }
 
+/** Measures a text's width in pixels in a CSS font, or null when it can't. */
+export type Measure = (text: string, font: string) => number | null;
+
+let measurer: Measure | null = null;
+
+/**
+ * The board's own text measuring, so wrapped text gets exactly the lines it needs on this
+ * screen's fonts. Without one (tests, or a browser that can't), widths are guessed per character.
+ */
+export function useMeasure(m: Measure | null): void {
+  measurer = m;
+}
+
+const FAMILY = 'Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif';
+/** The fonts of what wraps in Compact, as in the styles. */
+export const FONTS = {
+  title: `800 14.5px ${FAMILY}`,
+  time: `400 12px ${FAMILY}`,
+  line: `600 12px ${FAMILY}`,
+  stop: `400 12px ${FAMILY}`,
+} as const;
+
 /** How many lines a text takes when it wraps at spaces, at about `charW` pixels a character. */
-export function wrapRows(text: string, width: number, charW = 7): number {
+function guessRows(text: string, width: number, charW: number): number {
   const per = Math.max(8, Math.floor(width / charW));
   let rows = 1;
   let used = 0;
-  for (const word of text.split(/\s+/).filter(Boolean)) {
+  for (const word of text.split(/[ \t\n]+/).filter(Boolean)) {
     const len = word.length;
     if (used === 0) used = len;
     else if (used + 1 + len <= per) used += 1 + len;
@@ -596,6 +620,42 @@ export function wrapRows(text: string, width: number, charW = 7): number {
     }
   }
   return rows;
+}
+
+/** The same, measured: lines break where the browser breaks them, at spaces, then anywhere in a word too long for a line. */
+function measuredRows(text: string, width: number, font: string, m: Measure): number | null {
+  const words = text.split(/[ \t\n]+/).filter(Boolean);
+  let rows = 1;
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    const w = m(next, font);
+    if (w == null) return null;
+    if (w <= width) {
+      line = next;
+      continue;
+    }
+    if (line) rows++;
+    const ww = m(word, font);
+    if (ww == null) return null;
+    // A word wider than the line breaks inside it.
+    if (ww > width) rows += Math.ceil(ww / width) - 1;
+    line = word;
+  }
+  return rows;
+}
+
+/**
+ * How many lines a text takes when it wraps. Measured in `font` when the board can measure,
+ * else guessed at about `charW` pixels a character.
+ */
+export function wrapRows(text: string, width: number, charW = 7, font?: string): number {
+  if (font && measurer) {
+    // Half a pixel spare: the browser rounds widths its own way.
+    const rows = measuredRows(text, width - 0.5, font, measurer);
+    if (rows != null) return rows;
+  }
+  return guessRows(text, width, charW);
 }
 
 /** A car box: 3px padding and 1.5px border top and bottom, a 15px first line, 1px gap, 15px lines. */
@@ -679,14 +739,73 @@ export function compactLines(lines: { drop: CardLine | null; pick: CardLine | nu
   return { drop: { text: `${CAR} ${parts.join(" · ")}`, tone }, pick: null };
 }
 
-/** A Compact card's height: everything on it shows, wrapped. */
+/** What a card says. */
+export interface CardText {
+  title: string;
+  time: string;
+  drop: CardLine | null;
+  pick: CardLine | null;
+  /** Compact: the drop line is short and not about a ride, so it goes on the end of the time line. */
+  inline: boolean;
+}
+
+/**
+ * Compact: a line that isn't about a ride ("No ride needed", "At home") goes on the end of the
+ * time line, " · No ride needed", rather than taking a line of its own.
+ */
+export function foldsIntoTime(lines: { drop: CardLine | null; pick: CardLine | null }, skipped: boolean): boolean {
+  return !skipped && !!lines.drop && !lines.pick && lines.drop.tone === "muted";
+}
+
+/** The card's padding top and bottom in Compact, as in the styles. */
+const WRAP_PAD = 5;
+/** The note mark's room at the end of the title. */
+const NOTE_ROOM = 13;
+
+/**
+ * A Compact card's height: everything on it shows, wrapped, and nothing more. The parts add up
+ * as the styles draw them: border, padding, an 18px line per title line, then 16px lines with a
+ * pixel between them, and 2px before the pick-up line.
+ */
+export function compactHeight(t: CardText, w: number, opts: { noted?: boolean; clash?: boolean } = {}): number {
+  const border = opts.clash ? 4 : 2;
+  const inner = w - border - 13 - 9; // the color stripe's side and the other side's padding
+  let h = border + 2 * WRAP_PAD;
+  h += wrapRows(t.title, inner - (opts.noted ? NOTE_ROOM : 0), 9, FONTS.title) * 18;
+  const time = t.inline && t.drop ? `${t.time} · ${t.drop.text}` : t.time;
+  h += 1 + wrapRows(time, inner, 6.6, t.inline ? FONTS.line : FONTS.time) * 16;
+  if (t.drop && !t.inline) h += 1 + wrapRows(t.drop.text, inner, 7, FONTS.line) * 16;
+  if (t.pick) h += 2 + wrapRows(t.pick.text, inner, 7, FONTS.line) * 16;
+  return Math.ceil(h) + 1;
+}
+
+/** A Compact card's height for an event on its own: its title, times and ride lines. */
 export function compactCardHeight(e: PlanEvent, colW: number): number {
-  const inner = colW - 23; // padding, the color stripe and the border
-  const time = `${clock(e.start)}–${clock(e.end)}` + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") + leaveText(e);
-  let h = 15 + 18 + wrapRows(time, inner, 6.6) * 16;
   const ln = e.own ? e.lines : compactLines(e.lines);
-  for (const l of [ln.drop, ln.pick]) if (l) h += 2 + wrapRows(l.text, inner, 7) * 16;
-  return h + 4;
+  const time = spanText(e) + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") + leaveText(e);
+  return compactHeight(
+    { title: e.title, time, ...ln, inline: foldsIntoTime(ln, e.attending === false) },
+    colW,
+    { noted: !!e.notes },
+  );
+}
+
+/**
+ * Compact: a trip's stop said shortly, with the card's arrows. "4:35  Soccer fields, drop off
+ * Cleo" is "4:35  Soccer fields ↓ Cleo", a pick-up is ↑, and "Home, get Ben" is "Home ↑ Ben".
+ * The arrow is held to the name, so a line never ends on an arrow.
+ */
+export function terseStop(text: string): string {
+  return text
+    .replace(/^(\S+\s+Home), get (.+)$/u, "$1 ↑\u00a0$2")
+    .replace(/, drop off (.+)$/u, " ↓\u00a0$1")
+    .replace(/, pick up (.+)$/u, " ↑\u00a0$1");
+}
+
+/** A Compact trip box: 6px padding top and bottom, the 16px lead line, then a 16px line per stop line, a pixel apart. */
+export function compactTripHeight(stops: string[], boxW: number): number {
+  const rows = stops.reduce((n, t) => n + wrapRows(t, boxW - 20, 7, FONTS.stop), 0);
+  return 12 + 16 + stops.length + rows * 16 + 1;
 }
 
 export function layout(plan: Plan, mode: Mode, width: number, today: Today): Board {
@@ -767,21 +886,11 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       return;
     }
 
-    // A card in one column: a kid's activity, a parent's own event in their column, or that
-    // event again in the column of each kid who goes along.
-    const cardFor = (
-      e: PlanEvent,
-      x: number,
-      cy: number,
-      cw: number,
-      h: number,
-      clash: boolean,
-      wrap: boolean,
-      colId: string = e.kid,
-    ): CardBox => {
+    // What a card in one column says: a kid's activity, a parent's own event in their column,
+    // or that event again in the column of each kid who goes along.
+    const cardText = (e: PlanEvent, wrap: boolean, colId: string = e.kid): CardText & { who: string; mine: boolean } => {
       const mine = !!e.own && colId === e.own;
       const along = !!e.own && colId !== e.own;
-      const c = mine ? OWN_COLOR : (colors.get(colId) ?? kidColor(0));
       const who = mine ? nameOfDriver(colId) : nameOfKid(colId);
       const ln: { drop: CardLine | null; pick: CardLine | null } = along
         ? { drop: { text: `${wrap ? `${CAR} ` : ""}With ${nameOfDriver(e.own!)}`, tone: e.attending === false ? "muted" : "normal" }, pick: null }
@@ -795,6 +904,33 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           : spanText(e) + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") + leaveText(e)) +
         (going.length ? ` · with ${andList(going)}` : "");
       return {
+        who,
+        mine,
+        title: shortTitle(e.title, who),
+        time,
+        drop: ln.drop,
+        pick: ln.pick,
+        inline: wrap && foldsIntoTime(ln, e.attending === false),
+      };
+    };
+    const cardHeight = (e: PlanEvent, w: number, colId: string, clash: boolean): number =>
+      compactHeight(cardText(e, true, colId), w, { noted: !!e.notes, clash });
+
+    const cardFor = (
+      e: PlanEvent,
+      x: number,
+      cy: number,
+      cw: number,
+      h: number,
+      clash: boolean,
+      wrap: boolean,
+      colId: string = e.kid,
+    ): CardBox => {
+      const t = cardText(e, wrap, colId);
+      const c = t.mine ? OWN_COLOR : (colors.get(colId) ?? kidColor(0));
+      const who = t.who;
+      const ln = { drop: t.drop, pick: t.pick };
+      return {
         key: `${day.date}|card|${e.id}` + (e.own ? `|${colId}` : ""),
         x,
         y: cy,
@@ -807,13 +943,14 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         clash,
         stayed: !e.own && e.stay && drivers.includes(e.drop),
         skipped: e.attending === false,
-        title: shortTitle(e.title, who),
-        time,
+        title: t.title,
+        time: t.time,
         drop: ln.drop,
         pick: ln.pick,
         showDrop: !!ln.drop && (wrap || h >= 56),
         showPick: !!ln.pick && (wrap || h >= 74),
         wrap,
+        inline: t.inline,
         aria:
           `${who}, ${e.title} ${e.takes != null ? `any time from ${clock(e.start)} to ${clock(e.end)}` : spanText(e).replace("–", " to ")}. ` +
           (e.attending === false && !ln.drop ? "Not attending. " : "") +
@@ -1236,7 +1373,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         if (it.type === "act") {
           const e = events.get(it.event ?? "");
           if (!e) continue;
-          items.push({ col: kid, s: it.start, h: compactCardHeight(e, c.w), kind: "act", item: it });
+          items.push({ col: kid, s: it.start, h: cardHeight(e, c.w, kid, it.clash), kind: "act", item: it });
         } else if (!day.rides[it.ride ?? -1]?.own) {
           const along = day.rides[it.ride ?? -1];
           const trip = along
@@ -1255,14 +1392,13 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       const cw = col.get(d)!.w;
       for (const e of day.events) {
         if (e.own !== d || (!e.busy_only && e.attending !== false && (e.takes == null || e.planned != null))) continue;
-        items.push({ col: d, s: ownSpan(e)[0], h: compactCardHeight(e, cw), kind: "own", event: e });
+        items.push({ col: d, s: ownSpan(e)[0], h: cardHeight(e, cw - 16, d, false), kind: "own", event: e });
       }
       for (const o of dd.outings) {
         if (o.start == null) continue;
         // Each stop wraps rather than getting cut off: the box is the column less its margins and padding.
-        const lines = homeAt(o.lines) ? o.lines.slice(0, -1) : o.lines;
-        const rows = [...lines, ...(o.warn ? [o.warn] : [])].reduce((n, t) => n + wrapRows(t, cw - 36, 7), 0);
-        items.push({ col: d, s: o.start, h: 30 + rows * 16, kind: "out", out: o });
+        const lines = (homeAt(o.lines) ? o.lines.slice(0, -1) : o.lines).map(terseStop);
+        items.push({ col: d, s: o.start, h: compactTripHeight([...lines, ...(o.warn ? [o.warn] : [])], cw - 16), kind: "out", out: o });
       }
     }
     items.sort((a, b) => a.s - b.s || order.indexOf(a.col) - order.indexOf(b.col));
@@ -1337,7 +1473,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           show2: false,
           l3: "",
           show3: false,
-          stops: [...stopLines.map((text) => ({ text, warn: false })), ...(o.warn ? [{ text: o.warn, warn: true }] : [])],
+          stops: [...stopLines.map((text) => ({ text: terseStop(text), warn: false })), ...(o.warn ? [{ text: o.warn, warn: true }] : [])],
           kids: o.kids.map((k) => (colors.get(k) ?? kidColor(0)).color),
           bad: !!o.warn,
           aria: `${nameOfDriver(m.col)}: ${o.lead}. ${o.lines.join(". ")}${o.warn ? `. ${o.warn}` : ""}`,

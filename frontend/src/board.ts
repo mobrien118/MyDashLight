@@ -30,6 +30,7 @@ import {
   spanText,
   tAt,
   tidyPlan,
+  useMeasure,
   whoName,
   yAt,
   type AllDayChip,
@@ -92,6 +93,36 @@ import { withoutPast } from "./past.ts";
 import { styles } from "./styles.ts";
 import type { Plan, PlanDay, PlanEvent, Scope, Side, UnplacedEvent } from "./types.ts";
 import { NoteTip } from "./notetip.ts";
+
+// Compact wraps text: it's measured in the screen's own fonts, so each box is just tall enough.
+// A hidden span rather than a canvas: a canvas can't draw the board's even-width digits.
+(() => {
+  if (typeof document === "undefined") return;
+  let probe: HTMLSpanElement | null = null;
+  const widths = new Map<string, number | null>();
+  useMeasure((text, font) => {
+    const key = `${font}|${text}`;
+    let w = widths.get(key);
+    if (w !== undefined) return w;
+    if (!probe) {
+      if (!document.body) return null;
+      probe = document.createElement("span");
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.cssText =
+        "position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none;white-space:pre;letter-spacing:normal;word-spacing:normal;text-transform:none;contain:layout style";
+      document.body.appendChild(probe);
+    }
+    probe.style.font = font;
+    // A font this browser can't read is left unset: say so, and the width is guessed instead.
+    if (!probe.style.font) return null;
+    probe.style.fontVariantNumeric = "tabular-nums";
+    probe.textContent = text;
+    w = probe.getBoundingClientRect().width;
+    if (widths.size > 20_000) widths.clear();
+    widths.set(key, w);
+    return w;
+  });
+})();
 
 // Renamed when Compact became the default, so every screen starts there once, then remembers.
 const MODE_KEY = "mydashlight.rides.view";
@@ -1910,8 +1941,10 @@ export class MyDashLightBoard extends LitElement {
                 ${x.event.notes ? NOTE : nothing}
                 <span class="top">
                   <span class="title">${x.title}</span>
-                  <span class="time">${x.time}</span>
-                  ${x.showDrop && x.drop ? html`<span class="line tone-${x.drop.tone}">${x.drop.text}</span>` : nothing}
+                  <span class="time">${x.time}${x.inline && x.drop
+                    ? html`<span class="line tone-${x.drop.tone} inline"> · ${x.drop.text}</span>`
+                    : nothing}</span>
+                  ${x.showDrop && x.drop && !x.inline ? html`<span class="line tone-${x.drop.tone}">${x.drop.text}</span>` : nothing}
                 </span>
                 ${x.showPick && x.pick ? html`<span class="line tone-${x.pick.tone}">${x.pick.text}</span>` : nothing}
               </button>`;
