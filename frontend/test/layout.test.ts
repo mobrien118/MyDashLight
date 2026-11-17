@@ -27,6 +27,9 @@ import {
   tAt,
   wrapRows,
   yAt,
+  foldLabel,
+  foldsFor,
+  FOLD_H,
   type Board,
 } from "../src/layout.ts";
 import { OWN_COLOR, andList, eventColor, ownerName } from "../src/layout.ts";
@@ -611,7 +614,7 @@ test("timeline: something running past midnight shows only its edge, not the who
   assert.deepEqual(hours(p), before);
 });
 
-test("all-day events go in the day's heading, under the date", () => {
+test("all-day events go in the day's heading, up on the date line while they fit", () => {
   const board = layout(plan, "timeline", 1160, today);
   const heads = new Map(board.dayHeads.map((h) => [h.date, h]));
   const fri = heads.get(plan.days[1]!.date)!;
@@ -627,8 +630,16 @@ test("all-day events go in the day's heading, under the date", () => {
   // Nobody's all-day event is plain; one naming someone takes their colour.
   assert.equal(fri.allDay[0]!.color, null);
   assert.ok(fri.allDay[1]!.color);
-  // The heading grows by one line of chips, glued under the date, and the day starts below it.
-  assert.equal(fri.h, DAY_HEAD + 26 + 4 + 2);
+  // Marty, 2026-11-17: chips sit on the date line while they fit, so the heading stays one line.
+  assert.deepEqual([fri.inline, fri.h], [3, DAY_HEAD]);
+  // Narrower, fewer fit up there. The first that doesn't starts a line of chips under the date,
+  // as many to a line as fit, and the day starts below it.
+  const narrow = layout(plan, "timeline", 700, today);
+  const nfri = narrow.dayHeads.find((h) => h.date === fri.date)!;
+  assert.ok(nfri.inline > 0 && nfri.inline < 3);
+  assert.equal(nfri.h, DAY_HEAD + 26 + 4 + 2);
+  const nFirst = Math.min(...narrow.cards.filter((c) => c.target?.day === fri.date).map((c) => c.y));
+  assert.ok(nFirst >= nfri.y + nfri.h);
   const firstCard = Math.min(...board.cards.filter((c) => c.target?.day === plan.days[1]!.date).map((c) => c.y));
   assert.ok(firstCard >= fri.y + fri.h);
   assert.deepEqual(
@@ -668,4 +679,64 @@ test("leaving early shows on the card's time line", () => {
   assert.equal(leaveText(e), " · leave 1:15");
   assert.equal(leaveText({ ...e, leave_by: null }), "");
   assert.equal(leaveText({ ...e, leave_by: 885 }), "");
+});
+
+test("timeline: a long quiet stretch in the middle of a day folds to a short torn strip", () => {
+  const b = layout(plan, "timeline", 1160, today);
+  const date = plan.days[3]!.date;
+  // Grand rounds 7:00–8:00, then nothing until the drive to golf at 12:37.
+  const folds = b.folds.filter((f) => f.key.startsWith(date));
+  assert.equal(folds.length, 1);
+  const f = folds[0]!;
+  assert.deepEqual([f.from, f.to, f.label], [510, 720, "3½ hrs"]);
+  assert.equal(f.h, FOLD_H);
+  // Its edges are labeled, even on the half hour, and nothing inside it is.
+  const base = 3 * 1440;
+  const labels = b.hours.filter((h) => h.key.startsWith(date)).map((h) => h.label);
+  assert.ok(labels.includes("8:30 AM") && labels.includes("12 PM"));
+  for (const l of ["9 AM", "10 AM", "11 AM"]) assert.ok(!labels.includes(l), l);
+  assert.ok(!b.grid.some((g) => g.key.startsWith(date) && g.y > f.y && g.y < f.y + f.h));
+  // Times either side keep their true spacing, and the fold maps both ways.
+  assert.equal(yAt(b, base + 480) - yAt(b, base + 420), 180);
+  assert.equal(yAt(b, base + 780) - yAt(b, base + 720), 180);
+  assert.equal(yAt(b, base + 720) - yAt(b, base + 510), FOLD_H);
+  const t = base + 600;
+  assert.ok(Math.abs(tAt(b, yAt(b, t)) - t) <= 1);
+  // Nothing in a column overlaps another box after folding.
+  const boxes = [...b.cards, ...b.trips, ...b.stays].filter((x) => x.key.startsWith(date));
+  for (let i = 0; i < boxes.length; i++)
+    for (let j = i + 1; j < boxes.length; j++)
+      if (boxes[i]!.x === boxes[j]!.x) assert.ok(!overlaps(boxes[i]!, boxes[j]!) || boxes[i]!.h <= 0, `${boxes[i]!.key} / ${boxes[j]!.key}`);
+});
+
+test("timeline: a parent's long busy time doesn't keep a quiet stretch open", () => {
+  const b = layout(plan, "timeline", 1160, today);
+  const date = plan.days[5]!.date;
+  // Book club ends 11:30, Sam is at work 9:00–5:00, and the kids start after 4:30.
+  const f = b.folds.find((x) => x.key.startsWith(date))!;
+  assert.deepEqual([f.from, f.to, f.label], [720, 960, "4 hrs"]);
+  const work = b.busy.find((x) => x.key.startsWith(date) && x.label === "Work until 5:00")!;
+  assert.ok(work.y < f.y && work.y + work.h > f.y + f.h);
+});
+
+test("timeline: short gaps, the time around now, and Compact never fold", () => {
+  // Day 0 is busy all afternoon, and now (4:00) is in it.
+  const b = layout(plan, "timeline", 1160, today);
+  assert.ok(!b.folds.some((f) => f.key.startsWith(FIRST)));
+  assert.deepEqual(layout(plan, "compact", 1160, today).folds, []);
+  // Now in the middle of a quiet stretch keeps an hour around it open.
+  const date = plan.days[3]!.date;
+  const at = layout(plan, "timeline", 1160, { date, minutes: 600 });
+  const folds = at.folds.filter((f) => f.key.startsWith(date));
+  assert.ok(folds.every((f) => f.to <= 570 || f.from >= 630));
+  assert.ok(at.now && !folds.some((f) => at.now!.y > f.y && at.now!.y < f.y + f.h));
+  // A gap under two hours stays.
+  assert.deepEqual(foldsFor([[600, 660], [770, 900]], 600, 900), []);
+  assert.deepEqual(foldsFor([[600, 660], [790, 900]], 600, 900), [{ from: 660, to: 780 }]);
+});
+
+test("fold labels", () => {
+  assert.equal(foldLabel(120), "2 hrs");
+  assert.equal(foldLabel(150), "2½ hrs");
+  assert.equal(foldLabel(240), "4 hrs");
 });

@@ -340,3 +340,14 @@ def test_a_very_long_drive_is_called_out_on_the_trip() -> None:
     board = build_day([game], {}, lambda a, b: 0 if a == b else 119, LABELS, kids=KIDS)
     assert all(not o.warn for o in board.outings["mom"])
     assert [span(m) for m in (0, 45, 120, 875.8)] == ["0 min", "45 min", "2 hr", "14 hr 36 min"]
+
+
+def test_a_pick_up_driven_straight_on_still_has_its_time() -> None:
+    # Marty, 2026-11-17: Hip Hop's pick-up went straight on to Girl Scouts, so the card said
+    # "Pick-up: Sam" with no time, and Compact showed a bare "↑".
+    dance = RideEvent("dance", "cleo", "Hip Hop", "dance", 1080, 1125, drop="mom", pick="mom")
+    scouts = RideEvent("scouts", "cleo", "Scouts", "soccer", 1140, 1200, drop="mom", pick="Robin")
+    board = build_day([dance, scouts], {}, travel, LABELS, kids=KIDS)
+    pick = board.lines["dance"].pick
+    assert pick is not None
+    assert pick.text == "Picked up 6:45 by " + LABELS.driver("mom")

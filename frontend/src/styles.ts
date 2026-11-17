@@ -663,7 +663,22 @@ export const styles = css`
     width: 1px;
     background: #d6d3cb;
   }
-  /* All-day events, glued under the date line and floating with it. */
+  /* All-day events up on the date line, while the layout found room for them. */
+  .dh-chips {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .dh-chips .strip-chip {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .dh-chips .strip-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* All-day events that didn't fit on the date line, glued under it and floating with it. */
   .day-strip {
     display: flex;
     flex-wrap: wrap;
@@ -785,6 +800,38 @@ export const styles = css`
   }
   .grid.strong {
     background: var(--line);
+  }
+  /* A folded stretch of Timeline: a torn strip over the quiet time, saying how long it hides. */
+  .fold {
+    left: 60px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .fold svg {
+    display: block;
+    overflow: visible;
+  }
+  .fold-fill {
+    fill: var(--bg);
+  }
+  .fold-edge {
+    fill: none;
+    stroke: #cfccc4;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+  .fold-label {
+    left: 0;
+    padding: 1px 6px;
+    border-radius: 9px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+    font-size: 11.5px;
+    line-height: 15px;
+    font-weight: 700;
+    color: var(--muted);
+    z-index: 2;
   }
   .hour {
     left: 0;
