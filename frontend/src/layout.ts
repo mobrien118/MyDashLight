@@ -175,6 +175,8 @@ export interface DayHead {
   h: number;
   /** The all-day row: all-day events, and timed ones for nobody. Floats with the date line. */
   allDay: AllDayChip[];
+  /** How many of ``allDay`` fit on the date line itself; the rest wrap onto lines under it. */
+  inline: number;
 }
 
 /** The heading's height for the day at ``t`` minutes into the week. */
@@ -201,9 +203,21 @@ export interface AllDayChip {
 
 export interface AllDayRow {
   key: string;
-  /** The chips' height, without the space under them. */
+  /** The height of the chips' lines under the date line, without the space under them: 0 when
+   * they all fit on the date line. */
   h: number;
   chips: AllDayChip[];
+  /** How many chips, from the start, sit on the date line. */
+  inline: number;
+}
+
+/**
+ * About how wide a day's date line is before any chips: the date, the Today or Tomorrow tag,
+ * the count, and the gaps after each. It errs wide, so a chip that's put on the line fits.
+ */
+export function headWidth(label: string, tag: string, sub: string): number {
+  const date = 4 + 6 + 10.2 * label.length + (tag ? 12 + 18 + 8 * tag.length : 0) + 8;
+  return date + 12 + 6.8 * sub.length + 12 + 4;
 }
 
 export const ALL_DAY_LINE = 26;
@@ -698,21 +712,25 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     const problems = problemCount(day);
     const count = day.events.length;
     const tag = dayTag(day.date, today.date);
-    const strip = allDayRow(plan, day, colors, w);
+    const label = dayLabel(day.date);
+    const sub =
+      (count
+        ? `${count} ${count === 1 ? "activity" : "activities"}${day.done ? " left" : ""}`
+        : day.done
+          ? "All done for today"
+          : "Nothing scheduled") + (problems ? ` · ${problems} to sort out` : "");
+    // All-day chips go up on the date line while they fit (Marty, 2026-11-17), then wrap under it.
+    const strip = allDayRow(plan, day, colors, w, w - headWidth(label, tag, sub));
     board.dayHeads.push({
       date: day.date,
       y,
-      label: dayLabel(day.date),
+      label,
       tag,
-      sub:
-        (count
-          ? `${count} ${count === 1 ? "activity" : "activities"}${day.done ? " left" : ""}`
-          : day.done
-            ? "All done for today"
-            : "Nothing scheduled") + (problems ? ` · ${problems} to sort out` : ""),
+      sub,
       warn: problems > 0,
-      h: DAY_HEAD + (strip ? strip.h + ALL_DAY_GAP + 2 : 0),
+      h: DAY_HEAD + (strip && strip.h ? strip.h + ALL_DAY_GAP + 2 : 0),
       allDay: strip?.chips ?? [],
+      inline: strip?.inline ?? 0,
     });
     board.anchors.push({ t: base, y });
     const head = board.dayHeads[board.dayHeads.length - 1]!;
@@ -1575,6 +1593,8 @@ export function allDayRow(
   day: PlanDay,
   colors: Map<string, KidColor>,
   width: number,
+  /** Room left on the date line, in px. */
+  first = 0,
 ): Omit<AllDayRow, "y"> | null {
   const drivers = new Set(driverIds(plan));
   const colorOf = (people: string[]): KidColor | null => {
@@ -1605,19 +1625,28 @@ export function allDayRow(
     })),
   ];
   if (!chips.length) return null;
-  // About 7 px a character at 12 px, plus the chip's padding and the gap after it.
   const room = Math.max(120, width - GUTTER);
-  let lines = 1;
+  // About 6 px a character at 12 px (the smaller note less), plus the chip's padding and the gap after it. Lines under
+  // the date reckon 7, so they never wrap more than planned; up on the date line a chip that
+  // runs a little wide is cut short with an ellipsis instead.
+  const size = (c: AllDayChip, px = 7): number =>
+    30 + px * c.title.length + (c.note ? Math.min(px, 5.6) * (c.note.length + 2) : 0) + (c.notes ? 16 : 0);
+  // Up on the date line, in order, while they fit; the first that doesn't starts the lines under it.
+  let inline = 0;
   let used = 0;
-  for (const c of chips) {
-    const chip = Math.min(room, 30 + 7 * (c.title.length + (c.note ? c.note.length + 2 : 0)) + (c.notes ? 16 : 0));
-    if (used && used + chip > room) {
+  while (inline < chips.length && used + size(chips[inline]!, 6.4) <= first) used += size(chips[inline++]!, 6.4);
+  let lines = 0;
+  used = 0;
+  for (const c of chips.slice(inline)) {
+    const chip = Math.min(room, size(c));
+    if (!lines || used + chip > room) {
       lines++;
       used = 0;
     }
     used += chip;
   }
-  return { key: `${day.date}|allday`, h: lines * ALL_DAY_LINE + (lines - 1) * ALL_DAY_GAP, chips };
+  const h = lines ? lines * ALL_DAY_LINE + (lines - 1) * ALL_DAY_GAP : 0;
+  return { key: `${day.date}|allday`, h, chips, inline };
 }
 
 // What's coming up next, for the top of the board.

@@ -662,6 +662,12 @@ function buildDay(i, evs) {
         if (f === 'pick' && x.kind === 'waiting') extra = ', waits ' + wholeMin(x.min) + ' min';
       });
       var ink = extra ? '#B42318' : '#3D434B';
+      if (!r && f === 'pick') {
+        // Picked up and driven straight on to another stop: the time comes from the route.
+        var at = null;
+        plan[v].stops.forEach(function (s) { if (at == null && s.kind === 'pick' && s.e && s.e.id === e.id && s.arr != null) at = Math.max(s.arr, s.ready || 0); });
+        if (at != null) return { text: 'Picked up ' + fmt(at) + ' by ' + PEOPLE[v] + extra, ink: ink };
+      }
       if (!r) return { text: (f === 'drop' ? 'Drop-off: ' : 'Pick-up: ') + PEOPLE[v] + extra, ink: ink };
       if (f === 'drop') {
         var fromHome = r.legs[0].type === 'drive' && r.legs[0].from === 'home';

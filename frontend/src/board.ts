@@ -32,6 +32,7 @@ import {
   tidyPlan,
   whoName,
   yAt,
+  type AllDayChip,
   type Attention,
   type Board,
   type DayHead,
@@ -1726,33 +1727,37 @@ export class MyDashLightBoard extends LitElement {
           <span class="label">${d.label}</span>${d.tag ? html`<span class="tag">${d.tag}</span>` : nothing}
         </button>
         <span class="sub ${d.warn ? "warn" : ""}">${d.sub}</span>
+        ${d.inline ? html`<div class="dh-chips">${d.allDay.slice(0, d.inline).map((c) => this.renderStripChip(d, c, pinned))}</div>` : nothing}
       </div>
-      ${d.allDay.length
+      ${d.allDay.length > d.inline
         ? html`<div class="day-strip" style="padding-left:${GUTTER}px">
-            ${d.allDay.map((c) => {
-              const inside = html`<span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}${c.notes ? NOTE : nothing}`;
-              const pick = c.pick;
-              return pick
-                ? html`<button
-                    type="button"
-                    class="strip-chip warn plain pick"
-                    tabindex=${pinned ? -1 : 0}
-                    data-note=${c.notes || nothing}
-                    aria-label=${`${c.title}: ${c.note} Pick who it’s for`}
-                    @click=${() => this.openForPick(d.date, pick)}
-                  >
-                    ${inside}
-                  </button>`
-                : html`<span
-                    class="strip-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"} ${c.notes ? "noted" : ""}"
-                    style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
-                    tabindex=${c.notes && !pinned ? 0 : nothing}
-                    data-note=${c.notes || nothing}
-                    >${inside}</span
-                  >`;
-            })}
+            ${d.allDay.slice(d.inline).map((c) => this.renderStripChip(d, c, pinned))}
           </div>`
         : nothing}`;
+  }
+
+  /** One all-day chip, up on the date line or on a line under it. */
+  private renderStripChip(d: DayHead, c: AllDayChip, pinned: boolean): TemplateResult {
+    const inside = html`<span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}${c.notes ? NOTE : nothing}`;
+    const pick = c.pick;
+    return pick
+      ? html`<button
+          type="button"
+          class="strip-chip warn plain pick"
+          tabindex=${pinned ? -1 : 0}
+          data-note=${c.notes || nothing}
+          aria-label=${`${c.title}: ${c.note} Pick who it’s for`}
+          @click=${() => this.openForPick(d.date, pick)}
+        >
+          ${inside}
+        </button>`
+      : html`<span
+          class="strip-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"} ${c.notes ? "noted" : ""}"
+          style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
+          tabindex=${c.notes && !pinned ? 0 : nothing}
+          data-note=${c.notes || nothing}
+          >${inside}</span
+        >`;
   }
 
   private renderBoard(b: Board): TemplateResult {
