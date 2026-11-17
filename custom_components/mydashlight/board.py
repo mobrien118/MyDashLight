@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Literal
+import math
+from typing import Final, Literal
 
 from .planner import (
     DEFAULT_DRIVERS,
@@ -372,6 +373,13 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         for b in busy.get(d, ()):
             if b.start < o.end and b.end > o.start:
                 warn = f"Still at {b.title} until {fmt(b.end)}"
+        far = next((g for g in o.legs if g.type == "drive" and g.end - g.start >= LONG_DRIVE), None)
+        if far is not None:
+            # A drive this long is most often Google matching the wrong place, and the trip's
+            # stop times alone make it look like a short drive that leaves hours early.
+            place = labels.short_place(far.to_loc or "")
+            trip = f"{span(far.end - far.start)} drive to {place}. Is the address right?"
+            warn = f"{trip} {warn}" if warn else trip
         if first.type == "drive" and first.from_loc == HOME:
             o.lead = f"Leave {fmt(o.start)}"
         else:
@@ -386,6 +394,16 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         # An errand's time is the planner's pick, so the driver hears about it.
         o.solo = bool(jobs) and all(j[0] == "go" for j in jobs) and not kids and not o.parents
     return outings
+
+
+LONG_DRIVE: Final = 120
+"""Minutes of driving in one go that a trip calls out, so it doesn't look like a short drive."""
+
+
+def span(minutes: float) -> str:
+    """A length of time, such as ``45 min``, ``2 hr`` or ``14 hr 36 min``."""
+    h, m = divmod(math.floor(minutes + 0.5), 60)
+    return " ".join([*([f"{h} hr"] if h else []), *([f"{m} min"] if m or not h else [])])
 
 
 def _going(stops: Sequence[Stop], o: Outing, first: Segment, labels: Labels) -> Going | None:

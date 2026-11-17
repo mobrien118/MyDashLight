@@ -148,6 +148,8 @@ leaving half an hour before it starts, and a trip home as leaving when it ends.
 - If a drive to or from a place given by name only still comes back over 3 hours, Google matched
   the wrong place. The drive counts as the "Drive time with no address" setting instead, and the
   event says to add its full address.
+- A trip with a drive of 2 hours or more in one go says how long it is, in red on the trip, so a
+  wrong place on the map doesn't pass for a short drive that leaves hours early.
 - A Travel line in an event's notes always wins for trips to that event.
 - Without a key, every drive counts as the "Drive time with no address" setting (15 minutes).
   So does a drive to an event with no location whose notes name a driver.
