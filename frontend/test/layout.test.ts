@@ -539,7 +539,7 @@ test("timeline: something running past midnight shows only its edge, not the who
   assert.deepEqual(hours(p), before);
 });
 
-test("all-day events go in the day's heading, under the date", () => {
+test("all-day events go in the day's heading, up on the date line while they fit", () => {
   const board = layout(plan, "timeline", 1160, today);
   const heads = new Map(board.dayHeads.map((h) => [h.date, h]));
   const fri = heads.get(plan.days[1]!.date)!;
@@ -555,8 +555,16 @@ test("all-day events go in the day's heading, under the date", () => {
   // Nobody's all-day event is plain; one naming someone takes their colour.
   assert.equal(fri.allDay[0]!.color, null);
   assert.ok(fri.allDay[1]!.color);
-  // The heading grows by one line of chips, glued under the date, and the day starts below it.
-  assert.equal(fri.h, DAY_HEAD + 26 + 4 + 2);
+  // Marty, 2026-11-17: chips sit on the date line while they fit, so the heading stays one line.
+  assert.deepEqual([fri.inline, fri.h], [3, DAY_HEAD]);
+  // Narrower, fewer fit up there. The first that doesn't starts a line of chips under the date,
+  // as many to a line as fit, and the day starts below it.
+  const narrow = layout(plan, "timeline", 700, today);
+  const nfri = narrow.dayHeads.find((h) => h.date === fri.date)!;
+  assert.ok(nfri.inline > 0 && nfri.inline < 3);
+  assert.equal(nfri.h, DAY_HEAD + 26 + 4 + 2);
+  const nFirst = Math.min(...narrow.cards.filter((c) => c.target?.day === fri.date).map((c) => c.y));
+  assert.ok(nFirst >= nfri.y + nfri.h);
   const firstCard = Math.min(...board.cards.filter((c) => c.target?.day === plan.days[1]!.date).map((c) => c.y));
   assert.ok(firstCard >= fri.y + fri.h);
   assert.deepEqual(

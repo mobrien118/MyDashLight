@@ -663,7 +663,22 @@ export const styles = css`
     width: 1px;
     background: #d6d3cb;
   }
-  /* All-day events, glued under the date line and floating with it. */
+  /* All-day events up on the date line, while the layout found room for them. */
+  .dh-chips {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .dh-chips .strip-chip {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .dh-chips .strip-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* All-day events that didn't fit on the date line, glued under it and floating with it. */
   .day-strip {
     display: flex;
     flex-wrap: wrap;

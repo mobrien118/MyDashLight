@@ -517,6 +517,11 @@ def _card_lines(
             tone: Tone = "problem" if extra else "normal"
             name = labels.driver(v)
             if r is None:
+                # Picked up and driven straight on to another stop, so no ride of the kid's own:
+                # the time still comes from the driver's route.
+                at = _picked_up_at(e, plan[v].stops) if side == "pick" and v in plan.drivers else None
+                if at is not None:
+                    return CardLine(f"Picked up {fmt(at)} by {name}{extra}", tone)
                 return CardLine(("Drop-off: " if side == "drop" else "Pick-up: ") + name + extra, tone)
             if side == "drop":
                 first = r.legs[0]
@@ -547,6 +552,13 @@ def _card_lines(
         pick = None if waits else line("pick", back)
         out[e.id] = CardLines(line("drop", there), pick)
     return out
+
+
+def _picked_up_at(e: RideEvent, stops: Sequence[Stop]) -> float | None:
+    for s in stops:
+        if s.kind == "pick" and s.event is not None and s.event.id == e.id and s.arrive is not None:
+            return max(s.arrive, s.ready or 0)
+    return None
 
 
 def planned_at(e: RideEvent, plan: DayPlan) -> float | None:
