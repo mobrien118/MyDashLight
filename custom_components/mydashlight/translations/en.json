@@ -294,7 +294,7 @@
     },
     "set_arrive_by": {
       "name": "Set arrive by",
-      "description": "Sets when the kid needs to be there, if it's before the start. The arrive-early margin for traffic still comes off this time. Leave the time empty to go back to the start.",
+      "description": "Sets when the kid gets there, before the start or after it. It's written in the notes as minutes early or late. The margin for traffic still comes off this time. Leave the time empty to go back to the start.",
       "fields": {
         "event": {
           "name": "Event",
@@ -312,7 +312,7 @@
     },
     "set_leave_by": {
       "name": "Set leave by",
-      "description": "Sets when the kid has to leave, if it's before the end, such as leaving a party early for a game. The pick-up is then at this time. Leave the time empty to go back to the end.",
+      "description": "Sets when the kid is picked up, before the end (leaving a party early for a game) or after it. It's written in the notes as minutes early or late. Leave the time empty to go back to the end.",
       "fields": {
         "event": {
           "name": "Event",

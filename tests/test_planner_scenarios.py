@@ -351,3 +351,22 @@ def test_a_pick_up_driven_straight_on_still_has_its_time() -> None:
     pick = board.lines["dance"].pick
     assert pick is not None
     assert pick.text == "Picked up 6:45 by " + LABELS.driver("mom")
+
+
+def test_arrive_late_and_leave_late() -> None:
+    # Marty, 2026-11-17: sometimes they get there late, or are picked up after the end.
+    game = RideEvent("game", "ben", "Game", "soccer", 960, 1020, drop="mom", pick="mom", arrive_by=975, leave_by=1035)
+    assert game.out == 1035
+    board = build_day([game], {}, travel, LABELS, kids=KIDS)
+    lines = board.lines["game"]
+    assert lines.drop is not None
+    assert lines.pick is not None
+    # There by 4:15 less the traffic margin, not 4:00; picked up at 5:15, not 5:00.
+    assert lines.pick.text.startswith("Home 5:")
+    stops = board.plan["mom"].stops
+    drop = next(s for s in stops if s.kind == "drop")
+    pick = next(s for s in stops if s.kind == "pick")
+    assert drop.arrive is not None
+    assert 960 < drop.arrive <= 975
+    assert pick.ready == 1035
+    assert not board.plan.hard

@@ -168,8 +168,8 @@ Bring shin guards. Field 3.
 For: Ava & Ben
 Drop-off: Sam, Ben
 Pick-up: the Parkers
-Arrive by: 5:15 PM
-Leave by: 6:30 PM
+Arrive: 15 min early
+Leave: 10 min late
 Travel: 25 min
 ```
 
@@ -179,8 +179,8 @@ Travel: 25 min
 | Drop-off, Pick-up | The driver first: a parent's name or another name they go by, Not needed, or anyone else's name (a carpool driver). Then anyone riding along, by name, such as `Drop-off: Sam, Ben, Robin`. `TBD` holds the driver's place when riders are named but nobody is driving yet | Nobody is driving yet, which shows as a problem |
 | Stay | yes | The driver drops off and comes back. Stay only applies when one parent drives both ways |
 | Take along | Kids' names, and on a parent's own event the other parent | Nobody else rides along. On a parent's own event, everyone named goes there and back with that parent. On a kid's event, an older line still counts as riders on the drop-off |
-| Arrive by | A time, such as 5:15 PM, or 15 min early, when the kid has to be there before the event starts | They have to be there at the start. Either way, the driver aims to get there a margin early for traffic. It grows smoothly with the drive from home, 3 + 14 × ln(1 + drive ÷ 50) minutes: 3 with no drive, 5 for 10 minutes, 10 for 35, 14 for an hour, 20 for two. Pick-ups get the same margin, so the kid isn't left waiting |
-| Leave by | A time, such as 1:15 PM, when the kid has to leave before the event ends, like leaving a party early for a game | They leave at the end. With it, the pick-up is at that time, and a driver who stays leaves then. When one kid's events overlap, the warning offers leaving the first one early as a one-tap fix, in time to drive straight to the next |
+| Arrive | How early or late the kid gets there against the start: `15 min early`, `10 min late`, `1 hr early`. `-15` and `+10` work too, and so does a clock time (`Arrive by: 5:15 PM`, as MyDashLight wrote it before 0.25) | They get there at the start. Either way, the driver aims to get there a margin early for traffic. It grows smoothly with the drive from home, 3 + 14 × ln(1 + drive ÷ 50) minutes: 3 with no drive, 5 for 10 minutes, 10 for 35, 14 for an hour, 20 for two. Pick-ups get the same margin, so the kid isn't left waiting |
+| Leave | How early or late the kid is picked up against the end, the same way: `30 min early` to leave a party for a game, `15 min late` when they stay on. A clock time works too (`Leave by: 1:15 PM`) | They're picked up at the end. With it, the pick-up is at that time, and a driver who stays leaves then. When one kid's events overlap, the warning offers leaving the first one early as a one-tap fix, in time to drive straight to the next |
 | Travel | Minutes, such as 25 min | Use the computed drive time |
 | Attending | no, when the kid isn't going this time | They're going |
 | Takes | Minutes, such as 10 min, on a parent's own event | A set time. With it, the event is an errand: that long, any time between its start and end |
@@ -195,6 +195,11 @@ An event the kid isn't going to stays on the board, marked "Not attending", but 
 raises no problems or reminders, and never clashes with anything. Besides `Attending: no`, the old
 habit of starting the title with a capital `NO` (`NO Soccer`, `NO - Soccer`, `NO: Soccer`) counts
 too, and the board shows the title without it.
+
+Arrive and Leave are written against the event's own times, so they still hold when an event
+moves, and the same line suits every week of a repeating event. `Arrive adjust` and `Pick-up
+adjust` read the same as `Arrive` and `Leave`. An older `Arrive by` or `Leave by` clock time keeps
+working as it is, and the editor writes it the new way the next time that time changes.
 
 Labels ignore case, spaces and hyphens, so `Drop off`, `Dropoff` and `Pickup` all work. Only lines
 inside the block count, so a note like "Pick-up: bring cleats" higher up is never read as a driver.
@@ -213,8 +218,8 @@ notes on Google, so they show the same in the app, on phones and in Google Calen
 | `mydashlight.set_ride` | Who drops off, picks up, or both: `mom` or `dad` (the first or second parent, or their name), `none` when no ride is needed, a carpool driver's name, or empty for nobody yet. A parent always drives to their own event, so this and `set_stay` turn it down |
 | `mydashlight.set_stay` | Whether the driver stays for the event |
 | `mydashlight.set_attending` | Whether the kid is going (`attending`). Going again also takes an old `NO` off the start of the title |
-| `mydashlight.set_arrive_by` | When the kid needs to be there, if it's before the start. The traffic margin still comes off it. No time means they need to be there at the start |
-| `mydashlight.set_leave_by` | When the kid has to leave, if it's before the end. The pick-up is then at that time. No time means they leave at the end |
+| `mydashlight.set_arrive_by` | When the kid gets there, before the start or after it. It's written as minutes early or late (`Arrive: 15 min early`). The traffic margin still comes off it. No time means they get there at the start |
+| `mydashlight.set_leave_by` | When the kid is picked up, before the end or after it, written as minutes early or late (`Leave: 10 min late`). The pick-up is then at that time. No time means they leave at the end |
 | `mydashlight.set_take_along` | Who rides along (`kids`, by name: other kids or the other parent) on the `side` you pick, `drop`, `pick` or `both`. When the driver stays, riders go both ways. On a parent's own event, they go there and back. Empty takes nobody along |
 | `mydashlight.set_takes` | How long a parent's errand takes (`minutes`). The errand then fits in any time between the event's start and end. No minutes makes it a set-time event again. Kids' events turn it down |
 | `mydashlight.apply_suggestion` | Makes the change a suggested fix in the plan describes, by its `id` |
@@ -507,7 +512,7 @@ Under **Settings > Devices & services > MyDashLight > Configure > Reminders**, p
 each parent and each kid who should get reminders. A notifier is a `notify` action, such as the one
 the Home Assistant app adds for each phone. Anyone left on **No reminders** gets none.
 
-- **Before each drive.** Leave time is worked back from when the kid has to be there (Arrive by,
+- **Before each drive.** Leave time is worked back from when the kid has to be there (Arrive,
   or else the start), less the traffic margin, and the drive time. The reminder goes off 15 minutes before
   that, or whatever **Remind before leaving** says. The driver's says where to go, stop by stop.
   Each kid in the car with a notifier gets one saying when they leave, or when they'll be picked up

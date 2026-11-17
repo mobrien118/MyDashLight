@@ -76,7 +76,8 @@ var wholeMin = function (v) { return Math.floor(v + 0.5); };
 var arriveEarly = function (loc) { return Math.floor(3 + 14 * Math.log1p(Math.max(travel('home', loc), 0) / 50) + 1e-9); };
 // Traffic margin before when they must be there (Arrive by, or else the start). Arrive by doesn't replace it.
 // When the kid is done: the Leave by time if it's before the end, so they're picked up then.
-var outAt = function (e) { return e.leaveBy != null && e.leaveBy > e.start && e.leaveBy < e.end ? e.leaveBy : e.end; };
+// Leave: picked up earlier than the end, or later.
+var outAt = function (e) { return e.leaveBy != null && e.leaveBy > e.start ? e.leaveBy : e.end; };
 var arriveAt = function (e) { return (e.arriveBy != null ? e.arriveBy : e.start) - arriveEarly(e.loc); };
 
 // Minutes of driving as people read them (Marty, 2026-11-04): under an hour to the quarter minute
@@ -412,8 +413,8 @@ function issueText(x) {
   var who = x.d ? PEOPLE[x.d] : '';
   if (x.kind === 'busy') return { title: who + ' is still at ' + x.b.title, body: 'Leaving at ' + fmt(x.seg.start) + (e ? ' for ' + kid + '’s ' + e.title.toLowerCase() : '') + ' overlaps ' + x.b.title + ' until ' + fmt(x.b.end) + '.' };
   if (x.kind === 'late') return { title: kid + ' will be late to ' + e.title, body: who + ' gets there at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + 'the ' + fmt(x.s.deadline) + ' target' + (e.arriveBy != null && e.arriveBy > x.s.deadline ? ', ' + wholeMin(e.arriveBy - x.s.deadline) + ' min before the ' + fmt(e.arriveBy) + ' arrive-by time' : '') + '.' };
-  if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + (outAt(e) < e.end ? 'the ' + fmt(outAt(e)) + ' leave-by time' : 'it ends') + '.' };
-  if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : (outAt(e) < e.end ? ' has to leave at ' + fmt(outAt(e)) : ' ends at ' + fmt(e.end))) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
+  if (x.kind === 'waiting') return { title: kid + ' will be waiting', body: who + ' reaches ' + e.title + ' at ' + fmt(x.s.arr) + ', ' + wholeMin(x.min) + ' min after ' + (outAt(e) !== e.end ? 'the ' + fmt(outAt(e)) + ' leave time' : 'it ends') + '.' };
+  if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : (outAt(e) !== e.end ? ' has to leave at ' + fmt(outAt(e)) : ' ends at ' + fmt(e.end))) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
   if (x.kind === 'early') return { title: kid + ' waits ' + wholeMin(x.min) + ' min', body: who + ' gets ' + kid + ' to ' + e.title + ' at ' + fmt(x.s.arr) + ', well before the ' + fmt(e.start) + ' start.', note: kid + ' waits ' + wholeMin(x.min) + ' min at ' + e.title };
   if (x.kind === 'tight') return { title: 'No time to spare', body: who + ' has to leave ' + e.title + ' right at ' + fmt(x.at) + ' to make the next stop.', note: who + ' leaves ' + e.title + ' right at ' + fmt(x.at) };
   if (x.kind === 'tightBusy') return { title: 'No time to spare', body: who + ' has to leave right when ' + x.b.title + ' ends at ' + fmt(x.b.end) + '.', note: who + ' leaves right as ' + x.b.title + ' ends' };

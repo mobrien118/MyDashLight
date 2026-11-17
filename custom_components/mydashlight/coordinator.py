@@ -244,5 +244,11 @@ class MyDashLightCoordinator(DataUpdateCoordinator[PlanData]):
 
 
 def target_for(event: RideEvent, ref: EventRef) -> Target:
-    """Where to save a change to a planned event. Its start reads times like "15 min early"."""
-    return Target(ref.calendar_id, ref.event_id, event.start if "drop" in ref.sides else None)
+    """Where to save a change to a planned event. Its start and end read and write times like
+    "15 min early", when they're on this day."""
+    return Target(
+        ref.calendar_id,
+        ref.event_id,
+        event.start if "drop" in ref.sides else None,
+        event.end if "pick" in ref.sides else None,
+    )
