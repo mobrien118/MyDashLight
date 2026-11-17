@@ -177,6 +177,18 @@ def test_unplaced_says_where_to_save() -> None:
     assert bid.as_dict()["recurring"] is True
 
 
+def test_notes_people_wrote_go_with_all_day_and_unplaced_events() -> None:
+    bid = replace(
+        timed("bid", "Garage floor bid", "2026-11-14T16:00", "2026-11-14T17:00"),
+        description="Ask about epoxy.\n\n--- Rides ---\nFor: nobody",
+    )
+    trip = replace(all_day("trip", "Robin Indianapolis", "2026-11-14", "2026-11-16"), description="Hotel: Westin")
+    split = split_events([bid, trip], PEOPLE, TZ)
+    day = in_window(split, [date(2026, 11, 14)])["2026-11-14"]
+    assert day["unplaced"][0]["notes"] == "Ask about epoxy."
+    assert day["all_day"][0]["notes"] == "Hotel: Westin"
+
+
 def test_school_lanes() -> None:
     lanes = school_lanes(
         [

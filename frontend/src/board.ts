@@ -90,6 +90,7 @@ import { pageOptions, type Page } from "./options.ts";
 import { withoutPast } from "./past.ts";
 import { styles } from "./styles.ts";
 import type { Plan, PlanDay, PlanEvent, Scope, Side, UnplacedEvent } from "./types.ts";
+import { NoteTip } from "./notetip.ts";
 
 // Renamed when Compact became the default, so every screen starts there once, then remembers.
 const MODE_KEY = "mydashlight.rides.view";
@@ -117,6 +118,8 @@ function localZone(): string {
 
 /** "S" for Sam: the first letter of a name, for its round badge. */
 const PLUS = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>`;
+/** A note: the event has notes people wrote, shown on hover or a held finger. */
+const NOTE = svg`<svg class="note-mark" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 3h10l4 4v14H5zM9 11h6M9 15h6"/></svg>`;
 const PENCIL = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.3V20h2.7l9.9-9.9-2.7-2.7zM19.7 7a1 1 0 0 0 0-1.4l-1.3-1.3a1 1 0 0 0-1.4 0l-1.2 1.2 2.7 2.7z"/></svg>`;
 /** Pictures for a chore; a kitchen screen has no emoji keyboard. */
 /** Every emoji, for the chore picture's More button: served with the app, so it works offline. */
@@ -354,6 +357,8 @@ export class MyDashLightBoard extends LitElement {
   private railHeld = false;
   private drag: { el: HTMLElement; x: number; y: number; top: number; left: number; moved: boolean; id: number } | null = null;
   private eatClick = false;
+  /** The bubble with an event's notes, on hover or a held finger. */
+  private noteTip: NoteTip | null = null;
   private board: Board | null = null;
   private minuteKey = "";
   /** The board's scroll area, watched for size: it only exists once a plan has loaded. */
@@ -428,6 +433,8 @@ export class MyDashLightBoard extends LitElement {
     }, 5_000);
     this.addEventListener("pointerdown", this.onActivity, { capture: true });
     this.addEventListener("keydown", this.onKey);
+    this.noteTip ??= new NoteTip(this, this.renderRoot as ShadowRoot);
+    this.noteTip.connect();
     this.watchBackend();
   }
 
@@ -446,6 +453,7 @@ export class MyDashLightBoard extends LitElement {
     if (this.clockTimer) clearInterval(this.clockTimer);
     this.removeEventListener("pointerdown", this.onActivity, { capture: true });
     this.removeEventListener("keydown", this.onKey);
+    this.noteTip?.disconnect();
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
@@ -459,6 +467,7 @@ export class MyDashLightBoard extends LitElement {
   }
 
   protected override updated(): void {
+    this.noteTip?.sync();
     const el = this.scroller;
     if (el !== this.watchedScroller && this.resize) {
       // The columns are laid out for the scroll area's width, so measure it when it appears.
@@ -675,6 +684,7 @@ export class MyDashLightBoard extends LitElement {
 
   /** The board scrolled: keep the pinned day in step, and bring out the row of days if someone scrolled it. */
   private onScroll = (): void => {
+    this.noteTip?.hide();
     this.syncDay();
     if (this.railShown || performance.now() - this.touchedAt < 800) this.showRail();
   };
@@ -894,6 +904,7 @@ export class MyDashLightBoard extends LitElement {
         // The pointer may already be gone.
       }
       d.el.classList.add("dragging");
+      this.noteTip?.hide();
     }
     this.onTouched();
     d.el.scrollTop = d.top - dy;
@@ -925,6 +936,7 @@ export class MyDashLightBoard extends LitElement {
     if (!this.kiosk) return;
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = setTimeout(() => {
+      this.noteTip?.hide();
       this.closeEditor();
       this.sheet = false;
       if (this.page !== (this.urlPage ?? "rides")) this.setPage(this.urlPage ?? "rides");
@@ -1718,21 +1730,24 @@ export class MyDashLightBoard extends LitElement {
       ${d.allDay.length
         ? html`<div class="day-strip" style="padding-left:${GUTTER}px">
             ${d.allDay.map((c) => {
-              const inside = html`<span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}`;
+              const inside = html`<span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}${c.notes ? NOTE : nothing}`;
               const pick = c.pick;
               return pick
                 ? html`<button
                     type="button"
                     class="strip-chip warn plain pick"
                     tabindex=${pinned ? -1 : 0}
+                    data-note=${c.notes || nothing}
                     aria-label=${`${c.title}: ${c.note} Pick who it’s for`}
                     @click=${() => this.openForPick(d.date, pick)}
                   >
                     ${inside}
                   </button>`
                 : html`<span
-                    class="strip-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"}"
+                    class="strip-chip ${c.warn ? "warn" : ""} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"} ${c.notes ? "noted" : ""}"
                     style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
+                    tabindex=${c.notes && !pinned ? 0 : nothing}
+                    data-note=${c.notes || nothing}
                     >${inside}</span
                   >`;
             })}
@@ -1881,11 +1896,13 @@ export class MyDashLightBoard extends LitElement {
                 : `linear-gradient(rgba(${k.rgb},0.15), rgba(${k.rgb},0.15)), var(--surface)`;
               return html`<button
                 type="button"
-                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""} ${x.skipped ? "skipped" : ""} ${x.cut ? "cut" : ""}"
+                class="card ${x.wrap ? "wrap" : ""} ${isSel(x.target) ? "sel" : ""} ${x.clash ? "clash" : ""} ${x.skipped ? "skipped" : ""} ${x.cut ? "cut" : ""} ${x.event.notes ? "noted" : ""}"
                 aria-label=${x.aria}
+                data-note=${x.event.notes || nothing}
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;background:${bg};border-color:${x.clash ? "var(--bad)" : `rgba(${k.rgb},0.45)`};--c:${k.color};--rgb:${k.rgb};--ring:${k.color}"
                 @click=${() => this.open(x.target)}
               >
+                ${x.event.notes ? NOTE : nothing}
                 <span class="top">
                   <span class="title">${x.title}</span>
                   <span class="time">${x.time}</span>

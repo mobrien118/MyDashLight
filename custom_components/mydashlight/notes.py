@@ -29,6 +29,10 @@ Reading:
 * Google stores the description as HTML once someone edits it on the web. Line breaks come
   from ``<br>``, ``<p>``, ``<div>`` and ``<li>``, and other tags are ignored.
 
+Other notes MyDashLight keeps go in blocks of their own, also after a header line: a lunch pick
+under ``--- Lunch ---`` (see :mod:`.school`). :func:`human_notes` is everything people wrote
+above the first such block, for the board to show.
+
 Writing changes only the Rides block (and, the first time, moves loose ride lines into it).
 Everything else in the notes stays exactly as it was. A line is removed when its value goes
 back to the default, and the block is removed when it has nothing left in it. The result
@@ -107,6 +111,10 @@ _ATTENDING_YES: Final = frozenset({"", "yes", "y", "true", "on", "going", "atten
 _ATTENDING_NO: Final = frozenset({"no", "n", "false", "off", "not going", "not attending", "skip", "skipping"})
 
 _HEADER_RE: Final = re.compile(r"^\s*-{2,}\s*rides\s*-{2,}\s*$", re.IGNORECASE)
+_ANY_HEADER_RE: Final = re.compile(r"^\s*-{2,}\s*(?:rides|lunch|chore)\s*-{2,}\s*$", re.IGNORECASE)
+"""The header of any block MyDashLight writes in notes: Rides, Lunch (a pick) or Chore."""
+HUMAN_NOTES_MAX: Final = 600
+"""The most of an event's own notes the board is sent, in characters."""
 _LINE_RE: Final = re.compile(r"^\s*([A-Za-z][A-Za-z \-_]{0,20}?)\s*:\s*(.*?)\s*$")
 _HTML_RE: Final = re.compile(r"<(?:br|p|div|span|b|i|u|a|ul|ol|li|strong|em|font)\b[^>]*>", re.IGNORECASE)
 _BREAK_RE: Final = re.compile(r"(<br\s*/?>|</?(?:p|div|li|ul|ol)\b[^>]*>)", re.IGNORECASE)
@@ -272,6 +280,37 @@ def read_for(description: str | None) -> str | None:
     m = _LINE_RE.match(doc.lines[found[-1]].text)
     assert m is not None
     return " ".join(m.group(2).split()) or None
+
+
+def human_notes(description: str | None) -> str:
+    """What people wrote in an event's notes, as plain text, without what MyDashLight keeps there.
+
+    That's everything above the first MyDashLight block (Rides, Lunch or Chore). With no Rides
+    block, loose ride lines (``Drop-off: Sam``) are MyDashLight's too, since they're read as
+    rides, so they're left out wherever they are. Blank lines at either end go, runs of them
+    become one, and very long notes are cut at a word with "…". "" when nothing is left.
+    """
+    doc = _split(description or "")
+    end = next((i for i, line in enumerate(doc.lines) if _ANY_HEADER_RE.match(line.text)), len(doc.lines))
+    loose = {i for found in _locate(doc).values() for i in found} if doc.header is None else set()
+    kept: list[str] = []
+    for i in range(end):
+        if i in loose:
+            continue
+        line = doc.lines[i]
+        # In HTML, only a <br> makes an empty line: "</p><p>" is just a paragraph break.
+        after_br = i > 0 and _BR_RE.fullmatch(doc.lines[i - 1].sep)
+        if doc.is_html and not line.raw.strip() and not _BR_RE.fullmatch(line.sep) and not after_br:
+            continue
+        text = line.text.replace("\xa0", " ").rstrip()
+        if text.strip() or (kept and kept[-1]):
+            kept.append(text)
+    out = "\n".join(kept).strip()
+    if len(out) > HUMAN_NOTES_MAX:
+        cut = out[: HUMAN_NOTES_MAX - 1]
+        space = max(cut.rfind(" "), cut.rfind("\n"))
+        out = (cut[:space] if space > HUMAN_NOTES_MAX // 2 else cut).rstrip(" \n,;:-") + "…"
+    return out
 
 
 def write_notes(

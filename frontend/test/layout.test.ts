@@ -312,6 +312,11 @@ test("compact: ride lines are a car and arrows on one line", () => {
     L("🚗 ↓4:25 Sam · 5 min late · ↑6:00 Robin", "problem"),
   );
   assert.deepEqual(compactLines({ drop: L("Drop-off: Sam"), pick: L("Pick-up: Sam") }).drop, L("🚗 Sam both ways"));
+  // A drop-off that carries on from an earlier stop, and someone else bringing them home.
+  assert.deepEqual(compactLines({ drop: L("With Sam"), pick: L("Home with Piper") }), { drop: L("🚗 ↓ Sam · ↑ Piper"), pick: null });
+  // The same driver, with a time on only one side: no bare arrow.
+  assert.deepEqual(compactLines({ drop: L("Leaves 5:49 with Sam"), pick: L("Pick-up: Sam") }).drop, L("🚗 Sam both ways · ↓5:49"));
+  assert.deepEqual(compactLines({ drop: L("Drop-off: Sam"), pick: L("Home 6:10 with Sam") }).drop, L("🚗 Sam both ways · ↑6:10"));
   // Not rides: left alone.
   const none = { drop: L("No ride needed"), pick: null };
   assert.deepEqual(compactLines(none), none);
@@ -485,7 +490,7 @@ test("compact: a parent's own event is a stop on their trip, and kids along get 
   const cards = b.cards.filter((c) => c.target.day === date && c.target.event === "sun-golf");
   assert.equal(cards.length, 1);
   assert.ok(inCol(cards[0]!, colOf(b, "Ben")));
-  assert.equal(cards[0]!.drop?.text, "With Sam");
+  assert.equal(cards[0]!.drop?.text, "🚗 With Sam");
   assert.ok(!b.busy.some((x) => x.key.startsWith(date) && x.label.startsWith("Golf 1:00")));
   assert.ok(b.busy.some((x) => x.key.startsWith(date) && x.label.startsWith("Golf with Sam")));
 });

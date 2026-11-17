@@ -742,6 +742,35 @@ export const styles = css`
     color: var(--muted);
     font-size: 11px;
   }
+  /* Notes people wrote in an event: a small mark on what has them. Hovering shows them, and so
+     does holding a finger on it, so the browser's own long-press menu and text selection stay away. */
+  .note-mark {
+    flex: none;
+    color: var(--ink-2);
+    opacity: 0.55;
+  }
+  .strip-chip .note-mark {
+    align-self: center;
+  }
+  .card .note-mark {
+    position: absolute;
+    top: 8px;
+    right: 7px;
+  }
+  .card.noted .title {
+    padding-right: 13px;
+  }
+  [data-note] {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .card.noting {
+    box-shadow: inset 5px 0 0 var(--c), 0 0 0 2px rgba(var(--rgb), 0.6), var(--shadow);
+  }
+  .strip-chip.noting {
+    box-shadow: 0 0 0 2px rgba(var(--rgb, 90, 96, 105), 0.45);
+  }
   .empty {
     left: 72px;
     font-size: 13px;
@@ -893,6 +922,10 @@ export const styles = css`
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+  }
+  /* Compact: the lines follow one another, with no gap opening up when the card is taller. */
+  .card.wrap {
+    justify-content: flex-start;
   }
   .card.wrap .line {
     white-space: normal;
@@ -1719,6 +1752,55 @@ export const styles = css`
     line-height: 20px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     z-index: 30;
+  }
+  /* The bubble with an event's notes. It never takes the pointer, so it can't flicker under it. */
+  .note-tip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 40;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 16;
+    overflow: hidden;
+    width: max-content;
+    max-width: min(340px, calc(100vw - 16px));
+    padding: 10px 13px;
+    border-radius: 10px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 13.5px;
+    line-height: 19px;
+    font-weight: 500;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    transition:
+      opacity 120ms ease,
+      transform 120ms ease,
+      visibility 0s linear 120ms;
+  }
+  .note-tip.above {
+    transform: translateY(-4px);
+  }
+  .note-tip.on {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+      opacity 120ms ease,
+      transform 120ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .note-tip,
+    .note-tip.on {
+      transform: none;
+      transition: none;
+    }
   }
   /* Chores */
   .chores-area {

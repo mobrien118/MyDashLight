@@ -157,6 +157,16 @@ UNPLACED: list[tuple[int, str, str, str, str]] = [
     (1, "bid", "Garage floor bid", "4:00 PM", "5:00 PM"),
 ]
 
+# What people wrote in some events' notes, above any MyDashLight block, by id.
+NOTES: dict[str, str] = {
+    "soccer": "Bring shin guards and a full water bottle.\nField 3, by the north lot.",
+    "football": "Wear the white practice jersey.\n\nCoach Ray: 555-0142",
+    "fri-party": "Gift is in the hall closet. Liam turns 9.\nPickup at the side gate.",
+    "sun-golf": "Tee time 1:10. Clubs are in the garage.",
+    "trip": "Westin downtown, conf. #48213",
+    "bid": "Ask whether epoxy covers the cracks by the drain.",
+}
+
 
 def minutes(text: str) -> int:
     clock, half = text.split()
@@ -224,7 +234,12 @@ def main() -> None:
                 )
             )
             day.refs[ev_id] = EventRef(
-                KIDS[kid], f"{ev_id}-google", "etag", f"{ev_id}-series" if recurring else None, ("drop", "pick")
+                KIDS[kid],
+                f"{ev_id}-google",
+                "etag",
+                f"{ev_id}-series" if recurring else None,
+                ("drop", "pick"),
+                notes=NOTES.get(ev_id, ""),
             )
         for d, driver, ev_id, title, place, start, end, kids, parents, takes in OWN:
             if d != offset:
@@ -246,7 +261,9 @@ def main() -> None:
                     takes=takes,
                 )
             )
-            day.refs[ev_id] = EventRef(f"{driver}-calendar", f"{ev_id}-google", "etag", None, ("drop", "pick"))
+            day.refs[ev_id] = EventRef(
+                f"{driver}-calendar", f"{ev_id}-google", "etag", None, ("drop", "pick"), notes=NOTES.get(ev_id, "")
+            )
         for driver, blocks in BUSY.get(offset, {}).items():
             day.busy[driver] = [BusyBlock(minutes(s), minutes(e), t) for s, e, t in blocks]
         for d, driver, ev_id, title, _shown, start, end, why in BUSY_ONLY:
@@ -270,13 +287,18 @@ def main() -> None:
                     tuple(KIDS[p] if isinstance(p, int) else p for p in people),
                     FIRST_DAY + timedelta(days=first),
                     FIRST_DAY + timedelta(days=last),
+                    notes=NOTES.get(ev_id, ""),
                 )
                 day.all_day.append(item.as_dict(day.day))
         for d, ev_id, title, start, end in UNPLACED:
             if d == offset:
                 at = datetime.combine(day.day, datetime.strptime(start, "%I:%M %p").time())
                 until = datetime.combine(day.day, datetime.strptime(end, "%I:%M %p").time())
-                day.unplaced.append(Unplaced(ev_id, title, day.day, at, until, "nobody", at=minutes(start)).as_dict())
+                day.unplaced.append(
+                    Unplaced(
+                        ev_id, title, day.day, at, until, "nobody", at=minutes(start), notes=NOTES.get(ev_id, "")
+                    ).as_dict()
+                )
         days.append(plan_day(day, labels, KIDS, travel, settings, DRIVERS))
 
     json.dump(

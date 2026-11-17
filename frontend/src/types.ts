@@ -43,6 +43,8 @@ export interface PlanEvent {
   busy_why?: "days" | "home" | "anywhere" | null;
   /** Lines in the event's notes that couldn't be read. */
   problems: string[];
+  /** What people wrote in the event's notes, without MyDashLight's blocks: "" for none (0.23 and later). */
+  notes?: string;
   lines: { drop: CardLine | null; pick: CardLine | null };
   /** False when the kid is skipping this one: no rides, no issues, no clashes. Older plans leave it out. */
   attending?: boolean;
@@ -171,6 +173,8 @@ export interface AllDayItem {
   day_number: number;
   days: number;
   cancelled: boolean;
+  /** What people wrote in its notes: "" for none (MyDashLight 0.23 and later). */
+  notes?: string;
 }
 
 /** A timed event whose title doesn't say who it's for (MyDashLight 0.19 and later). */
@@ -190,6 +194,8 @@ export interface UnplacedEvent {
   recurring?: boolean;
   /** Who it's for came from a "For:" line in its notes, not its title (MyDashLight 0.22 and later). */
   from_notes?: boolean;
+  /** What people wrote in its notes: "" for none (MyDashLight 0.23 and later). */
+  notes?: string;
 }
 
 export interface PlanDay {
