@@ -270,6 +270,13 @@ crossed out, with no rides planned, and it no longer counts as a clash. When a k
 double-booked, each event's name in the Needs attention card opens that event, so the one being
 skipped is a tap away. Each change is saved in the event's notes on Google straight away.
 
+Anything with notes people wrote in Google Calendar (an activity, a parent's own event, an
+all-day event or an event for nobody) has a small note mark. Rest the mouse on it, or hold a
+finger on it for half a second, to read the notes in a bubble. Only what people wrote shows, not
+the `--- Rides ---` or `--- Lunch ---` block (or loose ride lines) MyDashLight keeps there. Lifting
+the finger after a hold doesn't open the event, so a quick tap still opens it as always. A tap
+anywhere, scrolling or Escape puts the bubble away; tabbing to it with the keyboard shows it too.
+
 There are two ways to open it, both signed in to Home Assistant:
 
 - **Rides** in Home Assistant's sidebar. This works in the Home Assistant app on a phone too.

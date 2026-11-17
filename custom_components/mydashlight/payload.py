@@ -179,6 +179,7 @@ def _event(e: RideEvent, day: DayInput, labels: Labels, board: DayBoard) -> dict
         "busy_only": bool(ref.busy_only),
         "busy_why": ref.busy_only or None,
         "problems": list(day.problems.get(e.id, ())),
+        "notes": ref.notes,
         "lines": {
             "drop": _line(lines.drop) if lines else None,
             "pick": _line(lines.pick) if lines else None,
