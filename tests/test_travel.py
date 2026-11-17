@@ -10,7 +10,7 @@ from custom_components.mydashlight.google import parse_event
 from custom_components.mydashlight.notes import DriverDirectory
 from custom_components.mydashlight.planner import HOME, RideEvent
 from custom_components.mydashlight.routes import Place, TravelCache
-from custom_components.mydashlight.travel import DriveTimes
+from custom_components.mydashlight.travel import DriveTimes, near_home
 from custom_components.mydashlight.week import CalendarRoles, DayInput, KidCalendar, build_week, leg_hour
 
 from .common import AVA, timed
@@ -83,3 +83,29 @@ def test_place() -> None:
     assert drive.place(HOME, home) is home
     assert drive.place("piano, 1 elm", home) == Place(address="Piano, 1 Elm")
     assert drive.place("?a", home) is None
+
+
+def test_a_place_given_by_name_is_looked_up_near_home() -> None:
+    w = week(timed("a", "Scouts", "2026-11-03T19:00:00-06:00", "2026-11-03T20:00:00-06:00", location="Elm Elementary"))
+    w.home_address = "12 Oak St, Springfield, IL 62701"
+    drive = DriveTimes(w, TravelCache(), 15, NOW)
+    home = Place(lat=1, lon=2)
+    assert drive.place("elm elementary", home) == Place(address="Elm Elementary, Springfield, IL 62701")
+    # With a street number it's an address already, and with no home address there's no town.
+    assert near_home("Piano, 1 Elm", "12 Oak St, Springfield, IL 62701") == "Piano, 1 Elm"
+    assert near_home("Elm Elementary", "") == "Elm Elementary"
+
+
+def test_a_far_away_match_is_a_guess_and_says_so() -> None:
+    # Google matched a school of the same name 14 hours away: the plan guesses instead of
+    # leaving the day before, and the event says to add the address.
+    w = week(timed("a", "Scouts", "2026-11-03T19:00:00-06:00", "2026-11-03T20:00:00-06:00", location="Elm Elementary"))
+    cache = TravelCache()
+    cache.put(TravelCache.key(HOME, "elm elementary", 1, 18), 875.8, NOW)
+    drive = DriveTimes(w, cache, 15, NOW)
+    day = w.days[0]
+    travel = drive.travel_for(day)
+    assert travel(HOME, "elm elementary") == 15
+    travel(HOME, "elm elementary")
+    (problem,) = day.problems["a"]
+    assert problem.startswith("Google Maps finds “Elm Elementary” about 15 hours from home")

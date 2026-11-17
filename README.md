@@ -143,6 +143,11 @@ leaving half an hour before it starts, and a trip home as leaving when it ends.
   kept for 90 days, for checking a driver is on their way (see Reminders).
 - Lookups stop for the day at the daily limit (150 by default, which stays under 5,000 a month).
   Trips over the limit are estimated and looked up the next day.
+- A place given by name only, with no street number or zip code (such as "Elm Elementary"), is
+  looked up with the town and zip code from the home address, so Google picks the one nearby.
+- If a drive to or from a place given by name only still comes back over 3 hours, Google matched
+  the wrong place. The drive counts as the "Drive time with no address" setting instead, and the
+  event says to add its full address.
 - A Travel line in an event's notes always wins for trips to that event.
 - Without a key, every drive counts as the "Drive time with no address" setting (15 minutes).
   So does a drive to an event with no location whose notes name a driver.
