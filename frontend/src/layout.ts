@@ -195,6 +195,8 @@ export interface AllDayChip {
   warn: boolean;
   /** For such an event, its id: tapping the chip picks who it's for. */
   pick: string | null;
+  /** What people wrote in its notes, shown on hover or a held finger: "" for none. */
+  notes: string;
 }
 
 export interface AllDayRow {
@@ -1587,6 +1589,7 @@ export function allDayRow(
       cancelled: i.cancelled,
       warn: false,
       pick: null,
+      notes: i.notes ?? "",
     })),
     ...(day.unplaced ?? []).map((u) => ({
       key: `${day.date}|unplaced|${u.id}`,
@@ -1596,6 +1599,7 @@ export function allDayRow(
       cancelled: false,
       warn: true,
       pick: u.id,
+      notes: u.notes ?? "",
     })),
   ];
   if (!chips.length) return null;
@@ -1604,7 +1608,7 @@ export function allDayRow(
   let lines = 1;
   let used = 0;
   for (const c of chips) {
-    const chip = Math.min(room, 30 + 7 * (c.title.length + (c.note ? c.note.length + 2 : 0)));
+    const chip = Math.min(room, 30 + 7 * (c.title.length + (c.note ? c.note.length + 2 : 0)) + (c.notes ? 16 : 0));
     if (used && used + chip > room) {
       lines++;
       used = 0;

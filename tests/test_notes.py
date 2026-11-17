@@ -5,8 +5,10 @@ from __future__ import annotations
 import pytest
 
 from custom_components.mydashlight.notes import (
+    HUMAN_NOTES_MAX,
     DriverDirectory,
     RideNotes,
+    human_notes,
     parse_clock,
     parse_duration,
     parse_notes,
@@ -506,3 +508,55 @@ def test_write_for_line_in_html_notes() -> None:
     text = "<p>Party at the Lees.</p>"
     assert write(text, people="Ava & Ben") == "<p>Party at the Lees.</p><br><br>--- Rides ---<br>For: Ava &amp; Ben"
     assert read_for(write(text, people="Ava & Ben")) == "Ava & Ben"
+
+
+# What people wrote, for the board's notes bubble
+
+
+def test_human_notes_stop_at_the_rides_block() -> None:
+    text = "Bring shin guards.\nField 3.\n\n--- Rides ---\nFor: Ava\nDrop-off: Sam\nNotes after the block"
+    assert human_notes(text) == "Bring shin guards.\nField 3."
+
+
+def test_human_notes_stop_at_any_mydashlight_block() -> None:
+    assert human_notes("Or: chef salad. Fruit, milk.\n\n--- Lunch ---\nPick: Bring") == "Or: chef salad. Fruit, milk."
+    assert human_notes("Wipe the counters too.\n--- Chore ---\nRepeats: daily") == "Wipe the counters too."
+    # The first block ends them, whichever it is.
+    assert human_notes("Menu\n--- Lunch ---\nPick: Buy\n--- Rides ---\nDrop-off: Sam") == "Menu"
+
+
+def test_human_notes_leave_out_loose_ride_lines() -> None:
+    # With no block, ride lines anywhere are read as rides, so they aren't people's notes.
+    text = "Bring water.\nDrop-off: Sam\nPickup: Robin, Ben\nGate code 4512\nFor: ages 6 to 10"
+    assert human_notes(text) == "Bring water.\nGate code 4512\nFor: ages 6 to 10"
+    # With a block, a line above it that looks like one is just notes.
+    assert human_notes("Pick-up: bring cleats\n\n--- Rides ---\nPick-up: Sam") == "Pick-up: bring cleats"
+
+
+def test_human_notes_tidy_blank_lines() -> None:
+    assert human_notes("\n\n  \nFirst\n\n\n\nSecond  \n\n") == "First\n\nSecond"
+
+
+def test_human_notes_none_or_only_ours() -> None:
+    assert human_notes(None) == ""
+    assert human_notes("") == ""
+    assert human_notes("--- Rides ---\nDrop-off: Sam\nStay: yes") == ""
+    assert human_notes("Drop-off: Sam") == ""
+    assert human_notes("<br><br>--- Rides ---<br>Drop-off: Sam") == ""
+
+
+def test_human_notes_from_html() -> None:
+    text = (
+        "<b>Bring</b> shin guards &amp; water.<br>Field&nbsp;3, "
+        '<a href="https://example.com/map">map</a><br><br>--- Rides ---<br>Drop-off: Sam'
+    )
+    assert human_notes(text) == "Bring shin guards & water.\nField 3, map"
+    assert human_notes("<p>One</p><p>Two</p><p>--- Rides ---</p><p>Drop-off: Sam</p>") == "One\nTwo"
+    assert human_notes("<p>One</p><p><br></p><p>Two</p>") == "One\n\nTwo"
+
+
+def test_human_notes_long_ones_are_cut_at_a_word() -> None:
+    text = "word " * 400
+    out = human_notes(text)
+    assert len(out) <= HUMAN_NOTES_MAX
+    assert out.endswith("word…")

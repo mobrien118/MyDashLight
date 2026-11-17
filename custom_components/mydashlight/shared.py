@@ -26,7 +26,7 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, tzinfo
 
 from .google import CalendarEvent
-from .notes import read_for
+from .notes import human_notes, read_for
 from .who import People, Who, read_names, read_title
 
 
@@ -43,6 +43,8 @@ class DayItem:
     """Its first and last days, both included."""
     cancelled: bool = False
     calendar_id: str = ""
+    notes: str = ""
+    """What people wrote in its notes (see :func:`.notes.human_notes`)."""
 
     def as_dict(self, day: date) -> dict[str, object]:
         return {
@@ -54,6 +56,7 @@ class DayItem:
             "day_number": (day - self.first).days + 1,
             "days": (self.last - self.first).days + 1,
             "cancelled": self.cancelled,
+            "notes": self.notes,
         }
 
 
@@ -77,6 +80,8 @@ class Unplaced:
     recurring_id: str | None = None
     from_notes: bool = False
     """Who it's for came from the For line in its notes, not its title."""
+    notes: str = ""
+    """What people wrote in its notes (see :func:`.notes.human_notes`)."""
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -90,6 +95,7 @@ class Unplaced:
             "people": list(self.people),
             "recurring": self.recurring_id is not None,
             "from_notes": self.from_notes,
+            "notes": self.notes,
         }
 
 
@@ -140,6 +146,7 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
                     ev.calendar_id,
                     ev.recurring_id,
                     from_notes,
+                    human_notes(ev.description),
                 )
             )
         if who.people:
@@ -197,7 +204,16 @@ def _day_item(ev: CalendarEvent, who: Who) -> DayItem:
     assert isinstance(ev.start, date)
     assert isinstance(ev.end, date)
     last = max(ev.start, ev.end - timedelta(days=1))
-    return DayItem(ev.id, who.title or "Event", who.people, ev.start, last, who.cancelled, ev.calendar_id)
+    return DayItem(
+        ev.id,
+        who.title or "Event",
+        who.people,
+        ev.start,
+        last,
+        who.cancelled,
+        ev.calendar_id,
+        human_notes(ev.description),
+    )
 
 
 def school_lanes(

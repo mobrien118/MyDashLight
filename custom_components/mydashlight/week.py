@@ -22,7 +22,7 @@ import re
 from typing import Any, Final, Literal
 
 from .google import CalendarEvent
-from .notes import DriverDirectory, RideNotes, parse_notes, skip_prefix
+from .notes import DriverDirectory, RideNotes, human_notes, parse_notes, skip_prefix
 from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, TravelFn
 
 DAY: Final = 1440
@@ -107,6 +107,8 @@ class EventRef:
     busy_only: Literal["", "days", "home", "anywhere"] = ""
     """Why it's a parent's event that only blocks their time, or "" when it isn't one: over
     more than a day, at home, or with no address. Shown and editable for Going, never driven to."""
+    notes: str = ""
+    """What people wrote in the event's notes, without MyDashLight's blocks (see :func:`.notes.human_notes`)."""
 
 
 @dataclass(slots=True)
@@ -212,6 +214,7 @@ def build_week(
             end = max(_minutes(ev.end, first, tz), start)
             title, skipped = skip_prefix(ev.title or NO_TITLE)
             notes = parse_notes(ev.description, directory, start)
+            written = human_notes(ev.description)
             if skipped:
                 notes = replace(notes, attending=False)
             notes = _kid_notes(notes, kid.calendar_id)
@@ -331,6 +334,7 @@ def build_week(
                     ev.popups,
                     ev.private,
                     no_ride_unless_named=no_ride_unless_named,
+                    notes=written,
                 )
                 if notes.problems:
                     target.problems[ride_id] = notes.problems
@@ -379,7 +383,14 @@ def build_week(
                     short.setdefault(ride.loc, short_place(ev.location or ""))
                     target.events.append(ride)
                     target.refs[ride_id] = EventRef(
-                        ev.calendar_id, ev.id, ev.etag, ev.recurring_id, ("drop", "pick"), ev.popups, ev.private
+                        ev.calendar_id,
+                        ev.id,
+                        ev.etag,
+                        ev.recurring_id,
+                        ("drop", "pick"),
+                        ev.popups,
+                        ev.private,
+                        notes=human_notes(ev.description),
                     )
                     if notes.problems:
                         target.problems[ride_id] = notes.problems
@@ -390,6 +401,7 @@ def build_week(
                 # going, which frees their time. It's never driven to.
                 title, skipped = skip_prefix(ev.title or "Busy")
                 notes = parse_notes(ev.description, directory, None)
+                written = human_notes(ev.description)
                 attending = notes.attending and not skipped
                 key = f"{NO_ADDRESS}{ev.id}"
                 at = where(ev.location or "", home_address)
@@ -430,6 +442,7 @@ def build_week(
                         ev.popups,
                         ev.private,
                         busy_only=why,
+                        notes=written,
                     )
                     if notes.problems:
                         target.problems[ride_id] = notes.problems

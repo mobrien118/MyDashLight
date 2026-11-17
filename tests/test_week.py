@@ -105,7 +105,7 @@ def test_kid_events_become_ride_events() -> None:
     assert (piano.start, piano.end) == (960, 1020)
     assert (piano.drop, piano.pick, piano.arrive_by) == ("mom", "the Parkers", 950)
     assert piano.loc == "lincoln elementary, 100 main st, springfield"
-    assert tue.refs["piano"] == EventRef(AVA, "piano", '"7"', "piano-series", ("drop", "pick"))
+    assert tue.refs["piano"] == EventRef(AVA, "piano", '"7"', "piano-series", ("drop", "pick"), notes="Bring music.")
     assert w.labels.place(piano.loc) == SCHOOL
     assert w.labels.short_place(piano.loc) == "Lincoln Elementary"
     assert w.labels.kid(AVA) == "Ava"
