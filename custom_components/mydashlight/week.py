@@ -132,6 +132,8 @@ class WeekInput:
     kids: tuple[str, ...]
     travel_overrides: dict[str, int]
     """Drive minutes set in event notes, by place key."""
+    home_address: str = ""
+    """Home's street address, for finding a place given only by name near home."""
 
 
 def window(today: date, days: int, tz: tzinfo) -> tuple[datetime, datetime]:
@@ -448,6 +450,7 @@ def build_week(
         ),
         kids=tuple(k.calendar_id for k in roles.kids),
         travel_overrides=overrides,
+        home_address=home_address,
     )
 
 

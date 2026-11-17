@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from custom_components.mydashlight.board import build_day
+from custom_components.mydashlight.board import build_day, span
 from custom_components.mydashlight.planner import (
     NOT_NEEDED,
     Issue,
@@ -324,3 +324,19 @@ def test_a_kid_picked_up_twice_is_in_the_car_both_times() -> None:
     plan = plan_all([piano, party], {}, drive)
     home_rides = [g.kids for g in plan["mom"].segments if g.type == "drive" and g.to_loc == "home"]
     assert home_rides == [[], ["ava"], ["ava"]]
+
+
+def test_a_very_long_drive_is_called_out_on_the_trip() -> None:
+    # Marty, 2026-11-17: a 14-hour drive to a place Google got wrong looked like a short drive
+    # that left hours early, because a trip only listed its stops.
+    game = RideEvent("game", "ben", "Game", "soccer", 1080, 1140, drop="mom")
+
+    def far(a: str, b: str) -> float:
+        return 0 if a == b else 875.8 if "soccer" in (a, b) else 10
+
+    board = build_day([game], {}, far, LABELS, kids=KIDS)
+    (out, *_rest) = board.outings["mom"]
+    assert out.warn == "14 hr 36 min drive to Soccer. Is the address right?"
+    board = build_day([game], {}, lambda a, b: 0 if a == b else 119, LABELS, kids=KIDS)
+    assert all(not o.warn for o in board.outings["mom"])
+    assert [span(m) for m in (0, 45, 120, 875.8)] == ["0 min", "45 min", "2 hr", "14 hr 36 min"]

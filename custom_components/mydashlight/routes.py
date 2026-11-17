@@ -30,6 +30,20 @@ SPOT_KEEP_DAYS: Final = 90
 CACHE_VERSION: Final = 1
 _KEY_REASONS: Final = frozenset({"API_KEY_INVALID", "API_KEY_SERVICE_BLOCKED", "SERVICE_DISABLED"})
 _DURATION: Final = re.compile(r"^(\d+(?:\.\d+)?)s$")
+DATA_VERSION: Final = 2
+"""What the cache's data holds. 2: places given only by name ("chesterfield elementary") are
+looked up near home, so what was found for them before, sometimes a place of that name states
+away, is dropped."""
+
+
+def vague_address(text: str) -> bool:
+    """A place given by name only, with no street number or zip code, such as "Chesterfield
+    Elementary". Google can match it anywhere, so it's looked up near home."""
+    return bool(text.strip()) and not any(c.isdigit() for c in text)
+
+
+def _vague_key(key: str) -> bool:
+    return key != "home" and not key.startswith("?") and vague_address(key)
 
 
 class RoutesError(Exception):
@@ -176,6 +190,7 @@ class TravelCache:
     """Lookups made on ``day``, a local ISO date."""
     spots: dict[str, tuple[float, float, float]] = field(default_factory=dict)
     """Each place's point on the map and when Google gave it, by place key."""
+    version: int = DATA_VERSION
 
     @staticmethod
     def key(origin: str, destination: str, weekday: int, hour: int) -> str:
@@ -223,6 +238,7 @@ class TravelCache:
             "calls": self.calls,
             "entries": {k: [e.minutes, e.fetched] for k, e in self.entries.items()},
             "spots": {k: list(v) for k, v in self.spots.items()},
+            "version": self.version,
         }
 
     @classmethod
@@ -241,6 +257,10 @@ class TravelCache:
             if isinstance(v, (list, tuple)) and len(v) == 3 and all(isinstance(x, (int, float)) for x in v):
                 spots[str(k)] = (float(v[0]), float(v[1]), float(v[2]))
         calls = data.get("calls")
+        if data.get("version") != DATA_VERSION:
+            # Vague places are now looked up near home: what was found for them before goes.
+            entries = {k: e for k, e in entries.items() if not any(_vague_key(p) for p in k.split("|")[:2])}
+            spots = {k: v for k, v in spots.items() if not _vague_key(k)}
         return cls(entries, str(data.get("day") or ""), calls if isinstance(calls, int) else 0, spots)
 
 
