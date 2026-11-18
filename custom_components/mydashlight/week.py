@@ -18,12 +18,14 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta, tzinfo
+from functools import partial
 import re
 from typing import Any, Final, Literal
 
 from .google import CalendarEvent
 from .notes import DriverDirectory, RideNotes, human_notes, parse_notes, skip_prefix
 from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, TravelFn
+from .shared import Stay
 
 DAY: Final = 1440
 NEXT_MORNING: Final = DAY + 6 * 60
@@ -125,6 +127,9 @@ class DayInput:
     """The day's all-day events, shown across the top of the day for nobody."""
     unplaced: list[dict[str, Any]] = field(default_factory=list)
     """The day's timed events whose titles don't say who they're for."""
+    homes: dict[str, str] = field(default_factory=dict)
+    """Where a parent's rides start and end this day when it isn't home, by driver id: the
+    place key of the hotel they're staying at."""
 
 
 @dataclass(slots=True)
@@ -136,6 +141,9 @@ class WeekInput:
     """Drive minutes set in event notes, by place key."""
     home_address: str = ""
     """Home's street address, for finding a place given only by name near home."""
+    as_written: frozenset[str] = frozenset()
+    """Place keys looked up just as written, never near home: a stay's hotel, and a place given
+    only by name near a hotel whose address has no town to go by."""
 
 
 def window(today: date, days: int, tz: tzinfo) -> tuple[datetime, datetime]:
@@ -173,6 +181,25 @@ def _street(address: str) -> str:
     return " ".join(_STREET_WORDS.get(w, w) for w in words)
 
 
+_STATE_ZIP_RE: Final = re.compile(r"\b[A-Za-z]{2}\s+\d{5}\b")
+
+
+def _town(address: str) -> str:
+    """The town part of an address, to look a place up near it: "Oak Brook, IL 60523" from
+    "Marriott, 1401 W 22nd St, Oak Brook, IL 60523". The part before the state and zip, on; or
+    else everything after the first part. "" when there's only the one part."""
+    parts = [p.strip() for p in address.split(",")]
+    for i in range(len(parts) - 1, 0, -1):
+        if _STATE_ZIP_RE.search(parts[i]):
+            return ", ".join(parts[i - 1 :])
+    return ", ".join(parts[1:])
+
+
+def _vague(text: str) -> bool:
+    """A place given by name only, with no street number or zip code (as in :mod:`.routes`)."""
+    return bool(text.strip()) and not any(c.isdigit() for c in text)
+
+
 def short_place(location: str) -> str:
     """The first part of an address, such as the school's name."""
     return location.split(",", 1)[0].strip() or location
@@ -187,11 +214,16 @@ def build_week(
     tz: tzinfo,
     home_address: str = "",
     escorts: Mapping[str, Sequence[str]] | None = None,
+    stays: Sequence[Stay] = (),
 ) -> WeekInput:
     """Sort the events read from each calendar into each day's planner input.
 
     ``escorts`` names, by event id, the parents going to a kid's event with them: the first one
     drives both ways and stays, with the others along, wherever the notes don't name a driver.
+
+    ``stays`` are the family's stays away from home. On each day one covers, the hotel is home
+    for the parents it names, and a place given only by name is looked up near the hotel for
+    whoever is there.
     """
     escorts = escorts or {}
     # Kids taken along are named in the notes, so the notes need the kids' names.
@@ -204,6 +236,35 @@ def build_week(
     # (event id, driver id): a parent taking the kids to an event they're named on with them.
     # The drive and the wait cover that time, so it isn't busy time as well.
     taking: set[tuple[str, str]] = set()
+    as_written: set[str] = set()
+    for st in stays:
+        key = place_key(st.location)
+        places.setdefault(key, st.location)
+        short.setdefault(key, st.name or short_place(st.location))
+        as_written.add(key)
+        for d in day_list:
+            if st.covers(d):
+                for p in st.people:
+                    if p in roles.busy:
+                        by_day[d].homes.setdefault(p, key)
+
+    def locate(location: str, day: date, person: str) -> tuple[str, str]:
+        """An event's place key and the address to look up, for someone on a day: a place
+        given only by name is near the hotel when they're away, or when every parent is."""
+        away = [s for s in stays if s.covers(day)]
+        st = next((s for s in away if person in s.people), None)
+        target = by_day.get(day)
+        if st is None and away and target is not None and roles.busy and all(p in target.homes for p in roles.busy):
+            st = away[0]
+        if st is None or not _vague(location):
+            return place_key(location), location
+        town = _town(st.location)
+        if town:
+            text = f"{location}, {town}"
+            return place_key(text), text
+        key = f"{place_key(location)} @ {place_key(st.location)}"
+        as_written.add(key)
+        return key, location
 
     for kid in roles.kids:
         for ev in sorted(events.get(kid.calendar_id, ()), key=_sort_key):
@@ -242,8 +303,8 @@ def build_week(
                     notes = _escorted(notes, tuple(escorts[ev.id]))
                     riders = {notes.drop, notes.pick, *notes.drop_riders, *notes.pick_riders}
                     taking.update((ev.id, p) for p in escorts[ev.id] if p in riders)
-                loc = place_key(ev.location or "")
-                places.setdefault(loc, ev.location or "")
+                loc, lookup = locate(ev.location or "", first, kid.calendar_id)
+                places.setdefault(loc, lookup)
                 short.setdefault(loc, short_place(ev.location or ""))
             else:
                 loc = ""
@@ -369,7 +430,11 @@ def build_week(
                     if e.attending and e.takes is None and driver != e.own and driver not in e.parents:
                         target.events[i] = replace(e, parents=(*e.parents, driver))
                     continue
-                own = None if ev.id in kid_event_ids else _own_event(ev, driver, directory, tz, home_address)
+                own = (
+                    None
+                    if ev.id in kid_event_ids
+                    else _own_event(ev, driver, directory, tz, home_address, partial(locate, person=driver))
+                )
                 # An errand counts even when marked Free: it only takes a few minutes of the time.
                 if not ev.busy and (own is None or own[1].takes is None):
                     continue
@@ -381,7 +446,7 @@ def build_week(
                     ride_id = _unique_id(ev.id, target.refs)
                     ride = replace(ride, id=ride_id)
                     owned[seen_key] = (target, ride_id)
-                    places.setdefault(ride.loc, ev.location or "")
+                    places.setdefault(ride.loc, locate(ev.location or "", first, driver)[1])
                     short.setdefault(ride.loc, short_place(ev.location or ""))
                     target.events.append(ride)
                     target.refs[ride_id] = EventRef(
@@ -464,6 +529,7 @@ def build_week(
         kids=tuple(k.calendar_id for k in roles.kids),
         travel_overrides=overrides,
         home_address=home_address,
+        as_written=frozenset(as_written),
     )
 
 
@@ -583,7 +649,12 @@ def _sides(notes: RideNotes, directory: DriverDirectory) -> dict[str, Any]:
 
 
 def _own_event(
-    ev: CalendarEvent, driver: str, directory: DriverDirectory, tz: tzinfo, home_address: str
+    ev: CalendarEvent,
+    driver: str,
+    directory: DriverDirectory,
+    tz: tzinfo,
+    home_address: str,
+    locate: Callable[[str, date], tuple[str, str]] | None = None,
 ) -> tuple[date, RideEvent, RideNotes] | None:
     """A parent's own event as a ride they drive themselves, with its day and notes, or None
     when it's only busy time: all day, over more than a day, at home, or anywhere.
@@ -612,7 +683,7 @@ def _own_event(
         ev.id,
         driver,
         title,
-        place_key(ev.location or ""),
+        locate(ev.location or "", first)[0] if locate else place_key(ev.location or ""),
         start,
         end,
         drop=side,

@@ -361,7 +361,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1090,
@@ -390,10 +391,12 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
-     "busy": []
+     "busy": [],
+     "home": null
     },
     "dad": {
      "name": "Sam",
@@ -536,7 +539,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1115,
@@ -565,7 +569,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -575,7 +580,8 @@
        "title": "Work",
        "event": null
       }
-     ]
+     ],
+     "home": null
     }
    },
    "rides": [
@@ -1120,7 +1126,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1060,
@@ -1149,10 +1156,12 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
-     "busy": []
+     "busy": [],
+     "home": null
     },
     "dad": {
      "name": "Sam",
@@ -1265,7 +1274,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1216,
@@ -1294,7 +1304,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -1304,7 +1315,8 @@
        "title": "Work",
        "event": null
       }
-     ]
+     ],
+     "home": null
     }
    },
    "rides": [
@@ -1638,10 +1650,12 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
-     "busy": []
+     "busy": [],
+     "home": null
     },
     "dad": {
      "name": "Sam",
@@ -1769,7 +1783,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 887,
@@ -1798,10 +1813,12 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
-     "busy": []
+     "busy": [],
+     "home": null
     }
    },
    "rides": [
@@ -2152,7 +2169,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -2168,7 +2186,8 @@
        "title": "Golf",
        "event": null
       }
-     ]
+     ],
+     "home": null
     },
     "dad": {
      "name": "Sam",
@@ -2248,7 +2267,8 @@
        "parents": {
         "mom": "Leave home at 12:37 PM with Sam"
        },
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -2258,7 +2278,8 @@
        "title": "Golf",
        "event": "sun-golf"
       }
-     ]
+     ],
+     "home": null
     }
    },
    "rides": [
@@ -2703,7 +2724,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 975,
@@ -2734,7 +2756,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1025,
@@ -2763,10 +2786,12 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
-     "busy": []
+     "busy": [],
+     "home": null
     },
     "dad": {
      "name": "Sam",
@@ -2870,7 +2895,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -2886,7 +2912,8 @@
        "title": "Pick up dry cleaning",
        "event": "mon-cleaners"
       }
-     ]
+     ],
+     "home": null
     }
    },
    "rides": [
@@ -3386,7 +3413,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": true
+       "solo": true,
+       "home": "Home"
       },
       {
        "start": 1000,
@@ -3416,7 +3444,8 @@
         "via_home": true
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1187,
@@ -3445,7 +3474,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -3455,7 +3485,8 @@
        "title": "Book club",
        "event": "tue-book"
       }
-     ]
+     ],
+     "home": null
     },
     "dad": {
      "name": "Sam",
@@ -3600,7 +3631,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -3610,7 +3642,8 @@
        "title": "Work",
        "event": null
       }
-     ]
+     ],
+     "home": null
     }
    },
    "rides": [
@@ -3993,7 +4026,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1004,
@@ -4022,7 +4056,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -4032,7 +4067,8 @@
        "title": "Dentist",
        "event": null
       }
-     ]
+     ],
+     "home": null
     },
     "dad": {
      "name": "Sam",
@@ -4145,7 +4181,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       },
       {
        "start": 1115,
@@ -4174,7 +4211,8 @@
         "via_home": false
        },
        "parents": {},
-       "solo": false
+       "solo": false,
+       "home": "Home"
       }
      ],
      "busy": [
@@ -4190,7 +4228,8 @@
        "title": "Car rental",
        "event": "wed-rental"
       }
-     ]
+     ],
+     "home": null
     }
    },
    "rides": [

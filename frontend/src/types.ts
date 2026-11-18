@@ -86,6 +86,8 @@ export interface Outing {
   parents?: Record<string, string>;
   /** The driver goes alone to their own event. */
   solo?: boolean;
+  /** What the trip calls home: "Home", or a hotel's name while the driver stays there. */
+  home?: string;
 }
 
 export interface BusyBlock {
@@ -104,6 +106,8 @@ export interface DriverDay {
   segments: Segment[];
   outings: Outing[];
   busy: BusyBlock[];
+  /** Where their rides start and end today when it isn't home: the hotel they're staying at. */
+  home?: { place: string; name: string } | null;
 }
 
 export interface Ride {

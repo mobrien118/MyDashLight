@@ -73,7 +73,12 @@ class DriveTimes:
         return make_travel(self.week.travel_overrides, self.default, lookup)
 
     def _vague(self, key: str) -> bool:
-        return key != HOME and not key.startswith(NO_ADDRESS) and vague_address(self.week.labels.place(key))
+        return (
+            key != HOME
+            and key not in self.week.as_written
+            and not key.startswith(NO_ADDRESS)
+            and vague_address(self.week.labels.place(key))
+        )
 
     def _too_far(self, day: DayInput, places: list[str], minutes: float) -> None:
         """Say so on each event there, once: the drive time is a guess until it has an address."""
@@ -99,6 +104,8 @@ def place_for(week: WeekInput, key: str, home: Place) -> Place | None:
         return home
     if key.startswith(NO_ADDRESS):
         return None
+    if key in week.as_written:
+        return Place(address=week.labels.place(key))
     return Place(address=near_home(week.labels.place(key), week.home_address))
 
 
