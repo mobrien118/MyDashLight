@@ -370,3 +370,47 @@ def test_arrive_late_and_leave_late() -> None:
     assert 960 < drop.arrive <= 975
     assert pick.ready == 1035
     assert not board.plan.hard
+
+
+def test_a_kid_taken_along_while_busy_elsewhere_is_a_problem() -> None:
+    # Marty, 2026-11-17: a stop at a friend's on the way to Hip Hop's pick-up took Cleo along,
+    # in the middle of Hip Hop. The car went home for her and everything after ran late, and
+    # the board only showed a quiet clash.
+    hiphop = RideEvent("hiphop", "cleo", "Hip Hop", "dance", 1080, 1125, drop="mom", pick="mom")
+    friend = RideEvent(
+        "friend", "mom", "Pick up Noah", "party", 1115, 1117, drop="mom", pick="mom", stay=True, own="mom"
+    )
+    ok = build_day([hiphop, friend], {}, travel, LABELS, kids=KIDS)
+    board = build_day([hiphop, replace(friend, along=("cleo",))], {}, travel, LABELS, kids=KIDS)
+    (issue,) = [x for x in board.plan.hard if x.kind == "alongBusy"]
+    assert issue.event is not None
+    assert (issue.event.id, issue.side, issue.kid) == ("friend", "drop", "cleo")
+    text = issue_text(issue, LABELS)
+    assert text.title == "Cleo can’t be in two places"
+    assert text.body == (
+        "Cleo is at Hip Hop 6:00–6:45, so can’t be taken along to Pick up Noah at 6:35. "
+        "The rides are planned without Cleo."
+    )
+    # Planned as if she weren't named: same route, nobody fetched from home, no extra clash.
+    assert [(s.kind, s.loc, s.car) for s in board.plan["mom"].stops] == [
+        (s.kind, s.loc, s.car) for s in ok.plan["mom"].stops
+    ]
+    assert board.clashes == []
+    assert all(it.event is None or it.event.id != "friend" for it in board.kid_items["cleo"])
+    assert [x.kind for x in board.plan.hard] == ["alongBusy", *(x.kind for x in ok.plan.hard)]
+
+
+def test_a_kid_riding_along_on_a_pick_up_while_busy_elsewhere_is_a_problem() -> None:
+    soccer = RideEvent("soccer", "ben", "Soccer", "soccer", 1020, 1080, drop="mom", pick="mom", pick_along=("ava",))
+    piano = RideEvent("piano", "ava", "Piano", "piano", 1050, 1110, drop="dad", pick="dad")
+    plan = plan_all([soccer, piano], {}, travel)
+    (issue,) = [x for x in plan.hard if x.kind == "alongBusy"]
+    assert (issue.side, issue.kid) == ("pick", "ava")
+    assert issue_text(issue, LABELS).body == (
+        "Ava is at Piano 5:30–6:30, so can’t ride along on the 6:00 pick-up from Ben’s Soccer. "
+        "The rides are planned without Ava."
+    )
+    assert all("ava" not in s.car for s in plan["mom"].stops)
+    # Not going to piano that day, she can ride along.
+    plan = plan_all([soccer, replace(piano, attending=False)], {}, travel)
+    assert not [x for x in plan.hard if x.kind == "alongBusy"]

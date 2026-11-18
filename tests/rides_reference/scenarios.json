@@ -3092,8 +3092,7 @@
               "from": "home",
               "to": "football",
               "kids": [
-                "ava",
-                "ben"
+                "ava"
               ],
               "serves": "sat-game"
             },
@@ -3102,9 +3101,7 @@
               "start": "3:14 PM",
               "end": "4:00 PM",
               "loc": "football",
-              "kids": [
-                "ben"
-              ],
+              "kids": [],
               "serves": "sat-game"
             },
             {
@@ -3114,7 +3111,6 @@
               "from": "football",
               "to": "party",
               "kids": [
-                "ben",
                 "ava"
               ],
               "serves": "sat-party"
@@ -3126,7 +3122,6 @@
               "from": "party",
               "to": "home",
               "kids": [
-                "ben",
                 "ava"
               ],
               "serves": "sat-party"
@@ -3139,6 +3134,11 @@
           "segments": []
         },
         "issues": [
+          {
+            "kind": "alongBusy",
+            "event": "sat-game",
+            "side": "drop"
+          },
           {
             "kind": "late",
             "driver": "mom",
