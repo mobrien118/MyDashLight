@@ -29,6 +29,7 @@ from .planner import (
     Segment,
     Stop,
     TravelFn,
+    busy_along,
     fmt,
     fmt12,
     minutes_text,
@@ -161,6 +162,9 @@ def build_day(
 ) -> DayBoard:
     """Plan the day and work out everything the board shows for it."""
     plan = plan_all(events, busy, travel, settings, drivers)
+    # A kid taken along while busy elsewhere isn't planned in the car or shown going: the
+    # plan's problem for it says so.
+    events, _ = busy_along(events)
     goes = _goes_to(events)
     rides = _rides(plan, drivers, goes)
     kid_items = _kid_items(events, rides, kids, goes)

@@ -187,7 +187,7 @@ class Segment:
         return self.anchor.event if self.anchor else None
 
 
-IssueKind = Literal["late", "waiting", "busy", "unassigned", "early", "tight", "tightBusy"]
+IssueKind = Literal["late", "waiting", "busy", "unassigned", "early", "tight", "tightBusy", "alongBusy"]
 
 
 @dataclass(eq=False, slots=True)
@@ -203,19 +203,23 @@ class Issue:
     busy: BusyBlock | None = None
     segment: Segment | None = None
     at: float | None = None
+    kid: str | None = None
+    """The kid taken along while at ``other``, their own activity (``alongBusy``)."""
+    other: RideEvent | None = None
 
     @property
     def key(self) -> str:
         """Stable id for this issue, the same across replans of the same day."""
-        return "|".join(
-            (
-                self.kind,
-                self.driver or "",
-                self.event.id if self.event else "",
-                self.side or "",
-                self.busy.title if self.busy else "",
-            )
-        )
+        parts = [
+            self.kind,
+            self.driver or "",
+            self.event.id if self.event else "",
+            self.side or "",
+            self.busy.title if self.busy else "",
+        ]
+        if self.kid is not None:
+            parts.append(self.kid)
+        return "|".join(parts)
 
 
 @dataclass(eq=False, slots=True)
@@ -763,9 +767,10 @@ def plan_all(
     drivers: Sequence[str] = DEFAULT_DRIVERS,
 ) -> DayPlan:
     """Plan every routed driver's day and collect the issues across them."""
+    events, hard = busy_along(events)
     busy = with_rides_along(events, busy, travel, settings, drivers)
     plans = {d: plan_driver(d, events, busy, travel, settings) for d in drivers}
-    hard = [x for d in drivers for x in plans[d].issues]
+    hard += [x for d in drivers for x in plans[d].issues]
     for e in events:
         if e.drop == UNASSIGNED:
             hard.append(Issue("unassigned", event=e, side="drop"))
@@ -775,6 +780,51 @@ def plan_all(
     late_minutes = sum(x.minutes or 0 for x in hard)
     score = len(hard) * 1000 + late_minutes * 10 + sum(p.drive for p in plans.values())
     return DayPlan(plans, hard, soft, score, busy)
+
+
+def busy_along(events: Sequence[RideEvent]) -> tuple[list[RideEvent], list[Issue]]:
+    """Take out the kids taken along while they're at an activity of their own somewhere else,
+    with a problem for each (Marty, 2026-11-17: a friend's pick-up took Madeline along in the
+    middle of her Hip Hop class). The rides are planned without them, so one slip in the notes
+    doesn't send the car home for them and make the rest of the evening late.
+
+    A kid is with a parent's own event from its start until it's out, in the car at a drop-off
+    as it starts, and in the car at a pick-up as it's out. Kids at the same event, or at the
+    same place, are already where the car is.
+    """
+
+    def busy_at(e: RideEvent, kid: str, lo: float, hi: float) -> RideEvent | None:
+        for a in events:
+            if a is e or a.own is not None or a.kid != kid or not a.attending:
+                continue
+            if a.id.split("~")[0] == e.id.split("~")[0] or a.loc == e.loc:
+                continue
+            if a.start < hi and lo < a.out:
+                return a
+        return None
+
+    out: list[RideEvent] = []
+    issues: list[Issue] = []
+    for e in events:
+        if not e.attending or (not e.along and not e.pick_along):
+            out.append(e)
+            continue
+        along, pick_along = list(e.along), list(e.pick_along)
+        sides: tuple[tuple[Side, list[str], float, float], ...] = (
+            ("drop", along, e.start, e.out if e.own is not None else e.start),
+            ("pick", pick_along, e.out, e.out),
+        )
+        for side, kids, lo, hi in sides:
+            for k in dict.fromkeys(kids):
+                a = busy_at(e, k, lo, hi) if k != e.kid else None
+                if a is not None:
+                    issues.append(Issue("alongBusy", event=e, side=side, kid=k, other=a))
+                    kids[:] = [x for x in kids if x != k]
+        if len(along) == len(e.along) and len(pick_along) == len(e.pick_along):
+            out.append(e)
+        else:
+            out.append(replace(e, along=tuple(along), pick_along=tuple(pick_along)))
+    return out, issues
 
 
 def with_rides_along(
@@ -865,6 +915,19 @@ def issue_text(issue: Issue, labels: Labels) -> IssueText:
                 "No time to spare",
                 f"{who} has to leave {e.title} right at {fmt(issue.at)} to make the next stop.",
                 f"{who} leaves {e.title} right at {fmt(issue.at)}",
+            )
+        case "alongBusy" if e and issue.kid and issue.other:
+            name, a = labels.kid(issue.kid), issue.other
+            whose = e.title if e.own is not None else f"{kid}’s {e.title}"
+            what = (
+                f"ride along on the {fmt(e.out)} pick-up from {whose}"
+                if issue.side == "pick"
+                else f"be taken along to {whose} at {fmt(e.start)}"
+            )
+            return IssueText(
+                f"{name} can’t be in two places",
+                f"{name} is at {a.title} {fmt(a.start)}–{fmt(a.out)}, so can’t {what}. "
+                f"The rides are planned without {name}.",
             )
         case "tightBusy" if issue.busy:
             b = issue.busy
