@@ -16,7 +16,7 @@ from custom_components.mydashlight.changes import KEEP, RideChange, _Notes
 from custom_components.mydashlight.const import DOMAIN
 from custom_components.mydashlight.notes import RideNotes
 
-from .common import AVA, BEN, FAMILY, FakeGoogle, google_error, make_entry, setup_credentials, timed
+from .common import AVA, BEN, FAMILY, FakeGoogle, all_day, google_error, make_entry, setup_credentials, timed
 
 NOW = "2026-11-03T15:00:00+00:00"  # 9 AM in Central time, a Tuesday
 PIANO = "Piano studio, 1 Elm St"
@@ -505,6 +505,70 @@ async def test_pick_who_an_event_is_for(hass: HomeAssistant, google: FakeGoogle)
     await call(hass, "set_people", event="party", people=[])
     assert google.event(FAMILY, "party")["description"] == "Bring a gift.\n\n--- Rides ---\nDrop-off: Sam"
     assert [u["id"] for u in entry.runtime_data.coordinator.data.days[0]["unplaced"]] == ["party"]
+
+
+async def test_pick_who_is_on_a_stay(hass: HomeAssistant, google: FakeGoogle) -> None:
+    # Marty, 2026-11-18: a stay named for one parent, with the rest of the family picked on the board.
+    google.add(
+        FAMILY,
+        **all_day(
+            "trip",
+            "Robin Stay Marriott",
+            "2026-11-03",
+            "2026-11-05",
+            location="Marriott, 1 Main St, Oak Brook, IL 60523",
+        ),
+    )
+    entry = await load(hass)
+    data = entry.runtime_data.coordinator.data
+    (item,) = [i for i in data.days[0]["all_day"] if i["id"] == "trip"]
+    assert (item["stay"], item["people"], item["from_notes"]) == (True, ["mom"], False)
+    assert data.week.days[0].homes == {"mom": "marriott, 1 main st, oak brook, il 60523"}
+
+    await call(hass, "set_people", event="trip", people=["Robin", "Sam", "Ava"])
+
+    assert google.event(FAMILY, "trip")["description"] == "--- Rides ---\nFor: Robin, Sam & Ava"
+    data = entry.runtime_data.coordinator.data
+    (item,) = [i for i in data.days[0]["all_day"] if i["id"] == "trip"]
+    assert (item["people"], item["from_notes"]) == (["mom", "dad", AVA], True)
+    assert set(data.week.days[0].homes) == {"mom", "dad"}
+    assert (item["driver"], item["riders"]) == ("", [])
+
+
+async def test_pick_who_drives_to_a_stay(hass: HomeAssistant, google: FakeGoogle) -> None:
+    # Marty, 2026-11-18: Robin drives the kids up, and Sam is already there.
+    google.add(
+        FAMILY,
+        **timed(
+            "trip",
+            "Robin Stay Marriott",
+            "2026-11-03T12:30:00-06:00",
+            "2026-11-05T13:00:00-06:00",
+            location="Marriott, 1 Main St, Oak Brook, IL 60523",
+        ),
+    )
+    entry = await load(hass)
+    week = entry.runtime_data.coordinator.data.week
+    assert [(t.driver, t.riders, t.due) for t in week.days[0].trips] == [("mom", (), 750)]
+
+    await call(hass, "set_people", event="trip", people=["Robin", "Sam", "Ava"], driver="Robin", riders=["Ava"])
+
+    assert google.event(FAMILY, "trip")["description"] == (
+        "--- Rides ---\nFor: Robin, Sam & Ava\nDrop-off: Robin, Ava\nPick-up: Robin, Ava"
+    )
+    data = entry.runtime_data.coordinator.data
+    (item,) = [i for i in data.days[0]["all_day"] if i["id"] == "trip"]
+    assert (item["driver"], item["riders"]) == ("mom", [AVA])
+    assert [(t.driver, t.riders, t.there) for t in data.week.days[0].trips] == [("mom", (AVA,), True)]
+    assert [(t.driver, t.riders, t.there) for t in data.week.days[2].trips] == [("mom", (AVA,), False)]
+    robin = data.days[0]["drivers"]["mom"]["outings"]
+    assert [o["title"] for o in robin] == ["Drive Ava to Marriott"]
+
+    # No driver goes back to the first parent on the stay, with everyone else along.
+    await call(hass, "set_people", event="trip", people=["Robin", "Sam", "Ava"], driver="")
+    assert google.event(FAMILY, "trip")["description"] == "--- Rides ---\nFor: Robin, Sam & Ava"
+    trips = entry.runtime_data.coordinator.data.week.days[0].trips
+    assert [(t.driver, t.riders) for t in trips] == [("mom", ("dad", AVA))]
 
 
 async def test_pick_who_with_names_that_are_not_anyone(hass: HomeAssistant, google: FakeGoogle) -> None:

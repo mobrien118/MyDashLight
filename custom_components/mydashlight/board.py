@@ -29,11 +29,15 @@ from .planner import (
     Segment,
     Stop,
     TravelFn,
+    Trip,
+    base_at,
     busy_along,
     fmt,
     fmt12,
+    home_windows,
     minutes_text,
     plan_all,
+    trip_times,
 )
 from .week import NO_ADDRESS, Where
 
@@ -162,28 +166,88 @@ def build_day(
     drivers: Sequence[str] = DEFAULT_DRIVERS,
     kids: Sequence[str] = (),
     homes: Mapping[str, str] | None = None,
+    trips: Sequence[Trip] = (),
 ) -> DayBoard:
     """Plan the day and work out everything the board shows for it.
 
     ``homes`` gives, by driver, where their rides start and end when it isn't home (a hotel on
     a trip, see :func:`.planner.plan_all`). Their trips name it where they'd say Home.
+    ``trips`` are today's drives to a hotel and back: each is an outing of its own, and the
+    kids in the car have a ride.
     """
     homes = homes or {}
-    plan = plan_all(events, busy, travel, settings, drivers, homes)
+    plan = plan_all(events, busy, travel, settings, drivers, homes, trips)
+    windows = home_windows(trips, travel, settings)
+    drives: dict[int, Trip] = {}
+    for t in trips:
+        if t.driver not in plan.drivers:
+            continue
+        leave, arrive = trip_times(t, travel, settings)
+        kid_ids = [r for r in t.riders if r not in drivers]
+        g = Segment(
+            "drive",
+            leave,
+            arrive,
+            from_loc=HOME if t.there else t.place,
+            to_loc=t.place if t.there else HOME,
+            kids=kid_ids,
+            from_home=t.there,
+        )
+        drives[id(g)] = t
+        segs = plan[t.driver].segments
+        segs.append(g)
+        segs.sort(key=lambda x: x.start)
     # A kid taken along while busy elsewhere isn't planned in the car or shown going: the
     # plan's problem for it says so.
     events, _ = busy_along(events)
     goes = _goes_to(events)
     rides = _rides(plan, drivers, goes)
     kid_items = _kid_items(events, rides, kids, goes)
+    outings = {d: _outings(plan, d, plan.busy, labels, homes, windows, drives) for d in drivers}
     return DayBoard(
         plan=plan,
         rides=rides,
         kid_items=kid_items,
         clashes=_clashes(kid_items),
-        outings={d: _outings(plan, d, plan.busy, labels, homes.get(d)) for d in drivers},
+        outings=outings,
         lines=_card_lines(events, plan, rides, labels, drivers),
     )
+
+
+def _trip_outing(
+    g: Segment, t: Trip, d: str, busy: Mapping[str, Sequence[BusyBlock]], labels: Labels, drivers: Sequence[str]
+) -> Outing:
+    """The drive to a hotel or back home, as the driver's outing."""
+    name = labels.driver(d)
+    kid_names = [labels.kid(k) for k in g.kids]
+    start_name = "home" if t.there else t.name
+    leave_line = f"Leave {start_name} at {fmt12(g.start)} with {name}"
+    if t.there:
+        title = f"Drive {_and(kid_names)} to {t.name}" if kid_names else f"Drive to {t.name}"
+        lines = [f"{fmt(g.end)}  {t.name}, there by {fmt(t.due)}" if g.end < t.due else f"{fmt(g.end)}  {t.name}"]
+    else:
+        title = f"Drive {_and(kid_names)} home from {t.name}" if kid_names else f"Drive home from {t.name}"
+        lines = [f"{fmt(g.end)}  Home"]
+    warn = ""
+    for b in busy.get(d, ()):
+        if b.start < g.end and b.end > g.start:
+            warn = f"Still at {b.title} until {fmt(b.end)}"
+    o = Outing(g.start, g.end, [g], lead=f"Leave {fmt(g.start)}", title=title, lines=lines, warn=warn)
+    o.kids = list(g.kids)
+    o.riders = {k: leave_line for k in g.kids}
+    o.parents = {p: leave_line for p in t.riders if p in drivers and p != d}
+    to_loc = g.to_loc or HOME
+    o.go = Going(
+        from_loc=g.from_loc or HOME,
+        from_name=start_name,
+        to_loc=to_loc,
+        to_name="home" if to_loc == HOME else t.name,
+        due=t.due if t.there else g.end,
+        via_home=False,
+    )
+    # Both ends of the drive are where they are: home is home on it.
+    o.home = "Home"
+    return o
 
 
 def _goes_to(events: Sequence[RideEvent]) -> Callable[[RideEvent, str], bool]:
@@ -273,16 +337,26 @@ def _clashes(kid_items: dict[str, list[KidItem]]) -> list[Clash]:
 
 
 def _outings(
-    plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], labels: Labels, away: str | None = None
+    plan: DayPlan,
+    d: str,
+    busy: Mapping[str, Sequence[BusyBlock]],
+    labels: Labels,
+    homes: Mapping[str, str] | None = None,
+    windows: Mapping[str, tuple[float, float]] | None = None,
+    drives: Mapping[int, Trip] | None = None,
 ) -> list[Outing]:
     p = plan[d]
-    # Home in this driver's route, as their trips say it: a hotel's name while they stay there.
-    home = labels.short_place(away) if away else "Home"
-    home_at = home if away else "home"
+    drives = drives or {}
     outings: list[Outing] = []
+    trip_outings: list[Outing] = []
     cur: Outing | None = None
     for g in p.segments:
         if g.type == "home":
+            cur = None
+            continue
+        if id(g) in drives:
+            # The drive to a hotel or back is an outing of its own.
+            trip_outings.append(_trip_outing(g, drives[id(g)], d, busy, labels, list(plan.drivers)))
             cur = None
             continue
         if cur is not None and cur.end == g.start:
@@ -293,6 +367,10 @@ def _outings(
             outings.append(cur)
 
     for o in outings:
+        # Home in this driver's route, as their trips say it: a hotel's name while they stay there.
+        away = base_at(homes, windows, d, o.start)
+        home = labels.short_place(away) if away else "Home"
+        home_at = home if away else "home"
         lines: list[str] = []
         kids: list[str] = []
         jobs: list[tuple[str, str, list[str]]] = []
@@ -411,7 +489,7 @@ def _outings(
         o.home = home
         # An errand's time is the planner's pick, so the driver hears about it.
         o.solo = bool(jobs) and all(j[0] == "go" for j in jobs) and not kids and not o.parents
-    return outings
+    return sorted([*outings, *trip_outings], key=lambda o: o.start)
 
 
 LONG_DRIVE: Final = 120

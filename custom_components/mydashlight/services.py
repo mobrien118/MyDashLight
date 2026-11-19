@@ -8,6 +8,7 @@ Google Calendar. Nothing about rides is kept in Home Assistant.
 from __future__ import annotations
 
 from collections.abc import Callable, Coroutine
+from dataclasses import replace
 from datetime import date, time, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -27,6 +28,7 @@ from .const import (
     ATTR_KIDS,
     ATTR_MINUTES,
     ATTR_PEOPLE,
+    ATTR_RIDERS,
     ATTR_SCOPE,
     ATTR_SIDE,
     ATTR_STAY,
@@ -89,7 +91,14 @@ SET_TAKES_SCHEMA = vol.Schema(
 )
 APPLY_SUGGESTION_SCHEMA = vol.Schema({vol.Required(ATTR_SUGGESTION): cv.string})
 SET_PEOPLE_SCHEMA = vol.Schema(
-    {**_EVENT_FIELDS, vol.Optional(ATTR_PEOPLE, default=[]): vol.All(cv.ensure_list, [cv.string])}
+    {
+        **_EVENT_FIELDS,
+        vol.Optional(ATTR_PEOPLE, default=[]): vol.All(cv.ensure_list, [cv.string]),
+        # A stay only: who drives there and back ("" for the first parent it names, "none" for
+        # no drive), and who rides along.
+        vol.Optional(ATTR_DRIVER): vol.Any(None, cv.string),
+        vol.Optional(ATTR_RIDERS): vol.All(cv.ensure_list, [cv.string]),
+    }
 )
 
 
@@ -275,8 +284,15 @@ async def _async_set_people(call: ServiceCall) -> None:
     wanted_series = call.data.get(ATTR_SCOPE) == SCOPE_SERIES
     strays = coordinator.data.split.unplaced if coordinator.data else []
     stray = next((u for u in strays if u.id == event_id), None)
+    stays = coordinator.data.split.stays if coordinator.data else []
+    stay = next((s for s in stays if s.id == event_id), None)
     also: list[Target] = []
-    if stray is not None:
+    series: str | None = None
+    if stay is not None:
+        # A stay away from home: who's staying.
+        title = stay.title
+        target = Target(stay.calendar_id or coordinator.settings.events_calendar, stay.id)
+    elif stray is not None:
         title = stray.title
         target = Target(stray.calendar_id or coordinator.settings.events_calendar, stray.id)
         series = stray.recurring_id if wanted_series else None
@@ -297,6 +313,12 @@ async def _async_set_people(call: ServiceCall) -> None:
     if series:
         also = [*also, *coordinator.occurrences(target.calendar_id, series)]
     change = RideChange(people=names_text(ids, people) or None)
+    if stay is not None and ATTR_DRIVER in call.data:
+        # Who drives there and back, and who's in the car: the same both ways. No driver takes
+        # the lines away, so the first parent on the stay drives with everyone else along.
+        driver = call.data[ATTR_DRIVER] or ""
+        riders = tuple(call.data.get(ATTR_RIDERS, ())) if driver else ()
+        change = replace(change, drop=driver, pick=driver, drop_riders=riders, pick_riders=riders)
     await _async_save(call.hass, entry, target, change, series, also, title)
 
 

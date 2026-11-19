@@ -24,7 +24,7 @@ from typing import Any, Final, Literal
 
 from .google import CalendarEvent
 from .notes import DriverDirectory, RideNotes, human_notes, parse_notes, skip_prefix
-from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, TravelFn
+from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, TravelFn, Trip
 from .shared import Stay
 
 DAY: Final = 1440
@@ -130,6 +130,8 @@ class DayInput:
     homes: dict[str, str] = field(default_factory=dict)
     """Where a parent's rides start and end this day when it isn't home, by driver id: the
     place key of the hotel they're staying at."""
+    trips: list[Trip] = field(default_factory=list)
+    """The drives to a hotel on the day a timed stay starts, and home on the day it ends."""
 
 
 @dataclass(slots=True)
@@ -247,6 +249,9 @@ def build_week(
                 for p in st.people:
                     if p in roles.busy:
                         by_day[d].homes.setdefault(p, key)
+        for trip, day in _trips(st, key, short[key], roles, directory):
+            if day in by_day:
+                by_day[day].trips.append(trip)
 
     def locate(location: str, day: date, person: str) -> tuple[str, str]:
         """An event's place key and the address to look up, for someone on a day: a place
@@ -583,6 +588,37 @@ def addresses(week: WeekInput) -> list[str]:
     return sorted(
         {e.loc for d in week.days for e in d.events if e.loc and e.loc != HOME and not e.loc.startswith(NO_ADDRESS)}
     )
+
+
+def _trips(st: Stay, key: str, name: str, roles: CalendarRoles, directory: DriverDirectory) -> list[tuple[Trip, date]]:
+    """A timed stay's drive there on its first day and back on its last (Marty, 2026-11-18).
+
+    Its Drop-off line says who drives there and who rides along, and its Pick-up line the same
+    for the drive back, as on any event. Without one, the first parent it names drives, with
+    everyone else on it along. "No ride" plans none, and so does someone outside the family
+    driving.
+    """
+    notes = parse_notes(st.description, directory, None)
+    kids = {k.calendar_id for k in roles.kids}
+    family = kids | set(roles.busy)
+    parents = [p for p in st.people if p in roles.busy]
+    out: list[tuple[Trip, date]] = []
+    sides = (
+        (True, st.arrive, st.first, notes.drop, notes.drop_riders),
+        (False, st.leave, st.last, notes.pick, notes.pick_riders),
+    )
+    for there, due, day, driver, riders in sides:
+        if due is None or due >= 1440 or driver == NOT_NEEDED:
+            continue
+        if driver == UNASSIGNED:
+            if not parents:
+                continue
+            driver, riders = parents[0], tuple(p for p in st.people if p != parents[0])
+        if driver not in roles.busy:
+            continue
+        car = tuple(dict.fromkeys(r for r in riders if r in family and r != driver))
+        out.append((Trip(driver, key, name, due, there, car), day))
+    return out
 
 
 def _ride_together(day: DayInput) -> None:
