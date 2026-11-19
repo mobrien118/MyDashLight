@@ -260,3 +260,18 @@ function sampleChore(): ChoresPayload["chores"][number] {
     order: 0,
   };
 }
+
+test("a failed calendar read says it shortly, and keeps the rest for a tap", async () => {
+  const { calendarProblem } = await import("../src/backend.ts");
+  assert.deepEqual(
+    calendarProblem(
+      "Couldn't read Google Calendar: Couldn't reach Google Calendar: Cannot connect to host www.googleapis.com:443 ssl:default [Network unreachable]",
+    ),
+    { short: "Can’t reach Google Calendar", detail: "Cannot connect to host www.googleapis.com:443 ssl:default [Network unreachable]" },
+  );
+  assert.deepEqual(calendarProblem("Couldn't read Google Calendar: Couldn't read Google Calendar: 500 Backend Error"), {
+    short: "Couldn’t read Google Calendar",
+    detail: "500 Backend Error",
+  });
+  assert.deepEqual(calendarProblem(null), { short: "Couldn’t read Google Calendar", detail: null });
+});

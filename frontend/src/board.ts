@@ -5,7 +5,7 @@
 
 import { LitElement, html, nothing, svg, type PropertyValues, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
-import { BackendError, problemLine, type Backend, type StayDrive } from "./backend.ts";
+import { BackendError, calendarProblem, problemLine, type Backend, type StayDrive } from "./backend.ts";
 import { kidColor } from "./colors.ts";
 import { ago, clock, clockAmPm, dayLabel, duration, nowIn, offsetText, shortDay } from "./format.ts";
 import {
@@ -306,6 +306,7 @@ export class MyDashLightBoard extends LitElement {
     showMenu: { type: Boolean, attribute: "show-menu" },
     plan: { state: true },
     error: { state: true },
+    problemOpen: { state: true },
     mode: { state: true },
     sel: { state: true },
     sheet: { state: true },
@@ -352,6 +353,8 @@ export class MyDashLightBoard extends LitElement {
   /** Scrolled away from today (or from now, in Timeline): "up|Today", "down|Now", or null. */
   declare away: string | null;
   declare error: BackendError | null;
+  /** The problem line under the header is open to its full detail. */
+  declare problemOpen: boolean;
   declare mode: Mode;
   declare sel: Target | null;
   declare sheet: boolean;
@@ -457,6 +460,7 @@ export class MyDashLightBoard extends LitElement {
     this.railShown = false;
     this.away = null;
     this.error = null;
+    this.problemOpen = false;
     this.mode = this.urlView ?? readMode();
     this.sel = null;
     this.sheet = false;
@@ -1589,18 +1593,19 @@ export class MyDashLightBoard extends LitElement {
     const problems = att.problems + choresDue;
     void this.tick;
     const now = this.today();
-    let status: TemplateResult | string = "";
+    let status = "";
+    let problem: { short: string; detail: string | null; age: string } | null = null;
     if (plan) {
       const tz = plan.time_zone;
-      const updated = new Date(plan.updated);
+      const age = `Plan from ${ago(new Date(plan.updated), new Date(), tz)}`;
       if (this.error) {
-        // Two short lines under the date: what's wrong, then how old the plan on screen is.
-        status = html`<span class="bad"><span class="line">${problemLine(this.error)}</span><span class="line keep">Plan from ${ago(updated, new Date(), tz)}</span></span>`;
+        const plain = ["connection_lost", "timeout", "not_running"].includes(this.error.code);
+        problem = { short: problemLine(this.error), detail: plain ? null : this.error.message, age };
       } else if (plan.status && !plan.status.ok) {
-        status = html`<span class="bad"><span class="line">Couldn’t read Google Calendar${plan.status.error ? `: ${plan.status.error}` : ""}</span><span class="line keep">Plan from ${ago(updated, new Date(), tz)}</span></span>`;
+        problem = { ...calendarProblem(plan.status.error), age };
       } else if (!this.backend?.live) {
         // Live plans are only sent when something changes, so their time isn't when they were checked.
-        status = `Updated ${ago(updated, new Date(), tz)}`;
+        status = `Updated ${ago(new Date(plan.updated), new Date(), tz)}`;
       }
     }
     const seg = (m: Mode, label: string, icon: TemplateResult, hint: string): TemplateResult => html`
@@ -1627,9 +1632,8 @@ export class MyDashLightBoard extends LitElement {
             <span class="hm">${time.slice(0, -3)}</span><span class="ampm">${time.slice(-2)}</span>
           </h1>
           <p class="today-line">
-            ${dayLabel(now.date)}${typeof status === "string" && status ? html`<span class="status"> · ${status}</span>` : nothing}
+            ${dayLabel(now.date)}${status ? html`<span class="status"> · ${status}</span>` : nothing}
           </p>
-          ${status && typeof status !== "string" ? html`<p class="status">${status}</p>` : nothing}
         </div>
         ${plan && !quiet ? this.renderNext(plan, nextUp(plan, now), att) : nothing}
         <div class="controls">
@@ -1664,7 +1668,28 @@ export class MyDashLightBoard extends LitElement {
           </div>
         </div>
       </header>
+      ${problem ? this.renderProblem(problem) : nothing}
     `;
+  }
+
+  /**
+   * What's wrong, on one line across the bottom of the header, so it never squeezes what's beside
+   * the clock. Tapping it shows the full detail, when there is more to say.
+   */
+  private renderProblem(p: { short: string; detail: string | null; age: string }): TemplateResult {
+    const text = html`<span class="problem-what">${p.short}</span><span class="problem-age"> · ${p.age}</span>`;
+    if (!p.detail) return html`<p class="problem-row" role="status">${text}</p>`;
+    const open = this.problemOpen;
+    return html`<button
+      type="button"
+      class="problem-row ${open ? "open" : ""}"
+      role="status"
+      title=${p.detail}
+      aria-expanded=${open ? "true" : "false"}
+      @click=${() => (this.problemOpen = !open)}
+    >
+      ${text}${open ? html`<span class="problem-detail">${p.detail}</span>` : html`<span class="problem-more"> · <span class="problem-link">Details</span></span>`}
+    </button>`;
   }
 
   /** The next trip out of the house, big enough to read across the kitchen. */

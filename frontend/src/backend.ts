@@ -119,6 +119,29 @@ export function problemLine(err: BackendError): string {
   }
 }
 
+/**
+ * A short line for a failed calendar read, and the detail behind it. MyDashLight's message
+ * already starts "Couldn't read Google Calendar: ", often around "Couldn't reach Google
+ * Calendar: ..."; the short line says which, and the detail is what's left.
+ */
+export function calendarProblem(error: string | null | undefined): { short: string; detail: string | null } {
+  let rest = (error ?? "").trim();
+  const strip = (prefix: RegExp): boolean => {
+    const m = prefix.exec(rest);
+    if (!m) return false;
+    rest = rest.slice(m[0].length).trim();
+    return true;
+  };
+  while (strip(/^Couldn['’]t read Google Calendar:?/i)) {
+    // MyDashLight's message can repeat its own prefix.
+  }
+  const unreachable = strip(/^Couldn['’]t reach Google Calendar:?/i);
+  return {
+    short: unreachable ? "Can’t reach Google Calendar" : "Couldn’t read Google Calendar",
+    detail: rest || null,
+  };
+}
+
 /** The part of a Home Assistant WebSocket connection the board uses. */
 export interface HassConnection {
   sendMessagePromise<T>(message: Record<string, unknown>): Promise<T>;
