@@ -21,6 +21,7 @@ import voluptuous as vol
 from .changes import RideChange, Target, async_save
 from .const import (
     ATTR_ATTENDING,
+    ATTR_BACK_RIDERS,
     ATTR_DATE,
     ATTR_DAYS,
     ATTR_DRIVER,
@@ -98,6 +99,7 @@ SET_PEOPLE_SCHEMA = vol.Schema(
         # no drive), and who rides along.
         vol.Optional(ATTR_DRIVER): vol.Any(None, cv.string),
         vol.Optional(ATTR_RIDERS): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(ATTR_BACK_RIDERS): vol.All(cv.ensure_list, [cv.string]),
     }
 )
 
@@ -314,11 +316,12 @@ async def _async_set_people(call: ServiceCall) -> None:
         also = [*also, *coordinator.occurrences(target.calendar_id, series)]
     change = RideChange(people=names_text(ids, people) or None)
     if stay is not None and ATTR_DRIVER in call.data:
-        # Who drives there and back, and who's in the car: the same both ways. No driver takes
-        # the lines away, so the first parent on the stay drives with everyone else along.
+        # Who drives there and back, and who's in the car each way (the same back unless said).
+        # No driver takes the lines away, so the first parent on it drives with everyone along.
         driver = call.data[ATTR_DRIVER] or ""
         riders = tuple(call.data.get(ATTR_RIDERS, ())) if driver else ()
-        change = replace(change, drop=driver, pick=driver, drop_riders=riders, pick_riders=riders)
+        back = tuple(call.data.get(ATTR_BACK_RIDERS, riders)) if driver else ()
+        change = replace(change, drop=driver, pick=driver, drop_riders=riders, pick_riders=back)
     await _async_save(call.hass, entry, target, change, series, also, title)
 
 

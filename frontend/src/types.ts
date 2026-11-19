@@ -185,8 +185,10 @@ export interface AllDayItem {
   from_notes?: boolean;
   /** A stay's driver there and back: a parent's id, "none", someone else's name, or "" for the first parent on it. */
   driver?: string;
-  /** Who rides with that driver, when the notes name one. */
+  /** Who rides there with that driver, when the notes name one. */
   riders?: string[];
+  /** Who rides back home with them (MyDashLight 0.27.1 and later). */
+  back_riders?: string[];
   /** A stay with times: the drive there and back is planned. */
   timed?: boolean;
 }

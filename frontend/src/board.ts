@@ -261,18 +261,23 @@ interface ForPick {
   timed?: boolean;
   /** Who drives there and back: a parent's id, "none", or "" for the first parent picked. */
   driver?: string;
-  /** Who's on the stay but not in the car: they get there on their own. */
+  /** Who's on the stay but not in the car there: they get there on their own. */
   ownWay?: string[];
+  /** Who's on the stay but not in the car back home (Marty, 2026-11-18: Reese got there first but rides back with us). */
+  ownBack?: string[];
 }
 
 /** What to save for a stay's drive: nothing in the notes when it's the first parent with everyone along. */
 function stayDrive(plan: Plan, f: ForPick): StayDrive {
-  if (f.driver === "none") return { driver: "none", riders: [] };
+  if (f.driver === "none") return { driver: "none", riders: [], backRiders: [] };
   const driver = stayDriver(plan, f);
-  const own = (f.ownWay ?? []).filter((p) => f.people.includes(p) && p !== driver);
+  const mine = (list: string[] | undefined): string[] => (list ?? []).filter((p) => f.people.includes(p) && p !== driver);
+  const own = mine(f.ownWay);
+  const back = mine(f.ownBack);
   const first = f.people.find((p) => driverIds(plan).includes(p));
-  if (!driver || (driver === first && !own.length)) return { driver: "", riders: [] };
-  return { driver, riders: f.people.filter((p) => p !== driver && !own.includes(p)) };
+  if (!driver || (driver === first && !own.length && !back.length)) return { driver: "", riders: [], backRiders: [] };
+  const car = (out: string[]): string[] => f.people.filter((p) => p !== driver && !out.includes(p));
+  return { driver, riders: car(own), backRiders: car(back) };
 }
 
 /** Who drives to a stay: the one picked, or else the first parent on it. Null for no drive. */
@@ -1056,6 +1061,8 @@ export class MyDashLightBoard extends LitElement {
     this.closeChorePanels();
     this.sheet = false;
     const known = new Set([...kidIds(plan), ...driverIds(plan)]);
+    const notInCar = (riders: string[] | undefined): string[] =>
+      item.driver && item.driver !== "none" ? item.people.filter((p) => known.has(p) && p !== item.driver && !(riders ?? []).includes(p)) : [];
     this.forPick = {
       day,
       id,
@@ -1071,10 +1078,8 @@ export class MyDashLightBoard extends LitElement {
       timed: !!item.timed,
       driver: item.driver === "none" || driverIds(plan).includes(item.driver ?? "") ? (item.driver ?? "") : "",
       // With a driver in the notes, whoever on the stay isn't in the car gets there on their own.
-      ownWay:
-        item.driver && item.driver !== "none"
-          ? item.people.filter((p) => known.has(p) && p !== item.driver && !(item.riders ?? []).includes(p))
-          : [],
+      ownWay: notInCar(item.riders),
+      ownBack: notInCar(item.back_riders ?? item.riders),
     };
   }
 
@@ -1244,10 +1249,10 @@ export class MyDashLightBoard extends LitElement {
     const parents = f.people.filter((p) => driverIds(plan).includes(p));
     const driver = stayDriver(plan, f);
     const others = f.people.filter((p) => p !== driver);
-    const own = f.ownWay ?? [];
     const colors = kidColors(plan);
     const kids = kidIds(plan);
-    const rider = (id: string): TemplateResult => {
+    const rider = (id: string, side: "ownWay" | "ownBack"): TemplateResult => {
+      const own = f[side] ?? [];
       const parent = !kids.includes(id);
       const color = parent ? OWN_COLOR : (colors.get(id) ?? kidColor(0));
       const name = personName(plan, id);
@@ -1257,7 +1262,7 @@ export class MyDashLightBoard extends LitElement {
         style="--c:${color.color};--rgb:${color.rgb}"
         aria-pressed=${own.includes(id) ? "false" : "true"}
         ?disabled=${f.busy}
-        @click=${() => change({ ownWay: own.includes(id) ? own.filter((x) => x !== id) : [...own, id] })}
+        @click=${() => change({ [side]: own.includes(id) ? own.filter((x) => x !== id) : [...own, id] })}
       >
         <span class="avatar ${parent ? "driver" : ""}" aria-hidden="true">${initial(name)}</span>${name}
       </button>`;
@@ -1277,10 +1282,14 @@ export class MyDashLightBoard extends LitElement {
       </div>
       ${driver && others.length
         ? html`<div class="field">
-            <span class="field-label">In the car with ${driverName(plan, driver)}</span>
-            <div role="group" aria-label="Who rides along" class="who-chips">${others.map(rider)}</div>
-            <p class="field-hint">Anyone not in the car gets there on their own, and the hotel is home for them the whole time.</p>
-          </div>`
+              <span class="field-label">In the car there with ${driverName(plan, driver)}</span>
+              <div role="group" aria-label="Who rides there" class="who-chips">${others.map((p) => rider(p, "ownWay"))}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">In the car back home</span>
+              <div role="group" aria-label="Who rides back" class="who-chips">${others.map((p) => rider(p, "ownBack"))}</div>
+              <p class="field-hint">Anyone not in the car makes their own way, and the hotel is home for them while it lasts.</p>
+            </div>`
         : nothing}`;
   }
 
