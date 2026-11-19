@@ -64,6 +64,8 @@ class DayItem:
     """And who rides back home with them, from its Pick-up line."""
     timed: bool = False
     """For a stay, whether it has times, so the drive there and back is planned."""
+    no_address: bool = False
+    """For a stay, whether the event has no location, so its drives are timed to the name alone."""
 
     def as_dict(self, day: date) -> dict[str, object]:
         return {
@@ -84,6 +86,7 @@ class DayItem:
                     "riders": list(self.riders),
                     "back_riders": list(self.back_riders),
                     "timed": self.timed,
+                    "no_address": self.no_address,
                 }
                 if self.stay
                 else {}
@@ -217,6 +220,7 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
                     riders=drive[1],
                     back_riders=drive[2],
                     timed=stay.arrive is not None,
+                    no_address=not (ev.location or "").strip(),
                 )
             )
             continue

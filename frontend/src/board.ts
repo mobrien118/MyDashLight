@@ -265,6 +265,8 @@ interface ForPick {
   ownWay?: string[];
   /** Who's on the stay but not in the car back home (Marty, 2026-11-18: Reese got there first but rides back with us). */
   ownBack?: string[];
+  /** A stay with no address on its event. */
+  noAddress?: boolean;
 }
 
 /** What to save for a stay's drive: nothing in the notes when it's the first parent with everyone along. */
@@ -1084,6 +1086,7 @@ export class MyDashLightBoard extends LitElement {
       // With a driver in the notes, whoever on the stay isn't in the car gets there on their own.
       ownWay: notInCar(item.riders),
       ownBack: notInCar(item.back_riders ?? item.riders),
+      noAddress: !!item.no_address,
     };
   }
 
@@ -1294,7 +1297,8 @@ export class MyDashLightBoard extends LitElement {
               <div role="group" aria-label="Who rides back" class="who-chips">${others.map((p) => rider(p, "ownBack"))}</div>
               <p class="field-hint">Anyone not in the car makes their own way, and the hotel is home for them while it lasts.</p>
             </div>`
-        : nothing}`;
+        : nothing}
+      ${f.noAddress ? html`<p class="field-hint">Add the hotel’s address to the event for exact drive times.</p>` : nothing}`;
   }
 
   /** In the ride editor: who the event is for, with a button to change it. Only once MyDashLight says. */
