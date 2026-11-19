@@ -535,6 +535,14 @@
         "scope": {
           "name": "Repeating events",
           "description": "For a repeating event: change just this one, or every one."
+        },
+        "driver": {
+          "name": "Driver",
+          "description": "For a hotel stay with times: the parent who drives there and back, \"none\" for no drive, or empty for the first parent it names, with everyone else on it along. Leave it out to keep the drive as it is."
+        },
+        "riders": {
+          "name": "In the car",
+          "description": "For a hotel stay with a driver: who rides there and back with them. Anyone on the stay left out gets there on their own."
         }
       }
     }

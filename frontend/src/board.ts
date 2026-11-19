@@ -5,7 +5,7 @@
 
 import { LitElement, html, nothing, svg, type PropertyValues, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
-import { BackendError, problemLine, type Backend } from "./backend.ts";
+import { BackendError, problemLine, type Backend, type StayDrive } from "./backend.ts";
 import { kidColor } from "./colors.ts";
 import { ago, clock, clockAmPm, dayLabel, duration, nowIn, offsetText, shortDay } from "./format.ts";
 import {
@@ -257,6 +257,31 @@ interface ForPick {
   busy: boolean;
   /** A hotel stay, from the day's all-day items: who's staying there. */
   stay?: boolean;
+  /** A stay with times, so its drive there and back is planned. */
+  timed?: boolean;
+  /** Who drives there and back: a parent's id, "none", or "" for the first parent picked. */
+  driver?: string;
+  /** Who's on the stay but not in the car: they get there on their own. */
+  ownWay?: string[];
+}
+
+/** What to save for a stay's drive: nothing in the notes when it's the first parent with everyone along. */
+function stayDrive(plan: Plan, f: ForPick): StayDrive {
+  if (f.driver === "none") return { driver: "none", riders: [] };
+  const driver = stayDriver(plan, f);
+  const own = (f.ownWay ?? []).filter((p) => f.people.includes(p) && p !== driver);
+  const first = f.people.find((p) => driverIds(plan).includes(p));
+  if (!driver || (driver === first && !own.length)) return { driver: "", riders: [] };
+  return { driver, riders: f.people.filter((p) => p !== driver && !own.includes(p)) };
+}
+
+/** Who drives to a stay: the one picked, or else the first parent on it. Null for no drive. */
+function stayDriver(plan: Plan, f: ForPick): string | null {
+  if (f.driver === "none") return null;
+  const parents = driverIds(plan).filter((d) => f.people.includes(d));
+  const order = f.people.filter((p) => parents.includes(p));
+  if (f.driver && order.includes(f.driver)) return f.driver;
+  return order[0] ?? null;
 }
 
 /** Nothing on any kid's calendar all week. */
@@ -1043,6 +1068,13 @@ export class MyDashLightBoard extends LitElement {
       scope: "this",
       busy: false,
       stay: true,
+      timed: !!item.timed,
+      driver: item.driver === "none" || driverIds(plan).includes(item.driver ?? "") ? (item.driver ?? "") : "",
+      // With a driver in the notes, whoever on the stay isn't in the car gets there on their own.
+      ownWay:
+        item.driver && item.driver !== "none"
+          ? item.people.filter((p) => known.has(p) && p !== item.driver && !(item.riders ?? []).includes(p))
+          : [],
     };
   }
 
@@ -1073,7 +1105,7 @@ export class MyDashLightBoard extends LitElement {
     const people = clear ? [] : f.people;
     this.forPick = { ...f, busy: true };
     try {
-      await this.backend.setPeople(f.id, people, f.scope);
+      await this.backend.setPeople(f.id, people, f.scope, f.stay && f.timed && !clear ? stayDrive(plan, f) : undefined);
       this.forPick = null;
       const title = f.label.replace(/^\S+ /, "");
       const names = people.map((p) => personName(plan, p));
@@ -1180,10 +1212,14 @@ export class MyDashLightBoard extends LitElement {
           ${driverIds(plan).map((d) => chip(d, driverName(plan, d), OWN_COLOR, true))}
         </div>
       </div>
+      ${f.stay && f.timed && !noParent ? this.renderStayDrive(plan, f, change) : nothing}
       <p class="field-hint">
         ${f.stay
-          ? html`Rides for the parents you pick start and end at ${f.label.replace(/^\S+ /, "")} on every day of the stay. The kids go
-              wherever their driver goes, so picking just the parents is enough.${picked.length
+          ? html`${f.timed
+              ? html`Rides for the parents you pick start and end at ${f.label.replace(/^\S+ /, "")} while they’re there. Pick the kids
+                  going too, so they’re in the car on the drive.`
+              : html`Rides for the parents you pick start and end at ${f.label.replace(/^\S+ /, "")} on every day of the stay. The kids
+                  go wherever their driver goes, so picking just the parents is enough.`}${picked.length
                 ? html` Saved in the event’s notes as <strong>For: ${line}</strong>.`
                 : nothing}`
           : picked.length
@@ -1201,6 +1237,51 @@ export class MyDashLightBoard extends LitElement {
         </button>
       </div>
     `;
+  }
+
+  /** For a stay with times: who drives there and back, and who's in the car. */
+  private renderStayDrive(plan: Plan, f: ForPick, change: (c: Partial<ForPick>) => void): TemplateResult {
+    const parents = f.people.filter((p) => driverIds(plan).includes(p));
+    const driver = stayDriver(plan, f);
+    const others = f.people.filter((p) => p !== driver);
+    const own = f.ownWay ?? [];
+    const colors = kidColors(plan);
+    const kids = kidIds(plan);
+    const rider = (id: string): TemplateResult => {
+      const parent = !kids.includes(id);
+      const color = parent ? OWN_COLOR : (colors.get(id) ?? kidColor(0));
+      const name = personName(plan, id);
+      return html`<button
+        type="button"
+        class="who-chip"
+        style="--c:${color.color};--rgb:${color.rgb}"
+        aria-pressed=${own.includes(id) ? "false" : "true"}
+        ?disabled=${f.busy}
+        @click=${() => change({ ownWay: own.includes(id) ? own.filter((x) => x !== id) : [...own, id] })}
+      >
+        <span class="avatar ${parent ? "driver" : ""}" aria-hidden="true">${initial(name)}</span>${name}
+      </button>`;
+    };
+    return html`<div class="field">
+        <span class="field-label">Drives there and back</span>
+        <div role="group" aria-label="Who drives there and back" class="choices" style="grid-template-columns:repeat(${parents.length + 1},1fr)">
+          ${parents.map(
+            (d) => html`<button type="button" class="choice" aria-pressed=${driver === d ? "true" : "false"} ?disabled=${f.busy} @click=${() => change({ driver: d })}>
+              ${driverName(plan, d)}
+            </button>`,
+          )}
+          <button type="button" class="choice" aria-pressed=${driver === null ? "true" : "false"} ?disabled=${f.busy} @click=${() => change({ driver: "none" })}>
+            No drive
+          </button>
+        </div>
+      </div>
+      ${driver && others.length
+        ? html`<div class="field">
+            <span class="field-label">In the car with ${driverName(plan, driver)}</span>
+            <div role="group" aria-label="Who rides along" class="who-chips">${others.map(rider)}</div>
+            <p class="field-hint">Anyone not in the car gets there on their own, and the hotel is home for them the whole time.</p>
+          </div>`
+        : nothing}`;
   }
 
   /** In the ride editor: who the event is for, with a button to change it. Only once MyDashLight says. */
@@ -1975,7 +2056,7 @@ export class MyDashLightBoard extends LitElement {
                 const x = p.x;
                 return html`<button
                   type="button"
-                  class="ride ${x.dashed ? "dashed" : ""} ${x.clash ? "clash" : ""}"
+                  class="ride ${x.dashed ? "dashed" : ""} ${x.clash ? "clash" : ""} ${x.h >= 120 ? "tall" : ""}"
                   aria-label=${x.aria}
                   style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px;padding-top:${3 + (x.tuckTop ?? 0)}px;padding-bottom:${3 + (x.tuckBottom ?? 0)}px"
                   @click=${() => this.open(x.target)}
@@ -2031,7 +2112,7 @@ export class MyDashLightBoard extends LitElement {
             (x) =>
               html`<button
                 type="button"
-                class="trip ${x.bad ? "bad" : ""} ${x.stops ? "list" : ""}"
+                class="trip ${x.bad ? "bad" : ""} ${x.stops ? "list" : ""} ${x.h >= 120 ? "tall" : ""}"
                 aria-label=${x.aria}
                 style="left:${x.x}px;top:${x.y}px;width:${x.w}px;height:${x.h}px"
                 @click=${() => this.open(x.target)}

@@ -1052,6 +1052,10 @@ export const styles = css`
     justify-content: center;
     gap: 1px;
   }
+  .ride.tall {
+    justify-content: flex-start;
+    padding-top: 6px;
+  }
   .ride.dashed {
     border-style: dashed;
   }
@@ -1121,6 +1125,11 @@ export const styles = css`
     flex-direction: column;
     justify-content: center;
     gap: 1px;
+  }
+  /* A long drive, such as to a hotel hours away: its words at the top, not lost in a fold. */
+  .trip.tall {
+    justify-content: flex-start;
+    padding-top: 8px;
   }
   .trip.list {
     padding: 6px 10px;

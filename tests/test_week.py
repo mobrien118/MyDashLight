@@ -779,3 +779,136 @@ def test_a_stay_away_is_home_for_its_parents_rides() -> None:
     assert out["riders"][AVA].startswith("Leave Marriott Chicago at ")
     assert out["go"]["from"] == key
     assert out["go"]["from_name"] == "Marriott Chicago"
+
+
+def test_a_timed_stay_plans_the_drive_there_and_back() -> None:
+    # Marty, 2026-11-18: a stay from 12:30 on its first day to 1:00 on its last plans the drive
+    # to the hotel (there by 12:30, with the arrive-early margin) and the drive home after.
+    hotel = "Marriott, 1401 W 22nd St, Oak Brook, IL 60523"
+    key = "marriott, 1401 w 22nd st, oak brook, il 60523"
+    dentist = "Smile Dental, 5 Elm St, Springfield, IL 62701"
+    stay = Stay(
+        "trip",
+        ("mom", "dad", AVA, BEN),
+        "Marriott Chicago",
+        hotel,
+        date(2026, 11, 3),
+        date(2026, 11, 5),
+        arrive=750,
+        leave=780,
+        # Sam is there already, so only Robin and the kids drive up. Nothing says who drives
+        # back, so Robin does, with everyone else on the stay along.
+        description="--- Rides ---\nDrop-off: Robin, Ava, Ben",
+    )
+    w = build_week(
+        {
+            AVA: [
+                ev(
+                    AVA,
+                    timed(
+                        "teeth",
+                        "Dentist",
+                        at(3, "06:00"),
+                        at(3, "06:20"),
+                        location=dentist,
+                        description="Drop-off: Robin\nPick-up: Robin",
+                    ),
+                ),
+                ev(
+                    AVA,
+                    timed(
+                        "pool",
+                        "Swim",
+                        at(3, "17:00"),
+                        at(3, "18:00"),
+                        location="Pool, 9 Lake St, Oak Brook, IL 60523",
+                        description="Drop-off: Robin\nPick-up: Robin",
+                    ),
+                ),
+            ],
+        },
+        ROLES,
+        DIRECTORY,
+        TODAY,
+        3,
+        TZ,
+        HOME_ADDRESS,
+        stays=[stay],
+    )
+    tue, wed, thu = w.days
+    assert [(t.driver, t.due, t.there, t.riders) for t in tue.trips] == [("mom", 750, True, (AVA, BEN))]
+    assert wed.trips == []
+    assert [(t.driver, t.due, t.there, t.riders) for t in thu.trips] == [("mom", 780, False, ("dad", AVA, BEN))]
+    assert tue.homes == wed.homes == thu.homes == {"mom": key, "dad": key}
+
+    def drive(a: str, b: str) -> float:
+        return 300 if {a, b} == {HOME, key} else 10
+
+    days = plan_week(w, lambda _day: drive, PlannerSettings(), ("mom", "dad"))
+    robin = days[0]["drivers"]["mom"]
+    teeth, trip, pool, _ = robin["outings"]
+    # The dentist in the morning is from home, before the drive up.
+    assert teeth["home"] == "Home"
+    assert teeth["lines"][-1].endswith("  Home")
+    # 5 hours away aims to be there 30 minutes early: leave at 7:00, there at 12:00.
+    assert (trip["start"], trip["end"]) == (420, 720)
+    assert trip["lead"] == "Leave 7:00"
+    assert trip["title"] == "Drive Ava and Ben to Marriott Chicago"
+    assert trip["lines"] == ["12:00  Marriott Chicago, there by 12:30"]
+    assert trip["riders"] == {AVA: "Leave home at 7:00 AM with Robin", BEN: "Leave home at 7:00 AM with Robin"}
+    assert trip["parents"] == {}
+    assert trip["go"]["to"] == key
+    # Swim in the evening is from the hotel.
+    assert pool["home"] == "Marriott Chicago"
+    assert pool["riders"][AVA].startswith("Leave Marriott Chicago at ")
+    # Ben is in the car for the drive, so it's in his column.
+    ben = days[0]["kids"][BEN]["items"]
+    assert [(i["type"], i["start"], i["end"]) for i in ben] == [("ride", 420, 720)]
+    assert days[0]["issues"] == []
+    # Sam isn't in the car: no drive, and the hotel is home all day.
+    assert days[0]["drivers"]["dad"]["outings"] == []
+
+    back = days[2]["drivers"]["mom"]["outings"]
+    assert [(o["lead"], o["title"], o["lines"]) for o in back] == [
+        ("Leave 1:00", "Drive Ava and Ben home from Marriott Chicago", ["6:00  Home"])
+    ]
+    assert back[0]["parents"] == {"dad": "Leave Marriott Chicago at 1:00 PM with Robin"}
+
+
+def test_a_ride_during_the_drive_up_is_a_problem() -> None:
+    hotel = "Marriott, 1401 W 22nd St, Oak Brook, IL 60523"
+    key = "marriott, 1401 w 22nd st, oak brook, il 60523"
+    stay = Stay(
+        "trip", ("mom",), "Marriott Chicago", hotel, date(2026, 11, 3), date(2026, 11, 4), arrive=750, leave=600
+    )
+    w = build_week(
+        {
+            AVA: [
+                ev(
+                    AVA,
+                    timed(
+                        "piano",
+                        "Piano",
+                        at(3, "09:00"),
+                        at(3, "10:00"),
+                        location=SCHOOL,
+                        description="Drop-off: Robin\nPick-up: Robin",
+                    ),
+                )
+            ]
+        },
+        ROLES,
+        DIRECTORY,
+        TODAY,
+        2,
+        TZ,
+        HOME_ADDRESS,
+        stays=[stay],
+    )
+
+    def drive(a: str, b: str) -> float:
+        return 300 if {a, b} == {HOME, key} else 10
+
+    days = plan_week(w, lambda _day: drive, PlannerSettings(), ("mom", "dad"))
+    assert [(x["kind"], x["driver"]) for x in days[0]["issues"]] == [("busy", "mom")]
+    assert "Drive to Marriott Chicago" in days[0]["issues"][0]["title"]

@@ -780,9 +780,22 @@ function namesFor(
   names: Map<string, string>,
   day: PlanDay,
   driver: string,
+  at?: number,
 ): Map<string, string> {
-  const away = day.drivers[driver]?.home;
-  return away ? new Map(names).set("home", away.name) : names;
+  const dd = day.drivers[driver];
+  const away = dd?.home;
+  if (!away) return names;
+  // The outing under way then says what it calls home: on the drive to the hotel or back, that's
+  // still Home (MyDashLight 0.27 and later).
+  const o =
+    at == null
+      ? undefined
+      : dd.outings.find(
+          (x) => (x.start ?? Infinity) <= at && at < (x.end ?? -Infinity),
+        );
+  return new Map(names)
+    .set(away.place, away.name)
+    .set("home", o?.home ?? away.name);
 }
 
 const CAR = "🚗";
@@ -1404,7 +1417,7 @@ export function layout(
           const rh = Math.max(22, Y(p.en) - y0);
           const route = routeOf(
             legsOf(ride.index),
-            namesFor(names, day, ride.driver),
+            namesFor(names, day, ride.driver, ride.start ?? undefined),
           );
           const who = nameOfDriver(ride.driver);
           const rideBox: RideBox = {
@@ -1624,7 +1637,8 @@ export function layout(
           for (const g of piece.legs)
             for (const k of g.kids) if (!kidsIn.includes(k)) kidsIn.push(k);
           const home = last.type === "drive" && last.to === "home";
-          const route = routeOf(piece.legs, namesFor(names, day, d));
+          const here = namesFor(names, day, d, piece.s);
+          const route = routeOf(piece.legs, here);
           board.trips.push({
             key: `${day.date}|trip|${d}|${piece.s}`,
             x: c.x + 8,
@@ -1638,7 +1652,7 @@ export function layout(
                 : `From ${shortOf(names, first.from ?? first.place)} ${clock(piece.s)}`,
             l2: route.join(" → "),
             show2: h >= 36,
-            l3: home ? `${dd.home?.name ?? "Home"} ${clock(piece.en)}` : "",
+            l3: home ? `${here.get("home") ?? "Home"} ${clock(piece.en)}` : "",
             show3: home && h >= 62,
             stops: null,
             kids: kidsIn.map((k) => (colors.get(k) ?? kidColor(0)).color),
@@ -1949,7 +1963,7 @@ export function layout(
         const ride = day.rides[m.item.ride ?? -1]!;
         const route = routeOf(
           legsOf(ride.index),
-          namesFor(names, day, ride.driver),
+          namesFor(names, day, ride.driver, ride.start ?? undefined),
         );
         const who = nameOfDriver(ride.driver);
         board.rides.push({

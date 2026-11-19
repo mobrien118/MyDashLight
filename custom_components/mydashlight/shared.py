@@ -32,7 +32,7 @@ import re
 from typing import Final
 
 from .google import CalendarEvent
-from .notes import human_notes, read_for
+from .notes import DriverDirectory, human_notes, parse_notes, read_for
 from .who import People, Who, read_names, read_title
 
 
@@ -55,6 +55,13 @@ class DayItem:
     """It's a stay away from home (see :class:`Stay`), whose people can be picked on the board."""
     from_notes: bool = False
     """Who it names came from the For line in its notes, not its title."""
+    driver: str = ""
+    """For a stay, who its Drop-off line says drives there and back: a parent's id, "none" for
+    no drive, someone else's name, or "" when it doesn't say (the first parent it names)."""
+    riders: tuple[str, ...] = ()
+    """For a stay whose notes name the driver, who rides in the car with them."""
+    timed: bool = False
+    """For a stay, whether it has times, so the drive there and back is planned."""
 
     def as_dict(self, day: date) -> dict[str, object]:
         return {
@@ -69,6 +76,7 @@ class DayItem:
             "notes": self.notes,
             "stay": self.stay,
             "from_notes": self.from_notes,
+            **({"driver": self.driver, "riders": list(self.riders), "timed": self.timed} if self.stay else {}),
         }
 
 
@@ -131,6 +139,13 @@ class Stay:
     """The days it covers, both included: every day it touches."""
     calendar_id: str = ""
     title: str = ""
+    arrive: int | None = None
+    """For a timed stay, when it starts on its first day, in minutes after midnight: the time to
+    get to the hotel by. None for an all-day stay, which plans no drive there."""
+    leave: int | None = None
+    """For a timed stay, when it ends on its last day: the time to leave the hotel."""
+    description: str = ""
+    """Its notes, for the Drop-off and Pick-up lines: who drives there and back, and who rides."""
 
     def covers(self, day: date) -> bool:
         return self.first <= day <= self.last
@@ -187,6 +202,9 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
                     notes=human_notes(ev.description),
                     stay=True,
                     from_notes=from_notes,
+                    driver=(drive := _drive(ev, people))[0],
+                    riders=drive[1],
+                    timed=stay.arrive is not None,
                 )
             )
             continue
@@ -269,16 +287,41 @@ def _stay(ev: CalendarEvent, who: Who, place: str, tz: tzinfo) -> Stay | None:
     location = " ".join((ev.location or "").split()) or place
     if not location:
         return None  # Nowhere to be home.
+    arrive: int | None = None
+    leave: int | None = None
     if isinstance(ev.start, datetime) and isinstance(ev.end, datetime):
-        first = ev.start.astimezone(tz).date()
+        start = ev.start.astimezone(tz)
         end = ev.end.astimezone(tz)
+        first = start.date()
         # Every day it touches: a stay ending at midnight is over before that day starts.
-        last = end.date() - timedelta(days=1) if end.time() == datetime.min.time() else end.date()
+        midnight = end.time() == datetime.min.time()
+        last = end.date() - timedelta(days=1) if midnight else end.date()
+        arrive = start.hour * 60 + start.minute
+        leave = 1440 if midnight else end.hour * 60 + end.minute
     else:
         assert isinstance(ev.start, date)
         assert isinstance(ev.end, date)
         first, last = ev.start, ev.end - timedelta(days=1)
-    return Stay(ev.id, who.people, place, location, first, max(first, last), ev.calendar_id, who.title or "Stay")
+    return Stay(
+        ev.id,
+        who.people,
+        place,
+        location,
+        first,
+        max(first, last),
+        ev.calendar_id,
+        who.title or "Stay",
+        arrive,
+        leave,
+        ev.description or "",
+    )
+
+
+def _drive(ev: CalendarEvent, people: People) -> tuple[str, tuple[str, ...]]:
+    """Who a stay's Drop-off line says drives there, and who rides along."""
+    directory = DriverDirectory(names=people.parents, aliases=people.aliases, kids=people.kids)
+    notes = parse_notes(ev.description, directory, None)
+    return notes.drop, notes.drop_riders if notes.drop else ()
 
 
 def _day_item(ev: CalendarEvent, who: Who) -> DayItem:

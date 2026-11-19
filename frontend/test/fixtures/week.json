@@ -983,7 +983,9 @@
      "day_number": 1,
      "days": 1,
      "cancelled": false,
-     "notes": ""
+     "notes": "",
+     "stay": false,
+     "from_notes": false
     },
     {
      "id": "jersey",
@@ -996,7 +998,9 @@
      "day_number": 1,
      "days": 1,
      "cancelled": false,
-     "notes": ""
+     "notes": "",
+     "stay": false,
+     "from_notes": false
     }
    ],
    "unplaced": [
@@ -2103,7 +2107,9 @@
      "day_number": 1,
      "days": 3,
      "cancelled": false,
-     "notes": "Westin downtown, conf. #48213"
+     "notes": "Westin downtown, conf. #48213",
+     "stay": false,
+     "from_notes": false
     }
    ],
    "unplaced": [],
@@ -2560,7 +2566,9 @@
      "day_number": 2,
      "days": 3,
      "cancelled": false,
-     "notes": "Westin downtown, conf. #48213"
+     "notes": "Westin downtown, conf. #48213",
+     "stay": false,
+     "from_notes": false
     }
    ],
    "unplaced": [],
@@ -3252,7 +3260,9 @@
      "day_number": 3,
      "days": 3,
      "cancelled": false,
-     "notes": "Westin downtown, conf. #48213"
+     "notes": "Westin downtown, conf. #48213",
+     "stay": false,
+     "from_notes": false
     }
    ],
    "unplaced": [],
