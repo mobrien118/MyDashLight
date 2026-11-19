@@ -19,12 +19,13 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta, tzinfo
 from functools import partial
+import math
 import re
 from typing import Any, Final, Literal
 
 from .google import CalendarEvent
 from .notes import DriverDirectory, RideNotes, human_notes, parse_notes, skip_prefix
-from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, TravelFn, Trip
+from .planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, Labels, RideEvent, Side, Span, TravelFn, Trip
 from .shared import Stay
 
 DAY: Final = 1440
@@ -132,6 +133,9 @@ class DayInput:
     place key of the hotel they're staying at."""
     trips: list[Trip] = field(default_factory=list)
     """The drives to a hotel on the day a timed stay starts, and home on the day it ends."""
+    spans: dict[str, list[Span]] = field(default_factory=dict)
+    """When each hotel is home this day, by driver id: from the stay's start (or all day before
+    it) until its end. Two stays can meet in a day, as one ends and the next begins."""
 
 
 @dataclass(slots=True)
@@ -239,19 +243,28 @@ def build_week(
     # The drive and the wait cover that time, so it isn't busy time as well.
     taking: set[tuple[str, str]] = set()
     as_written: set[str] = set()
+    keys: list[str] = []
     for st in stays:
         key = place_key(st.location)
+        keys.append(key)
         places.setdefault(key, st.location)
         short.setdefault(key, st.name or short_place(st.location))
         as_written.add(key)
+    for st, key in zip(stays, keys, strict=True):
         for d in day_list:
             if st.covers(d):
+                lo = -math.inf if st.first < d or st.arrive is None else st.arrive
+                hi = math.inf if st.last > d or st.leave is None else st.leave
                 for p in st.people:
                     if p in roles.busy:
-                        by_day[d].homes.setdefault(p, key)
-        for trip, day in _trips(st, key, short[key], roles, directory):
+                        by_day[d].spans.setdefault(p, []).append((lo, hi, key))
+        for trip, day in _trips(st, key, short, roles, directory, list(zip(stays, keys, strict=True))):
             if day in by_day:
                 by_day[day].trips.append(trip)
+    for one in by_day.values():
+        # Shown as where they're staying: the stay that began last.
+        for p, spans in one.spans.items():
+            one.homes[p] = max(spans, key=lambda s: s[0])[2]
 
     def locate(location: str, day: date, person: str) -> tuple[str, str]:
         """An event's place key and the address to look up, for someone on a day: a place
@@ -590,14 +603,35 @@ def addresses(week: WeekInput) -> list[str]:
     )
 
 
-def _trips(st: Stay, key: str, name: str, roles: CalendarRoles, directory: DriverDirectory) -> list[tuple[Trip, date]]:
+def _on_stay(st: Stay, day: date, t: int) -> bool:
+    """Whether a stay is under way at minute ``t`` of ``day``, counting the minute it ends."""
+    return (
+        st.covers(day)
+        and (st.first < day or st.arrive is None or st.arrive <= t)
+        and (st.last > day or st.leave is None or st.leave >= t)
+    )
+
+
+def _trips(
+    st: Stay,
+    key: str,
+    short: Mapping[str, str],
+    roles: CalendarRoles,
+    directory: DriverDirectory,
+    stays: Sequence[tuple[Stay, str]] = (),
+) -> list[tuple[Trip, date]]:
     """A timed stay's drive there on its first day and back on its last (Marty, 2026-11-18).
 
     Its Drop-off line says who drives there and who rides along, and its Pick-up line the same
     for the drive back, as on any event. Without one, the first parent it names drives, with
     everyone else on it along. "No ride" plans none, and so does someone outside the family
     driving.
+
+    When the driver is on another stay right then, the drive goes from hotel to hotel instead
+    of home (Marty, 2026-11-19: Reese's stay in Chicago ends as the family's at the Westin
+    begins). Driving on from a stay that ends then, the drive back from it is the drive there.
     """
+    name = short[key]
     notes = parse_notes(st.description, directory, None)
     kids = {k.calendar_id for k in roles.kids}
     family = kids | set(roles.busy)
@@ -616,8 +650,14 @@ def _trips(st: Stay, key: str, name: str, roles: CalendarRoles, directory: Drive
             driver, riders = parents[0], tuple(p for p in st.people if p != parents[0])
         if driver not in roles.busy:
             continue
+        other = next(((o, k) for o, k in stays if o is not st and driver in o.people and _on_stay(o, day, due)), None)
+        if other is not None and there and other[0].last == day and other[0].leave is not None:
+            continue
         car = tuple(dict.fromkeys(r for r in riders if r in family and r != driver))
-        out.append((Trip(driver, key, name, due, there, car), day))
+        if other is None:
+            out.append((Trip(driver, key, name, due, there, car), day))
+        else:
+            out.append((Trip(driver, key, name, due, there, car, other[1], short[other[1]]), day))
     return out
 
 

@@ -46,7 +46,7 @@ def plan_day(
     settings: PlannerSettings,
     drivers: Sequence[str],
 ) -> dict[str, Any]:
-    board = build_day(day.events, day.busy, travel, labels, settings, drivers, kids, day.homes, day.trips)
+    board = build_day(day.events, day.busy, travel, labels, settings, drivers, kids, day.homes, day.trips, day.spans)
     rides = board.rides
 
     def issue(x: Issue, level: str) -> dict[str, Any]:
@@ -85,6 +85,7 @@ def plan_day(
                     SUGGESTIONS_PER_ISSUE,
                     day.homes,
                     day.trips,
+                    day.spans,
                 )
             ]
         return out

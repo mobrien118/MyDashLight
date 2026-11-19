@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+import math
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -873,6 +874,80 @@ def test_a_timed_stay_plans_the_drive_there_and_back() -> None:
         ("Leave 1:00", "Drive Ava and Ben home from Marriott Chicago", ["6:00  Home"])
     ]
     assert back[0]["parents"] == {"dad": "Leave Marriott Chicago at 1:00 PM with Robin"}
+
+
+def test_one_stay_ending_as_the_next_begins_drives_hotel_to_hotel() -> None:
+    # Marty, 2026-11-19: Sam is away at a loft until 12:30, when the family's stay at the
+    # Marriott starts. Sam drives from the loft to the Marriott, not home and back up, and the
+    # evening is planned from the Marriott.
+    loft = "Loft, 1 State St, Chicago, IL 60601"
+    loft_key = "loft, 1 state st, chicago, il 60601"
+    hotel = "Marriott, 1401 W 22nd St, Oak Brook, IL 60523"
+    key = "marriott, 1401 w 22nd st, oak brook, il 60523"
+    away = Stay("loft", ("dad",), "Loft", loft, date(2026, 11, 1), date(2026, 11, 3), arrive=600, leave=750)
+    stay = Stay(
+        "trip",
+        ("mom", "dad", AVA, BEN),
+        "Marriott Chicago",
+        hotel,
+        date(2026, 11, 3),
+        date(2026, 11, 5),
+        arrive=750,
+        leave=780,
+        description="--- Rides ---\nDrop-off: Robin, Ava, Ben",
+    )
+    pool = timed(
+        "pool",
+        "Swim",
+        at(3, "17:00"),
+        at(3, "18:00"),
+        location="Pool, 9 Lake St, Oak Brook, IL 60523",
+        description="Drop-off: Sam\nPick-up: Sam",
+    )
+    w = build_week({AVA: [ev(AVA, pool)]}, ROLES, DIRECTORY, TODAY, 3, TZ, HOME_ADDRESS, stays=[away, stay])
+    tue = w.days[0]
+    trips = [(t.driver, t.place, t.due, t.there, t.other) for t in tue.trips]
+    assert trips == [("dad", loft_key, 750, False, key), ("mom", key, 750, True, HOME)]
+    assert tue.spans["dad"] == [(-math.inf, 750, loft_key), (750, math.inf, key)]
+    assert tue.homes == {"mom": key, "dad": key}
+
+    def drive(a: str, b: str) -> float:
+        return 300 if HOME in (a, b) and a != b else 0 if a == b else 20
+
+    days = plan_week(w, lambda _day: drive, PlannerSettings(), ("mom", "dad"))
+    sam = days[0]["drivers"]["dad"]["outings"]
+    trip, drop, pick = sam
+    assert (trip["start"], trip["end"]) == (750, 770)
+    assert trip["title"] == "Drive from Loft to Marriott Chicago"
+    assert trip["lines"] == ["12:50  Marriott Chicago"]
+    # The swim is 20 minutes from the Marriott, not 5 hours from home.
+    assert drop["home"] == pick["home"] == "Marriott Chicago"
+    assert drop["lead"] == "Leave 4:33"
+    assert drop["lines"] == ["4:53  Pool, drop off Ava", "5:13  Marriott Chicago"]
+
+
+def test_the_drive_to_a_stay_starts_from_another_one_still_going() -> None:
+    # Sam's loft runs all week, and Sam drives to the Marriott from there.
+    loft_key = "loft, 1 state st, chicago, il 60601"
+    key = "marriott, 1401 w 22nd st, oak brook, il 60523"
+    away = Stay("loft", ("dad",), "Loft", "Loft, 1 State St, Chicago, IL 60601", date(2026, 11, 1), date(2026, 11, 9))
+    stay = Stay(
+        "trip",
+        ("dad",),
+        "Marriott Chicago",
+        "Marriott, 1401 W 22nd St, Oak Brook, IL 60523",
+        date(2026, 11, 3),
+        date(2026, 11, 5),
+        arrive=750,
+        leave=780,
+    )
+    w = build_week({}, ROLES, DIRECTORY, TODAY, 3, TZ, HOME_ADDRESS, stays=[away, stay])
+    tue, _, thu = w.days
+    assert [(t.there, t.other, t.title) for t in tue.trips] == [(True, loft_key, "Drive from Loft to Marriott Chicago")]
+    assert [(t.there, t.other, t.title) for t in thu.trips] == [
+        (False, loft_key, "Drive from Marriott Chicago to Loft")
+    ]
+    assert tue.homes == {"dad": key}
 
 
 def test_a_ride_during_the_drive_up_is_a_problem() -> None:
