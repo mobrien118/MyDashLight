@@ -276,6 +276,9 @@ test("Compact trip stops use the card's arrows", () => {
   assert.equal(terseStop("3:40  Piano studio, stay with Ava"), "3:40  Piano studio, stay with Ava");
   assert.equal(terseStop("4:30  Leave Piano studio"), "4:30  Leave Piano studio");
   assert.equal(terseStop("7:09  Cleaners, Pick up dry cleaning"), "7:09  Cleaners, Pick up dry cleaning");
+  // On a trip, home is the hotel: only its own "get" line is a pick-up from home.
+  assert.equal(terseStop("4:50  Westin, get Ben", "Westin"), "4:50  Westin ↑\u00a0Ben");
+  assert.equal(terseStop("4:50  Store, get milk", "Westin"), "4:50  Store, get milk");
   useMeasure((t) => t.length * 10);
   try {
     // 6px padding top and bottom, the 16px lead, then 16px a line, a pixel apart, 1 spare.

@@ -385,3 +385,20 @@ set_people:
           options:
             - this
             - series
+    driver:
+      required: false
+      example: Robin
+      selector:
+        text:
+    riders:
+      required: false
+      example: '["Ava", "Ben"]'
+      selector:
+        text:
+          multiple: true
+    back_riders:
+      required: false
+      example: '["Ava", "Ben", "Sam"]'
+      selector:
+        text:
+          multiple: true

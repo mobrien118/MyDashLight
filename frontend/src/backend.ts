@@ -8,27 +8,63 @@ import type { Plan, Scope, Side } from "./types.ts";
 import type { ChoresPayload, ChoreTemplate, TemplateFields } from "./chores.ts";
 import type { Lunch, LunchPayload } from "./lunch.ts";
 
+/** Who drives to a stay and back: "" for the first parent on it with everyone else along, or "none". */
+export interface StayDrive {
+  driver: string;
+  /** In the car there. */
+  riders: string[];
+  /** In the car back home. */
+  backRiders: string[];
+}
+
 export interface Backend {
   /** Calls `onPlan` with the plan now and whenever it changes. Returns a function that stops it. */
-  watch(onPlan: (plan: Plan) => void, onError: (err: BackendError) => void): () => void;
+  watch(
+    onPlan: (plan: Plan) => void,
+    onError: (err: BackendError) => void,
+  ): () => void;
   /** Reads the plan again now. */
   refresh(): Promise<void>;
   /** With `stay`, also sets whether the driver stays, in the same save. */
-  setRide(event: string, side: Side | "both", driver: string, scope: Scope, stay?: boolean): Promise<void>;
+  setRide(
+    event: string,
+    side: Side | "both",
+    driver: string,
+    scope: Scope,
+    stay?: boolean,
+  ): Promise<void>;
   setStay(event: string, stay: boolean, scope: Scope): Promise<void>;
   /** `minutes` past midnight, or null to go back to a few minutes before the start. */
-  setArriveBy(event: string, minutes: number | null, scope: Scope): Promise<void>;
+  setArriveBy(
+    event: string,
+    minutes: number | null,
+    scope: Scope,
+  ): Promise<void>;
   /** `minutes` past midnight, or null to go back to the end. */
-  setLeaveBy(event: string, minutes: number | null, scope: Scope): Promise<void>;
+  setLeaveBy(
+    event: string,
+    minutes: number | null,
+    scope: Scope,
+  ): Promise<void>;
   /** Who rides along. On a kid's event, `side` picks the drop-off (default) or pick-up; staying is always both. */
-  setTakeAlong(event: string, kids: string[], scope: Scope, side?: Side | "both"): Promise<void>;
+  setTakeAlong(
+    event: string,
+    kids: string[],
+    scope: Scope,
+    side?: Side | "both",
+  ): Promise<void>;
   /** A parent's own event as an errand that takes `minutes` any time in its window, or null for a set time. */
   setTakes(event: string, minutes: number | null, scope: Scope): Promise<void>;
   /** Going (true) or skipping this one (false). */
   setAttending(event: string, attending: boolean, scope: Scope): Promise<void>;
   applySuggestion(id: string): Promise<void>;
   /** Who an event is for, saved as a "For:" line in its notes; none goes back to the names in its title. */
-  setPeople(event: string, people: string[], scope: Scope): Promise<void>;
+  setPeople(
+    event: string,
+    people: string[],
+    scope: Scope,
+    drive?: StayDrive,
+  ): Promise<void>;
   /**
    * Calls `onChores` with the chores now and whenever they change; null while they can't be
    * read (MyDashLight not running, or a version without chores). Returns a function that stops it.
@@ -48,7 +84,12 @@ export interface Backend {
   /** Saves a kid's lunch on some school days; null takes the picks away, back to the kid's default. */
   setLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void>;
   /** Saves what the school serves on a day, for each of the kids; an empty dish removes it. */
-  setLunchMenu(kids: string[], date: string, dish: string, details: string): Promise<void>;
+  setLunchMenu(
+    kids: string[],
+    date: string,
+    dish: string,
+    details: string,
+  ): Promise<void>;
   /** Changes are saved for real (false in the offline preview). */
   readonly saves: boolean;
   /** Home Assistant pushes each new plan, so the plan on screen is current. */
@@ -104,18 +145,26 @@ function toError(err: unknown): BackendError {
   if (err instanceof BackendError) return err;
   if (err && typeof err === "object") {
     const e = err as { code?: unknown; message?: unknown };
-    if (typeof e.message === "string") return new BackendError(String(e.code ?? "error"), e.message);
+    if (typeof e.message === "string")
+      return new BackendError(String(e.code ?? "error"), e.message);
   }
   if (typeof err === "number") {
     // home-assistant-js-websocket rejects with a number when the connection drops.
-    return new BackendError("connection_lost", "Lost the connection to Home Assistant.");
+    return new BackendError(
+      "connection_lost",
+      "Lost the connection to Home Assistant.",
+    );
   }
   return new BackendError("error", String(err));
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new BackendError("timeout", "Home Assistant didn’t answer.")), ms);
+    const t = setTimeout(
+      () =>
+        reject(new BackendError("timeout", "Home Assistant didn’t answer.")),
+      ms,
+    );
     p.then(
       (v) => {
         clearTimeout(t);
@@ -152,7 +201,12 @@ class LiveFeed<T> {
   private readonly onReady = (): void => this.open();
   private readonly onDisconnected = (): void => this.dropped();
 
-  constructor(conn: HassConnection, type: string, onMessage: (msg: T) => void, onFailed: (err: unknown) => void) {
+  constructor(
+    conn: HassConnection,
+    type: string,
+    onMessage: (msg: T) => void,
+    onFailed: (err: unknown) => void,
+  ) {
     this.conn = conn;
     this.type = type;
     this.onMessage = onMessage;
@@ -219,16 +273,28 @@ class LiveFeed<T> {
 export class HassBackend implements Backend {
   readonly saves = true;
   private readonly conn: HassConnection;
-  private listeners = new Set<{ onPlan: (p: Plan) => void; onError: (e: BackendError) => void }>();
+  private listeners = new Set<{
+    onPlan: (p: Plan) => void;
+    onError: (e: BackendError) => void;
+  }>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private rides: LiveFeed<{ plan: Plan | null }> | null = null;
   private reading: Promise<void> | null = null;
   private readonly onVisible = (): void => {
-    if (typeof document === "undefined" || document.visibilityState === "visible") void this.refresh();
+    if (
+      typeof document === "undefined" ||
+      document.visibilityState === "visible"
+    )
+      void this.refresh();
   };
   private readonly onReady = (): void => void this.refresh();
   private readonly onDisconnected = (): void =>
-    this.fail(new BackendError("connection_lost", "Lost the connection to Home Assistant."));
+    this.fail(
+      new BackendError(
+        "connection_lost",
+        "Lost the connection to Home Assistant.",
+      ),
+    );
 
   get live(): boolean {
     return this.rides?.live ?? false;
@@ -238,7 +304,10 @@ export class HassBackend implements Backend {
     this.conn = conn;
   }
 
-  watch(onPlan: (plan: Plan) => void, onError: (err: BackendError) => void): () => void {
+  watch(
+    onPlan: (plan: Plan) => void,
+    onError: (err: BackendError) => void,
+  ): () => void {
     const l = { onPlan, onError };
     this.listeners.add(l);
     if (this.listeners.size === 1) this.start();
@@ -258,7 +327,13 @@ export class HassBackend implements Backend {
       `${DOMAIN}/rides/subscribe`,
       (msg) => {
         if (msg.plan) this.emit(msg.plan);
-        else this.fail(new BackendError("not_running", "MyDashLight isn’t running right now."));
+        else
+          this.fail(
+            new BackendError(
+              "not_running",
+              "MyDashLight isn’t running right now.",
+            ),
+          );
       },
       () => undefined,
     );
@@ -268,7 +343,8 @@ export class HassBackend implements Backend {
       void this.refresh();
       this.rides?.open();
     }, POLL_MS);
-    if (typeof document !== "undefined") document.addEventListener("visibilitychange", this.onVisible);
+    if (typeof document !== "undefined")
+      document.addEventListener("visibilitychange", this.onVisible);
     this.conn.addEventListener?.("ready", this.onReady);
     this.conn.addEventListener?.("disconnected", this.onDisconnected);
   }
@@ -276,7 +352,8 @@ export class HassBackend implements Backend {
   private stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
-    if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onVisible);
+    if (typeof document !== "undefined")
+      document.removeEventListener("visibilitychange", this.onVisible);
     this.conn.removeEventListener?.("ready", this.onReady);
     this.conn.removeEventListener?.("disconnected", this.onDisconnected);
     this.rides?.close();
@@ -318,9 +395,17 @@ export class HassBackend implements Backend {
     }
   }
 
-  private async call(service: string, data: Record<string, unknown>): Promise<void> {
+  private async call(
+    service: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
     try {
-      await this.conn.sendMessagePromise({ type: "call_service", domain: DOMAIN, service, service_data: data });
+      await this.conn.sendMessagePromise({
+        type: "call_service",
+        domain: DOMAIN,
+        service,
+        service_data: data,
+      });
     } catch (err) {
       throw toError(err);
     }
@@ -328,8 +413,19 @@ export class HassBackend implements Backend {
     if (!this.live) await this.refresh();
   }
 
-  setRide(event: string, side: Side | "both", driver: string, scope: Scope, stay?: boolean): Promise<void> {
-    return this.call("set_ride", stay === undefined ? { event, side, driver, scope } : { event, side, driver, scope, stay });
+  setRide(
+    event: string,
+    side: Side | "both",
+    driver: string,
+    scope: Scope,
+    stay?: boolean,
+  ): Promise<void> {
+    return this.call(
+      "set_ride",
+      stay === undefined
+        ? { event, side, driver, scope }
+        : { event, side, driver, scope, stay },
+    );
   }
 
   setStay(event: string, stay: boolean, scope: Scope): Promise<void> {
@@ -340,28 +436,70 @@ export class HassBackend implements Backend {
     return this.call("set_attending", { event, attending, scope });
   }
 
-  setArriveBy(event: string, minutes: number | null, scope: Scope): Promise<void> {
-    return this.call("set_arrive_by", minutes == null ? { event, scope } : { event, time: timeField(minutes), scope });
+  setArriveBy(
+    event: string,
+    minutes: number | null,
+    scope: Scope,
+  ): Promise<void> {
+    return this.call(
+      "set_arrive_by",
+      minutes == null
+        ? { event, scope }
+        : { event, time: timeField(minutes), scope },
+    );
   }
 
-  setLeaveBy(event: string, minutes: number | null, scope: Scope): Promise<void> {
-    return this.call("set_leave_by", minutes == null ? { event, scope } : { event, time: timeField(minutes), scope });
+  setLeaveBy(
+    event: string,
+    minutes: number | null,
+    scope: Scope,
+  ): Promise<void> {
+    return this.call(
+      "set_leave_by",
+      minutes == null
+        ? { event, scope }
+        : { event, time: timeField(minutes), scope },
+    );
   }
 
-  setTakeAlong(event: string, kids: string[], scope: Scope, side: Side | "both" = "drop"): Promise<void> {
+  setTakeAlong(
+    event: string,
+    kids: string[],
+    scope: Scope,
+    side: Side | "both" = "drop",
+  ): Promise<void> {
     return this.call("set_take_along", { event, kids, scope, side });
   }
 
   setTakes(event: string, minutes: number | null, scope: Scope): Promise<void> {
-    return this.call("set_takes", minutes == null ? { event, scope } : { event, minutes, scope });
+    return this.call(
+      "set_takes",
+      minutes == null ? { event, scope } : { event, minutes, scope },
+    );
   }
 
   applySuggestion(id: string): Promise<void> {
     return this.call("apply_suggestion", { suggestion: id });
   }
 
-  setPeople(event: string, people: string[], scope: Scope): Promise<void> {
-    return this.call("set_people", { event, people, scope });
+  setPeople(
+    event: string,
+    people: string[],
+    scope: Scope,
+    drive?: StayDrive,
+  ): Promise<void> {
+    return this.call("set_people", {
+      event,
+      people,
+      scope,
+      ...(drive
+        ? {
+            driver: drive.driver,
+            riders: drive.riders,
+            back_riders: drive.backRiders,
+          }
+        : {}),
+    });
   }
 
   watchChores(onChores: (chores: ChoresPayload | null) => void): () => void {
@@ -437,16 +575,33 @@ export class HassBackend implements Backend {
     };
   }
 
-  async setLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void> {
-    await this.choreCall("set_lunch", { kid, dates, lunch: lunch ?? "default" });
+  async setLunch(
+    kid: string,
+    dates: string[],
+    lunch: Lunch | null,
+  ): Promise<void> {
+    await this.choreCall("set_lunch", {
+      kid,
+      dates,
+      lunch: lunch ?? "default",
+    });
   }
 
-  async setLunchMenu(kids: string[], date: string, dish: string, details: string): Promise<void> {
+  async setLunchMenu(
+    kids: string[],
+    date: string,
+    dish: string,
+    details: string,
+  ): Promise<void> {
     await this.choreCall("set_lunch_menu", { kids, date, menu: dish, details });
   }
 
   async setChoreDone(chore: string, done: boolean, by?: string): Promise<void> {
-    await this.choreCall("set_chore_done", { chore, done, ...(done && by ? { by } : {}) });
+    await this.choreCall("set_chore_done", {
+      chore,
+      done,
+      ...(done && by ? { by } : {}),
+    });
   }
 
   async saveChoreTemplate(fields: TemplateFields): Promise<void> {
@@ -458,9 +613,17 @@ export class HassBackend implements Backend {
   }
 
   /** Chore actions read the chores again themselves, and the change is pushed to the board. */
-  private async choreCall(service: string, data: Record<string, unknown>): Promise<void> {
+  private async choreCall(
+    service: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
     try {
-      await this.conn.sendMessagePromise({ type: "call_service", domain: DOMAIN, service, service_data: data });
+      await this.conn.sendMessagePromise({
+        type: "call_service",
+        domain: DOMAIN,
+        service,
+        service_data: data,
+      });
     } catch (err) {
       throw toError(err);
     }
@@ -477,7 +640,11 @@ export class PreviewBackend implements Backend {
   private lunch: LunchPayload | null;
   private onLunch: ((lunch: LunchPayload | null) => void) | null = null;
 
-  constructor(plan: Plan, chores: ChoresPayload | null = null, lunch: LunchPayload | null = null) {
+  constructor(
+    plan: Plan,
+    chores: ChoresPayload | null = null,
+    lunch: LunchPayload | null = null,
+  ) {
     this.plan = plan;
     this.chores = chores;
     this.lunch = lunch;
@@ -492,7 +659,11 @@ export class PreviewBackend implements Backend {
   }
 
   /** Lunch picks stay in this page only, so the preview can be tried out. */
-  async setLunch(kid: string, dates: string[], lunch: Lunch | null): Promise<void> {
+  async setLunch(
+    kid: string,
+    dates: string[],
+    lunch: Lunch | null,
+  ): Promise<void> {
     const data = this.lunch;
     if (!data) return this.nope();
     const kids = data.kids.map((k) => {
@@ -510,7 +681,12 @@ export class PreviewBackend implements Backend {
   }
 
   /** Menus too stay in this page only. */
-  async setLunchMenu(kids: string[], date: string, dish: string, details: string): Promise<void> {
+  async setLunchMenu(
+    kids: string[],
+    date: string,
+    dish: string,
+    details: string,
+  ): Promise<void> {
     const data = this.lunch;
     if (!data) return this.nope();
     this.lunch = {
@@ -518,7 +694,8 @@ export class PreviewBackend implements Backend {
       kids: data.kids.map((k) => {
         if (!kids.includes(k.id)) return k;
         const menus = { ...k.menus };
-        if (dish.trim()) menus[date] = { dish: dish.trim(), details: details.trim() };
+        if (dish.trim())
+          menus[date] = { dish: dish.trim(), details: details.trim() };
         else delete menus[date];
         return { ...k, menus };
       }),
@@ -541,7 +718,16 @@ export class PreviewBackend implements Backend {
     if (!data) return this.nope();
     const chores = data.chores.map((c) => {
       if (c.id !== chore) return c;
-      if (!done) return { ...c, state: c.due && c.due < data.today ? ("overdue" as const) : ("open" as const), done_at: null, done_by: null };
+      if (!done)
+        return {
+          ...c,
+          state:
+            c.due && c.due < data.today
+              ? ("overdue" as const)
+              : ("open" as const),
+          done_at: null,
+          done_by: null,
+        };
       return {
         ...c,
         state: c.state === "overdue" ? ("late" as const) : ("done" as const),
@@ -570,14 +756,19 @@ export class PreviewBackend implements Backend {
       paused: fields.paused,
       problems: [],
     };
-    const templates = old ? data.templates.map((t) => (t === old ? made : t)) : [...data.templates, made];
+    const templates = old
+      ? data.templates.map((t) => (t === old ? made : t))
+      : [...data.templates, made];
     this.setChores({ ...data, templates });
   }
 
   async removeChoreTemplate(template: string): Promise<void> {
     const data = this.chores;
     if (!data) return this.nope();
-    this.setChores({ ...data, templates: data.templates.filter((t) => t.id !== template) });
+    this.setChores({
+      ...data,
+      templates: data.templates.filter((t) => t.id !== template),
+    });
   }
 
   private setChores(chores: ChoresPayload): void {
@@ -595,7 +786,10 @@ export class PreviewBackend implements Backend {
 
   private nope(): Promise<void> {
     return Promise.reject(
-      new BackendError("preview", "This is a preview, so changes aren’t saved. In Home Assistant they go into the event’s notes."),
+      new BackendError(
+        "preview",
+        "This is a preview, so changes aren’t saved. In Home Assistant they go into the event’s notes.",
+      ),
     );
   }
 

@@ -46,7 +46,7 @@ def plan_day(
     settings: PlannerSettings,
     drivers: Sequence[str],
 ) -> dict[str, Any]:
-    board = build_day(day.events, day.busy, travel, labels, settings, drivers, kids)
+    board = build_day(day.events, day.busy, travel, labels, settings, drivers, kids, day.homes, day.trips, day.spans)
     rides = board.rides
 
     def issue(x: Issue, level: str) -> dict[str, Any]:
@@ -83,6 +83,9 @@ def plan_day(
                     settings,
                     drivers,
                     SUGGESTIONS_PER_ISSUE,
+                    day.homes,
+                    day.trips,
+                    day.spans,
                 )
             ]
         return out
@@ -101,6 +104,8 @@ def plan_day(
                 "segments": [_segment(g) for g in board.plan[d].segments],
                 "outings": [_outing(o) for o in board.outings[d]],
                 "busy": _busy_for(d, day, board),
+                # Where their rides start and end today when it isn't home: their hotel.
+                "home": ({"place": day.homes[d], "name": labels.short_place(day.homes[d])} if d in day.homes else None),
             }
             for d in drivers
         },
@@ -217,6 +222,7 @@ def _outing(o: Outing) -> dict[str, Any]:
         "go": _go(o.go) if o.go else None,
         "parents": dict(o.parents),
         "solo": o.solo,
+        "home": o.home,
     }
 
 

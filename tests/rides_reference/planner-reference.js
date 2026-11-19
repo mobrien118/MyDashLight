@@ -369,32 +369,83 @@ function neededLater(stops, start) {
 function withRidesAlong(events, busy) {
   var out = {};
   Object.keys(busy).forEach(function (d) { out[d] = busy[d].slice(); });
-  var add = function (p, driver, leave, home, title) {
+  // One busy block per parent per calendar event: kids named on one event each have a copy of it,
+  // all in the same car, so the trips overlap (Marty, 2026-11-18). Trips apart stay apart.
+  var along = {}, order = [];
+  var add = function (p, driver, leave, home, title, id) {
     if (!isDriver(p) || p === driver) return;
-    (out[p] = out[p] || []).push({ start: Math.floor(leave), end: Math.ceil(home), title: title });
+    var key = p + '|' + String(id).split('~')[0];
+    if (!along[key]) { along[key] = { p: p, blocks: [] }; order.push(key); }
+    var group = along[key].blocks;
+    var nb = { start: Math.floor(leave), end: Math.ceil(home), title: title };
+    for (;;) {
+      var hit = -1;
+      for (var i = 0; i < group.length; i++) if (group[i].start <= nb.end && nb.start <= group[i].end) { hit = i; break; }
+      if (hit < 0) break;
+      var b = group.splice(hit, 1)[0];
+      nb = { start: Math.min(b.start, nb.start), end: Math.max(b.end, nb.end), title: title };
+    }
+    group.push(nb);
   };
   events.forEach(function (e) {
     if (e.takes != null) return;
     var there = travel('home', e.loc), back = travel(e.loc, 'home'), arrive = arriveAt(e);
     if (e.own) {
-      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, outAt(e) + back, e.title); });
+      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, outAt(e) + back, e.title, e.id); });
       return;
     }
     // Riding along on a kid's ride: from leaving home until back, staying if the driver does.
     var stays = e.stay && e.drop === e.pick;
-    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? outAt(e) : arrive) + back, e.title); });
-    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, outAt(e) - arriveEarly(e.loc) - there, outAt(e) + back, e.title); });
+    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? outAt(e) : arrive) + back, e.title, e.id); });
+    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, outAt(e) - arriveEarly(e.loc) - there, outAt(e) + back, e.title, e.id); });
   });
+  order.forEach(function (key) { var g = along[key]; out[g.p] = (out[g.p] || []).concat(g.blocks); });
   Object.keys(out).forEach(function (d) {
     out[d].sort(function (a, b) { return a.start - b.start || a.end - b.end || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0); });
   });
   return out;
 }
 
+// Kids taken along while at an activity of their own somewhere else (Marty, 2026-11-17: a friend's
+// pick-up took Madeline along in the middle of Hip Hop) are a problem, and the rides are planned
+// without them. With a parent's own event from its start until out; in the car at a drop-off as it
+// starts and at a pick-up as it's out. Kids at the same event, or the same place, are already there.
+function busyAlong(events) {
+  var issues = [];
+  var base = function (id) { return String(id).split('~')[0]; };
+  function busyAt(e, k, lo, hi) {
+    for (var i = 0; i < events.length; i++) {
+      var a = events[i];
+      if (a === e || a.own || a.kid !== k || a.attending === false) continue;
+      if (base(a.id) === base(e.id) || a.loc === e.loc) continue;
+      if (a.start < hi && lo < outAt(a)) return a;
+    }
+    return null;
+  }
+  var out = events.map(function (e) {
+    var along = (e.along || []).slice(), pickAlong = (e.pickAlong || []).slice();
+    if (e.attending === false || (!along.length && !pickAlong.length)) return e;
+    [['drop', along, e.start, e.own ? outAt(e) : e.start], ['pick', pickAlong, outAt(e), outAt(e)]].forEach(function (sd) {
+      var kids = sd[1];
+      kids.filter(function (k, i) { return kids.indexOf(k) === i; }).forEach(function (k) {
+        var a = k !== e.kid ? busyAt(e, k, sd[2], sd[3]) : null;
+        if (!a) return;
+        issues.push({ kind: 'alongBusy', e: e, end: sd[0], kid: k, other: a });
+        for (var j = kids.length - 1; j >= 0; j--) if (kids[j] === k) kids.splice(j, 1);
+      });
+    });
+    if (along.length === (e.along || []).length && pickAlong.length === (e.pickAlong || []).length) return e;
+    return Object.assign({}, e, { along: along, pickAlong: pickAlong });
+  });
+  return { events: out, issues: issues };
+}
+
 function planAll(events, busy) {
+  var ba = busyAlong(events);
+  events = ba.events;
   busy = withRidesAlong(events, busy);
   var mom = planDriver('mom', events, busy), dad = planDriver('dad', events, busy);
-  var hard = mom.issues.concat(dad.issues);
+  var hard = ba.issues.concat(mom.issues, dad.issues);
   events.forEach(function (e) {
     if (e.drop === '') hard.push({ kind: 'unassigned', e: e, end: 'drop' });
     if (e.pick === '') hard.push({ kind: 'unassigned', e: e, end: 'pick' });
@@ -405,7 +456,9 @@ function planAll(events, busy) {
 }
 
 function issueKey(x) {
-  return [x.kind, x.d || '', x.e ? x.e.id : '', x.end || '', x.b ? x.b.title : ''].join('|');
+  var parts = [x.kind, x.d || '', x.e ? x.e.id : '', x.end || '', x.b ? x.b.title : ''];
+  if (x.kid != null) parts.push(x.kid);
+  return parts.join('|');
 }
 
 function issueText(x) {
@@ -417,6 +470,11 @@ function issueText(x) {
   if (x.kind === 'unassigned') return { title: 'No ' + (x.end === 'drop' ? 'drop-off' : 'pick-up') + ' for ' + kid, body: e.title + (x.end === 'drop' ? ' starts at ' + fmt(e.start) : (outAt(e) !== e.end ? ' has to leave at ' + fmt(outAt(e)) : ' ends at ' + fmt(e.end))) + (PLACES[e.loc] === e.title ? '' : ', ' + PLACES[e.loc]) + '.' };
   if (x.kind === 'early') return { title: kid + ' waits ' + wholeMin(x.min) + ' min', body: who + ' gets ' + kid + ' to ' + e.title + ' at ' + fmt(x.s.arr) + ', well before the ' + fmt(e.start) + ' start.', note: kid + ' waits ' + wholeMin(x.min) + ' min at ' + e.title };
   if (x.kind === 'tight') return { title: 'No time to spare', body: who + ' has to leave ' + e.title + ' right at ' + fmt(x.at) + ' to make the next stop.', note: who + ' leaves ' + e.title + ' right at ' + fmt(x.at) };
+  if (x.kind === 'alongBusy') {
+    var nm = K[x.kid].name, a = x.other, whose = e.own ? e.title : kid + '’s ' + e.title;
+    var what = x.end === 'pick' ? 'ride along on the ' + fmt(outAt(e)) + ' pick-up from ' + whose : 'be taken along to ' + whose + ' at ' + fmt(e.start);
+    return { title: nm + ' can’t be in two places', body: nm + ' is at ' + a.title + ' ' + fmt(a.start) + '–' + fmt(outAt(a)) + ', so can’t ' + what + '. The rides are planned without ' + nm + '.' };
+  }
   if (x.kind === 'tightBusy') return { title: 'No time to spare', body: who + ' has to leave right when ' + x.b.title + ' ends at ' + fmt(x.b.end) + '.', note: who + ' leaves right as ' + x.b.title + ' ends' };
   return { title: '', body: '' };
 }
@@ -549,6 +607,8 @@ function anchorMap(a) {
 function buildDay(i, evs) {
   var busy = BUSY_BY_DAY[i] || {};
   var plan = planAll(evs, busy);
+  // A kid taken along while busy elsewhere isn't planned in the car or shown going.
+  evs = busyAlong(evs).events;
 
   // Back-to-back legs in the same car are one ride, split where a kid stops riding along
   // for someone else's stop and starts heading to their own (or the other way round).

@@ -187,7 +187,7 @@ class Segment:
         return self.anchor.event if self.anchor else None
 
 
-IssueKind = Literal["late", "waiting", "busy", "unassigned", "early", "tight", "tightBusy"]
+IssueKind = Literal["late", "waiting", "busy", "unassigned", "early", "tight", "tightBusy", "alongBusy"]
 
 
 @dataclass(eq=False, slots=True)
@@ -203,19 +203,23 @@ class Issue:
     busy: BusyBlock | None = None
     segment: Segment | None = None
     at: float | None = None
+    kid: str | None = None
+    """The kid taken along while at ``other``, their own activity (``alongBusy``)."""
+    other: RideEvent | None = None
 
     @property
     def key(self) -> str:
         """Stable id for this issue, the same across replans of the same day."""
-        return "|".join(
-            (
-                self.kind,
-                self.driver or "",
-                self.event.id if self.event else "",
-                self.side or "",
-                self.busy.title if self.busy else "",
-            )
-        )
+        parts = [
+            self.kind,
+            self.driver or "",
+            self.event.id if self.event else "",
+            self.side or "",
+            self.busy.title if self.busy else "",
+        ]
+        if self.kid is not None:
+            parts.append(self.kid)
+        return "|".join(parts)
 
 
 @dataclass(eq=False, slots=True)
@@ -232,6 +236,94 @@ class DriverPlan:
     leave: float | None = None
     """When they first leave home, or None when they have no rides."""
     trips: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class Trip:
+    """The drive to a stay away from home on the day it starts, or back home on the day it ends
+    (Marty, 2026-11-18: plan the drive to the hotel in Chicago and back)."""
+
+    driver: str
+    place: str
+    """The hotel's place key."""
+    name: str
+    """What the board calls the hotel, such as "Westin Chicago"."""
+    due: int
+    """Going there: when the stay starts, the time to be there by. Coming back: when they leave."""
+    there: bool
+    """True for the drive there, False for the drive back home."""
+    riders: tuple[str, ...] = ()
+    """Kids and parents in the car with the driver."""
+    other: str = HOME
+    """The drive's other end: where the drive there starts, or where the drive back goes. Home,
+    or the hotel of another stay that ends or starts right then (Marty, 2026-11-18: Reese's
+    stay in Chicago ends as the family's at the Westin begins)."""
+    other_name: str = "Home"
+
+    @property
+    def title(self) -> str:
+        if self.other != HOME:
+            ends = (self.other_name, self.name) if self.there else (self.name, self.other_name)
+            return f"Drive from {ends[0]} to {ends[1]}"
+        return f"Drive to {self.name}" if self.there else f"Drive home from {self.name}"
+
+
+def trip_times(trip: Trip, travel: TravelFn, settings: PlannerSettings = DEFAULT_SETTINGS) -> tuple[float, float]:
+    """When a trip leaves and gets there. The drive there aims to arrive early by the same
+    margin for traffic as a drop-off; the drive back leaves when the stay ends."""
+    if trip.there:
+        drive = travel(trip.other, trip.place)
+        if trip.other == HOME:
+            early = arrive_early(trip.place, settings, travel)
+        else:
+            early = settings.fixed_early if settings.fixed_early is not None else early_for_drive(drive)
+        arrive = trip.due - early
+        return arrive - drive, arrive
+    return trip.due, trip.due + travel(trip.place, trip.other)
+
+
+Span = tuple[float, float, str]
+"""A stretch of a day a parent's home is a hotel: from, until, and the hotel's place key."""
+
+
+def home_windows(
+    trips: Sequence[Trip],
+    travel: TravelFn,
+    settings: PlannerSettings = DEFAULT_SETTINGS,
+    homes: Mapping[str, str] | None = None,
+    spans: Mapping[str, Sequence[Span]] | None = None,
+) -> dict[str, list[Span]]:
+    """When a hotel is home, by parent: the stays' own times (``spans``; a parent in ``homes``
+    without any has it all day), with the hotel home from getting there on a drive there, and
+    until leaving it on a drive back."""
+    out: dict[str, list[Span]] = {d: list(v) for d, v in (spans or {}).items()}
+    for d, place in (homes or {}).items():
+        out.setdefault(d, [(-math.inf, math.inf, place)])
+    for t in trips:
+        leave, arrive = trip_times(t, travel, settings)
+        # Where the car gets to is home from getting there, and where it left is home until then.
+        to, start = (t.place, t.other) if t.there else (t.other, t.place)
+        for p in (t.driver, *t.riders):
+            if p in out:
+                out[p] = [
+                    (arrive if place == to else lo, leave if place == start else hi, place) for lo, hi, place in out[p]
+                ]
+    return out
+
+
+def base_at(
+    homes: Mapping[str, str] | None, windows: Mapping[str, Sequence[Span]] | None, driver: str, t: float
+) -> str | None:
+    """Where ``driver``'s rides start and end at minute ``t``: a hotel, or None for home. When
+    two stays meet, the one that started later is home."""
+    spans = (windows or {}).get(driver)
+    if spans is None:
+        return (homes or {}).get(driver)
+    best: tuple[float, str] | None = None
+    for lo, hi, place in spans:
+        if lo <= t < hi and (best is None or lo >= best[0]):
+            best = (lo, place)
+    return best[1] if best else None
 
 
 @dataclass(eq=False, slots=True)
@@ -761,11 +853,29 @@ def plan_all(
     travel: TravelFn,
     settings: PlannerSettings = DEFAULT_SETTINGS,
     drivers: Sequence[str] = DEFAULT_DRIVERS,
+    homes: Mapping[str, str] | None = None,
+    trips: Sequence[Trip] = (),
+    spans: Mapping[str, Sequence[Span]] | None = None,
 ) -> DayPlan:
-    """Plan every routed driver's day and collect the issues across them."""
-    busy = with_rides_along(events, busy, travel, settings, drivers)
-    plans = {d: plan_driver(d, events, busy, travel, settings) for d in drivers}
-    hard = [x for d in drivers for x in plans[d].issues]
+    """Plan every routed driver's day and collect the issues across them.
+
+    ``homes`` gives, by driver, where their rides start and end when it isn't home, such as a
+    hotel on a trip. Their plan still calls it home. ``spans`` narrows that to the stays' own
+    times on a day one starts or ends. ``trips`` are the drives there and back today: the hotel
+    is home only after getting there and until leaving, and the drive is busy time for everyone
+    in the car.
+    """
+    events, hard = busy_along(events)
+    windows = home_windows(trips, travel, settings, homes, spans)
+    busy = with_rides_along(events, busy, travel, settings, drivers, homes, windows)
+    driving = {d: list(busy.get(d, ())) for d in drivers}
+    for t in trips:
+        leave, arrive = trip_times(t, travel, settings)
+        for p in (t.driver, *t.riders):
+            if p in driving:
+                driving[p].append(BusyBlock(math.floor(leave), math.ceil(arrive), t.title))
+    plans = {d: _plan_split(d, events, driving, travel, settings, homes, windows) for d in drivers}
+    hard += [x for d in drivers for x in plans[d].issues]
     for e in events:
         if e.drop == UNASSIGNED:
             hard.append(Issue("unassigned", event=e, side="drop"))
@@ -777,38 +887,156 @@ def plan_all(
     return DayPlan(plans, hard, soft, score, busy)
 
 
+def _plan_split(
+    driver: str,
+    events: Sequence[RideEvent],
+    busy: Mapping[str, Sequence[BusyBlock]],
+    travel: TravelFn,
+    settings: PlannerSettings,
+    homes: Mapping[str, str] | None,
+    windows: Mapping[str, Sequence[Span]],
+) -> DriverPlan:
+    """One driver's day. On a day their home changes (driving to a hotel, back, or from one
+    hotel to the next), the rides from each home are planned apart and put back together."""
+    groups: dict[str | None, list[RideEvent]] = {}
+    for e in events:
+        groups.setdefault(base_at(homes, windows, driver, e.start), []).append(e)
+    if len(groups) <= 1:
+        base = next(iter(groups), base_at(homes, windows, driver, 0))
+        return plan_driver(driver, events, busy, from_base(travel, base), settings)
+    parts = [
+        plan_driver(driver, mine, busy, from_base(travel, base), settings)
+        for base, mine in sorted(groups.items(), key=lambda kv: min(e.start for e in kv[1]))
+    ]
+    out = DriverPlan(driver)
+    for p in parts:
+        out.segments += p.segments
+        out.stops += p.stops
+        out.issues += p.issues
+        out.soft += p.soft
+        out.overlaps += p.overlaps
+        out.drive += p.drive
+        out.trips += p.trips
+        if p.leave is not None and (out.leave is None or p.leave < out.leave):
+            out.leave = p.leave
+    return out
+
+
+def busy_along(events: Sequence[RideEvent]) -> tuple[list[RideEvent], list[Issue]]:
+    """Take out the kids taken along while they're at an activity of their own somewhere else,
+    with a problem for each (Marty, 2026-11-17: a friend's pick-up took Madeline along in the
+    middle of her Hip Hop class). The rides are planned without them, so one slip in the notes
+    doesn't send the car home for them and make the rest of the evening late.
+
+    A kid is with a parent's own event from its start until it's out, in the car at a drop-off
+    as it starts, and in the car at a pick-up as it's out. Kids at the same event, or at the
+    same place, are already where the car is.
+    """
+
+    def busy_at(e: RideEvent, kid: str, lo: float, hi: float) -> RideEvent | None:
+        for a in events:
+            if a is e or a.own is not None or a.kid != kid or not a.attending:
+                continue
+            if a.id.split("~")[0] == e.id.split("~")[0] or a.loc == e.loc:
+                continue
+            if a.start < hi and lo < a.out:
+                return a
+        return None
+
+    out: list[RideEvent] = []
+    issues: list[Issue] = []
+    for e in events:
+        if not e.attending or (not e.along and not e.pick_along):
+            out.append(e)
+            continue
+        along, pick_along = list(e.along), list(e.pick_along)
+        sides: tuple[tuple[Side, list[str], float, float], ...] = (
+            ("drop", along, e.start, e.out if e.own is not None else e.start),
+            ("pick", pick_along, e.out, e.out),
+        )
+        for side, kids, lo, hi in sides:
+            for k in dict.fromkeys(kids):
+                a = busy_at(e, k, lo, hi) if k != e.kid else None
+                if a is not None:
+                    issues.append(Issue("alongBusy", event=e, side=side, kid=k, other=a))
+                    kids[:] = [x for x in kids if x != k]
+        if len(along) == len(e.along) and len(pick_along) == len(e.pick_along):
+            out.append(e)
+        else:
+            out.append(replace(e, along=tuple(along), pick_along=tuple(pick_along)))
+    return out, issues
+
+
+def from_base(travel: TravelFn, base: str | None) -> TravelFn:
+    """Drive times for someone whose home is ``base`` for now (a hotel on a trip): home in a
+    route means there. The same ``travel`` when they're at home."""
+    if not base or base == HOME:
+        return travel
+    where = base
+
+    def moved(a: str, b: str) -> float:
+        return travel(where if a == HOME else a, where if b == HOME else b)
+
+    return moved
+
+
 def with_rides_along(
     events: Sequence[RideEvent],
     busy: Mapping[str, Sequence[BusyBlock]],
     travel: TravelFn,
     settings: PlannerSettings = DEFAULT_SETTINGS,
     drivers: Sequence[str] = DEFAULT_DRIVERS,
+    homes: Mapping[str, str] | None = None,
+    windows: Mapping[str, Sequence[Span]] | None = None,
 ) -> dict[str, list[BusyBlock]]:
     """The parents' busy times, plus each trip they ride along on, to the other parent's own
     event or on a kid's drop-off or pick-up: from leaving home until back home."""
     out = {d: list(blocks) for d, blocks in busy.items()}
 
-    def add(p: str, driver: str, leave: float, home: float, title: str) -> None:
-        if p in drivers and p != driver:
-            out.setdefault(p, []).append(BusyBlock(math.floor(leave), math.ceil(home), title))
+    # One busy block per parent per calendar event: kids named on one event each have a copy
+    # of it, all riding in the same car, so the trips overlap (Marty, 2026-11-18: five blocks
+    # for one dinner). Trips that don't overlap, there and later back, stay apart.
+    along: dict[tuple[str, str], list[BusyBlock]] = {}
+
+    def add(p: str, driver: str, leave: float, home: float, title: str, event_id: str) -> None:
+        if p not in drivers or p == driver:
+            return
+        group = along.setdefault((p, event_id.split("~")[0]), [])
+        new = BusyBlock(math.floor(leave), math.ceil(home), title)
+        while True:
+            hit = next((b for b in group if b.start <= new.end and new.start <= b.end), None)
+            if hit is None:
+                break
+            group.remove(hit)
+            new = BusyBlock(min(hit.start, new.start), max(hit.end, new.end), title)
+        group.append(new)
+
+    def legs(e: RideEvent, driver: str) -> tuple[TravelFn, float, float]:
+        # The drive there and back from the driver's home, wherever that is at the time.
+        tr = from_base(travel, base_at(homes, windows, driver, e.start))
+        return tr, tr(HOME, e.loc), tr(e.loc, HOME)
 
     for e in events:
         if e.takes is not None or not e.attending:
             continue
-        there, back = travel(HOME, e.loc), travel(e.loc, HOME)
-        arrive = arrive_at(e, settings, travel)
         if e.own is not None:
+            tr, there, back = legs(e, e.own)
             for p in e.parents:
-                add(p, e.own, arrive - there, e.out + back, e.title)
+                add(p, e.own, arrive_at(e, settings, tr) - there, e.out + back, e.title, e.id)
             continue
         # Riding along on a kid's ride: from leaving home until back, staying if the driver does.
         stays = e.stay and e.drop == e.pick
         if e.drop not in (UNASSIGNED, NOT_NEEDED):
+            tr, there, back = legs(e, e.drop)
+            arrive = arrive_at(e, settings, tr)
             for p in e.parents:
-                add(p, e.drop, arrive - there, (e.out if stays else arrive) + back, e.title)
+                add(p, e.drop, arrive - there, (e.out if stays else arrive) + back, e.title, e.id)
         if e.pick not in (UNASSIGNED, NOT_NEEDED) and not stays:
+            tr, there, back = legs(e, e.pick)
             for p in e.pick_parents:
-                add(p, e.pick, e.out - arrive_early(e.loc, settings, travel) - there, e.out + back, e.title)
+                add(p, e.pick, e.out - arrive_early(e.loc, settings, tr) - there, e.out + back, e.title, e.id)
+    for (p, _event), group in along.items():
+        out.setdefault(p, []).extend(group)
     for blocks in out.values():
         blocks.sort(key=lambda b: (b.start, b.end, b.title))
     return out
@@ -865,6 +1093,19 @@ def issue_text(issue: Issue, labels: Labels) -> IssueText:
                 "No time to spare",
                 f"{who} has to leave {e.title} right at {fmt(issue.at)} to make the next stop.",
                 f"{who} leaves {e.title} right at {fmt(issue.at)}",
+            )
+        case "alongBusy" if e and issue.kid and issue.other:
+            name, a = labels.kid(issue.kid), issue.other
+            whose = e.title if e.own is not None else f"{kid}’s {e.title}"
+            what = (
+                f"ride along on the {fmt(e.out)} pick-up from {whose}"
+                if issue.side == "pick"
+                else f"be taken along to {whose} at {fmt(e.start)}"
+            )
+            return IssueText(
+                f"{name} can’t be in two places",
+                f"{name} is at {a.title} {fmt(a.start)}–{fmt(a.out)}, so can’t {what}. "
+                f"The rides are planned without {name}.",
             )
         case "tightBusy" if issue.busy:
             b = issue.busy
@@ -945,6 +1186,9 @@ def suggestions_for(
     settings: PlannerSettings = DEFAULT_SETTINGS,
     drivers: Sequence[str] = DEFAULT_DRIVERS,
     limit: int = 2,
+    homes: Mapping[str, str] | None = None,
+    trips: Sequence[Trip] = (),
+    spans: Mapping[str, Sequence[Span]] | None = None,
 ) -> list[Suggestion]:
     """Single changes that clear this issue without adding a worse one, best first."""
     cands: list[tuple[str | None, Change, str]] = []
@@ -1002,7 +1246,7 @@ def suggestions_for(
     key = issue.key
     good: list[Suggestion] = []
     for label, change, who in cands:
-        p = plan_all(apply_change(events, change, drivers), busy, travel, settings, drivers)
+        p = plan_all(apply_change(events, change, drivers), busy, travel, settings, drivers, homes, trips, spans)
         if key in {x.key for x in p.hard} or len(p.hard) >= len(base.hard):
             continue
         if label is None:

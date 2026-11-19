@@ -86,6 +86,8 @@ export interface Outing {
   parents?: Record<string, string>;
   /** The driver goes alone to their own event. */
   solo?: boolean;
+  /** What the trip calls home: "Home", or a hotel's name while the driver stays there. */
+  home?: string;
 }
 
 export interface BusyBlock {
@@ -104,6 +106,8 @@ export interface DriverDay {
   segments: Segment[];
   outings: Outing[];
   busy: BusyBlock[];
+  /** Where their rides start and end today when it isn't home: the hotel they're staying at. */
+  home?: { place: string; name: string } | null;
 }
 
 export interface Ride {
@@ -175,6 +179,18 @@ export interface AllDayItem {
   cancelled: boolean;
   /** What people wrote in its notes: "" for none (MyDashLight 0.23 and later). */
   notes?: string;
+  /** A hotel stay: its title is the hotel and `people` are who's staying (MyDashLight 0.27 and later). */
+  stay?: boolean;
+  /** Who's on it came from a For line in its notes, not its title. */
+  from_notes?: boolean;
+  /** A stay's driver there and back: a parent's id, "none", someone else's name, or "" for the first parent on it. */
+  driver?: string;
+  /** Who rides there with that driver, when the notes name one. */
+  riders?: string[];
+  /** Who rides back home with them (MyDashLight 0.27.1 and later). */
+  back_riders?: string[];
+  /** A stay with times: the drive there and back is planned. */
+  timed?: boolean;
 }
 
 /** A timed event whose title doesn't say who it's for (MyDashLight 0.19 and later). */
