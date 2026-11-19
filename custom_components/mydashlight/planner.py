@@ -857,9 +857,23 @@ def with_rides_along(
     event or on a kid's drop-off or pick-up: from leaving home until back home."""
     out = {d: list(blocks) for d, blocks in busy.items()}
 
-    def add(p: str, driver: str, leave: float, home: float, title: str) -> None:
-        if p in drivers and p != driver:
-            out.setdefault(p, []).append(BusyBlock(math.floor(leave), math.ceil(home), title))
+    # One busy block per parent per calendar event: kids named on one event each have a copy
+    # of it, all riding in the same car, so the trips overlap (Marty, 2026-11-18: five blocks
+    # for one dinner). Trips that don't overlap, there and later back, stay apart.
+    along: dict[tuple[str, str], list[BusyBlock]] = {}
+
+    def add(p: str, driver: str, leave: float, home: float, title: str, event_id: str) -> None:
+        if p not in drivers or p == driver:
+            return
+        group = along.setdefault((p, event_id.split("~")[0]), [])
+        new = BusyBlock(math.floor(leave), math.ceil(home), title)
+        while True:
+            hit = next((b for b in group if b.start <= new.end and new.start <= b.end), None)
+            if hit is None:
+                break
+            group.remove(hit)
+            new = BusyBlock(min(hit.start, new.start), max(hit.end, new.end), title)
+        group.append(new)
 
     def legs(e: RideEvent, driver: str) -> tuple[TravelFn, float, float]:
         # The drive there and back from the driver's home, wherever that is today.
@@ -872,7 +886,7 @@ def with_rides_along(
         if e.own is not None:
             tr, there, back = legs(e, e.own)
             for p in e.parents:
-                add(p, e.own, arrive_at(e, settings, tr) - there, e.out + back, e.title)
+                add(p, e.own, arrive_at(e, settings, tr) - there, e.out + back, e.title, e.id)
             continue
         # Riding along on a kid's ride: from leaving home until back, staying if the driver does.
         stays = e.stay and e.drop == e.pick
@@ -880,11 +894,13 @@ def with_rides_along(
             tr, there, back = legs(e, e.drop)
             arrive = arrive_at(e, settings, tr)
             for p in e.parents:
-                add(p, e.drop, arrive - there, (e.out if stays else arrive) + back, e.title)
+                add(p, e.drop, arrive - there, (e.out if stays else arrive) + back, e.title, e.id)
         if e.pick not in (UNASSIGNED, NOT_NEEDED) and not stays:
             tr, there, back = legs(e, e.pick)
             for p in e.pick_parents:
-                add(p, e.pick, e.out - arrive_early(e.loc, settings, tr) - there, e.out + back, e.title)
+                add(p, e.pick, e.out - arrive_early(e.loc, settings, tr) - there, e.out + back, e.title, e.id)
+    for (p, _event), group in along.items():
+        out.setdefault(p, []).extend(group)
     for blocks in out.values():
         blocks.sort(key=lambda b: (b.start, b.end, b.title))
     return out

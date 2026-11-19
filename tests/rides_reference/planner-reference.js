@@ -369,22 +369,37 @@ function neededLater(stops, start) {
 function withRidesAlong(events, busy) {
   var out = {};
   Object.keys(busy).forEach(function (d) { out[d] = busy[d].slice(); });
-  var add = function (p, driver, leave, home, title) {
+  // One busy block per parent per calendar event: kids named on one event each have a copy of it,
+  // all in the same car, so the trips overlap (Marty, 2026-11-18). Trips apart stay apart.
+  var along = {}, order = [];
+  var add = function (p, driver, leave, home, title, id) {
     if (!isDriver(p) || p === driver) return;
-    (out[p] = out[p] || []).push({ start: Math.floor(leave), end: Math.ceil(home), title: title });
+    var key = p + '|' + String(id).split('~')[0];
+    if (!along[key]) { along[key] = { p: p, blocks: [] }; order.push(key); }
+    var group = along[key].blocks;
+    var nb = { start: Math.floor(leave), end: Math.ceil(home), title: title };
+    for (;;) {
+      var hit = -1;
+      for (var i = 0; i < group.length; i++) if (group[i].start <= nb.end && nb.start <= group[i].end) { hit = i; break; }
+      if (hit < 0) break;
+      var b = group.splice(hit, 1)[0];
+      nb = { start: Math.min(b.start, nb.start), end: Math.max(b.end, nb.end), title: title };
+    }
+    group.push(nb);
   };
   events.forEach(function (e) {
     if (e.takes != null) return;
     var there = travel('home', e.loc), back = travel(e.loc, 'home'), arrive = arriveAt(e);
     if (e.own) {
-      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, outAt(e) + back, e.title); });
+      (e.parents || []).forEach(function (p) { add(p, e.own, arrive - there, outAt(e) + back, e.title, e.id); });
       return;
     }
     // Riding along on a kid's ride: from leaving home until back, staying if the driver does.
     var stays = e.stay && e.drop === e.pick;
-    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? outAt(e) : arrive) + back, e.title); });
-    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, outAt(e) - arriveEarly(e.loc) - there, outAt(e) + back, e.title); });
+    if (e.drop !== '' && e.drop !== 'none') (e.parents || []).forEach(function (p) { add(p, e.drop, arrive - there, (stays ? outAt(e) : arrive) + back, e.title, e.id); });
+    if (e.pick !== '' && e.pick !== 'none' && !stays) (e.pickParents || []).forEach(function (p) { add(p, e.pick, outAt(e) - arriveEarly(e.loc) - there, outAt(e) + back, e.title, e.id); });
   });
+  order.forEach(function (key) { var g = along[key]; out[g.p] = (out[g.p] || []).concat(g.blocks); });
   Object.keys(out).forEach(function (d) {
     out[d].sort(function (a, b) { return a.start - b.start || a.end - b.end || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0); });
   });
