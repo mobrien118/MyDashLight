@@ -153,26 +153,40 @@ export const styles = css`
     line-height: 18px;
     color: var(--muted);
   }
-  /* A problem line under the date wraps to the width the clock and date already take, so it never
-     widens the column and squeezes the next trip beside it. */
-  .titles > .status {
-    width: 0;
-    min-width: 100%;
-  }
-  /* Narrower screens put the next trip on its own row, so there it can take the room it needs. */
-  .narrow .titles > .status {
-    width: auto;
-    min-width: 0;
-  }
-  .titles .line {
-    display: block;
-  }
-  .titles .keep {
-    white-space: nowrap;
-  }
-  .titles .bad {
-    color: var(--bad-ink);
+  /* What's wrong, on one line across the bottom of the header. */
+  .problem-row {
+    flex: none;
+    margin: -6px 0 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    line-height: 18px;
     font-weight: 600;
+    color: var(--bad-ink);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  button.problem-row {
+    cursor: pointer;
+  }
+  .problem-row.open {
+    white-space: normal;
+  }
+  .problem-age,
+  .problem-more {
+    font-weight: 500;
+  }
+  .problem-link {
+    text-decoration: underline;
+  }
+  .problem-detail {
+    display: block;
+    font-weight: 500;
+    color: var(--ink-2);
   }
 
   .next {
