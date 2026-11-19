@@ -542,7 +542,11 @@
         },
         "riders": {
           "name": "In the car",
-          "description": "For a hotel stay with a driver: who rides there and back with them. Anyone on the stay left out gets there on their own."
+          "description": "For a hotel stay with a driver: who rides there with them, and back too unless In the car back says otherwise. Anyone on the stay left out gets there on their own."
+        },
+        "back_riders": {
+          "name": "In the car back",
+          "description": "For a hotel stay with a driver: who rides back home with them, when it isn't the same as on the way there."
         }
       }
     }

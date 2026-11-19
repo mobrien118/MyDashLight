@@ -59,7 +59,9 @@ class DayItem:
     """For a stay, who its Drop-off line says drives there and back: a parent's id, "none" for
     no drive, someone else's name, or "" when it doesn't say (the first parent it names)."""
     riders: tuple[str, ...] = ()
-    """For a stay whose notes name the driver, who rides in the car with them."""
+    """For a stay whose notes name the driver, who rides in the car there with them."""
+    back_riders: tuple[str, ...] = ()
+    """And who rides back home with them, from its Pick-up line."""
     timed: bool = False
     """For a stay, whether it has times, so the drive there and back is planned."""
 
@@ -76,7 +78,16 @@ class DayItem:
             "notes": self.notes,
             "stay": self.stay,
             "from_notes": self.from_notes,
-            **({"driver": self.driver, "riders": list(self.riders), "timed": self.timed} if self.stay else {}),
+            **(
+                {
+                    "driver": self.driver,
+                    "riders": list(self.riders),
+                    "back_riders": list(self.back_riders),
+                    "timed": self.timed,
+                }
+                if self.stay
+                else {}
+            ),
         }
 
 
@@ -204,6 +215,7 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
                     from_notes=from_notes,
                     driver=(drive := _drive(ev, people))[0],
                     riders=drive[1],
+                    back_riders=drive[2],
                     timed=stay.arrive is not None,
                 )
             )
@@ -317,11 +329,14 @@ def _stay(ev: CalendarEvent, who: Who, place: str, tz: tzinfo) -> Stay | None:
     )
 
 
-def _drive(ev: CalendarEvent, people: People) -> tuple[str, tuple[str, ...]]:
-    """Who a stay's Drop-off line says drives there, and who rides along."""
+def _drive(ev: CalendarEvent, people: People) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
+    """Who a stay's Drop-off line says drives there and who rides along, and who its Pick-up
+    line has riding back."""
     directory = DriverDirectory(names=people.parents, aliases=people.aliases, kids=people.kids)
     notes = parse_notes(ev.description, directory, None)
-    return notes.drop, notes.drop_riders if notes.drop else ()
+    if not notes.drop:
+        return notes.drop, (), ()
+    return notes.drop, notes.drop_riders, notes.pick_riders if notes.pick else notes.drop_riders
 
 
 def _day_item(ev: CalendarEvent, who: Who) -> DayItem:

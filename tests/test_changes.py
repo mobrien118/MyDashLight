@@ -564,6 +564,26 @@ async def test_pick_who_drives_to_a_stay(hass: HomeAssistant, google: FakeGoogle
     robin = data.days[0]["drivers"]["mom"]["outings"]
     assert [o["title"] for o in robin] == ["Drive Ava to Marriott"]
 
+    # Sam is there already but rides home with them (Marty, 2026-11-18).
+    await call(
+        hass,
+        "set_people",
+        event="trip",
+        people=["Robin", "Sam", "Ava"],
+        driver="Robin",
+        riders=["Ava"],
+        back_riders=["Ava", "Sam"],
+    )
+    assert google.event(FAMILY, "trip")["description"] == (
+        "--- Rides ---\nFor: Robin, Sam & Ava\nDrop-off: Robin, Ava\nPick-up: Robin, Ava, Sam"
+    )
+    data = entry.runtime_data.coordinator.data
+    (item,) = [i for i in data.days[0]["all_day"] if i["id"] == "trip"]
+    assert (item["riders"], item["back_riders"]) == ([AVA], [AVA, "dad"])
+    assert [t.riders for t in data.week.days[2].trips] == [(AVA, "dad")]
+    back = data.days[2]["drivers"]["mom"]["outings"]
+    assert back[0]["parents"] == {"dad": "Leave Marriott at 1:00 PM with Robin"}
+
     # No driver goes back to the first parent on the stay, with everyone else along.
     await call(hass, "set_people", event="trip", people=["Robin", "Sam", "Ava"], driver="")
     assert google.event(FAMILY, "trip")["description"] == "--- Rides ---\nFor: Robin, Sam & Ava"

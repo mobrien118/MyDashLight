@@ -396,3 +396,9 @@ set_people:
       selector:
         text:
           multiple: true
+    back_riders:
+      required: false
+      example: '["Ava", "Ben", "Sam"]'
+      selector:
+        text:
+          multiple: true

@@ -11,7 +11,10 @@ import type { Lunch, LunchPayload } from "./lunch.ts";
 /** Who drives to a stay and back: "" for the first parent on it with everyone else along, or "none". */
 export interface StayDrive {
   driver: string;
+  /** In the car there. */
   riders: string[];
+  /** In the car back home. */
+  backRiders: string[];
 }
 
 export interface Backend {
@@ -489,7 +492,13 @@ export class HassBackend implements Backend {
       event,
       people,
       scope,
-      ...(drive ? { driver: drive.driver, riders: drive.riders } : {}),
+      ...(drive
+        ? {
+            driver: drive.driver,
+            riders: drive.riders,
+            back_riders: drive.backRiders,
+          }
+        : {}),
     });
   }
 
