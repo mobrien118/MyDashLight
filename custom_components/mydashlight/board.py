@@ -27,6 +27,7 @@ from .planner import (
     PlannerSettings,
     RideEvent,
     Segment,
+    Span,
     Stop,
     TravelFn,
     Trip,
@@ -167,17 +168,18 @@ def build_day(
     kids: Sequence[str] = (),
     homes: Mapping[str, str] | None = None,
     trips: Sequence[Trip] = (),
+    spans: Mapping[str, Sequence[Span]] | None = None,
 ) -> DayBoard:
     """Plan the day and work out everything the board shows for it.
 
     ``homes`` gives, by driver, where their rides start and end when it isn't home (a hotel on
     a trip, see :func:`.planner.plan_all`). Their trips name it where they'd say Home.
     ``trips`` are today's drives to a hotel and back: each is an outing of its own, and the
-    kids in the car have a ride.
+    kids in the car have a ride. ``spans`` are the stays' own times on a day one starts or ends.
     """
     homes = homes or {}
-    plan = plan_all(events, busy, travel, settings, drivers, homes, trips)
-    windows = home_windows(trips, travel, settings)
+    plan = plan_all(events, busy, travel, settings, drivers, homes, trips, spans)
+    windows = home_windows(trips, travel, settings, homes, spans)
     drives: dict[int, Trip] = {}
     for t in trips:
         if t.driver not in plan.drivers:
@@ -188,10 +190,10 @@ def build_day(
             "drive",
             leave,
             arrive,
-            from_loc=HOME if t.there else t.place,
-            to_loc=t.place if t.there else HOME,
+            from_loc=t.other if t.there else t.place,
+            to_loc=t.place if t.there else t.other,
             kids=kid_ids,
-            from_home=t.there,
+            from_home=t.there and t.other == HOME,
         )
         drives[id(g)] = t
         segs = plan[t.driver].segments
@@ -217,12 +219,22 @@ def build_day(
 def _trip_outing(
     g: Segment, t: Trip, d: str, busy: Mapping[str, Sequence[BusyBlock]], labels: Labels, drivers: Sequence[str]
 ) -> Outing:
-    """The drive to a hotel or back home, as the driver's outing."""
+    """The drive to a hotel or back home (or on to the next hotel), as the driver's outing."""
     name = labels.driver(d)
     kid_names = [labels.kid(k) for k in g.kids]
-    start_name = "home" if t.there else t.name
+    other = "home" if t.other == HOME else t.other_name
+    start_name = other if t.there else t.name
     leave_line = f"Leave {start_name} at {fmt12(g.start)} with {name}"
-    if t.there:
+    to_name = t.name if t.there else other
+    if t.other != HOME:
+        who = f"{_and(kid_names)} " if kid_names else ""
+        title = f"Drive {who}from {start_name} to {to_name}"
+        lines = [
+            f"{fmt(g.end)}  {to_name}, there by {fmt(t.due)}"
+            if t.there and g.end < t.due
+            else f"{fmt(g.end)}  {to_name}"
+        ]
+    elif t.there:
         title = f"Drive {_and(kid_names)} to {t.name}" if kid_names else f"Drive to {t.name}"
         lines = [f"{fmt(g.end)}  {t.name}, there by {fmt(t.due)}" if g.end < t.due else f"{fmt(g.end)}  {t.name}"]
     else:
@@ -241,7 +253,7 @@ def _trip_outing(
         from_loc=g.from_loc or HOME,
         from_name=start_name,
         to_loc=to_loc,
-        to_name="home" if to_loc == HOME else t.name,
+        to_name=to_name,
         due=t.due if t.there else g.end,
         via_home=False,
     )
@@ -342,7 +354,7 @@ def _outings(
     busy: Mapping[str, Sequence[BusyBlock]],
     labels: Labels,
     homes: Mapping[str, str] | None = None,
-    windows: Mapping[str, tuple[float, float]] | None = None,
+    windows: Mapping[str, Sequence[Span]] | None = None,
     drives: Mapping[int, Trip] | None = None,
 ) -> list[Outing]:
     p = plan[d]
