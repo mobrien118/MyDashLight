@@ -15,6 +15,10 @@ Every event's title starts with who it's for (see :mod:`.who`). From there:
 * A timed event that names nobody can't be placed, so it's flagged, never guessed.
 * A "For:" line in the event's Rides notes block names who it's for instead, and wins over the
   title. That's how the board saves a pick made on screen without changing the title.
+* A stay away from home, titled with names and then "Stay" ("Sam Stay Marriott Chicago"), all
+  day or from check-in to check-out, makes its location home for those parents' rides on the
+  days it covers (Marty, 2026-11-18). It shows across the top of each day, like an all-day
+  event, and is never busy time.
 
 Pure module, no Home Assistant imports.
 """
@@ -24,6 +28,8 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, tzinfo
+import re
+from typing import Final
 
 from .google import CalendarEvent
 from .notes import human_notes, read_for
@@ -99,6 +105,37 @@ class Unplaced:
         }
 
 
+_STAY_RE: Final = re.compile(r"^stay(?:ing)?(?:\s+at)?\b[\s:,–-]*(.*)$", re.IGNORECASE)
+
+
+@dataclass(frozen=True, slots=True)
+class Stay:
+    """A stay away from home: where its people's rides start and end while it lasts."""
+
+    id: str
+    people: tuple[str, ...]
+    """Who it names, by id, at least one of them a parent. Only the parents' rides move; a kid
+    goes where their driver goes."""
+    name: str
+    """What the title calls the place, as "Marriott Chicago", or "" when it doesn't say."""
+    location: str
+    """Its address, from the event's location, or else the name."""
+    first: date
+    last: date
+    """The days it covers, both included: every day it touches."""
+
+    def covers(self, day: date) -> bool:
+        return self.first <= day <= self.last
+
+
+def stay_place(who: Who) -> str | None:
+    """The place a stay's title names, "" when it names none, or None when it isn't a stay."""
+    if who.cancelled or not who.people:
+        return None
+    m = _STAY_RE.match(who.rest.lstrip("&,+ ").strip())
+    return " ".join(m.group(1).split()) if m else None
+
+
 @dataclass(slots=True)
 class Split:
     lanes: dict[str, list[CalendarEvent]] = field(default_factory=dict)
@@ -110,6 +147,7 @@ class Split:
     escorts: dict[str, tuple[str, ...]] = field(default_factory=dict)
     """The parents a kid's event also names, by event id, in title order: "Sam, Ben & Cleo
     Donuts" means Sam takes them, so Sam drives both ways unless the notes say otherwise."""
+    stays: list[Stay] = field(default_factory=list)
 
     def day_items_on(self, day: date) -> list[DayItem]:
         return [i for i in self.day_items if i.first <= day <= i.last]
@@ -125,6 +163,22 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
         if ev.declined:
             continue
         who, from_notes = read_who(ev, people)
+        # Only a parent's stay moves home. "Ava Stay at Noah's" is a sleepover: a ride as usual.
+        place = stay_place(who) if any(p in people.parents for p in who.people) else None
+        if place is not None and (stay := _stay(ev, who, place, tz)) is not None:
+            out.stays.append(stay)
+            out.day_items.append(
+                DayItem(
+                    ev.id,
+                    who.title or "Stay",
+                    who.people,
+                    stay.first,
+                    stay.last,
+                    calendar_id=ev.calendar_id,
+                    notes=human_notes(ev.description),
+                )
+            )
+            continue
         if ev.all_day:
             out.day_items.append(_day_item(ev, who))
             continue
@@ -198,6 +252,22 @@ def in_window(split: Split, days: Sequence[date]) -> dict[str, dict[str, list[di
 def people_events(split: Split, ids: Mapping[str, object]) -> dict[str, list[CalendarEvent]]:
     """The lanes for the people in ``ids``, each present even when empty."""
     return {pid: list(split.lanes.get(pid, ())) for pid in ids}
+
+
+def _stay(ev: CalendarEvent, who: Who, place: str, tz: tzinfo) -> Stay | None:
+    location = " ".join((ev.location or "").split()) or place
+    if not location:
+        return None  # Nowhere to be home.
+    if isinstance(ev.start, datetime) and isinstance(ev.end, datetime):
+        first = ev.start.astimezone(tz).date()
+        end = ev.end.astimezone(tz)
+        # Every day it touches: a stay ending at midnight is over before that day starts.
+        last = end.date() - timedelta(days=1) if end.time() == datetime.min.time() else end.date()
+    else:
+        assert isinstance(ev.start, date)
+        assert isinstance(ev.end, date)
+        first, last = ev.start, ev.end - timedelta(days=1)
+    return Stay(ev.id, who.people, place, location, first, max(first, last))
 
 
 def _day_item(ev: CalendarEvent, who: Who) -> DayItem:

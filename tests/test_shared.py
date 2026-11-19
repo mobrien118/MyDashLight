@@ -213,3 +213,48 @@ def test_school_lanes() -> None:
         "ben": [("l2", "Lunch", LUNCH), ("off", "No School - Thanksgiving", FAMILY)],
         "cleo": [("off", "No School - Thanksgiving", FAMILY), ("cleo-off", "No School (field day)", FAMILY)],
     }
+
+
+def test_a_stay_away_moves_home_for_its_parents() -> None:
+    # Marty, 2026-11-18: a weekend at a hotel, where the rides start and end instead.
+    hotel = replace(
+        all_day("trip", "Robin & Sam Stay Marriott Chicago", "2026-11-20", "2026-11-23"),
+        location="Marriott, 1401 W 22nd St, Oak Brook, IL 60523",
+    )
+    timed_stay = replace(
+        timed("westin", "Robin Staying at the Westin", "2026-11-27T15:00", "2026-11-29T11:00"),
+        location="The Westin Chicago North Shore",
+    )
+    to_midnight = timed("late", "Dad Stay: Lodge", "2026-12-04T18:00", "2026-12-06T00:00")
+    split = split_events(
+        [
+            hotel,
+            timed_stay,
+            to_midnight,
+            timed("sleepover", "Ava Stay at Noah's", "2026-11-21T18:00", "2026-11-22T10:00"),
+            timed("gone", "NO Robin Stay Lodge", "2026-12-11T18:00", "2026-12-12T10:00"),
+        ],
+        PEOPLE,
+        TZ,
+    )
+    stays = {s.id: s for s in split.stays}
+    assert set(stays) == {"trip", "westin", "late"}
+    trip = stays["trip"]
+    assert (trip.people, trip.name, trip.location) == (
+        ("mom", "dad"),
+        "Marriott Chicago",
+        "Marriott, 1401 W 22nd St, Oak Brook, IL 60523",
+    )
+    assert (trip.first, trip.last) == (date(2026, 11, 20), date(2026, 11, 22))
+    # Timed, it covers every day it touches: check-in Friday to check-out Sunday morning.
+    assert (stays["westin"].first, stays["westin"].last) == (date(2026, 11, 27), date(2026, 11, 29))
+    assert stays["westin"].name == "the Westin"
+    # Out at midnight, it doesn't touch the next day. With no location, the title names the place.
+    assert (stays["late"].last, stays["late"].location) == (date(2026, 12, 5), "Lodge")
+    # A stay is never time a parent can't drive: it shows across the top of its days instead.
+    assert [i.id for i in split.day_items] == ["trip", "westin", "late"]
+    assert split.lanes["dad"] == []
+    # A kid's own stay is a sleepover, a ride as usual; a cancelled stay is just a cancelled event.
+    assert [e.id for e in split.lanes["ava"]] == ["sleepover"]
+    assert [e.id for e in split.lanes["mom"]] == ["gone"]
+    assert [u.id for u in split.unplaced] == []

@@ -10,6 +10,9 @@ from custom_components.mydashlight.google import CalendarEvent, parse_event
 from custom_components.mydashlight.notes import DriverDirectory
 from custom_components.mydashlight.payload import plan_week
 from custom_components.mydashlight.planner import HOME, NOT_NEEDED, UNASSIGNED, BusyBlock, PlannerSettings
+from custom_components.mydashlight.routes import Place
+from custom_components.mydashlight.shared import Stay
+from custom_components.mydashlight.travel import place_for
 from custom_components.mydashlight.week import (
     CalendarRoles,
     EventRef,
@@ -711,3 +714,68 @@ def test_an_errand_goes_on_a_parents_calendar() -> None:
     [e] = w.days[0].events
     assert e.takes is None
     assert w.days[0].problems["jersey"] == ("Takes: errands go on a parent’s own calendar",)
+
+
+def test_a_stay_away_is_home_for_its_parents_rides() -> None:
+    # Marty, 2026-11-18: on a trip, rides start and end at the hotel, and a place given only by
+    # name is the one near the hotel, not the one near home.
+    hotel = "Marriott, 1401 W 22nd St, Oak Brook, IL 60523"
+    stay = Stay("trip", ("mom", AVA), "Marriott Chicago", hotel, date(2026, 11, 3), date(2026, 11, 3))
+    w = build_week(
+        {
+            AVA: [
+                ev(
+                    AVA,
+                    timed(
+                        "game",
+                        "Volleyball",
+                        at(3, "16:00"),
+                        at(3, "17:00"),
+                        location="Lifetime Fitness",
+                        description="Drop-off: Robin\nPick-up: Robin",
+                    ),
+                ),
+                ev(AVA, timed("wed", "Volleyball", at(4, "16:00"), at(4, "17:00"), location="Lifetime Fitness")),
+            ],
+            BEN: [ev(BEN, timed("soccer", "Soccer", at(3, "16:00"), at(3, "17:00"), location="Park"))],
+        },
+        ROLES,
+        DIRECTORY,
+        TODAY,
+        2,
+        TZ,
+        HOME_ADDRESS,
+        stays=[stay],
+    )
+    tue, wed = w.days
+    key = "marriott, 1401 w 22nd st, oak brook, il 60523"
+    assert tue.homes == {"mom": key}
+    assert wed.homes == {}
+    # Ava is on the trip, so her game is at the Lifetime Fitness near the hotel; Ben isn't.
+    game, soccer = (next(e for e in tue.events if e.id == i) for i in ("game", "soccer"))
+    assert game.loc == "lifetime fitness, oak brook, il 60523"
+    assert soccer.loc == "park"
+    assert next(e for e in wed.events if e.id == "wed").loc == "lifetime fitness"
+    home = Place(address=HOME_ADDRESS)
+    assert place_for(w, key, home) == Place(address=hotel)
+    assert place_for(w, game.loc, home) == Place(address="Lifetime Fitness, Oak Brook, IL 60523")
+    assert w.labels.short_place(key) == "Marriott Chicago"
+
+    asked: set[tuple[str, str]] = set()
+
+    def drive(a: str, b: str) -> float:
+        asked.add((a, b))
+        return 10
+
+    days = plan_week(w, lambda _day: drive, PlannerSettings(), ("mom", "dad"))
+    robin = days[0]["drivers"]["mom"]
+    assert robin["home"] == {"place": key, "name": "Marriott Chicago"}
+    assert days[0]["drivers"]["dad"]["home"] is None
+    assert (key, game.loc) in asked
+    assert (HOME, game.loc) not in asked
+    out = robin["outings"][0]
+    assert out["home"] == "Marriott Chicago"
+    assert out["lines"][-1].endswith("  Marriott Chicago")
+    assert out["riders"][AVA].startswith("Leave Marriott Chicago at ")
+    assert out["go"]["from"] == key
+    assert out["go"]["from_name"] == "Marriott Chicago"

@@ -111,6 +111,8 @@ class Outing:
     solo: bool = False
     """Only this driver going to their own events, with nobody along. They know their own day,
     so it gets no reminder."""
+    home: str = "Home"
+    """What the trip calls home: a hotel's name while the driver stays there."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,9 +161,15 @@ def build_day(
     settings: PlannerSettings = DEFAULT_SETTINGS,
     drivers: Sequence[str] = DEFAULT_DRIVERS,
     kids: Sequence[str] = (),
+    homes: Mapping[str, str] | None = None,
 ) -> DayBoard:
-    """Plan the day and work out everything the board shows for it."""
-    plan = plan_all(events, busy, travel, settings, drivers)
+    """Plan the day and work out everything the board shows for it.
+
+    ``homes`` gives, by driver, where their rides start and end when it isn't home (a hotel on
+    a trip, see :func:`.planner.plan_all`). Their trips name it where they'd say Home.
+    """
+    homes = homes or {}
+    plan = plan_all(events, busy, travel, settings, drivers, homes)
     # A kid taken along while busy elsewhere isn't planned in the car or shown going: the
     # plan's problem for it says so.
     events, _ = busy_along(events)
@@ -173,7 +181,7 @@ def build_day(
         rides=rides,
         kid_items=kid_items,
         clashes=_clashes(kid_items),
-        outings={d: _outings(plan, d, plan.busy, labels) for d in drivers},
+        outings={d: _outings(plan, d, plan.busy, labels, homes.get(d)) for d in drivers},
         lines=_card_lines(events, plan, rides, labels, drivers),
     )
 
@@ -264,8 +272,13 @@ def _clashes(kid_items: dict[str, list[KidItem]]) -> list[Clash]:
     ]
 
 
-def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], labels: Labels) -> list[Outing]:
+def _outings(
+    plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], labels: Labels, away: str | None = None
+) -> list[Outing]:
     p = plan[d]
+    # Home in this driver's route, as their trips say it: a hotel's name while they stay there.
+    home = labels.short_place(away) if away else "Home"
+    home_at = home if away else "home"
     outings: list[Outing] = []
     cur: Outing | None = None
     for g in p.segments:
@@ -292,7 +305,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         first = o.legs[0]
         if first.type == "drive" and first.from_loc == HOME:
             for x in first.kids:
-                riders[x] = f"Leave home at {fmt12(o.start)} with {name}"
+                riders[x] = f"Leave {home_at} at {fmt12(o.start)} with {name}"
         for g in o.legs:
             for x in g.kids:
                 if x not in kids:
@@ -315,7 +328,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                     riders[s.event.kid] = f"{name} picks you up at {place} at {when}"
             if s.kind == "fetch":
                 for x in s.car:
-                    riders.setdefault(x, f"{name} picks you up at home at {fmt12(s.arrive)}")
+                    riders.setdefault(x, f"{name} picks you up at {home_at} at {fmt12(s.arrive)}")
             if s.kind in ("drop", "stay", "pick") and k:
                 prev = jobs[-1] if jobs and jobs[-1][1] == place else None
                 same = prev is not None and s.event is not None and job_event == same_event(s.event.id)
@@ -332,7 +345,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
             if s.event is not None and s.kind in ("drop", "stay", "pick"):
                 # The other parent riding along hears when they leave too.
                 for x in s.event.pick_parents if s.kind == "pick" else s.event.parents:
-                    o.parents.setdefault(x, f"Leave home at {fmt12(o.start)} with {name}")
+                    o.parents.setdefault(x, f"Leave {home_at} at {fmt12(o.start)} with {name}")
             if s.kind in ("drop", "stay", "pick") and not own:
                 when = at if s.kind != "pick" else fmt(max(s.arrive, s.ready or 0))
                 kind, base = s.kind, same_event(s.event.id) if s.event is not None else None
@@ -358,9 +371,9 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 jobs.append(("errand" if s.event.takes is not None else "go", place, [s.event.title]))
                 lines.append(f"{fmt(max(s.arrive, s.ready or 0))}  {place}, {s.event.title}")
             elif s.kind == "fetch":
-                lines.append(f"{at}  Home, get " + " and ".join(labels.kid(x) for x in s.car))
+                lines.append(f"{at}  {home}, get " + " and ".join(labels.kid(x) for x in s.car))
             elif s.kind == "end":
-                lines.append(f"{at}  Home")
+                lines.append(f"{at}  {home}")
             if s.kind not in ("drop", "stay", "pick") or own:
                 said = None
             left = None
@@ -370,7 +383,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 said = None
                 lines.append(f"{fmt(s.after)}  Leave {place}")
         last = o.legs[-1]
-        home_line = f"{fmt(o.end)}  Home"
+        home_line = f"{fmt(o.end)}  {home}"
         if last.type == "drive" and last.to_loc == HOME and (not lines or lines[-1] != home_line):
             lines.append(home_line)
         warn = ""
@@ -394,7 +407,8 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         o.riders = {x: riders.get(x, f"Ride with {name} at {fmt12(o.start)}") for x in kids}
         o.warn = warn
         o.target = next((g.serves for g in o.legs if g.serves is not None), None)
-        o.go = _going(p.stops, o, first, labels)
+        o.go = _going(p.stops, o, first, labels, away)
+        o.home = home
         # An errand's time is the planner's pick, so the driver hears about it.
         o.solo = bool(jobs) and all(j[0] == "go" for j in jobs) and not kids and not o.parents
     return outings
@@ -410,10 +424,13 @@ def span(minutes: float) -> str:
     return " ".join([*([f"{h} hr"] if h else []), *([f"{m} min"] if m or not h else [])])
 
 
-def _going(stops: Sequence[Stop], o: Outing, first: Segment, labels: Labels) -> Going | None:
+def _going(stops: Sequence[Stop], o: Outing, first: Segment, labels: Labels, away: str | None = None) -> Going | None:
     start = first.from_loc or first.loc
     if start is None:
         return None
+    if start == HOME and away:
+        # Leaving the hotel: the location checks look for the driver there, not at home.
+        start = away
     fetch = False
     for idx, s in enumerate(stops):
         if idx == 0 or s.arrive is None or s.arrive < o.start or s.arrive > o.end:

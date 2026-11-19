@@ -673,9 +673,16 @@ const ALONG_H = RIDE_CHROME + 2;
 /** How much lower each later start time's row begins, at least. */
 const ROW_STEP = 20;
 
-/** The time a trip's last stop line says it's home ("6:01  Home"), or null. */
-function homeAt(lines: string[]): string | null {
-  return /^(\d+:\d\d)\s+Home$/.exec(lines.at(-1) ?? "")?.[1] ?? null;
+/** The time a trip's last stop line says it's home ("6:01  Home", or the hotel's name on a trip), or null. */
+function homeAt(lines: string[], home = "Home"): string | null {
+  const m = /^(\d+:\d\d)\s+(.+)$/.exec(lines.at(-1) ?? "");
+  return m && m[2] === home ? m[1]! : null;
+}
+
+/** Place names as a driver's trips say them: home is the hotel while they stay there. */
+function namesFor(names: Map<string, string>, day: PlanDay, driver: string): Map<string, string> {
+  const away = day.drivers[driver]?.home;
+  return away ? new Map(names).set("home", away.name) : names;
 }
 
 
@@ -795,9 +802,10 @@ export function compactCardHeight(e: PlanEvent, colW: number): number {
  * Cleo" is "4:35  Soccer fields ↓ Cleo", a pick-up is ↑, and "Home, get Ben" is "Home ↑ Ben".
  * The arrow is held to the name, so a line never ends on an arrow.
  */
-export function terseStop(text: string): string {
+export function terseStop(text: string, home = "Home"): string {
+  const fetch = /^(\S+\s+)(.+?), get (.+)$/u.exec(text);
+  if (fetch && fetch[2] === home) return `${fetch[1]}${home} ↑\u00a0${fetch[3]}`;
   return text
-    .replace(/^(\S+\s+Home), get (.+)$/u, "$1 ↑\u00a0$2")
     .replace(/, drop off (.+)$/u, " ↓\u00a0$1")
     .replace(/, pick up (.+)$/u, " ↑\u00a0$1");
 }
@@ -1104,7 +1112,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           const ride = day.rides[it.ride ?? -1];
           if (!ride) continue;
           const rh = Math.max(22, Y(p.en) - y0);
-          const route = routeOf(legsOf(ride.index), names);
+          const route = routeOf(legsOf(ride.index), namesFor(names, day, ride.driver));
           const who = nameOfDriver(ride.driver);
           const rideBox: RideBox = {
             key: `${day.date}|ride|${ride.index}`,
@@ -1267,7 +1275,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           const kidsIn: string[] = [];
           for (const g of piece.legs) for (const k of g.kids) if (!kidsIn.includes(k)) kidsIn.push(k);
           const home = last.type === "drive" && last.to === "home";
-          const route = routeOf(piece.legs, names);
+          const route = routeOf(piece.legs, namesFor(names, day, d));
           board.trips.push({
             key: `${day.date}|trip|${d}|${piece.s}`,
             x: c.x + 8,
@@ -1281,7 +1289,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
                 : `From ${shortOf(names, first.from ?? first.place)} ${clock(piece.s)}`,
             l2: route.join(" → "),
             show2: h >= 36,
-            l3: home ? `Home ${clock(piece.en)}` : "",
+            l3: home ? `${dd.home?.name ?? "Home"} ${clock(piece.en)}` : "",
             show3: home && h >= 62,
             stops: null,
             kids: kidsIn.map((k) => (colors.get(k) ?? kidColor(0)).color),
@@ -1397,7 +1405,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       for (const o of dd.outings) {
         if (o.start == null) continue;
         // Each stop wraps rather than getting cut off: the box is the column less its margins and padding.
-        const lines = (homeAt(o.lines) ? o.lines.slice(0, -1) : o.lines).map(terseStop);
+        const lines = (homeAt(o.lines, o.home) ? o.lines.slice(0, -1) : o.lines).map((t) => terseStop(t, o.home));
         items.push({ col: d, s: o.start, h: compactTripHeight([...lines, ...(o.warn ? [o.warn] : [])], cw - 16), kind: "out", out: o });
       }
     }
@@ -1459,7 +1467,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       } else if (m.kind === "out") {
         const o = m.out;
         // Home goes up beside the leave time, a line shorter.
-        const home = homeAt(o.lines);
+        const home = homeAt(o.lines, o.home);
         const stopLines = home ? o.lines.slice(0, -1) : o.lines;
         board.trips.push({
           key: `${day.date}|trip|${m.col}|${i}`,
@@ -1468,12 +1476,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           w: c.w - 16,
           h: m.h,
           target: target(o.target),
-          l1: home ? `${o.lead} · home ${home}` : o.lead,
+          l1: home ? `${o.lead} · ${o.home && o.home !== "Home" ? o.home : "home"} ${home}` : o.lead,
           l2: "",
           show2: false,
           l3: "",
           show3: false,
-          stops: [...stopLines.map((text) => ({ text: terseStop(text), warn: false })), ...(o.warn ? [{ text: o.warn, warn: true }] : [])],
+          stops: [...stopLines.map((text) => ({ text: terseStop(text, o.home), warn: false })), ...(o.warn ? [{ text: o.warn, warn: true }] : [])],
           kids: o.kids.map((k) => (colors.get(k) ?? kidColor(0)).color),
           bad: !!o.warn,
           aria: `${nameOfDriver(m.col)}: ${o.lead}. ${o.lines.join(". ")}${o.warn ? `. ${o.warn}` : ""}`,
@@ -1489,7 +1497,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         placed[placed.length - 1]!.box = card;
       } else {
         const ride = day.rides[m.item.ride ?? -1]!;
-        const route = routeOf(legsOf(ride.index), names);
+        const route = routeOf(legsOf(ride.index), namesFor(names, day, ride.driver));
         const who = nameOfDriver(ride.driver);
         board.rides.push({
           key: `${day.date}|ride|${ride.index}`,

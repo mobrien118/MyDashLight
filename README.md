@@ -106,6 +106,18 @@ when to go, stopping on the way to or from another trip when that fits. The card
 ("Stop at 4:40"), and the driver gets the usual leave reminder. An errand counts even when the
 event is marked Free, and it takes nobody along.
 
+A stay away from home makes the hotel home for the rides. Title it with names, then `Stay`
+(or `Staying at`), then the place, as "Robin & Sam Stay Marriott Chicago", and put the hotel's
+address in the location. It can be all day across the nights, or from check-in to check-out. On
+every day it touches, the parents it names start and end their rides at the hotel, and pick up a
+kid "from home" there. Their trips say the hotel's name where they'd say Home, and the leave
+checks look for them at the hotel. A place given only by name, such as "Lifetime Fitness", is
+looked up near the hotel for the people on the stay (or everyone, when both parents are away),
+instead of near home. Name a kid too, as "Sam & Ava Stay Westin", to have her places looked up
+near the hotel; her events back home still need marking not going. A stay shows in the row of
+all-day events and never stops anyone driving. A kid's own stay ("Ava Stay at Noah's") is a
+sleepover, a ride like any other.
+
 **Coming from 0.18 or earlier**, when each kid had a calendar of their own: after the update the
 board says to pick the family calendar. Under **Configure > Calendars**, pick it and the lunch
 calendar, and check the kids' names. Each kid keeps their notifier, lunch default, menu feed and

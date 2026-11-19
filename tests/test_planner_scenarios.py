@@ -24,6 +24,7 @@ from custom_components.mydashlight.planner import (
     minutes_text,
     plan_all,
     plan_driver,
+    with_rides_along,
 )
 
 from .reference import KIDS, LABELS, busy_from_json, event_from_json, expected_json, travel
@@ -414,3 +415,28 @@ def test_a_kid_riding_along_on_a_pick_up_while_busy_elsewhere_is_a_problem() -> 
     # Not going to piano that day, she can ride along.
     plan = plan_all([soccer, replace(piano, attending=False)], {}, travel)
     assert not [x for x in plan.hard if x.kind == "alongBusy"]
+
+
+def test_a_parent_along_with_several_kids_is_busy_once() -> None:
+    # Marty, 2026-11-18: a family dinner naming all three kids and both parents showed five
+    # "riding along" blocks for the parent who wasn't driving, one for each kid's copy and side.
+    dinner = RideEvent(
+        "dinner",
+        "ava",
+        "Dinner",
+        "party",
+        1005,
+        1095,
+        drop="mom",
+        pick="mom",
+        parents=("dad",),
+        pick_parents=("dad",),
+    )
+    copies = [dinner, replace(dinner, id="dinner~2", kid="ben"), replace(dinner, id="dinner~3", kid="cleo", stay=True)]
+    busy = with_rides_along(copies, {}, travel)
+    # Home to Noah's is 9 minutes: one block from leaving for the drop-off until back after it.
+    leave = arrive_at(dinner, PlannerSettings(), travel) - 9
+    assert [(b.start, b.end, b.title) for b in busy["dad"]] == [(leave, 1095 + 9, "Dinner")]
+    # Without the stay there are two trips, there and later back, and those stay apart.
+    apart = with_rides_along(copies[:2], {}, travel)
+    assert len(apart["dad"]) == 2
