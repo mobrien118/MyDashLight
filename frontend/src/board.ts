@@ -1594,9 +1594,10 @@ export class MyDashLightBoard extends LitElement {
       const tz = plan.time_zone;
       const updated = new Date(plan.updated);
       if (this.error) {
-        status = html`<span class="bad">${problemLine(this.error)} · showing the plan from ${ago(updated, new Date(), tz)}</span>`;
+        // Two short lines under the date: what's wrong, then how old the plan on screen is.
+        status = html`<span class="bad"><span class="line">${problemLine(this.error)}</span><span class="line keep">Plan from ${ago(updated, new Date(), tz)}</span></span>`;
       } else if (plan.status && !plan.status.ok) {
-        status = html`<span class="bad">Couldn’t read Google Calendar${plan.status.error ? `: ${plan.status.error}` : ""} · plan from ${ago(updated, new Date(), tz)}</span>`;
+        status = html`<span class="bad"><span class="line">Couldn’t read Google Calendar${plan.status.error ? `: ${plan.status.error}` : ""}</span><span class="line keep">Plan from ${ago(updated, new Date(), tz)}</span></span>`;
       } else if (!this.backend?.live) {
         // Live plans are only sent when something changes, so their time isn't when they were checked.
         status = `Updated ${ago(updated, new Date(), tz)}`;

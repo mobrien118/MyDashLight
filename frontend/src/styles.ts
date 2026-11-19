@@ -153,6 +153,23 @@ export const styles = css`
     line-height: 18px;
     color: var(--muted);
   }
+  /* A problem line under the date wraps to the width the clock and date already take, so it never
+     widens the column and squeezes the next trip beside it. */
+  .titles > .status {
+    width: 0;
+    min-width: 100%;
+  }
+  /* Narrower screens put the next trip on its own row, so there it can take the room it needs. */
+  .narrow .titles > .status {
+    width: auto;
+    min-width: 0;
+  }
+  .titles .line {
+    display: block;
+  }
+  .titles .keep {
+    white-space: nowrap;
+  }
   .titles .bad {
     color: var(--bad-ink);
     font-weight: 600;
