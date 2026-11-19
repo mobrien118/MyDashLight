@@ -35,13 +35,21 @@ test("it never leaves the screen", () => {
   const right = placeTip({ x: 1275, top: 400, bottom: 400 }, tip, view, true);
   assert.equal(right.left, 1280 - 8 - 300);
   // Taller than the room on either side: kept on screen, on the roomier side.
-  const tall = placeTip({ x: 600, top: 300, bottom: 300 }, { w: 300, h: 700 }, view, true);
+  const tall = placeTip(
+    { x: 600, top: 300, bottom: 300 },
+    { w: 300, h: 700 },
+    view,
+    true,
+  );
   assert.deepEqual([tall.top, tall.above], [800 - 8 - 700, false]);
 });
 
 test("events, all-day events and events for nobody carry the notes people wrote", () => {
   const plan = sampleWeek();
-  const board = layout(plan, "timeline", 1160, { date: plan.days[0]!.date, minutes: 0 });
+  const board = layout(plan, "timeline", 1160, {
+    date: plan.days[0]!.date,
+    minutes: 0,
+  });
   const soccer = board.cards.find((c) => c.event.id === "soccer")!;
   assert.match(soccer.event.notes ?? "", /^Bring shin guards/);
   const piano = board.cards.find((c) => c.event.id === "piano")!;
@@ -52,4 +60,42 @@ test("events, all-day events and events for nobody carry the notes people wrote"
   assert.match(bid.notes, /epoxy/);
   const trash = row.chips.find((c) => c.key.endsWith("|trash"))!;
   assert.equal(trash.notes, "");
+});
+
+test("a hotel stay's chip names the hotel and who's staying, and can be tapped", () => {
+  const plan = sampleWeek();
+  const kids = plan.people!.kids.map((k) => k.id);
+  const [mom, dad] = plan.people!.drivers.map((d) => d.id);
+  const day = plan.days[1]!;
+  const stay = (people: string[]) => ({
+    ...day,
+    all_day: [
+      {
+        id: "hotel",
+        title: "Westin Chicago",
+        people,
+        first: day.date,
+        last: day.date,
+        day_number: 1,
+        days: 3,
+        cancelled: false,
+        notes: "",
+        stay: true,
+      },
+    ],
+  });
+  const chip = (people: string[]) =>
+    allDayRow(plan, stay(people), new Map(), 1160)!.chips[0]!;
+  const one = chip([mom!]);
+  assert.equal(one.title, "🏨 Westin Chicago");
+  assert.equal(one.note, `${plan.people!.drivers[0]!.name} · Day 1 of 3`);
+  assert.equal(one.stay, "hotel");
+  assert.equal(one.pick, null);
+  assert.equal(chip([mom!, dad!, ...kids]).note, "Everyone · Day 1 of 3");
+  assert.match(chip([mom!, ...kids]).note, / & the kids · /);
+  // Any other all-day event isn't tappable.
+  const trash = allDayRow(plan, day, new Map(), 1160)!.chips.find((c) =>
+    c.key.endsWith("|trash"),
+  )!;
+  assert.equal(trash.stay, null);
 });

@@ -275,8 +275,15 @@ async def _async_set_people(call: ServiceCall) -> None:
     wanted_series = call.data.get(ATTR_SCOPE) == SCOPE_SERIES
     strays = coordinator.data.split.unplaced if coordinator.data else []
     stray = next((u for u in strays if u.id == event_id), None)
+    stays = coordinator.data.split.stays if coordinator.data else []
+    stay = next((s for s in stays if s.id == event_id), None)
     also: list[Target] = []
-    if stray is not None:
+    series: str | None = None
+    if stay is not None:
+        # A stay away from home: who's staying.
+        title = stay.title
+        target = Target(stay.calendar_id or coordinator.settings.events_calendar, stay.id)
+    elif stray is not None:
         title = stray.title
         target = Target(stray.calendar_id or coordinator.settings.events_calendar, stray.id)
         series = stray.recurring_id if wanted_series else None

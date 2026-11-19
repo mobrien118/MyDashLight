@@ -255,6 +255,8 @@ interface ForPick {
   people: string[];
   scope: Scope;
   busy: boolean;
+  /** A hotel stay, from the day's all-day items: who's staying there. */
+  stay?: boolean;
 }
 
 /** Nothing on any kid's calendar all week. */
@@ -1020,6 +1022,30 @@ export class MyDashLightBoard extends LitElement {
     };
   }
 
+  /** Opens the same panel from a hotel stay's chip, to pick who's staying. */
+  private openStayPick(day: string, id: string): void {
+    const plan = this.plan;
+    const item = plan?.days.find((d) => d.date === day)?.all_day?.find((i) => i.id === id);
+    if (!plan || !item) return;
+    this.closeEditor();
+    this.closeChorePanels();
+    this.sheet = false;
+    const known = new Set([...kidIds(plan), ...driverIds(plan)]);
+    this.forPick = {
+      day,
+      id,
+      placed: false,
+      label: `🏨 ${item.title}`,
+      recurring: false,
+      word: null,
+      fromNotes: !!item.from_notes,
+      people: item.people.filter((p) => known.has(p)),
+      scope: "this",
+      busy: false,
+      stay: true,
+    };
+  }
+
   /** Opens the same panel from the ride editor, to change who an event on the board is for. */
   private changeForPick(plan: Plan, day: PlanDay, e: PlanEvent): void {
     const who = plan.who?.[e.event_id];
@@ -1051,10 +1077,13 @@ export class MyDashLightBoard extends LitElement {
       this.forPick = null;
       const title = f.label.replace(/^\S+ /, "");
       const names = people.map((p) => personName(plan, p));
+      const parents = driverIds(plan).filter((d) => people.includes(d));
       this.showToast(
         clear
           ? `Saved. ${title} goes by the names in its title again.`
-          : `Saved. ${title} is in ${andList(names)}’s ${names.length > 1 ? "lanes" : "lane"} now.`,
+          : f.stay
+            ? `Saved. ${andList(parents.map((d) => driverName(plan, d)))}’s rides start from ${title} now.`
+            : `Saved. ${title} is in ${andList(names)}’s ${names.length > 1 ? "lanes" : "lane"} now.`,
       );
     } catch (err) {
       if (this.forPick) this.forPick = { ...this.forPick, busy: false };
@@ -1066,13 +1095,16 @@ export class MyDashLightBoard extends LitElement {
   /** Who is this for? Everyone in the family to pick from, kids first, saved as a For line in the notes. */
   private renderForPick(f: ForPick): TemplateResult {
     const plan = this.plan;
-    const there = f.placed
-      ? plan?.days.some((d) => d.date === f.day && d.events.some((e) => e.id === f.id))
-      : !!this.findUnplaced(f.day, f.id);
+    const there = f.stay
+      ? plan?.days.some((d) => d.date === f.day && d.all_day?.some((i) => i.id === f.id && i.stay))
+      : f.placed
+        ? plan?.days.some((d) => d.date === f.day && d.events.some((e) => e.id === f.id))
+        : !!this.findUnplaced(f.day, f.id);
+    const ask = f.stay ? "Who’s staying?" : "Who is this for?";
     const cancel = html`<button type="button" class="btn" ?disabled=${f.busy} @click=${() => this.closeChorePanels()}>Cancel</button>`;
     if (!plan || (!there && !f.busy)) {
       return html`<div class="ed-head">
-          <div class="ed-titles"><span class="ed-title">Who is this for?</span></div>
+          <div class="ed-titles"><span class="ed-title">${ask}</span></div>
           ${cancel}
         </div>
         <p class="field-hint">This event is sorted now: someone changed it in Google Calendar, or it’s over.</p>`;
@@ -1089,6 +1121,8 @@ export class MyDashLightBoard extends LitElement {
     const order = [...kids, ...driverIds(plan)];
     const picked = order.filter((p) => f.people.includes(p));
     const names = picked.map((p) => personName(plan, p));
+    // A stay has to name a parent: it moves where the parents' rides start, and the kids go with them.
+    const noParent = !!f.stay && !picked.some((p) => driverIds(plan).includes(p));
     const line = names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
     const chip = (id: string, name: string, color: { color: string; rgb: string }, parent: boolean): TemplateResult => html`<button
       type="button"
@@ -1103,7 +1137,7 @@ export class MyDashLightBoard extends LitElement {
     return html`
       <div class="ed-head">
         <div class="ed-titles">
-          <span class="ed-title">Who is this for?</span>
+          <span class="ed-title">${ask}</span>
           <span class="ed-meta">${dayLabel(f.day)} · ${f.label}</span>
         </div>
         ${cancel}
@@ -1147,7 +1181,12 @@ export class MyDashLightBoard extends LitElement {
         </div>
       </div>
       <p class="field-hint">
-        ${picked.length
+        ${f.stay
+          ? html`Rides for the parents you pick start and end at ${f.label.replace(/^\S+ /, "")} on every day of the stay. The kids go
+              wherever their driver goes, so picking just the parents is enough.${picked.length
+                ? html` Saved in the event’s notes as <strong>For: ${line}</strong>.`
+                : nothing}`
+          : picked.length
           ? html`Saved in the event’s notes as <strong>For: ${line}</strong>, so its title stays as it is. It shows in ${picked.length > 1 ? "their lanes" : `${names[0]}’s lane`}${picked.some((p) => kids.includes(p)) ? ", and rides are planned for the kids" : ""}.`
           : "Saved in the event’s notes, so its title stays as it is."}
       </p>
@@ -1157,8 +1196,8 @@ export class MyDashLightBoard extends LitElement {
           </button>`
         : nothing}
       <div class="ed-foot">
-        <button type="button" class="btn dark save" ?disabled=${busy || !picked.length} @click=${() => void this.saveForPick()}>
-          ${busy ? "Saving to Google Calendar…" : picked.length ? "Save" : "Pick who it’s for"}
+        <button type="button" class="btn dark save" ?disabled=${busy || !picked.length || noParent} @click=${() => void this.saveForPick()}>
+          ${busy ? "Saving to Google Calendar…" : noParent ? "Pick a parent too" : picked.length ? "Save" : "Pick who it’s for"}
         </button>
       </div>
     `;
@@ -1780,6 +1819,20 @@ export class MyDashLightBoard extends LitElement {
   private renderStripChip(d: DayHead, c: AllDayChip, pinned: boolean): TemplateResult {
     const inside = html`<span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}${c.notes ? NOTE : nothing}`;
     const pick = c.pick;
+    const stay = c.stay;
+    if (stay) {
+      return html`<button
+        type="button"
+        class="strip-chip hotel ${c.color ? "" : "plain"} ${c.notes ? "noted" : ""}"
+        style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
+        tabindex=${pinned ? -1 : 0}
+        data-note=${c.notes || nothing}
+        aria-label=${`${c.title}: ${c.note}. Pick who’s staying`}
+        @click=${() => this.openStayPick(d.date, stay)}
+      >
+        ${inside}
+      </button>`;
+    }
     return pick
       ? html`<button
           type="button"

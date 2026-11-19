@@ -51,6 +51,10 @@ class DayItem:
     calendar_id: str = ""
     notes: str = ""
     """What people wrote in its notes (see :func:`.notes.human_notes`)."""
+    stay: bool = False
+    """It's a stay away from home (see :class:`Stay`), whose people can be picked on the board."""
+    from_notes: bool = False
+    """Who it names came from the For line in its notes, not its title."""
 
     def as_dict(self, day: date) -> dict[str, object]:
         return {
@@ -63,6 +67,8 @@ class DayItem:
             "days": (self.last - self.first).days + 1,
             "cancelled": self.cancelled,
             "notes": self.notes,
+            "stay": self.stay,
+            "from_notes": self.from_notes,
         }
 
 
@@ -123,6 +129,8 @@ class Stay:
     first: date
     last: date
     """The days it covers, both included: every day it touches."""
+    calendar_id: str = ""
+    title: str = ""
 
     def covers(self, day: date) -> bool:
         return self.first <= day <= self.last
@@ -170,12 +178,15 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
             out.day_items.append(
                 DayItem(
                     ev.id,
-                    who.title or "Stay",
+                    # The hotel's name: the board says who's staying beside it.
+                    stay.name or who.title or "Stay",
                     who.people,
                     stay.first,
                     stay.last,
                     calendar_id=ev.calendar_id,
                     notes=human_notes(ev.description),
+                    stay=True,
+                    from_notes=from_notes,
                 )
             )
             continue
@@ -267,7 +278,7 @@ def _stay(ev: CalendarEvent, who: Who, place: str, tz: tzinfo) -> Stay | None:
         assert isinstance(ev.start, date)
         assert isinstance(ev.end, date)
         first, last = ev.start, ev.end - timedelta(days=1)
-    return Stay(ev.id, who.people, place, location, first, max(first, last))
+    return Stay(ev.id, who.people, place, location, first, max(first, last), ev.calendar_id, who.title or "Stay")
 
 
 def _day_item(ev: CalendarEvent, who: Who) -> DayItem:

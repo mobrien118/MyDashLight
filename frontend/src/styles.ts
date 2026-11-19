@@ -21,12 +21,19 @@ export const styles = css`
     --now: #e5484d;
     --night: #1b1f26;
     --night-2: #2c323c;
-    --shadow: 0 1px 2px rgba(28, 30, 34, 0.06), 0 2px 8px rgba(28, 30, 34, 0.06);
+    --shadow:
+      0 1px 2px rgba(28, 30, 34, 0.06), 0 2px 8px rgba(28, 30, 34, 0.06);
     display: block;
     height: 100%;
     background: var(--bg);
     color: var(--ink);
-    font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+    font-family:
+      Inter,
+      "Segoe UI",
+      Roboto,
+      system-ui,
+      -apple-system,
+      sans-serif;
     font-variant-numeric: tabular-nums;
     -webkit-tap-highlight-color: transparent;
     box-sizing: border-box;
@@ -509,7 +516,11 @@ export const styles = css`
     bottom: 0;
     height: 3px;
     border-radius: 2px;
-    background: repeating-linear-gradient(90deg, var(--dark) 0 10px, transparent 10px 16px);
+    background: repeating-linear-gradient(
+      90deg,
+      var(--dark) 0 10px,
+      transparent 10px 16px
+    );
     opacity: 0.55;
   }
   .ch-text {
@@ -651,7 +662,9 @@ export const styles = css`
   }
   .col-bg {
     top: 0;
-    background: linear-gradient(rgba(var(--rgb), 0.04), rgba(var(--rgb), 0.04)), var(--surface);
+    background:
+      linear-gradient(rgba(var(--rgb), 0.04), rgba(var(--rgb), 0.04)),
+      var(--surface);
     border: 1px solid var(--line);
     border-radius: 12px;
   }
@@ -740,6 +753,20 @@ export const styles = css`
     font-weight: 800;
     line-height: 1;
   }
+  /* A hotel stay: tap it to pick who's staying. */
+  button.strip-chip.hotel:hover,
+  button.strip-chip.hotel:focus-visible {
+    background: rgba(var(--rgb), 0.2);
+  }
+  button.strip-chip.hotel::after {
+    content: "›";
+    align-self: center;
+    margin-left: -2px;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+  }
   .strip-chip.skipped .strip-title {
     color: var(--muted);
     text-decoration: line-through;
@@ -781,7 +808,10 @@ export const styles = css`
     user-select: none;
   }
   .card.noting {
-    box-shadow: inset 5px 0 0 var(--c), 0 0 0 2px rgba(var(--rgb), 0.6), var(--shadow);
+    box-shadow:
+      inset 5px 0 0 var(--c),
+      0 0 0 2px rgba(var(--rgb), 0.6),
+      var(--shadow);
   }
   .strip-chip.noting {
     box-shadow: 0 0 0 2px rgba(var(--rgb, 90, 96, 105), 0.45);
@@ -914,13 +944,17 @@ export const styles = css`
     flex-direction: column;
     justify-content: space-between;
     gap: 2px;
-    box-shadow: inset 5px 0 0 var(--c), var(--shadow);
+    box-shadow:
+      inset 5px 0 0 var(--c),
+      var(--shadow);
   }
   .card.clash {
     border-width: 2px;
   }
   .card.sel {
-    box-shadow: inset 5px 0 0 var(--c), 0 0 0 3px var(--ring);
+    box-shadow:
+      inset 5px 0 0 var(--c),
+      0 0 0 3px var(--ring);
     z-index: 2;
   }
   .card .top {
@@ -1262,7 +1296,9 @@ export const styles = css`
     width: 132px;
     padding: 16px 10px 14px;
     border-radius: 16px;
-    background: linear-gradient(rgba(var(--rgb), 0.08), rgba(var(--rgb), 0.08)), var(--surface);
+    background:
+      linear-gradient(rgba(var(--rgb), 0.08), rgba(var(--rgb), 0.08)),
+      var(--surface);
     border: 1px solid rgba(var(--rgb), 0.3);
     display: flex;
     flex-direction: column;
@@ -1579,10 +1615,22 @@ export const styles = css`
   }
   .stay-sw {
     border: 1.5px solid #12877a;
-    background: repeating-linear-gradient(135deg, rgba(18, 135, 122, 0.35) 0px, rgba(18, 135, 122, 0.35) 4px, #fff 4px, #fff 8px);
+    background: repeating-linear-gradient(
+      135deg,
+      rgba(18, 135, 122, 0.35) 0px,
+      rgba(18, 135, 122, 0.35) 4px,
+      #fff 4px,
+      #fff 8px
+    );
   }
   .busy-sw {
-    background: repeating-linear-gradient(135deg, rgba(90, 96, 105, 0.25) 0px, rgba(90, 96, 105, 0.25) 4px, rgba(90, 96, 105, 0.06) 4px, rgba(90, 96, 105, 0.06) 8px);
+    background: repeating-linear-gradient(
+      135deg,
+      rgba(90, 96, 105, 0.25) 0px,
+      rgba(90, 96, 105, 0.25) 4px,
+      rgba(90, 96, 105, 0.06) 4px,
+      rgba(90, 96, 105, 0.06) 8px
+    );
   }
   .overlap-sw {
     border: 2px solid var(--bad);
@@ -1946,7 +1994,9 @@ export const styles = css`
     gap: 12px;
     text-align: left;
     color: var(--ink);
-    transition: background-color 0.15s ease, opacity 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      opacity 0.15s ease;
   }
   button.chore:active {
     background: rgba(var(--rgb), 0.16);
@@ -2362,7 +2412,11 @@ export const styles = css`
     bottom: -20px;
     margin: 4px -20px -20px;
     padding: 12px 20px 20px;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface) 12px);
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0),
+      var(--surface) 12px
+    );
   }
   .narrow .ed-foot {
     margin: 4px -18px calc(-20px - env(safe-area-inset-bottom));
@@ -2535,7 +2589,9 @@ export const styles = css`
     justify-content: space-between;
     text-align: left;
     border: 1px solid transparent;
-    transition: background-color 0.15s ease, opacity 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      opacity 0.15s ease;
   }
   .lunch-num {
     font-size: 13px;
@@ -2578,7 +2634,11 @@ export const styles = css`
       0 0 0 4px var(--ink);
   }
   .lunch-day.off {
-    background: repeating-linear-gradient(135deg, var(--line-2) 0 6px, var(--surface-2) 6px 12px);
+    background: repeating-linear-gradient(
+      135deg,
+      var(--line-2) 0 6px,
+      var(--surface-2) 6px 12px
+    );
     color: var(--muted);
   }
   .lunch-day.off .lunch-word {
@@ -2761,7 +2821,9 @@ export const styles = css`
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.96);
     border: 1px solid var(--line);
-    box-shadow: 0 10px 30px rgba(28, 30, 34, 0.18), 0 2px 6px rgba(28, 30, 34, 0.08);
+    box-shadow:
+      0 10px 30px rgba(28, 30, 34, 0.18),
+      0 2px 6px rgba(28, 30, 34, 0.08);
     opacity: 0;
     transform: translateX(24px);
     transition:

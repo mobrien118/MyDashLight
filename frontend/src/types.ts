@@ -179,6 +179,10 @@ export interface AllDayItem {
   cancelled: boolean;
   /** What people wrote in its notes: "" for none (MyDashLight 0.23 and later). */
   notes?: string;
+  /** A hotel stay: its title is the hotel and `people` are who's staying (MyDashLight 0.26.1 and later). */
+  stay?: boolean;
+  /** Who's on it came from a For line in its notes, not its title. */
+  from_notes?: boolean;
 }
 
 /** A timed event whose title doesn't say who it's for (MyDashLight 0.19 and later). */

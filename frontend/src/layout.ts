@@ -6,8 +6,25 @@
 // only draws them.
 
 import { DRIVER_DOT, DRIVER_RGB, kidColor, type KidColor } from "./colors.ts";
-import { clock, clockAmPm, dayLabel, daysBetween, duration, hourLabel, shortDay } from "./format.ts";
-import type { BusyBlock, CardLine, KidItem, Plan, PlanDay, PlanEvent, Segment, UnplacedEvent } from "./types.ts";
+import {
+  clock,
+  clockAmPm,
+  dayLabel,
+  daysBetween,
+  duration,
+  hourLabel,
+  shortDay,
+} from "./format.ts";
+import type {
+  BusyBlock,
+  CardLine,
+  KidItem,
+  Plan,
+  PlanDay,
+  PlanEvent,
+  Segment,
+  UnplacedEvent,
+} from "./types.ts";
 
 export type Mode = "timeline" | "compact";
 
@@ -219,6 +236,8 @@ export interface AllDayChip {
   warn: boolean;
   /** For such an event, its id: tapping the chip picks who it's for. */
   pick: string | null;
+  /** For a hotel stay, its id: tapping the chip picks who's staying. */
+  stay: string | null;
   /** What people wrote in its notes, shown on hover or a held finger: "" for none. */
   notes: string;
 }
@@ -238,7 +257,8 @@ export interface AllDayRow {
  * the count, and the gaps after each. It errs wide, so a chip that's put on the line fits.
  */
 export function headWidth(label: string, tag: string, sub: string): number {
-  const date = 4 + 6 + 10.2 * label.length + (tag ? 12 + 18 + 8 * tag.length : 0) + 8;
+  const date =
+    4 + 6 + 10.2 * label.length + (tag ? 12 + 18 + 8 * tag.length : 0) + 8;
   return date + 12 + 6.8 * sub.length + 12 + 4;
 }
 
@@ -317,7 +337,8 @@ export function kidName(plan: Plan, kid: string): string {
 export function driverName(plan: Plan, driver: string): string {
   const p = plan.people?.drivers.find((d) => d.id === driver);
   if (p) return p.name;
-  for (const d of plan.days) if (d.drivers[driver]) return d.drivers[driver]!.name;
+  for (const d of plan.days)
+    if (d.drivers[driver]) return d.drivers[driver]!.name;
   return driver;
 }
 
@@ -331,7 +352,9 @@ export function whoName(plan: Plan, value: string): string {
 /** When an event is on this day. Busy time over more than a day says only this day's part. */
 /** " · leave 1:15" when the kid leaves before the end, or nothing. */
 export function leaveText(e: PlanEvent): string {
-  return e.leave_by != null && e.leave_by > e.start && e.leave_by !== e.end ? ` · leave ${clock(e.leave_by)}` : "";
+  return e.leave_by != null && e.leave_by > e.start && e.leave_by !== e.end
+    ? ` · leave ${clock(e.leave_by)}`
+    : "";
 }
 
 export function spanText(e: PlanEvent): string {
@@ -348,7 +371,11 @@ export function ownerName(plan: Plan, e: PlanEvent): string {
 }
 
 /** A parent's own event is drawn in the drivers' dark ink, not a kid's color. */
-export const OWN_COLOR: KidColor = { color: DRIVER_DOT, rgb: DRIVER_RGB, ink: DRIVER_DOT };
+export const OWN_COLOR: KidColor = {
+  color: DRIVER_DOT,
+  rgb: DRIVER_RGB,
+  ink: DRIVER_DOT,
+};
 
 /** The color for an event: its kid's, or the drivers' ink on a parent's own event. */
 export function eventColor(plan: Plan, e: PlanEvent): KidColor {
@@ -358,7 +385,9 @@ export function eventColor(plan: Plan, e: PlanEvent): KidColor {
 /** "Golf with Ben and Robin": everyone going along to a parent's own event. */
 function alongNames(plan: Plan, e: PlanEvent): string[] {
   const kids = kidIds(plan);
-  return e.along.map((a) => (kids.includes(a) ? kidName(plan, a) : driverName(plan, a)));
+  return e.along.map((a) =>
+    kids.includes(a) ? kidName(plan, a) : driverName(plan, a),
+  );
 }
 
 /** "Ben and Robin", "Ava, Ben and Robin". */
@@ -367,10 +396,31 @@ export function andList(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
+/**
+ * Who's on a hotel stay, kept short for a chip: "Robin & Sam", "Robin & the kids", "Everyone".
+ * The kids go where their driver goes, so a stay naming just the parents takes them too.
+ */
+export function stayingNames(plan: Plan, people: string[]): string {
+  const kids = kidIds(plan);
+  const parents = driverIds(plan).filter((d) => people.includes(d));
+  const named = kids.filter((k) => people.includes(k));
+  const allKids = kids.length > 1 && named.length === kids.length;
+  if (allKids && parents.length === driverIds(plan).length) return "Everyone";
+  const names = [
+    ...parents.map((d) => driverName(plan, d)),
+    ...(allKids ? ["the kids"] : named.map((k) => kidName(plan, k))),
+  ];
+  return names.length < 2
+    ? names.join("")
+    : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+}
+
 /** Short names for every place in the plan, by place key. */
 export function placeNames(plan: Plan): Map<string, string> {
   const names = new Map<string, string>([["home", "Home"]]);
-  for (const d of plan.days) for (const e of d.events) names.set(e.place, e.short_place || e.place_name || e.place);
+  for (const d of plan.days)
+    for (const e of d.events)
+      names.set(e.place, e.short_place || e.place_name || e.place);
   return names;
 }
 
@@ -388,7 +438,8 @@ export function routeOf(legs: Segment[], names: Map<string, string>): string[] {
       places.push(shortOf(names, g.to));
     } else if (g.type === "wait" || g.type === "stay") {
       if (!places.length) places.push(shortOf(names, g.place));
-      if (g.type === "wait" && !places[places.length - 1]!.endsWith("(wait)")) places[places.length - 1] += " (wait)";
+      if (g.type === "wait" && !places[places.length - 1]!.endsWith("(wait)"))
+        places[places.length - 1] += " (wait)";
     }
   }
   return places;
@@ -403,8 +454,12 @@ interface Packed<T> {
 }
 
 /** Calendar-style packing: overlapping items in one column sit side by side. */
-export function pack<T>(items: { item: T; s: number; en: number }[]): Packed<T>[] {
-  const sorted = items.map((x) => ({ ...x, col: 0, cols: 1 })).sort((a, b) => a.s - b.s || b.en - a.en);
+export function pack<T>(
+  items: { item: T; s: number; en: number }[],
+): Packed<T>[] {
+  const sorted = items
+    .map((x) => ({ ...x, col: 0, cols: 1 }))
+    .sort((a, b) => a.s - b.s || b.en - a.en);
   let cluster: Packed<T>[] = [];
   let colsEnd: number[] = [];
   let clusterEnd = -Infinity;
@@ -437,7 +492,10 @@ function anchorY(anchors: { t: number; y: number }[], t: number): number {
   for (let i = 0; i < anchors.length - 1; i++) {
     const a = anchors[i]!;
     const b = anchors[i + 1]!;
-    if (t <= b.t) return b.t === a.t ? a.y : Math.round(a.y + ((t - a.t) / (b.t - a.t)) * (b.y - a.y));
+    if (t <= b.t)
+      return b.t === a.t
+        ? a.y
+        : Math.round(a.y + ((t - a.t) / (b.t - a.t)) * (b.y - a.y));
   }
   return anchors[anchors.length - 1]!.y;
 }
@@ -448,7 +506,8 @@ function anchorT(anchors: { t: number; y: number }[], y: number): number {
   for (let i = 0; i < anchors.length - 1; i++) {
     const a = anchors[i]!;
     const b = anchors[i + 1]!;
-    if (y <= b.y) return b.y === a.y ? a.t : a.t + ((y - a.y) / (b.y - a.y)) * (b.t - a.t);
+    if (y <= b.y)
+      return b.y === a.y ? a.t : a.t + ((y - a.y) / (b.y - a.y)) * (b.t - a.t);
   }
   return anchors[anchors.length - 1]!.t;
 }
@@ -463,12 +522,19 @@ export function tAt(board: Board, y: number): number {
   return anchorT(board.anchors, y);
 }
 
-export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX: number; width: number } {
+export function columnsFor(
+  plan: Plan,
+  width: number,
+): { columns: Column[]; sepX: number; width: number } {
   const kids = kidIds(plan);
   const drivers = driverIds(plan);
   const w = Math.max(width, minWidth(kids.length, drivers.length));
   const avail =
-    w - GUTTER - Math.max(0, kids.length - 1) * KID_GAP - SEP - Math.max(0, drivers.length - 1) * DRIVER_GAP;
+    w -
+    GUTTER -
+    Math.max(0, kids.length - 1) * KID_GAP -
+    SEP -
+    Math.max(0, drivers.length - 1) * DRIVER_GAP;
   const unit = avail / (kids.length + DRIVER_SHARE * drivers.length || 1);
   const kidW = Math.floor(unit);
   const driverW = Math.floor(unit * DRIVER_SHARE);
@@ -481,7 +547,12 @@ export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX
       for (const who of e.own ? e.along : [e.kid]) {
         const list = weekEvents.get(who) ?? [];
         // A long event shows on two days: count it once.
-        if (!list.some((x) => x.event_id === e.event_id && x.calendar_id === e.calendar_id)) list.push(e);
+        if (
+          !list.some(
+            (x) => x.event_id === e.event_id && x.calendar_id === e.calendar_id,
+          )
+        )
+          list.push(e);
         weekEvents.set(who, list);
       }
     }
@@ -493,7 +564,10 @@ export function columnsFor(plan: Plan, width: number): { columns: Column[]; sepX
     const evs = weekEvents.get(k) ?? [];
     const missing = plan.days.some((d) =>
       d.events.some(
-        (e) => e.kid === k && ((e.sides.includes("drop") && e.drop === "") || (e.sides.includes("pick") && e.pick === "")),
+        (e) =>
+          e.kid === k &&
+          ((e.sides.includes("drop") && e.drop === "") ||
+            (e.sides.includes("pick") && e.pick === "")),
       ),
     );
     columns.push({
@@ -541,7 +615,8 @@ export function shortTitle(title: string, kid: string): string {
   const t = title.trim();
   if (!kid || t.length <= kid.length) return t;
   const head = t.slice(0, kid.length);
-  if (head.localeCompare(kid, undefined, { sensitivity: "accent" }) !== 0) return t;
+  if (head.localeCompare(kid, undefined, { sensitivity: "accent" }) !== 0)
+    return t;
   const rest = t.slice(kid.length);
   const m = /^(?:’s|'s)?\s*[-–—:·]?\s+/u.exec(rest);
   if (!m) return t;
@@ -554,7 +629,10 @@ export function shortTitle(title: string, kid: string): string {
  * when it starts, the last when it ends. Otherwise Timeline gives the end ("Work until 4:40",
  * the start is on the clock) and Compact the whole range.
  */
-export function busyLabel(b: { start: number; end: number; title: string }, range: boolean): string {
+export function busyLabel(
+  b: { start: number; end: number; title: string },
+  range: boolean,
+): string {
   const fromBefore = b.start <= 0;
   const pastMidnight = b.end >= 1440;
   if (fromBefore && pastMidnight) return `${b.title} · all day`;
@@ -565,7 +643,11 @@ export function busyLabel(b: { start: number; end: number; title: string }, rang
 
 /** How many problems a day has: issues to fix plus double-bookings. */
 export function problemCount(day: PlanDay): number {
-  return day.issues.filter((i) => i.level === "problem").length + day.clashes.length + (day.unplaced?.length ?? 0);
+  return (
+    day.issues.filter((i) => i.level === "problem").length +
+    day.clashes.length +
+    (day.unplaced?.length ?? 0)
+  );
 }
 
 export function dayTag(date: string, today: string): string {
@@ -592,7 +674,8 @@ export function useMeasure(m: Measure | null): void {
   measurer = m;
 }
 
-const FAMILY = 'Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif';
+const FAMILY =
+  'Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif';
 /** The fonts of what wraps in Compact, as in the styles. */
 export const FONTS = {
   title: `800 14.5px ${FAMILY}`,
@@ -623,7 +706,12 @@ function guessRows(text: string, width: number, charW: number): number {
 }
 
 /** The same, measured: lines break where the browser breaks them, at spaces, then anywhere in a word too long for a line. */
-function measuredRows(text: string, width: number, font: string, m: Measure): number | null {
+function measuredRows(
+  text: string,
+  width: number,
+  font: string,
+  m: Measure,
+): number | null {
   const words = text.split(/[ \t\n]+/).filter(Boolean);
   let rows = 1;
   let line = "";
@@ -649,7 +737,12 @@ function measuredRows(text: string, width: number, font: string, m: Measure): nu
  * How many lines a text takes when it wraps. Measured in `font` when the board can measure,
  * else guessed at about `charW` pixels a character.
  */
-export function wrapRows(text: string, width: number, charW = 7, font?: string): number {
+export function wrapRows(
+  text: string,
+  width: number,
+  charW = 7,
+  font?: string,
+): number {
   if (font && measurer) {
     // Half a pixel spare: the browser rounds widths its own way.
     const rows = measuredRows(text, width - 0.5, font, measurer);
@@ -665,7 +758,10 @@ const RIDE_MAX_LINES = 3;
 
 /** Lines of route that fit in a car box this tall, so none is cut in half. */
 export function rideLines(h: number): number {
-  return Math.max(0, Math.min(RIDE_MAX_LINES, Math.floor((h - RIDE_CHROME) / RIDE_LINE)));
+  return Math.max(
+    0,
+    Math.min(RIDE_MAX_LINES, Math.floor((h - RIDE_CHROME) / RIDE_LINE)),
+  );
 }
 
 /** A Compact "along with" box: one line, on its driver's trip's row. */
@@ -680,20 +776,32 @@ function homeAt(lines: string[], home = "Home"): string | null {
 }
 
 /** Place names as a driver's trips say them: home is the hotel while they stay there. */
-function namesFor(names: Map<string, string>, day: PlanDay, driver: string): Map<string, string> {
+function namesFor(
+  names: Map<string, string>,
+  day: PlanDay,
+  driver: string,
+): Map<string, string> {
   const away = day.drivers[driver]?.home;
   return away ? new Map(names).set("home", away.name) : names;
 }
-
 
 const CAR = "🚗";
 
 type RideBit = { who: string; at: string; stays: boolean; extra: string };
 
 /** A card's ride line, read back into its parts, or null when it isn't one we can shorten. */
-function rideBit(text: string, side: "drop" | "pick"): RideBit | "needed" | null {
-  if (text === (side === "drop" ? "No ride there yet" : "No ride home yet")) return "needed";
-  const bit = (at: string, who: string, extra: string | undefined, stays = false): RideBit => ({
+function rideBit(
+  text: string,
+  side: "drop" | "pick",
+): RideBit | "needed" | null {
+  if (text === (side === "drop" ? "No ride there yet" : "No ride home yet"))
+    return "needed";
+  const bit = (
+    at: string,
+    who: string,
+    extra: string | undefined,
+    stays = false,
+  ): RideBit => ({
     at,
     who,
     stays,
@@ -701,17 +809,32 @@ function rideBit(text: string, side: "drop" | "pick"): RideBit | "needed" | null
   });
   let m: RegExpExecArray | null;
   if (side === "drop") {
-    if ((m = /^Leaves (\d+:\d\d) with (.+?)(, .+)?$/.exec(text))) return bit(m[1]!, m[2]!, m[3]);
-    if ((m = /^(.+?) stays · leaves (\d+:\d\d)(, .+)?$/.exec(text))) return bit(m[2]!, m[1]!, m[3], true);
-    if ((m = /^(?:Drop-off: |Goes with |With )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
+    if ((m = /^Leaves (\d+:\d\d) with (.+?)(, .+)?$/.exec(text)))
+      return bit(m[1]!, m[2]!, m[3]);
+    if ((m = /^(.+?) stays · leaves (\d+:\d\d)(, .+)?$/.exec(text)))
+      return bit(m[2]!, m[1]!, m[3], true);
+    if ((m = /^(?:Drop-off: |Goes with |With )(.+?)(, .+)?$/.exec(text)))
+      return bit("", m[1]!, m[2]);
   } else {
-    if ((m = /^(?:Home (\d+:\d\d) with|Picked up (\d+:\d\d) by) (.+?)(, .+)?$/.exec(text))) return bit(m[1] ?? m[2]!, m[3]!, m[4]);
-    if ((m = /^(?:Pick-up: |Home with )(.+?)(, .+)?$/.exec(text))) return bit("", m[1]!, m[2]);
+    if (
+      (m =
+        /^(?:Home (\d+:\d\d) with|Picked up (\d+:\d\d) by) (.+?)(, .+)?$/.exec(
+          text,
+        ))
+    )
+      return bit(m[1] ?? m[2]!, m[3]!, m[4]);
+    if ((m = /^(?:Pick-up: |Home with )(.+?)(, .+)?$/.exec(text)))
+      return bit("", m[1]!, m[2]);
   }
   return null;
 }
 
-const TONE_RANK: Record<string, number> = { muted: 0, normal: 1, pending: 2, problem: 3 };
+const TONE_RANK: Record<string, number> = {
+  muted: 0,
+  normal: 1,
+  pending: 2,
+  problem: 3,
+};
 
 /**
  * A card's ride lines, shortened for Compact into one line: a car, then ↓ for the drop-off and
@@ -719,7 +842,10 @@ const TONE_RANK: Record<string, number> = { muted: 0, normal: 1, pending: 2, pro
  * driver both ways). Two rides still needed are "🚗 No rides yet". Lines that aren't rides stay
  * as they are.
  */
-export function compactLines(lines: { drop: CardLine | null; pick: CardLine | null }): {
+export function compactLines(lines: {
+  drop: CardLine | null;
+  pick: CardLine | null;
+}): {
   drop: CardLine | null;
   pick: CardLine | null;
 } {
@@ -729,20 +855,45 @@ export function compactLines(lines: { drop: CardLine | null; pick: CardLine | nu
   // Something that isn't a ride line (no ride needed, at home) stays as it is.
   if ((drop && !d) || (pick && !p) || (!d && !p)) return lines;
   const tone = [drop, pick].reduce<CardLine["tone"]>(
-    (t, l) => (l && (TONE_RANK[l.tone] ?? 1) > (TONE_RANK[t] ?? 1) ? l.tone : t),
+    (t, l) =>
+      l && (TONE_RANK[l.tone] ?? 1) > (TONE_RANK[t] ?? 1) ? l.tone : t,
     (drop ?? pick)!.tone,
   );
-  if (d === "needed" && p === "needed") return { drop: { text: `${CAR} No rides yet`, tone }, pick: null };
-  if (d && p && d !== "needed" && p !== "needed" && d.who === p.who && !d.extra && !p.extra) {
+  if (d === "needed" && p === "needed")
+    return { drop: { text: `${CAR} No rides yet`, tone }, pick: null };
+  if (
+    d &&
+    p &&
+    d !== "needed" &&
+    p !== "needed" &&
+    d.who === p.who &&
+    !d.extra &&
+    !p.extra
+  ) {
     const who = `${CAR} ${d.who}${d.stays ? " stays" : ""}`;
-    if (!d.at && !p.at) return { drop: { text: `${who} both ways`, tone }, pick: null };
+    if (!d.at && !p.at)
+      return { drop: { text: `${who} both ways`, tone }, pick: null };
     // Only one side has a time yet: no bare arrow with nothing after it.
-    if (!d.at || !p.at) return { drop: { text: `${who} both ways · ${d.at ? `↓${d.at}` : `↑${p.at}`}`, tone }, pick: null };
-    return { drop: { text: `${who} ↓${d.at} ↑${p.at}`.trimEnd(), tone }, pick: null };
+    if (!d.at || !p.at)
+      return {
+        drop: {
+          text: `${who} both ways · ${d.at ? `↓${d.at}` : `↑${p.at}`}`,
+          tone,
+        },
+        pick: null,
+      };
+    return {
+      drop: { text: `${who} ↓${d.at} ↑${p.at}`.trimEnd(), tone },
+      pick: null,
+    };
   }
   const part = (b: RideBit | "needed", arrow: string): string =>
-    b === "needed" ? `${arrow} needed` : `${arrow}${b.at ? `${b.at} ` : " "}${b.who}${b.stays ? " stays" : ""}${b.extra}`;
-  const parts = [d ? part(d, "↓") : null, p ? part(p, "↑") : null].filter(Boolean);
+    b === "needed"
+      ? `${arrow} needed`
+      : `${arrow}${b.at ? `${b.at} ` : " "}${b.who}${b.stays ? " stays" : ""}${b.extra}`;
+  const parts = [d ? part(d, "↓") : null, p ? part(p, "↑") : null].filter(
+    Boolean,
+  );
   return { drop: { text: `${CAR} ${parts.join(" · ")}`, tone }, pick: null };
 }
 
@@ -760,7 +911,10 @@ export interface CardText {
  * Compact: a line that isn't about a ride ("No ride needed", "At home") goes on the end of the
  * time line, " · No ride needed", rather than taking a line of its own.
  */
-export function foldsIntoTime(lines: { drop: CardLine | null; pick: CardLine | null }, skipped: boolean): boolean {
+export function foldsIntoTime(
+  lines: { drop: CardLine | null; pick: CardLine | null },
+  skipped: boolean,
+): boolean {
   return !skipped && !!lines.drop && !lines.pick && lines.drop.tone === "muted";
 }
 
@@ -774,14 +928,21 @@ const NOTE_ROOM = 13;
  * as the styles draw them: border, padding, an 18px line per title line, then 16px lines with a
  * pixel between them, and 2px before the pick-up line.
  */
-export function compactHeight(t: CardText, w: number, opts: { noted?: boolean; clash?: boolean } = {}): number {
+export function compactHeight(
+  t: CardText,
+  w: number,
+  opts: { noted?: boolean; clash?: boolean } = {},
+): number {
   const border = opts.clash ? 4 : 2;
   const inner = w - border - 13 - 9; // the color stripe's side and the other side's padding
   let h = border + 2 * WRAP_PAD;
-  h += wrapRows(t.title, inner - (opts.noted ? NOTE_ROOM : 0), 9, FONTS.title) * 18;
+  h +=
+    wrapRows(t.title, inner - (opts.noted ? NOTE_ROOM : 0), 9, FONTS.title) *
+    18;
   const time = t.inline && t.drop ? `${t.time} · ${t.drop.text}` : t.time;
   h += 1 + wrapRows(time, inner, 6.6, t.inline ? FONTS.line : FONTS.time) * 16;
-  if (t.drop && !t.inline) h += 1 + wrapRows(t.drop.text, inner, 7, FONTS.line) * 16;
+  if (t.drop && !t.inline)
+    h += 1 + wrapRows(t.drop.text, inner, 7, FONTS.line) * 16;
   if (t.pick) h += 2 + wrapRows(t.pick.text, inner, 7, FONTS.line) * 16;
   return Math.ceil(h) + 1;
 }
@@ -789,9 +950,17 @@ export function compactHeight(t: CardText, w: number, opts: { noted?: boolean; c
 /** A Compact card's height for an event on its own: its title, times and ride lines. */
 export function compactCardHeight(e: PlanEvent, colW: number): number {
   const ln = e.own ? e.lines : compactLines(e.lines);
-  const time = spanText(e) + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") + leaveText(e);
+  const time =
+    spanText(e) +
+    (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") +
+    leaveText(e);
   return compactHeight(
-    { title: e.title, time, ...ln, inline: foldsIntoTime(ln, e.attending === false) },
+    {
+      title: e.title,
+      time,
+      ...ln,
+      inline: foldsIntoTime(ln, e.attending === false),
+    },
     colW,
     { noted: !!e.notes },
   );
@@ -804,7 +973,8 @@ export function compactCardHeight(e: PlanEvent, colW: number): number {
  */
 export function terseStop(text: string, home = "Home"): string {
   const fetch = /^(\S+\s+)(.+?), get (.+)$/u.exec(text);
-  if (fetch && fetch[2] === home) return `${fetch[1]}${home} ↑\u00a0${fetch[3]}`;
+  if (fetch && fetch[2] === home)
+    return `${fetch[1]}${home} ↑\u00a0${fetch[3]}`;
   return text
     .replace(/, drop off (.+)$/u, " ↓\u00a0$1")
     .replace(/, pick up (.+)$/u, " ↑\u00a0$1");
@@ -812,11 +982,19 @@ export function terseStop(text: string, home = "Home"): string {
 
 /** A Compact trip box: 6px padding top and bottom, the 16px lead line, then a 16px line per stop line, a pixel apart. */
 export function compactTripHeight(stops: string[], boxW: number): number {
-  const rows = stops.reduce((n, t) => n + wrapRows(t, boxW - 20, 7, FONTS.stop), 0);
+  const rows = stops.reduce(
+    (n, t) => n + wrapRows(t, boxW - 20, 7, FONTS.stop),
+    0,
+  );
   return 12 + 16 + stops.length + rows * 16 + 1;
 }
 
-export function layout(plan: Plan, mode: Mode, width: number, today: Today): Board {
+export function layout(
+  plan: Plan,
+  mode: Mode,
+  width: number,
+  today: Today,
+): Board {
   const compact = mode === "compact";
   const { columns, sepX, width: w } = columnsFor(plan, width);
   const col = new Map(columns.map((c) => [c.id, c]));
@@ -858,7 +1036,8 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
   plan.days.forEach((day, di) => {
     const base = di * 1440;
     const events = new Map(day.events.map((e) => [e.id, e]));
-    const target = (id: string | null | undefined): Target | null => (id && events.has(id) ? { day: day.date, event: id } : null);
+    const target = (id: string | null | undefined): Target | null =>
+      id && events.has(id) ? { day: day.date, event: id } : null;
     const problems = problemCount(day);
     const count = day.events.length;
     const tag = dayTag(day.date, today.date);
@@ -868,9 +1047,16 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         ? `${count} ${count === 1 ? "activity" : "activities"}${day.done ? " left" : ""}`
         : day.done
           ? "All done for today"
-          : "Nothing scheduled") + (problems ? ` · ${problems} to sort out` : "");
+          : "Nothing scheduled") +
+      (problems ? ` · ${problems} to sort out` : "");
     // All-day chips go up on the date line while they fit (Marty, 2026-11-17), then wrap under it.
-    const strip = allDayRow(plan, day, colors, w, w - headWidth(label, tag, sub));
+    const strip = allDayRow(
+      plan,
+      day,
+      colors,
+      w,
+      w - headWidth(label, tag, sub),
+    );
     board.dayHeads.push({
       date: day.date,
       y,
@@ -888,7 +1074,11 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
 
     const outings = drivers.flatMap((d) => day.drivers[d]?.outings ?? []);
     if (!count && !outings.length) {
-      board.empties.push({ key: day.date, y: top, text: day.done ? "Nothing else today" : "Nothing planned" });
+      board.empties.push({
+        key: day.date,
+        y: top,
+        text: day.done ? "Nothing else today" : "Nothing planned",
+      });
       y = top + 40;
       board.anchors.push({ t: base + 1439, y });
       return;
@@ -896,12 +1086,22 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
 
     // What a card in one column says: a kid's activity, a parent's own event in their column,
     // or that event again in the column of each kid who goes along.
-    const cardText = (e: PlanEvent, wrap: boolean, colId: string = e.kid): CardText & { who: string; mine: boolean } => {
+    const cardText = (
+      e: PlanEvent,
+      wrap: boolean,
+      colId: string = e.kid,
+    ): CardText & { who: string; mine: boolean } => {
       const mine = !!e.own && colId === e.own;
       const along = !!e.own && colId !== e.own;
       const who = mine ? nameOfDriver(colId) : nameOfKid(colId);
       const ln: { drop: CardLine | null; pick: CardLine | null } = along
-        ? { drop: { text: `${wrap ? `${CAR} ` : ""}With ${nameOfDriver(e.own!)}`, tone: e.attending === false ? "muted" : "normal" }, pick: null }
+        ? {
+            drop: {
+              text: `${wrap ? `${CAR} ` : ""}With ${nameOfDriver(e.own!)}`,
+              tone: e.attending === false ? "muted" : "normal",
+            },
+            pick: null,
+          }
         : wrap && !e.own
           ? compactLines(e.lines)
           : e.lines;
@@ -909,8 +1109,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       const time =
         (e.takes != null
           ? `${e.takes} min, any time ${clock(e.start)}–${clock(e.end)}`
-          : spanText(e) + (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") + leaveText(e)) +
-        (going.length ? ` · with ${andList(going)}` : "");
+          : spanText(e) +
+            (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") +
+            leaveText(e)) + (going.length ? ` · with ${andList(going)}` : "");
       return {
         who,
         mine,
@@ -921,7 +1122,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         inline: wrap && foldsIntoTime(ln, e.attending === false),
       };
     };
-    const cardHeight = (e: PlanEvent, w: number, colId: string, clash: boolean): number =>
+    const cardHeight = (
+      e: PlanEvent,
+      w: number,
+      colId: string,
+      clash: boolean,
+    ): number =>
       compactHeight(cardText(e, true, colId), w, { noted: !!e.notes, clash });
 
     const cardFor = (
@@ -975,7 +1181,11 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       if (!r) return [];
       const segs = day.drivers[r.driver]?.segments ?? [];
       return segs.filter(
-        (g) => g.type !== "home" && g.kids.includes(r.kid) && n(g.start) >= n(r.start) && n(g.end) <= n(r.end),
+        (g) =>
+          g.type !== "home" &&
+          g.kids.includes(r.kid) &&
+          n(g.start) >= n(r.start) &&
+          n(g.end) <= n(r.end),
       );
     };
     const rideTarget = (rideIndex: number): Target | null => {
@@ -988,8 +1198,13 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     // A busy block that's a ride along to the other parent's own event says whose it is.
     const busyOf = (d: string, b: BusyBlock): BusyBlock => {
       if (b.event) return b;
-      const host = day.events.find((e) => e.own && e.own !== d && e.along.includes(d) && e.title === b.title);
-      return host ? { ...b, title: `${b.title} with ${nameOfDriver(host.own!)}` } : b;
+      const host = day.events.find(
+        (e) =>
+          e.own && e.own !== d && e.along.includes(d) && e.title === b.title,
+      );
+      return host
+        ? { ...b, title: `${b.title} with ${nameOfDriver(host.own!)}` }
+        : b;
     };
     // A parent's own event: a card in their column. An errand sits at the time it was fitted in.
     const ownSpan = (e: PlanEvent): [number, number] => {
@@ -1001,8 +1216,13 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
     const issueMarks = new Map<string, string>();
     for (const x of day.issues) {
       if (x.level !== "problem" || !x.event) continue;
-      if (x.kind === "late") issueMarks.set(x.event, `${Math.round(n(x.minutes))} min late`);
-      if (x.kind === "waiting") issueMarks.set(`${x.event}|pick`, `Waits ${Math.round(n(x.minutes))} min`);
+      if (x.kind === "late")
+        issueMarks.set(x.event, `${Math.round(n(x.minutes))} min late`);
+      if (x.kind === "waiting")
+        issueMarks.set(
+          `${x.event}|pick`,
+          `Waits ${Math.round(n(x.minutes))} min`,
+        );
     }
 
     if (!compact) {
@@ -1012,7 +1232,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         // Something running in from the day before or on past midnight (a sleepover, say) only
         // shows its edge inside the day, so the hours shown don't stretch to midnight for it.
         if (e.start <= 0 && e.end >= 1440) continue;
-        if (e.start > 0) lo = Math.min(lo, e.start - 20, e.arrive_by != null ? e.arrive_by - 10 : Infinity);
+        if (e.start > 0)
+          lo = Math.min(
+            lo,
+            e.start - 20,
+            e.arrive_by != null ? e.arrive_by - 10 : Infinity,
+          );
         else lo = Math.min(lo, e.end - 30);
         if (e.end < 1440) hi = Math.max(hi, e.end + 20);
         else hi = Math.max(hi, e.start + 30);
@@ -1025,21 +1250,46 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       // from the top, cut off where the time before is over.
       const from = day.from;
       if (from != null && Number.isFinite(lo) && lo < from + 60) lo = from - 15;
-      else if (day.date === today.date && Number.isFinite(lo) && today.minutes > lo - 60 && today.minutes < hi) {
+      else if (
+        day.date === today.date &&
+        Number.isFinite(lo) &&
+        today.minutes > lo - 60 &&
+        today.minutes < hi
+      ) {
         lo = Math.min(lo, today.minutes - 15);
       }
       const r0 = Number.isFinite(lo) ? Math.floor((lo - 5) / 30) * 30 : 900;
-      const r1 = Math.max(Number.isFinite(hi) ? Math.ceil((hi + 5) / 30) * 30 : 960, r0 + 60);
+      const r1 = Math.max(
+        Number.isFinite(hi) ? Math.ceil((hi + 5) / 30) * 30 : 960,
+        r0 + 60,
+      );
       // Still on the board but over before the top (an event whose trip home is still going).
-      const above = (end: number | null | undefined): boolean => from != null && n(end) <= r0;
-      const cut = (start: number | null | undefined): boolean => from != null && n(start) < r0;
+      const above = (end: number | null | undefined): boolean =>
+        from != null && n(end) <= r0;
+      const cut = (start: number | null | undefined): boolean =>
+        from != null && n(start) < r0;
       // Long quiet stretches fold down to a short torn strip, so a day with a gap in the middle
       // doesn't take a screenful of empty rows. Everything else keeps its true spacing.
-      const folds = foldsFor(heldSpans(day, drivers, ownSpan, day.date === today.date ? today.minutes : null), r0, r1);
-      const Y = (t: number): number => Math.round(top + foldedOffset(Math.max(r0, Math.min(r1, t)) - r0, folds, r0));
+      const folds = foldsFor(
+        heldSpans(
+          day,
+          drivers,
+          ownSpan,
+          day.date === today.date ? today.minutes : null,
+        ),
+        r0,
+        r1,
+      );
+      const Y = (t: number): number =>
+        Math.round(
+          top + foldedOffset(Math.max(r0, Math.min(r1, t)) - r0, folds, r0),
+        );
       board.anchors.push({ t: base + r0, y: Y(r0) });
       for (const f of folds) {
-        board.anchors.push({ t: base + f.from, y: Y(f.from) }, { t: base + f.to, y: Y(f.to) });
+        board.anchors.push(
+          { t: base + f.from, y: Y(f.from) },
+          { t: base + f.to, y: Y(f.to) },
+        );
         board.folds.push({
           key: `${day.date}|fold|${f.from}`,
           y: Y(f.from),
@@ -1050,12 +1300,17 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         });
       }
       board.anchors.push({ t: base + r1, y: Y(r1) });
-      const folded = (t: number, edges: boolean): boolean => folds.some((f) => (edges ? t >= f.from && t <= f.to : t > f.from && t < f.to));
+      const folded = (t: number, edges: boolean): boolean =>
+        folds.some((f) =>
+          edges ? t >= f.from && t <= f.to : t > f.from && t < f.to,
+        );
 
       for (const kid of kids) {
         const c = col.get(kid)!;
         const color = colors.get(kid)!;
-        const items: { item: KidItem; s: number; en: number }[] = (day.kids[kid]?.items ?? [])
+        const items: { item: KidItem; s: number; en: number }[] = (
+          day.kids[kid]?.items ?? []
+        )
           .filter((it) => it.start != null && it.end != null && !above(it.end))
           .map((it) => ({ item: it, s: n(it.start), en: n(it.end) }));
         // What's drawn in this column, to join each car box to whatever it's going to.
@@ -1086,7 +1341,11 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             card.layer = MAIN_LAYER;
             card.cut = cut(p.s);
             board.cards.push(card);
-            if (e.arrive_by != null && e.start - e.arrive_by >= 5 && !card.cut) {
+            if (
+              e.arrive_by != null &&
+              e.start - e.arrive_by >= 5 &&
+              !card.cut
+            ) {
               const py = Y(e.arrive_by);
               const prep: PrepBox = {
                 key: `${day.date}|prep|${e.id}`,
@@ -1099,20 +1358,54 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
                 layer: MAIN_LAYER - 1,
               };
               board.preps.push(prep);
-              pieces.push({ s: e.arrive_by, en: p.en, top: py, bottom: y0 + h, x: ix, w: iw, prep, card });
+              pieces.push({
+                s: e.arrive_by,
+                en: p.en,
+                top: py,
+                bottom: y0 + h,
+                x: ix,
+                w: iw,
+                prep,
+                card,
+              });
             } else {
-              pieces.push({ s: p.s, en: p.en, top: y0, bottom: y0 + h, x: ix, w: iw, card });
+              pieces.push({
+                s: p.s,
+                en: p.en,
+                top: y0,
+                bottom: y0 + h,
+                x: ix,
+                w: iw,
+                card,
+              });
             }
             const late = issueMarks.get(e.id);
-            if (late) board.marks.push({ key: `${day.date}|late|${e.id}`, x: ix + iw - 4, y: y0 + 4, text: late, right: true });
+            if (late)
+              board.marks.push({
+                key: `${day.date}|late|${e.id}`,
+                x: ix + iw - 4,
+                y: y0 + 4,
+                text: late,
+                right: true,
+              });
             const waits = issueMarks.get(`${e.id}|pick`);
-            if (waits) board.marks.push({ key: `${day.date}|wait|${e.id}`, x: ix + 4, y: y0 + h + 2, text: waits, right: false });
+            if (waits)
+              board.marks.push({
+                key: `${day.date}|wait|${e.id}`,
+                x: ix + 4,
+                y: y0 + h + 2,
+                text: waits,
+                right: false,
+              });
             continue;
           }
           const ride = day.rides[it.ride ?? -1];
           if (!ride) continue;
           const rh = Math.max(22, Y(p.en) - y0);
-          const route = routeOf(legsOf(ride.index), namesFor(names, day, ride.driver));
+          const route = routeOf(
+            legsOf(ride.index),
+            namesFor(names, day, ride.driver),
+          );
           const who = nameOfDriver(ride.driver);
           const rideBox: RideBox = {
             key: `${day.date}|ride|${ride.index}`,
@@ -1143,15 +1436,39 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
             };
             board.bands.push(band);
           }
-          pieces.push({ s: p.s, en: p.en, top: y0, bottom: y0 + rh, x: ix, w: iw, ride: rideBox, band });
+          pieces.push({
+            s: p.s,
+            en: p.en,
+            top: y0,
+            bottom: y0 + rh,
+            x: ix,
+            w: iw,
+            ride: rideBox,
+            band,
+          });
         }
         // Car boxes are add-ons to the activity they're for, stacked like cards: the drive there
         // (and any ride before it) tucks behind what comes next, the drive home tucks behind the
         // activity, and the time between is an unlabeled block built on the same way, like the
         // arrive-by strip. Each piece keeps its own size; only its tucked edge hides behind.
-        const front = (q: Piece): number => q.ride?.layer ?? (q.prep ? MAIN_LAYER - 1 : MAIN_LAYER);
-        const link = (ride: RideBox, y: number, h: number, layer: number): void => {
-          if (h > LINK_TUCK) board.links.push({ key: `${ride.key}|link`, x: ride.x, y, w: ride.w, h, color, layer });
+        const front = (q: Piece): number =>
+          q.ride?.layer ?? (q.prep ? MAIN_LAYER - 1 : MAIN_LAYER);
+        const link = (
+          ride: RideBox,
+          y: number,
+          h: number,
+          layer: number,
+        ): void => {
+          if (h > LINK_TUCK)
+            board.links.push({
+              key: `${ride.key}|link`,
+              x: ride.x,
+              y,
+              w: ride.w,
+              h,
+              color,
+              layer,
+            });
         };
         // A built-on piece is as wide as what it's built onto; its link to the driver follows its edge.
         // It only ever narrows into its own lane, so it can't spread over a box beside it.
@@ -1173,7 +1490,13 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           const ride = r.ride;
           if (!ride) continue;
           const next = pieces
-            .filter((q) => q !== r && q.s >= r.en && q.s - r.en <= JOIN_MINUTES && q.top >= r.bottom)
+            .filter(
+              (q) =>
+                q !== r &&
+                q.s >= r.en &&
+                q.s - r.en <= JOIN_MINUTES &&
+                q.top >= r.bottom,
+            )
             .sort((a, b) => a.s - b.s || a.top - b.top)[0];
           if (!next) continue;
           going.add(r);
@@ -1189,7 +1512,14 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           const ride = r.ride;
           if (!ride || going.has(r)) continue;
           const prev = pieces
-            .filter((q) => q !== r && q.en <= r.s && r.s - q.en <= JOIN_MINUTES && q.bottom <= r.top && (q.card || q.ride?.layer != null))
+            .filter(
+              (q) =>
+                q !== r &&
+                q.en <= r.s &&
+                r.s - q.en <= JOIN_MINUTES &&
+                q.bottom <= r.top &&
+                (q.card || q.ride?.layer != null),
+            )
             .sort((a, b) => b.en - a.en || b.bottom - a.bottom)[0];
           if (!prev) continue;
           fit(r, prev);
@@ -1208,7 +1538,9 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         const dd = day.drivers[d];
         if (!dd) continue;
         // A stay is its own box, so it breaks the trip there.
-        type Piece = { type: "trip"; s: number; en: number; legs: Segment[] } | { type: "stay"; g: Segment; s: number; en: number };
+        type Piece =
+          | { type: "trip"; s: number; en: number; legs: Segment[] }
+          | { type: "stay"; g: Segment; s: number; en: number };
         const pieces: Piece[] = [];
         let cur: Extract<Piece, { type: "trip" }> | null = null;
         for (const g of dd.segments) {
@@ -1231,10 +1563,24 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           }
         }
         const drawn = new Set<string>();
-        const ownCard = (e: PlanEvent, s: number, en: number, onTrip: boolean): void => {
+        const ownCard = (
+          e: PlanEvent,
+          s: number,
+          en: number,
+          onTrip: boolean,
+        ): void => {
           drawn.add(e.id);
           const y0 = Y(s);
-          const card = cardFor(e, c.x + 8, y0, c.w - 16, Math.max(30, Y(en) - y0), false, false, d);
+          const card = cardFor(
+            e,
+            c.x + 8,
+            y0,
+            c.w - 16,
+            Math.max(30, Y(en) - y0),
+            false,
+            false,
+            d,
+          );
           card.cut = cut(s);
           // The trip box just above already says when they leave.
           if (onTrip && card.drop?.tone === "normal") {
@@ -1254,7 +1600,7 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
               ownCard(e, piece.s, piece.en, true);
               continue;
             }
-            const color = e ? colors.get(e.kid) ?? kidColor(0) : kidColor(0);
+            const color = e ? (colors.get(e.kid) ?? kidColor(0)) : kidColor(0);
             const others = piece.g.kids.map(nameOfKid);
             board.stays.push({
               cut: cut(piece.s),
@@ -1266,14 +1612,17 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
               target: target(e?.id),
               color,
               l1: e ? `At ${e.title} with ${nameOfKid(e.kid)}` : "Staying",
-              l2: `until ${clock(piece.en)}` + (others.length ? ` · ${others.join(" and ")} too` : ""),
+              l2:
+                `until ${clock(piece.en)}` +
+                (others.length ? ` · ${others.join(" and ")} too` : ""),
             });
             continue;
           }
           const first = piece.legs[0]!;
           const last = piece.legs[piece.legs.length - 1]!;
           const kidsIn: string[] = [];
-          for (const g of piece.legs) for (const k of g.kids) if (!kidsIn.includes(k)) kidsIn.push(k);
+          for (const g of piece.legs)
+            for (const k of g.kids) if (!kidsIn.includes(k)) kidsIn.push(k);
           const home = last.type === "drive" && last.to === "home";
           const route = routeOf(piece.legs, namesFor(names, day, d));
           board.trips.push({
@@ -1315,7 +1664,8 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         for (const e of day.events) {
           if (e.own !== d) continue;
           // Not going, or an errand that didn't fit: still on the board, to change it.
-          if (!drawn.has(e.id) && !above(ownSpan(e)[1])) ownCard(e, ...ownSpan(e), false);
+          if (!drawn.has(e.id) && !above(ownSpan(e)[1]))
+            ownCard(e, ...ownSpan(e), false);
           if (e.takes != null && e.attending !== false && !above(e.end)) {
             const wy = Y(e.start);
             board.windows.push({
@@ -1350,15 +1700,30 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       for (let t = r0; t <= r1; t += 30) {
         // A fold's torn edges stand in for the lines there. Its edges are labeled even on the
         // half hour, so the time on each side of it reads.
-        if (!folded(t, true)) board.grid.push({ key: `${day.date}|grid|${t}`, y: Y(t), strong: t % 60 === 0 });
+        if (!folded(t, true))
+          board.grid.push({
+            key: `${day.date}|grid|${t}`,
+            y: Y(t),
+            strong: t % 60 === 0,
+          });
         const edge = folds.some((f) => f.from === t || f.to === t);
-        if ((edge || (t % 60 === 0 && !folded(t, false))) && Y(t) - lastLabel >= 22) {
-          board.hours.push({ key: `${day.date}|hour|${t}`, y: Y(t) - 8, label: t % 60 === 0 ? hourLabel(t) : clockAmPm(t) });
+        if (
+          (edge || (t % 60 === 0 && !folded(t, false))) &&
+          Y(t) - lastLabel >= 22
+        ) {
+          board.hours.push({
+            key: `${day.date}|hour|${t}`,
+            y: Y(t) - 8,
+            label: t % 60 === 0 ? hourLabel(t) : clockAmPm(t),
+          });
           lastLabel = Y(t);
         }
       }
       if (day.date === today.date && today.minutes > r0 && today.minutes < r1) {
-        board.now = { y: Y(today.minutes), label: `Now ${clock(today.minutes)}` };
+        board.now = {
+          y: Y(today.minutes),
+          label: `Now ${clock(today.minutes)}`,
+        };
       }
       y = Y(r1) + PAD;
       return;
@@ -1372,7 +1737,13 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       | { col: string; s: number; h: number; kind: "along"; item: KidItem }
       | { col: string; s: number; h: number; kind: "busy"; busy: BusyBlock }
       | { col: string; s: number; h: number; kind: "own"; event: PlanEvent }
-      | { col: string; s: number; h: number; kind: "out"; out: (typeof outings)[number] };
+      | {
+          col: string;
+          s: number;
+          h: number;
+          kind: "out";
+          out: (typeof outings)[number];
+        };
     const items: Item[] = [];
     for (const kid of kids) {
       const c = col.get(kid)!;
@@ -1381,38 +1752,95 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         if (it.type === "act") {
           const e = events.get(it.event ?? "");
           if (!e) continue;
-          items.push({ col: kid, s: it.start, h: cardHeight(e, c.w, kid, it.clash), kind: "act", item: it });
+          items.push({
+            col: kid,
+            s: it.start,
+            h: cardHeight(e, c.w, kid, it.clash),
+            kind: "act",
+            item: it,
+          });
         } else if (!day.rides[it.ride ?? -1]?.own) {
           const along = day.rides[it.ride ?? -1];
           const trip = along
-            ? day.drivers[along.driver]?.outings.find((o) => o.start != null && o.start <= n(along.start) && n(along.start) <= n(o.end, o.start))
+            ? day.drivers[along.driver]?.outings.find(
+                (o) =>
+                  o.start != null &&
+                  o.start <= n(along.start) &&
+                  n(along.start) <= n(o.end, o.start),
+              )
             : undefined;
-          items.push({ col: kid, s: trip?.start ?? it.start, h: ALONG_H, kind: "along", item: it });
+          items.push({
+            col: kid,
+            s: trip?.start ?? it.start,
+            h: ALONG_H,
+            kind: "along",
+            item: it,
+          });
         }
       }
     }
     for (const d of drivers) {
       const dd = day.drivers[d];
       if (!dd) continue;
-      for (const b of dd.busy) if (!b.event) items.push({ col: d, s: b.start, h: 32, kind: "busy", busy: busyOf(d, b) });
+      for (const b of dd.busy)
+        if (!b.event)
+          items.push({
+            col: d,
+            s: b.start,
+            h: 32,
+            kind: "busy",
+            busy: busyOf(d, b),
+          });
       // A parent's own event shows in their trip's stops. One with no trip (not going, or an
       // errand that didn't fit) gets a card, so it can still be changed.
       const cw = col.get(d)!.w;
       for (const e of day.events) {
-        if (e.own !== d || (!e.busy_only && e.attending !== false && (e.takes == null || e.planned != null))) continue;
-        items.push({ col: d, s: ownSpan(e)[0], h: cardHeight(e, cw - 16, d, false), kind: "own", event: e });
+        if (
+          e.own !== d ||
+          (!e.busy_only &&
+            e.attending !== false &&
+            (e.takes == null || e.planned != null))
+        )
+          continue;
+        items.push({
+          col: d,
+          s: ownSpan(e)[0],
+          h: cardHeight(e, cw - 16, d, false),
+          kind: "own",
+          event: e,
+        });
       }
       for (const o of dd.outings) {
         if (o.start == null) continue;
         // Each stop wraps rather than getting cut off: the box is the column less its margins and padding.
-        const lines = (homeAt(o.lines, o.home) ? o.lines.slice(0, -1) : o.lines).map((t) => terseStop(t, o.home));
-        items.push({ col: d, s: o.start, h: compactTripHeight([...lines, ...(o.warn ? [o.warn] : [])], cw - 16), kind: "out", out: o });
+        const lines = (
+          homeAt(o.lines, o.home) ? o.lines.slice(0, -1) : o.lines
+        ).map((t) => terseStop(t, o.home));
+        items.push({
+          col: d,
+          s: o.start,
+          h: compactTripHeight(
+            [...lines, ...(o.warn ? [o.warn] : [])],
+            cw - 16,
+          ),
+          kind: "out",
+          out: o,
+        });
       }
     }
-    items.sort((a, b) => a.s - b.s || order.indexOf(a.col) - order.indexOf(b.col));
+    items.sort(
+      (a, b) => a.s - b.s || order.indexOf(a.col) - order.indexOf(b.col),
+    );
     const bottom = new Map<string, number>();
     // Where each box landed, and the box itself when a long event can stretch to fill its time.
-    const placed: { col: string; s: number; end: number | null; y: number; h: number; box: { h: number } | null }[] = [];
+    const placed: {
+      col: string;
+      s: number;
+      end: number | null;
+      y: number;
+      h: number;
+      box: { h: number } | null;
+    }[] = [];
     // Each start time's row: below the row before, and below whatever is above in its columns.
     const rowTop = new Map<number, number>();
     let prevRow = top - ROW_STEP;
@@ -1432,7 +1860,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         bottom.set(m.col, iy + m.h);
       }
       rowTop.set(items[i]!.s, t);
-      if (items[i]!.s > 0) board.hours.push({ key: `${day.date}|hour|${items[i]!.s}`, y: t + 2, label: clockAmPm(items[i]!.s) });
+      if (items[i]!.s > 0)
+        board.hours.push({
+          key: `${day.date}|hour|${items[i]!.s}`,
+          y: t + 2,
+          label: clockAmPm(items[i]!.s),
+        });
       prevRow = t;
       i = j;
     }
@@ -1476,18 +1909,35 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
           w: c.w - 16,
           h: m.h,
           target: target(o.target),
-          l1: home ? `${o.lead} · ${o.home && o.home !== "Home" ? o.home : "home"} ${home}` : o.lead,
+          l1: home
+            ? `${o.lead} · ${o.home && o.home !== "Home" ? o.home : "home"} ${home}`
+            : o.lead,
           l2: "",
           show2: false,
           l3: "",
           show3: false,
-          stops: [...stopLines.map((text) => ({ text: terseStop(text, o.home), warn: false })), ...(o.warn ? [{ text: o.warn, warn: true }] : [])],
+          stops: [
+            ...stopLines.map((text) => ({
+              text: terseStop(text, o.home),
+              warn: false,
+            })),
+            ...(o.warn ? [{ text: o.warn, warn: true }] : []),
+          ],
           kids: o.kids.map((k) => (colors.get(k) ?? kidColor(0)).color),
           bad: !!o.warn,
           aria: `${nameOfDriver(m.col)}: ${o.lead}. ${o.lines.join(". ")}${o.warn ? `. ${o.warn}` : ""}`,
         });
       } else if (m.kind === "own") {
-        const card = cardFor(m.event, c.x + 8, iy, c.w - 16, m.h, false, true, m.col);
+        const card = cardFor(
+          m.event,
+          c.x + 8,
+          iy,
+          c.w - 16,
+          m.h,
+          false,
+          true,
+          m.col,
+        );
         board.cards.push(card);
         placed[placed.length - 1]!.box = card;
       } else if (m.kind === "act") {
@@ -1497,7 +1947,10 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
         placed[placed.length - 1]!.box = card;
       } else {
         const ride = day.rides[m.item.ride ?? -1]!;
-        const route = routeOf(legsOf(ride.index), namesFor(names, day, ride.driver));
+        const route = routeOf(
+          legsOf(ride.index),
+          namesFor(names, day, ride.driver),
+        );
         const who = nameOfDriver(ride.driver);
         board.rides.push({
           key: `${day.date}|ride|${ride.index}`,
@@ -1525,10 +1978,12 @@ export function layout(plan: Plan, mode: Mode, width: number, today: Today): Boa
       if (!p.box || p.end == null) continue;
       let reach = p.y + p.h;
       for (const q of placed) {
-        if (q.col !== p.col && q.s >= p.s && q.s < p.end) reach = Math.max(reach, q.y + q.h);
+        if (q.col !== p.col && q.s >= p.s && q.s < p.end)
+          reach = Math.max(reach, q.y + q.h);
       }
       if (p.end >= 1440) reach = maxB;
-      for (const q of placed) if (q.col === p.col && q.y > p.y) reach = Math.min(reach, q.y - GAP);
+      for (const q of placed)
+        if (q.col === p.col && q.y > p.y) reach = Math.min(reach, q.y - GAP);
       reach = Math.min(reach, maxB);
       if (reach > p.y + p.h) p.box.h = reach - p.y;
     }
@@ -1553,9 +2008,15 @@ export function heldSpans(
   now: number | null,
 ): [number, number][] {
   const spans: [number, number][] = [];
-  const add = (s: number | null | undefined, e: number | null | undefined): void => {
+  const add = (
+    s: number | null | undefined,
+    e: number | null | undefined,
+  ): void => {
     if (s == null || e == null) return;
-    spans.push([s - HOLD_BEFORE, Math.min(e, s + HOLD_START) + HOLD_AFTER], [Math.max(s, e - HOLD_END) - HOLD_BEFORE, e + HOLD_AFTER]);
+    spans.push(
+      [s - HOLD_BEFORE, Math.min(e, s + HOLD_START) + HOLD_AFTER],
+      [Math.max(s, e - HOLD_END) - HOLD_BEFORE, e + HOLD_AFTER],
+    );
   };
   for (const e of day.events) {
     if (e.own) {
@@ -1563,7 +2024,8 @@ export function heldSpans(
       if (e.takes != null) add(e.start, e.end);
     } else add(e.arrive_by ?? e.start, e.end);
   }
-  for (const k of Object.values(day.kids)) for (const it of k.items ?? []) add(it.start, it.end);
+  for (const k of Object.values(day.kids))
+    for (const it of k.items ?? []) add(it.start, it.end);
   for (const d of drivers) {
     const dd = day.drivers[d];
     if (!dd) continue;
@@ -1579,7 +2041,11 @@ export function heldSpans(
  * The stretches between ``r0`` and ``r1`` that nothing holds, on the half hour, of at least
  * ``FOLD_MIN`` minutes.
  */
-export function foldsFor(held: [number, number][], r0: number, r1: number): { from: number; to: number }[] {
+export function foldsFor(
+  held: [number, number][],
+  r0: number,
+  r1: number,
+): { from: number; to: number }[] {
   const spans = held
     .map(([s, e]): [number, number] => [Math.max(r0, s), Math.min(r1, e)])
     .filter(([s, e]) => e > s)
@@ -1602,13 +2068,18 @@ export function foldsFor(held: [number, number][], r0: number, r1: number): { fr
 }
 
 /** Pixels from the top of a Timeline day for ``m`` minutes after its first row, with folds drawn short. */
-function foldedOffset(m: number, folds: { from: number; to: number }[], r0: number): number {
+function foldedOffset(
+  m: number,
+  folds: { from: number; to: number }[],
+  r0: number,
+): number {
   let y = m * PPM;
   const t = r0 + m;
   for (const f of folds) {
     const len = f.to - f.from;
     if (t >= f.to) y -= len * PPM - FOLD_H;
-    else if (t > f.from) y -= (t - f.from) * PPM - ((t - f.from) / len) * FOLD_H;
+    else if (t > f.from)
+      y -= (t - f.from) * PPM - ((t - f.from) / len) * FOLD_H;
   }
   return y;
 }
@@ -1663,12 +2134,16 @@ export function tidyMinutes(text: string): string {
  * such as "15.200000000000003 min".
  */
 export function tidyPlan(plan: Plan): Plan {
-  const line = (l: CardLine | null): CardLine | null => (l ? { ...l, text: tidyMinutes(l.text) } : null);
+  const line = (l: CardLine | null): CardLine | null =>
+    l ? { ...l, text: tidyMinutes(l.text) } : null;
   return {
     ...plan,
     days: plan.days.map((d) => ({
       ...d,
-      events: d.events.map((e) => ({ ...e, lines: { drop: line(e.lines.drop), pick: line(e.lines.pick) } })),
+      events: d.events.map((e) => ({
+        ...e,
+        lines: { drop: line(e.lines.drop), pick: line(e.lines.pick) },
+      })),
       drivers: Object.fromEntries(
         Object.entries(d.drivers).map(([id, dd]) => [
           id,
@@ -1687,7 +2162,14 @@ export function tidyPlan(plan: Plan): Plan {
         title: tidyMinutes(x.title),
         body: tidyMinutes(x.body),
         note: x.note == null ? x.note : tidyMinutes(x.note),
-        ...(x.suggestions ? { suggestions: x.suggestions.map((g) => ({ ...g, note: tidyMinutes(g.note) })) } : {}),
+        ...(x.suggestions
+          ? {
+              suggestions: x.suggestions.map((g) => ({
+                ...g,
+                note: tidyMinutes(g.note),
+              })),
+            }
+          : {}),
       })),
     })),
   };
@@ -1712,11 +2194,16 @@ export interface Attention {
 }
 
 /** What needs fixing from earlier today up to {@link ATTENTION_HOURS} from now. */
-export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Attention {
+export function attention(
+  plan: Plan,
+  now: Today,
+  hours = ATTENTION_HOURS,
+): Attention {
   const items: AttentionItem[] = [];
   const drivers = new Set(driverIds(plan));
   const kidNames = kidIds(plan).map((k) => kidName(plan, k));
-  const example = kidNames.length > 1 ? kidNames.slice(0, 2) : [kidNames[0] ?? "Ava", "Ben"];
+  const example =
+    kidNames.length > 1 ? kidNames.slice(0, 2) : [kidNames[0] ?? "Ava", "Ben"];
   let problems = 0;
   let unassigned = 0;
   let later = 0;
@@ -1726,9 +2213,13 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
     const ahead = daysBetween(now.date, day.date);
     const pre = ahead === 0 ? "" : `${shortDay(day.date)} · `;
     const events = new Map(day.events.map((e) => [e.id, e]));
-    const target = (id: string | null | undefined): Target | null => (id && events.has(id) ? { day: day.date, event: id } : null);
+    const target = (id: string | null | undefined): Target | null =>
+      id && events.has(id) ? { day: day.date, event: id } : null;
     // Measured from midnight today, so the rest of today always counts.
-    const soon = (at: number | null | undefined, event?: string | null): boolean =>
+    const soon = (
+      at: number | null | undefined,
+      event?: string | null,
+    ): boolean =>
       ahead * 1440 + (at ?? events.get(event ?? "")?.start ?? 0) < limit;
     for (const x of day.issues) {
       if (x.level !== "problem") continue;
@@ -1745,7 +2236,11 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
         title: pre + x.title,
         body: x.body,
         target: target(x.event),
-        suggestions: (x.suggestions ?? []).map((s) => ({ id: s.id, label: s.label, note: s.note })),
+        suggestions: (x.suggestions ?? []).map((s) => ({
+          id: s.id,
+          label: s.label,
+          note: s.note,
+        })),
       });
     }
     day.clashes.forEach((c, i) => {
@@ -1814,7 +2309,9 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
         continue;
       }
       problems++;
-      const named = u.people.map((p) => (drivers.has(p) ? driverName(plan, p) : kidName(plan, p)));
+      const named = u.people.map((p) =>
+        drivers.has(p) ? driverName(plan, p) : kidName(plan, p),
+      );
       const where = u.from_notes ? "The For line in its notes" : "Its title";
       items.push({
         key: `${day.date}|unplaced|${u.id}`,
@@ -1846,7 +2343,9 @@ export function attention(plan: Plan, now: Today, hours = ATTENTION_HOURS): Atte
 
 /** What a timed event for nobody needs, in a few words. */
 export function unplacedNote(u: UnplacedEvent): string {
-  return u.reason === "unknown" && u.word ? `Who is “${u.word}”?` : "Who is this for?";
+  return u.reason === "unknown" && u.word
+    ? `Who is “${u.word}”?`
+    : "Who is this for?";
 }
 
 /**
@@ -1869,16 +2368,23 @@ export function allDayRow(
     return drivers.has(first) ? OWN_COLOR : (colors.get(first) ?? null);
   };
   const chips: AllDayChip[] = [
-    ...(day.all_day ?? []).map((i) => ({
-      key: `${day.date}|allday|${i.id}`,
-      title: i.title,
-      note: i.days > 1 ? `Day ${i.day_number} of ${i.days}` : "",
-      color: colorOf(i.people),
-      cancelled: i.cancelled,
-      warn: false,
-      pick: null,
-      notes: i.notes ?? "",
-    })),
+    ...(day.all_day ?? []).map((i) => {
+      const days = i.days > 1 ? `Day ${i.day_number} of ${i.days}` : "";
+      return {
+        key: `${day.date}|allday|${i.id}`,
+        // A stay says where and who: "🏨 Westin Chicago", "Robin & Sam · Day 1 of 3".
+        title: i.stay ? `🏨 ${i.title}` : i.title,
+        note: i.stay
+          ? [stayingNames(plan, i.people), days].filter(Boolean).join(" · ")
+          : days,
+        color: colorOf(i.people),
+        cancelled: i.cancelled,
+        warn: false,
+        pick: null,
+        stay: i.stay && !i.cancelled ? i.id : null,
+        notes: i.notes ?? "",
+      };
+    }),
     ...(day.unplaced ?? []).map((u) => ({
       key: `${day.date}|unplaced|${u.id}`,
       title: `${clock(u.at)} ${u.title}`,
@@ -1887,6 +2393,7 @@ export function allDayRow(
       cancelled: false,
       warn: true,
       pick: u.id,
+      stay: null,
       notes: u.notes ?? "",
     })),
   ];
@@ -1896,11 +2403,16 @@ export function allDayRow(
   // the date reckon 7, so they never wrap more than planned; up on the date line a chip that
   // runs a little wide is cut short with an ellipsis instead.
   const size = (c: AllDayChip, px = 7): number =>
-    30 + px * c.title.length + (c.note ? Math.min(px, 5.6) * (c.note.length + 2) : 0) + (c.notes ? 16 : 0);
+    30 +
+    px * c.title.length +
+    (c.note ? Math.min(px, 5.6) * (c.note.length + 2) : 0) +
+    (c.notes ? 16 : 0) +
+    (c.stay ? 12 : 0);
   // Up on the date line, in order, while they fit; the first that doesn't starts the lines under it.
   let inline = 0;
   let used = 0;
-  while (inline < chips.length && used + size(chips[inline]!, 6.4) <= first) used += size(chips[inline++]!, 6.4);
+  while (inline < chips.length && used + size(chips[inline]!, 6.4) <= first)
+    used += size(chips[inline++]!, 6.4);
   let lines = 0;
   used = 0;
   for (const c of chips.slice(inline)) {
@@ -1968,9 +2480,17 @@ export function nextUp(plan: Plan, today: Today): NextUp | null {
           stop: (o.lines[0] ?? "").replace(/\s+/g, " ").trim(),
           kids: o.kids.map((k) => colors.get(k) ?? kidColor(0)),
           warn: o.warn,
-          target: o.target && day.events.some((e) => e.id === o.target) ? { day: day.date, event: o.target } : null,
+          target:
+            o.target && day.events.some((e) => e.id === o.target)
+              ? { day: day.date, event: o.target }
+              : null,
         };
-        if (!best || rank(x) < rank(best) || (rank(x) === rank(best) && x.inMinutes < best.inMinutes)) best = x;
+        if (
+          !best ||
+          rank(x) < rank(best) ||
+          (rank(x) === rank(best) && x.inMinutes < best.inMinutes)
+        )
+          best = x;
       }
     }
   }
