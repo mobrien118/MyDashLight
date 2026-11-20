@@ -32,7 +32,7 @@ import {
   FOLD_H,
   type Board,
 } from "../src/layout.ts";
-import { OWN_COLOR, andList, eventColor, ownerName } from "../src/layout.ts";
+import { OWN_COLOR, andList, eventColor, goingWithout, ownerName } from "../src/layout.ts";
 import { sampleWeek } from "./helpers.ts";
 import type { PlanEvent } from "../src/types.ts";
 
@@ -742,4 +742,19 @@ test("fold labels", () => {
   assert.equal(foldLabel(120), "2 hrs");
   assert.equal(foldLabel(150), "2½ hrs");
   assert.equal(foldLabel(240), "4 hrs");
+});
+
+test("someone not going comes off a shared event instead of calling it off", () => {
+  // Marty, 2026-11-20: Audrey wasn't going to the family dinner. "Isn't going" took everyone.
+  const plan = sampleWeek();
+  const [ava, ben, cleo] = plan.people!.kids.map((k) => k.id) as [string, string, string];
+  const dinner = { event_id: "dinner", kid: ava, own: null } as unknown as PlanEvent;
+  const who = (people: string[]) => ({ ...plan, who: { dinner: { people, from_notes: true } } });
+  assert.deepEqual(goingWithout(who([ava, ben, cleo, "mom", "dad"]), dinner), [ben, cleo, "mom", "dad"]);
+  // The only kid on it: the parents named go with her, so it's off.
+  assert.equal(goingWithout(who([ava, "mom"]), dinner), null);
+  assert.equal(goingWithout(who([ava]), dinner), null);
+  // A parent's own event goes on with the other parent.
+  const date = { event_id: "dinner", kid: "mom", own: "mom" } as unknown as PlanEvent;
+  assert.deepEqual(goingWithout(who(["mom", "dad"]), date), ["dad"]);
 });

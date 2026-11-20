@@ -16,6 +16,7 @@ import {
   andList,
   attention,
   eventColor,
+  goingWithout,
   ownerName,
   dayTag,
   driverIds,
@@ -1389,6 +1390,18 @@ export class MyDashLightBoard extends LitElement {
   private setAttending(e: PlanEvent, attending: boolean): void {
     if (!this.backend || (e.attending !== false) === attending) return;
     const b = this.backend;
+    const plan = this.plan;
+    const rest = !attending && plan ? goingWithout(plan, e) : null;
+    if (rest && plan) {
+      // Others are still going: take just this one off, so it isn't called off for everyone.
+      const name = ownerName(plan, e);
+      void this.save("attending", attending, async () => {
+        await b.setPeople(e.id, rest, this.scope);
+        this.closeEditor();
+        this.showToast(`Saved. ${name} is off ${e.title} now.`);
+      });
+      return;
+    }
     void this.save("attending", attending, () => b.setAttending(e.id, attending, this.scope));
   }
 
