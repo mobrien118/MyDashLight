@@ -416,6 +416,8 @@ export class MyDashLightBoard extends LitElement {
   private clockTimer: ReturnType<typeof setInterval> | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
+  /** What the toast's Undo button does, while the toast is up. */
+  private toastUndo: (() => void) | null = null;
   private arriveTimer: ReturnType<typeof setTimeout> | null = null;
   private leaveTimer: ReturnType<typeof setTimeout> | null = null;
   /** A held time-stepper button: the wait before repeating, then the repeat. */
@@ -1350,12 +1352,22 @@ export class MyDashLightBoard extends LitElement {
     this.timesOpen = { arrive: false, leave: false };
   }
 
-  private showToast(text: string): void {
+  private showToast(text: string, undo: (() => void) | null = null): void {
     this.toast = text;
+    this.toastUndo = undo;
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => {
       this.toast = null;
-    }, 7000);
+      this.toastUndo = null;
+    }, undo ? 10000 : 7000);
+  }
+
+  private undoToast(): void {
+    const undo = this.toastUndo;
+    this.toast = null;
+    this.toastUndo = null;
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    undo?.();
   }
 
   private async save(key: string, value: unknown, run: () => Promise<void>): Promise<void> {
@@ -1387,6 +1399,8 @@ export class MyDashLightBoard extends LitElement {
     void this.save(`${side}`, driver, () => b.setRide(e.id, side, driver, this.scope));
   }
 
+  /** "Isn't going this time" and "is going after all": always just this time, whatever the
+   * editor's scope says for the other settings, as the button reads. */
   private setAttending(e: PlanEvent, attending: boolean): void {
     if (!this.backend || (e.attending !== false) === attending) return;
     const b = this.backend;
@@ -1395,14 +1409,28 @@ export class MyDashLightBoard extends LitElement {
     if (rest && plan) {
       // Others are still going: take just this one off, so it isn't called off for everyone.
       const name = ownerName(plan, e);
+      const all = plan.who?.[e.event_id]?.people ?? [];
+      // Their copy is gone once they're off, so putting them back goes through someone else's.
+      const other = this.findAnyCopy(e, rest);
       void this.save("attending", attending, async () => {
-        await b.setPeople(e.id, rest, this.scope);
+        await b.setPeople(e.id, rest, "this");
         this.closeEditor();
-        this.showToast(`Saved. ${name} is off ${e.title} now.`);
+        this.showToast(
+          `Saved. ${name} is off ${e.title} now.`,
+          other ? () => void this.save("attending", true, () => b.setPeople(other, all, "this")) : null,
+        );
       });
       return;
     }
-    void this.save("attending", attending, () => b.setAttending(e.id, attending, this.scope));
+    // The editor stays open on it, with "is going after all" to take it back.
+    void this.save("attending", attending, () => b.setAttending(e.id, attending, "this"));
+  }
+
+  /** Another person's copy of the same event on the same day, for a change after this one's is gone. */
+  private findAnyCopy(e: PlanEvent, people: string[]): string | null {
+    const day = this.plan?.days.find((d) => d.events.some((x) => x.id === e.id));
+    const copy = day?.events.find((x) => x.event_id === e.event_id && x.id !== e.id && people.includes(x.own ?? x.kid));
+    return copy?.id ?? null;
   }
 
   /** Staying means the same parent both ways, so turning it on puts `driver` on both sides too. */
@@ -1595,7 +1623,13 @@ export class MyDashLightBoard extends LitElement {
           </main>
         </div>
         ${wide ? panel : nothing}
-        ${this.toast ? html`<div class="toast" role="status">${this.toast}</div>` : nothing}
+        ${this.toast
+          ? html`<div class="toast" role="status">
+              ${this.toast}${this.toastUndo
+                ? html`<button type="button" class="toast-undo" @click=${() => this.undoToast()}>Undo</button>`
+                : nothing}
+            </div>`
+          : nothing}
       </div>
     `;
   }

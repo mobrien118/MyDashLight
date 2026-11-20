@@ -1904,6 +1904,19 @@ export const styles = css`
     line-height: 20px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .toast-undo {
+    flex: none;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 18px;
+    background: transparent;
+    color: #fff;
+    font-weight: 700;
   }
   /* The bubble with an event's notes. It never takes the pointer, so it can't flicker under it. */
   .note-tip {
