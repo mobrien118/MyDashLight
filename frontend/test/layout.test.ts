@@ -745,7 +745,7 @@ test("fold labels", () => {
 });
 
 test("someone not going comes off a shared event instead of calling it off", () => {
-  // Marty, 2026-11-20: Audrey wasn't going to the family dinner. "Isn't going" took everyone.
+  // Marty, 2026-11-20: one kid wasn't going to a family dinner. "Isn't going" took everyone.
   const plan = sampleWeek();
   const [ava, ben, cleo] = plan.people!.kids.map((k) => k.id) as [string, string, string];
   const dinner = { event_id: "dinner", kid: ava, own: null } as unknown as PlanEvent;

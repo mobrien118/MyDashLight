@@ -324,8 +324,8 @@ export function driverIds(plan: Plan): string[] {
 }
 
 /**
- * Who an event is still for once its owner here isn't going (Marty, 2026-11-20: Audrey wasn't
- * going to the family dinner, and "isn't going" called the whole dinner off). The others on
+ * Who an event is still for once its owner here isn't going (Marty, 2026-11-20: one kid wasn't
+ * going to a family dinner, and "isn't going" called the whole dinner off). The others on
  * it, or null when nobody else is going without them: their "isn't going" is the whole event's.
  * A kid's event goes on without them only when another kid is still going, since the parents
  * named on it are going with the kids.
