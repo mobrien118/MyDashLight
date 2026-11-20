@@ -191,6 +191,8 @@ export interface AllDayItem {
   back_riders?: string[];
   /** A stay with times: the drive there and back is planned. */
   timed?: boolean;
+  /** A stay whose event has no location: its drives are timed to the name alone (0.27.5 and later). */
+  no_address?: boolean;
 }
 
 /** A timed event whose title doesn't say who it's for (MyDashLight 0.19 and later). */

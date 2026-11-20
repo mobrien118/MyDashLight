@@ -612,6 +612,39 @@ def _on_stay(st: Stay, day: date, t: int) -> bool:
     )
 
 
+def _stay_driver(
+    st: Stay, there: bool, roles: CalendarRoles, directory: DriverDirectory
+) -> tuple[str, tuple[str, ...]] | None:
+    """Who drives a timed stay's drive there or back, and who is in the car, or None for no drive.
+
+    Its Drop-off line says who drives there and who rides along, and its Pick-up line the same
+    for the drive back, as on any event. Without one, the first parent it names drives, with
+    everyone else on it along. "No ride" plans none, and so does someone outside the family
+    driving.
+    """
+    due = st.arrive if there else st.leave
+    if due is None or due >= 1440:
+        return None
+    notes = parse_notes(st.description, directory, None)
+    driver, riders = (notes.drop, notes.drop_riders) if there else (notes.pick, notes.pick_riders)
+    if driver == NOT_NEEDED:
+        return None
+    if driver == UNASSIGNED:
+        parents = [p for p in st.people if p in roles.busy]
+        if not parents:
+            return None
+        driver, riders = parents[0], tuple(p for p in st.people if p != parents[0])
+    if driver not in roles.busy:
+        return None
+    family = {k.calendar_id for k in roles.kids} | set(roles.busy)
+    return driver, tuple(dict.fromkeys(r for r in riders if r in family and r != driver))
+
+
+def _starts(st: Stay, day: date, t: int) -> bool:
+    """Whether a timed stay starts on ``day`` at minute ``t`` or later."""
+    return st.first == day and st.arrive is not None and st.arrive >= t
+
+
 def _trips(
     st: Stay,
     key: str,
@@ -622,42 +655,42 @@ def _trips(
 ) -> list[tuple[Trip, date]]:
     """A timed stay's drive there on its first day and back on its last (Marty, 2026-11-18).
 
-    Its Drop-off line says who drives there and who rides along, and its Pick-up line the same
-    for the drive back, as on any event. Without one, the first parent it names drives, with
-    everyone else on it along. "No ride" plans none, and so does someone outside the family
-    driving.
+    When the driver is on another stay, the drive can go hotel to hotel (Marty, 2026-11-19:
+    Reese's stay in Chicago ends as the family's at the Westin begins):
 
-    When the driver is on another stay right then, the drive goes from hotel to hotel instead
-    of home (Marty, 2026-11-19: Reese's stay in Chicago ends as the family's at the Westin
-    begins). Driving on from a stay that ends then, the drive back from it is the drive there.
+    - Back from a stay as the next begins, or while one is under way: on to that hotel.
+    - Back from a stay with the next later that day: on to it, unless the planner finds time
+      to spare at home first (see :func:`.planner.link_trips`).
+    - Back home when the driver also drives the next stay's car: the planner joins the two
+      drives when nobody is waiting at home for the second.
+    - There from a stay that goes on after today: from that hotel.
     """
-    name = short[key]
-    notes = parse_notes(st.description, directory, None)
-    kids = {k.calendar_id for k in roles.kids}
-    family = kids | set(roles.busy)
-    parents = [p for p in st.people if p in roles.busy]
     out: list[tuple[Trip, date]] = []
-    sides = (
-        (True, st.arrive, st.first, notes.drop, notes.drop_riders),
-        (False, st.leave, st.last, notes.pick, notes.pick_riders),
-    )
-    for there, due, day, driver, riders in sides:
-        if due is None or due >= 1440 or driver == NOT_NEEDED:
+    keys = {o.id: k for o, k in stays}
+    for there, due, day in ((True, st.arrive, st.first), (False, st.leave, st.last)):
+        side = _stay_driver(st, there, roles, directory)
+        if side is None or due is None:
             continue
-        if driver == UNASSIGNED:
-            if not parents:
-                continue
-            driver, riders = parents[0], tuple(p for p in st.people if p != parents[0])
-        if driver not in roles.busy:
-            continue
-        other = next(((o, k) for o, k in stays if o is not st and driver in o.people and _on_stay(o, day, due)), None)
-        if other is not None and there and other[0].last == day and other[0].leave is not None:
-            continue
-        car = tuple(dict.fromkeys(r for r in riders if r in family and r != driver))
-        if other is None:
-            out.append((Trip(driver, key, name, due, there, car), day))
+        driver, car = side
+        mine = [(o, k) for o, k in stays if o is not st and driver in o.people and o.covers(day)]
+        trip = Trip(driver, key, short[key], due, there, car)
+        if there:
+            src = next(((o, k) for o, k in mine if _on_stay(o, day, due) and o.last > day), None)
+            if src is not None:
+                trip = replace(trip, other=src[1], other_name=short[src[1]])
         else:
-            out.append((Trip(driver, key, name, due, there, car, other[1], short[other[1]]), day))
+            now = next((k for o, k in mine if _on_stay(o, day, due) and not _starts(o, day, due)), None)
+            nxt = min((o for o, _ in mine if _starts(o, day, due)), key=lambda o: o.arrive or 0, default=None)
+            if now is not None:
+                trip = replace(trip, other=now, other_name=short[now])
+            elif nxt is not None:
+                side_next = _stay_driver(nxt, True, roles, directory)
+                if side_next is None or side_next[0] != driver:
+                    k = keys[nxt.id]
+                    trip = replace(
+                        trip, other=k, other_name=short[k], next_due=nxt.arrive if nxt.arrive != due else None
+                    )
+        out.append((trip, day))
     return out
 
 

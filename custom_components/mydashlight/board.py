@@ -35,10 +35,8 @@ from .planner import (
     busy_along,
     fmt,
     fmt12,
-    home_windows,
     minutes_text,
     plan_all,
-    trip_times,
 )
 from .week import NO_ADDRESS, Where
 
@@ -177,35 +175,14 @@ def build_day(
     ``trips`` are today's drives to a hotel and back: each is an outing of its own, and the
     kids in the car have a ride. ``spans`` are the stays' own times on a day one starts or ends.
     """
-    homes = homes or {}
     plan = plan_all(events, busy, travel, settings, drivers, homes, trips, spans)
-    windows = home_windows(trips, travel, settings, homes, spans)
-    drives: dict[int, Trip] = {}
-    for t in trips:
-        if t.driver not in plan.drivers:
-            continue
-        leave, arrive = trip_times(t, travel, settings)
-        kid_ids = [r for r in t.riders if r not in drivers]
-        g = Segment(
-            "drive",
-            leave,
-            arrive,
-            from_loc=t.other if t.there else t.place,
-            to_loc=t.place if t.there else t.other,
-            kids=kid_ids,
-            from_home=t.there and t.other == HOME,
-        )
-        drives[id(g)] = t
-        segs = plan[t.driver].segments
-        segs.append(g)
-        segs.sort(key=lambda x: x.start)
     # A kid taken along while busy elsewhere isn't planned in the car or shown going: the
     # plan's problem for it says so.
     events, _ = busy_along(events)
     goes = _goes_to(events)
     rides = _rides(plan, drivers, goes)
     kid_items = _kid_items(events, rides, kids, goes)
-    outings = {d: _outings(plan, d, plan.busy, labels, homes, windows, drives) for d in drivers}
+    outings = {d: _outings(plan, d, plan.busy, labels) for d in drivers}
     return DayBoard(
         plan=plan,
         rides=rides,
@@ -219,27 +196,27 @@ def build_day(
 def _trip_outing(
     g: Segment, t: Trip, d: str, busy: Mapping[str, Sequence[BusyBlock]], labels: Labels, drivers: Sequence[str]
 ) -> Outing:
-    """The drive to a hotel or back home (or on to the next hotel), as the driver's outing."""
+    """The drive to a hotel or back home, on to the next hotel, or straight on from or to a
+    stop next to it, as the driver's outing."""
+
+    def called(loc: str | None) -> str:
+        if loc in (None, HOME):
+            return "home"
+        return t.name if loc == t.place else t.other_name if loc == t.other else labels.short_place(loc)
+
     name = labels.driver(d)
     kid_names = [labels.kid(k) for k in g.kids]
-    other = "home" if t.other == HOME else t.other_name
-    start_name = other if t.there else t.name
+    who = f"{_and(kid_names)} " if kid_names else ""
+    start_name, to_name = called(g.from_loc), called(g.to_loc)
     leave_line = f"Leave {start_name} at {fmt12(g.start)} with {name}"
-    to_name = t.name if t.there else other
-    if t.other != HOME:
-        who = f"{_and(kid_names)} " if kid_names else ""
-        title = f"Drive {who}from {start_name} to {to_name}"
-        lines = [
-            f"{fmt(g.end)}  {to_name}, there by {fmt(t.due)}"
-            if t.there and g.end < t.due
-            else f"{fmt(g.end)}  {to_name}"
-        ]
-    elif t.there:
-        title = f"Drive {_and(kid_names)} to {t.name}" if kid_names else f"Drive to {t.name}"
-        lines = [f"{fmt(g.end)}  {t.name}, there by {fmt(t.due)}" if g.end < t.due else f"{fmt(g.end)}  {t.name}"]
+    if g.from_loc == HOME:
+        title = f"Drive {who}to {to_name}"
+    elif g.to_loc == HOME:
+        title = f"Drive {who}home from {start_name}"
     else:
-        title = f"Drive {_and(kid_names)} home from {t.name}" if kid_names else f"Drive home from {t.name}"
-        lines = [f"{fmt(g.end)}  Home"]
+        title = f"Drive {who}from {start_name} to {to_name}"
+    due = f", there by {fmt(t.due)}" if t.there and g.to_loc == t.place and g.end < t.due else ""
+    lines = [f"{fmt(g.end)}  {'Home' if g.to_loc == HOME else to_name}{due}"]
     warn = ""
     for b in busy.get(d, ()):
         if b.start < g.end and b.end > g.start:
@@ -248,13 +225,12 @@ def _trip_outing(
     o.kids = list(g.kids)
     o.riders = {k: leave_line for k in g.kids}
     o.parents = {p: leave_line for p in t.riders if p in drivers and p != d}
-    to_loc = g.to_loc or HOME
     o.go = Going(
         from_loc=g.from_loc or HOME,
         from_name=start_name,
-        to_loc=to_loc,
+        to_loc=g.to_loc or HOME,
         to_name=to_name,
-        due=t.due if t.there else g.end,
+        due=t.due if t.there and g.to_loc == t.place else g.end,
         via_home=False,
     )
     # Both ends of the drive are where they are: home is home on it.
@@ -348,17 +324,8 @@ def _clashes(kid_items: dict[str, list[KidItem]]) -> list[Clash]:
     ]
 
 
-def _outings(
-    plan: DayPlan,
-    d: str,
-    busy: Mapping[str, Sequence[BusyBlock]],
-    labels: Labels,
-    homes: Mapping[str, str] | None = None,
-    windows: Mapping[str, Sequence[Span]] | None = None,
-    drives: Mapping[int, Trip] | None = None,
-) -> list[Outing]:
+def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], labels: Labels) -> list[Outing]:
     p = plan[d]
-    drives = drives or {}
     outings: list[Outing] = []
     trip_outings: list[Outing] = []
     cur: Outing | None = None
@@ -366,12 +333,17 @@ def _outings(
         if g.type == "home":
             cur = None
             continue
-        if id(g) in drives:
+        straight_on = g.trip is not None and not g.trip.there and g.to_loc not in (HOME, g.trip.other)
+        if g.trip is not None and not straight_on:
             # The drive to a hotel or back is an outing of its own.
-            trip_outings.append(_trip_outing(g, drives[id(g)], d, busy, labels, list(plan.drivers)))
+            trip_outings.append(_trip_outing(g, g.trip, d, busy, labels, list(plan.drivers)))
             cur = None
             continue
-        if cur is not None and cur.end == g.start:
+        if straight_on:
+            # Back from the hotel straight to the next stop: one outing, from the hotel.
+            cur = Outing(g.start, g.end, [g])
+            outings.append(cur)
+        elif cur is not None and cur.end == g.start:
             cur.end = g.end
             cur.legs.append(g)
         else:
@@ -380,7 +352,7 @@ def _outings(
 
     for o in outings:
         # Home in this driver's route, as their trips say it: a hotel's name while they stay there.
-        away = base_at(homes, windows, d, o.start)
+        away = base_at(plan.windows, d, o.start)
         home = labels.short_place(away) if away else "Home"
         home_at = home if away else "home"
         lines: list[str] = []
@@ -393,9 +365,10 @@ def _outings(
         left: tuple[str, str, str | None, list[str]] | None = None
         name = labels.driver(d)
         first = o.legs[0]
-        if first.type == "drive" and first.from_loc == HOME:
+        if first.type == "drive" and (first.from_loc == HOME or first.trip is not None):
+            start = home_at if first.from_loc == HOME else labels.short_place(first.from_loc or "")
             for x in first.kids:
-                riders[x] = f"Leave {home_at} at {fmt12(o.start)} with {name}"
+                riders[x] = f"Leave {start} at {fmt12(o.start)} with {name}"
         for g in o.legs:
             for x in g.kids:
                 if x not in kids:
@@ -480,7 +453,7 @@ def _outings(
         for b in busy.get(d, ()):
             if b.start < o.end and b.end > o.start:
                 warn = f"Still at {b.title} until {fmt(b.end)}"
-        far = next((g for g in o.legs if g.type == "drive" and g.end - g.start >= LONG_DRIVE), None)
+        far = next((g for g in o.legs if g.type == "drive" and g.trip is None and g.end - g.start >= LONG_DRIVE), None)
         if far is not None:
             # A drive this long is most often Google matching the wrong place, and the trip's
             # stop times alone make it look like a short drive that leaves hours early.

@@ -950,6 +950,138 @@ def test_the_drive_to_a_stay_starts_from_another_one_still_going() -> None:
     assert tue.homes == {"dad": key}
 
 
+LOFT = "Loft, 1 State St, Chicago, IL 60601"
+LOFT_KEY = "loft, 1 state st, chicago, il 60601"
+MARRIOTT = "Marriott, 1401 W 22nd St, Oak Brook, IL 60523"
+MARRIOTT_KEY = "marriott, 1401 w 22nd st, oak brook, il 60523"
+
+
+def _along_a_road(**miles: float) -> Any:
+    """Drive times between places strung along one road, in minutes from home: the loft, the
+    Marriott, and anything else by the first word of its place key."""
+
+    def at(loc: str) -> float:
+        if loc == HOME:
+            return 0
+        if loc == LOFT_KEY:
+            return miles.get("loft", 310)
+        if loc == MARRIOTT_KEY:
+            return miles.get("marriott", 300)
+        return miles.get(loc.split()[0].strip(","), 15)
+
+    return lambda a, b: abs(at(a) - at(b))
+
+
+def _loft(leave: int) -> Stay:
+    return Stay("loft", ("dad",), "Loft", LOFT, date(2026, 11, 1), date(2026, 11, 3), arrive=600, leave=leave)
+
+
+def _marriott(drive: str = "Robin, Ava, Ben") -> Stay:
+    return Stay(
+        "trip",
+        ("mom", "dad", AVA, BEN),
+        "Marriott Chicago",
+        MARRIOTT,
+        date(2026, 11, 3),
+        date(2026, 11, 5),
+        arrive=750,
+        leave=780,
+        description=f"--- Rides ---\nDrop-off: {drive}",
+    )
+
+
+def _outings(stays: list[Stay], events: Any = None, travel: Any = None, day: int = 0) -> dict[str, Any]:
+    w = build_week(events or {}, ROLES, DIRECTORY, TODAY, day + 1, TZ, HOME_ADDRESS, stays=stays)
+    drive = travel or _along_a_road()
+    return plan_week(w, lambda _day: drive, PlannerSettings(), ("mom", "dad"))[day]
+
+
+def test_stays_a_little_apart_drive_hotel_to_hotel() -> None:
+    # Marty, 2026-11-19: stays behave like rides. With the loft over at 12:00 and the Marriott
+    # at 12:30, going home in between would be two 5-hour drives, so Sam goes straight there.
+    day = _outings([_loft(720), _marriott()])
+    trip = day["drivers"]["dad"]["outings"]
+    assert [(o["title"], o["start"], o["end"]) for o in trip] == [("Drive from Loft to Marriott Chicago", 720, 730)]
+    assert day["issues"] == []
+
+
+def test_stays_apart_with_time_at_home_go_home_between() -> None:
+    # Both close to home and hours apart: home in between, then Sam makes his own way.
+    near = _along_a_road(loft=20, marriott=30)
+    day = _outings([_loft(540), _marriott()], travel=near)
+    trip = day["drivers"]["dad"]["outings"]
+    assert [(o["title"], o["lines"]) for o in trip] == [("Drive home from Loft", ["9:20  Home"])]
+
+
+def test_kids_waiting_at_home_for_a_driver_away_is_a_problem() -> None:
+    # Sam drives the kids up but is at the loft until 12:30: the kids still have their ride on
+    # the board, and the problem says why it can't work, instead of the ride quietly vanishing.
+    day = _outings([_loft(750), _marriott("Sam, Ava, Ben")])
+    titles = [o["title"] for o in day["drivers"]["dad"]["outings"]]
+    assert titles == ["Drive Ava and Ben to Marriott Chicago", "Drive home from Loft"]
+    assert [(x["kind"], x["driver"], x["title"]) for x in day["issues"]] == [("busy", "dad", "Sam is still at Loft")]
+
+
+def test_driving_on_alone_joins_the_two_drives() -> None:
+    day = _outings([_loft(750), _marriott("Sam")])
+    trip = day["drivers"]["dad"]["outings"]
+    assert [(o["title"], o["start"]) for o in trip] == [("Drive from Loft to Marriott Chicago", 750)]
+    assert day["issues"] == []
+
+
+MORNING = timed(
+    "school",
+    "School",
+    at(3, "10:00"),
+    at(3, "11:00"),
+    location="School, 2 Oak St, Springfield, IL 62701",
+    description="Drop-off: Robin\nPick-up: Robin",
+)
+
+
+def test_straight_from_a_pick_up_to_the_hotel() -> None:
+    # Marty, 2026-11-19: an event right before the drive up goes straight there when everyone
+    # going is in the car, instead of home and out again.
+    near = _along_a_road(marriott=60, school=20)
+    day = _outings([_marriott("Robin, Ava")], {AVA: [ev(AVA, MORNING)]}, near)
+    robin = day["drivers"]["mom"]["outings"]
+    pick, trip = robin[-2:]
+    assert pick["lines"] == ["11:00  School, pick up Ava"]
+    assert (trip["title"], trip["lead"], trip["lines"]) == (
+        "Drive Ava from School to Marriott Chicago",
+        "Leave 11:00",
+        ["11:40  Marriott Chicago, there by 12:30"],
+    )
+    assert day["issues"] == []
+
+
+def test_home_first_when_someone_is_waiting_there() -> None:
+    near = _along_a_road(marriott=60, school=20)
+    day = _outings([_marriott("Robin, Ava, Ben")], {AVA: [ev(AVA, MORNING)]}, near)
+    pick, trip = day["drivers"]["mom"]["outings"][-2:]
+    assert pick["lines"][-1].endswith("  Home")
+    assert trip["title"] == "Drive Ava and Ben to Marriott Chicago"
+
+
+def test_straight_from_the_hotel_to_the_next_stop() -> None:
+    # Back from the Marriott with barely time to get home before swim: straight to the pool,
+    # with everyone along, as one outing from the hotel.
+    swim = timed(
+        "pool",
+        "Swim",
+        at(5, "18:15"),
+        at(5, "19:00"),
+        location="Pool, 9 Lake St, Springfield, IL 62701",
+        description="Drop-off: Robin\nPick-up: Robin",
+    )
+    day = _outings([_marriott()], {AVA: [ev(AVA, swim)]}, day=2)
+    first = day["drivers"]["mom"]["outings"][0]
+    assert (first["title"], first["lead"]) == ("Drive Ava to Pool", "From Marriott Chicago 1:00")
+    assert first["lines"] == ["6:09  Pool, drop off Ava", "6:24  Home"]
+    assert first["riders"][BEN] == "Leave Marriott Chicago at 1:00 PM with Robin"
+    assert not first["warn"]
+
+
 def test_a_ride_during_the_drive_up_is_a_problem() -> None:
     hotel = "Marriott, 1401 W 22nd St, Oak Brook, IL 60523"
     key = "marriott, 1401 w 22nd st, oak brook, il 60523"
