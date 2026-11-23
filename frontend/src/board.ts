@@ -1205,7 +1205,11 @@ export class MyDashLightBoard extends LitElement {
         </div>
         ${cancel}
       </div>
-      ${f.word ? html`<p class="field-hint">“${f.word}” isn’t anyone in the family. Pick who it’s for instead.</p>` : nothing}
+      ${f.word
+        ? html`<p class="field-hint">“${f.word}” isn’t anyone in the family. Pick who it’s for instead.</p>`
+        : !f.stay && !f.fromNotes && f.people.length
+          ? html`<p class="field-hint">Guessed from the names at the start of the title.</p>`
+          : nothing}
       ${f.recurring
         ? html`<div class="field">
             <span class="field-label">Change</span>
@@ -1329,7 +1333,13 @@ export class MyDashLightBoard extends LitElement {
     if (!who) return nothing;
     const names = who.people.map((p) => personName(plan, p));
     return html`<span class="ed-for"
-      >For ${andList(names)}<button type="button" class="ed-for-change" @click=${() => this.changeForPick(plan, day, e)}>Change</button></span
+      >For ${andList(names)}${who.from_notes ? "" : " · from the title"}<button
+        type="button"
+        class="ed-for-change"
+        @click=${() => this.changeForPick(plan, day, e)}
+      >
+        Change
+      </button></span
     >`;
   }
 
@@ -3083,6 +3093,11 @@ export class MyDashLightBoard extends LitElement {
       for (const x of d.events)
         for (const v of [x.drop, x.pick])
           if (v && v !== "none" && !drivers.includes(v) && !known.some((k) => k.toLowerCase() === v.toLowerCase())) known.push(v);
+    // Whoever drives this same activity on other days comes first: carpools are usually per activity.
+    const same = new Set(
+      plan.days.flatMap((d) => d.events.filter((x) => x.title === e.title).flatMap((x) => [x.drop, x.pick].map((v) => (v ?? "").toLowerCase()))),
+    );
+    known.sort((a, b) => Number(same.has(b.toLowerCase())) - Number(same.has(a.toLowerCase())));
 
     const side = (s: Side): TemplateResult | typeof nothing => {
       if (!e.sides.includes(s)) return nothing;
