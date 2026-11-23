@@ -122,6 +122,19 @@ function planDriver(d, events, busy) {
       if (e.pick === d) tasks.push({ type: 'pick', e: e, t: outAt(e) });
     }
   });
+  // Wherever a parent is is where their drives start and end (Marty, 2026-11-22): staying at the
+  // swim meet, they leave it to drive another kid to fencing and come back. The stay becomes
+  // arriving and leaving. A ride for a kid at the event itself is a clash instead.
+  tasks.slice().forEach(function (k) {
+    if (k.type !== 'stay') return;
+    var e = k.e, end = outAt(e);
+    var there = [e.kid]; // the kids it's for, on any copy of it; kids along go with the parent
+    tasks.forEach(function (x) { if (x.e.loc === e.loc && x.e.start < end && e.start < outAt(x.e)) there.push(x.e.kid); });
+    var when = function (o) { return o.type === 'pick' ? outAt(o.e) : (o.e.arriveBy != null ? o.e.arriveBy : o.e.start); };
+    if (tasks.some(function (o) { return o !== k && e.start < when(o) && when(o) < end && there.indexOf(o.e.kid) < 0; })) {
+      tasks.splice(tasks.indexOf(k), 1, { type: 'drop', e: e, t: k.t, away: true }, { type: 'pick', e: e, t: end, away: true });
+    }
+  });
   tasks.sort(function (a, b) { return a.t - b.t; });
   // Same place, a few minutes apart: drop the next kid off on arriving for the pick-up, instead
   // of fetching them from home afterwards.
@@ -190,6 +203,12 @@ function route(d, tasks, busy) {
         if (cur().loc !== 'home') stops.push({ loc: 'home', kind: 'fetch', car: [] });
         car = rs.slice();
         cur().car = car.slice();
+      }
+      if (k.away) {
+        // Left partway for another ride: getting there, then leaving.
+        if (k.type === 'drop') stops.push({ loc: k.e.loc, kind: 'drop', deadline: k.t, e: k.e, car: car.slice() });
+        else stops.push({ loc: k.e.loc, kind: 'pick', ready: outAt(k.e), aim: outAt(k.e) - arriveEarly(k.e.loc), e: k.e, car: car.slice() });
+        return;
       }
       if (k.e.takes != null) stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, ready: k.e.start, dwell: k.e.takes, late: k.late, car: car.slice() });
       else stops.push({ loc: k.e.loc, kind: 'stay', deadline: k.t, e: k.e, after: outAt(k.e), car: car.slice() });
@@ -270,6 +289,9 @@ function route(d, tasks, busy) {
   // Each bit of driving or waiting is tied to the drop-off or pick-up it serves.
   var evAt = function (q, dir) { for (; q >= 0 && q < n; q += dir) if (stops[q].e) return stops[q]; return null; };
   var tag = function (g, st) { if (st) { g.anchor = st; (st.legs = st.legs || []).push(g); } out.segs.push(g); };
+  // The events this driver stays at but leaves partway: where they go back to in between.
+  var atEvents = tasks.filter(function (k) { return k.away && k.type === 'drop'; }).map(function (k) { return { from: k.t, until: outAt(k.e), e: k.e }; });
+  var backs = [];
   var from = 'home', carNow = stops[0].car, droppedHome = [];
   for (var j = 1; j < n; j++) {
     var s2 = stops[j];
@@ -308,10 +330,29 @@ function route(d, tasks, busy) {
     carNow = s2.car.filter(function (k) { return droppedHome.indexOf(k) < 0; });
     from = s2.loc;
     var idle = dep - ready;
+    var atEv = idle > 0 ? atEvents.filter(function (w) { return w.from <= ready && ready < w.until; })[0] : null;
+    if (atEv && j + 1 < n) {
+      // Staying at an event: the time between rides is spent there, never at home.
+      var ev = atEv.e, nxs = stops[j + 1], thereT = travel(s2.loc, ev.loc), onT = travel(ev.loc, nxs.loc);
+      if (s2.loc === ev.loc) {
+        tag({ type: 'stay', loc: ev.loc, start: ready, end: dep, e: ev, kids: carNow }, s2);
+        t = dep;
+        continue;
+      }
+      if (idle + travel(s2.loc, nxs.loc) - thereT - onT >= 15) {
+        tag({ type: 'drive', from: s2.loc, to: ev.loc, start: ready, end: ready + thereT, kids: carNow, fromHome: false }, s2.e ? s2 : evAt(j - 1, -1));
+        out.drive += thereT;
+        t = dep + travel(s2.loc, nxs.loc) - onT;
+        backs.push({ loc: ev.loc, kind: 'back', e: ev, arr: ready + thereT, car: carNow.slice() });
+        out.segs.push({ type: 'stay', loc: ev.loc, start: ready + thereT, end: t, e: ev, kids: carNow });
+        from = ev.loc;
+        continue;
+      }
+    }
     if (idle > 0) {
       var nx = stops[j + 1];
       var back = travel(s2.loc, 'home'), out2 = nx ? travel('home', nx.loc) : 0, direct = nx ? travel(s2.loc, nx.loc) : 0;
-      if (s2.loc !== 'home' && nx && idle + direct - back - out2 >= 15) {
+      if (!atEv && s2.loc !== 'home' && nx && idle + direct - back - out2 >= 15) {
         tag({ type: 'drive', from: s2.loc, to: 'home', start: ready, end: ready + back, kids: carNow, fromHome: false }, s2.e ? s2 : evAt(j - 1, -1));
         out.drive += back;
         var leaveHome = dep + direct - out2;
@@ -327,7 +368,7 @@ function route(d, tasks, busy) {
     }
     t = dep;
   }
-  out.stops = stops;
+  out.stops = backs.length ? stops.concat(backs).sort(function (a, b) { return (a.arr == null ? -Infinity : a.arr) - (b.arr == null ? -Infinity : b.arr); }) : stops;
 
   // The parent's own calendar: being on the road during a busy block is a conflict.
   (busy[d] || []).forEach(function (b) {
@@ -674,13 +715,24 @@ function buildDay(i, evs) {
       p.stops.forEach(function (s, idx) {
         if (idx === 0 || s.arr == null || s.arr < o.s || s.arr > o.en) return;
         var at = fmt(s.arr), place = SHORT[s.loc], k = s.e && !s.e.own ? K[s.e.kid].name : '';
-        if (s.e && s.e.own) lines.push(fmt(Math.max(s.arr, s.ready || 0)) + '  ' + place + ', ' + s.e.title);
+        // At an event the driver stays at but leaves partway for another ride: when they go.
+        var gone = null, nxs = p.stops[idx + 1];
+        if ((s.kind === 'back' || (s.kind === 'drop' && s.e.stay)) && nxs && nxs.loc !== s.loc) {
+          var st = p.segs.filter(function (g) { return g.type === 'stay' && g.loc === s.loc && g.start >= s.arr; })
+            .sort(function (a, b) { return a.start - b.start; })[0];
+          if (st) gone = st.end;
+        }
+        if (s.kind === 'back') lines.push(at + '  Back at ' + place);
+        else if (s.e && s.e.own && s.kind === 'pick') lines.push(fmt(Math.max(s.arr, s.ready || 0)) + '  Leave ' + place);
+        else if (s.e && s.e.own) lines.push(fmt(Math.max(s.arr, s.ready || 0)) + '  ' + place + ', ' + s.e.title);
+        else if (s.kind === 'drop' && gone != null) lines.push(at + '  ' + place + ', stay with ' + k);
         else if (s.kind === 'drop') lines.push(at + '  ' + place + ', drop off ' + k);
         else if (s.kind === 'stay') lines.push(at + '  ' + place + ', stay with ' + k);
         else if (s.kind === 'pick') lines.push(fmt(Math.max(s.arr, s.ready)) + '  ' + place + ', pick up ' + k);
         else if (s.kind === 'fetch') lines.push(at + '  Home, get ' + s.car.map(function (x) { return K[x].name; }).join(' and '));
         else if (s.kind === 'end') lines.push(at + '  Home');
         if (s.kind === 'stay' && s.after != null && s.after < o.en) lines.push(fmt(s.after) + '  Leave ' + place);
+        if (gone != null) lines.push(fmt(gone) + '  Leave ' + place);
       });
       var last = o.legs[o.legs.length - 1];
       if (last.type === 'drive' && last.to === 'home' && lines[lines.length - 1] !== fmt(o.en) + '  Home') lines.push(fmt(o.en) + '  Home');
@@ -767,7 +819,8 @@ function ownLines(e, plan) {
     drop = { text: (start === 'home' ? 'Leaves' : 'From ' + SHORT[start]) + ' ' + fmt(there.start) + extra, ink: ink };
   }
   var pick = null, at = -1;
-  p.segs.forEach(function (g, i) { if (at < 0 && g.type === 'stay' && g.e && g.e.id === e.id) at = i; });
+  // The last stay there: one left partway is gone back to.
+  p.segs.forEach(function (g, i) { if (g.type === 'stay' && g.e && g.e.id === e.id) at = i; });
   if (at >= 0) {
     var after = p.segs.slice(at + 1).filter(function (g) { return g.type === 'drive'; })[0];
     if (after) pick = { text: after.to === 'home' ? 'Home ' + fmt(after.end) : 'Leaves ' + fmt(after.start), ink: '#3D434B' };
