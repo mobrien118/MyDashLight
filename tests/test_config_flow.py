@@ -265,8 +265,8 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["planner"]["go_home_margin"] == 10
     assert entry.options["kids"] == [
-        {"calendar_id": AVA, "name": "Ava", "aliases": ["Aves"]},
-        {"calendar_id": BEN, "name": "Ben", "aliases": []},
+        {"id": AVA, "name": "Ava", "aliases": ["Aves"]},
+        {"id": BEN, "name": "Ben", "aliases": []},
     ]
     assert "Ava's other names" not in entry.options
     assert entry.options["all_kids"] == ["the kids"]

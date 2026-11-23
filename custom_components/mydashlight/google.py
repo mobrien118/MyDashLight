@@ -23,7 +23,7 @@ _TIMEOUT: Final = ClientTimeout(total=30)
 _PAGE_SIZE: Final = 250
 _MAX_PAGES: Final = 40
 
-_CALENDAR_FIELDS: Final = "nextPageToken,items(id,summary,summaryOverride,primary,accessRole)"
+_CALENDAR_FIELDS: Final = "nextPageToken,items(id,summary,summaryOverride,primary)"
 _EVENT_FIELDS: Final = (
     "nextPageToken,items(id,etag,status,eventType,summary,location,description,start,end,"
     "transparency,recurringEventId,attendees(self,responseStatus),reminders,extendedProperties(private))"
@@ -79,12 +79,7 @@ class StaticToken:
 class CalendarInfo:
     id: str
     name: str
-    access_role: str
     primary: bool = False
-
-    @property
-    def writable(self) -> bool:
-        return self.access_role in ("owner", "writer")
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,11 +105,6 @@ class CalendarEvent:
     the event uses the calendar's default reminders."""
     private: tuple[tuple[str, str], ...] = ()
     """Private properties, only seen on this calendar's copy of the event."""
-
-    @property
-    def reminder_mark(self) -> str:
-        """The minutes of the reminder MyDashLight set, or empty when it set none."""
-        return dict(self.private).get(REMINDER_MARK, "")
 
     @property
     def all_day(self) -> bool:
@@ -252,18 +242,6 @@ class GoogleCalendarApi:
         )
         return str(body.get("id") or "")
 
-    async def async_set_title(self, calendar_id: str, event_id: str, etag: str, title: str) -> str:
-        """Change an event's title, only if it hasn't changed since ``etag``. Returns the new
-        etag. Raises :class:`GoogleConflict` when it has."""
-        body = await self._request(
-            "PATCH",
-            _event_path(calendar_id, event_id),
-            {"fields": "id,etag", "sendUpdates": "none"},
-            json={"summary": title},
-            headers={"If-Match": etag} if etag else None,
-        )
-        return str(body.get("etag") or "")
-
     async def async_delete_event(self, calendar_id: str, event_id: str, etag: str = "") -> None:
         """Delete an event, only if it hasn't changed since ``etag`` (when given). One that's
         already gone counts as deleted."""
@@ -378,7 +356,6 @@ def parse_calendar(item: Mapping[str, Any]) -> CalendarInfo | None:
     return CalendarInfo(
         id=cal_id,
         name=" ".join(str(name).split()),
-        access_role=str(item.get("accessRole") or ""),
         primary=bool(item.get("primary")),
     )
 

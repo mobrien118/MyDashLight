@@ -80,15 +80,6 @@ class CalendarRoles:
     busy: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     """Each routed driver's own calendars, where their events mean they can't drive."""
 
-    @property
-    def calendar_ids(self) -> tuple[str, ...]:
-        """Every calendar to read, each once, kids first."""
-        out: list[str] = []
-        for cal_id in [k.calendar_id for k in self.kids] + [c for ids in self.busy.values() for c in ids]:
-            if cal_id not in out:
-                out.append(cal_id)
-        return tuple(out)
-
 
 @dataclass(frozen=True, slots=True)
 class EventRef:
@@ -594,13 +585,6 @@ def leg_hour(day: DayInput, origin: str, destination: str) -> int:
     else:
         minute = 12 * 60
     return min(max(minute, 0), DAY - 1) // 60
-
-
-def addresses(week: WeekInput) -> list[str]:
-    """Every place key with a real address, for computing drive times."""
-    return sorted(
-        {e.loc for d in week.days for e in d.events if e.loc and e.loc != HOME and not e.loc.startswith(NO_ADDRESS)}
-    )
 
 
 def _on_stay(st: Stay, day: date, t: int) -> bool:

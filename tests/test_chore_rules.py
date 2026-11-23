@@ -23,13 +23,15 @@ from custom_components.mydashlight.chore_rules import (
     weekdays_label,
 )
 
+from .common import with_repeats
+
 KIDS = {"ava": "Ava", "ben": "Ben", "cleo": "Cleo"}
 # Wednesday 4 November 2026.
 TODAY = date(2026, 11, 4)
 
 
 def template(repeats: str = "weekly", notes: str = "", *, completed: bool = False, title: str = "Vacuum") -> Template:
-    return parse_template("task-1", repeats, title, notes, completed=completed, kids=KIDS)  # type: ignore[arg-type]
+    return parse_template("task-1", title, with_repeats(repeats, notes), completed=completed, kids=KIDS)
 
 
 def due_days(t: Template, first: date = TODAY, last: date = date(2026, 11, 17)) -> list[tuple[str, str]]:
@@ -45,14 +47,12 @@ def test_read_block_splits_details_from_lines() -> None:
     assert block.first("who") == "Ava"
     assert block.first("turns") == "yes"
     assert block.every("missed") == ["2026-11-01", "2026-11-08"]
-    assert block.has_block
 
 
 def test_notes_without_a_block_are_all_details() -> None:
     block = read_block("Who: Ava\nJust notes")
     assert block.details == "Who: Ava\nJust notes"
     assert block.lines == ()
-    assert not block.has_block
 
 
 def test_split_icon() -> None:
@@ -273,7 +273,7 @@ def test_repeats_label_round_trips() -> None:
 
 
 def seed(notes: str) -> Template:
-    return parse_template("task-1", None, "Vacuum", notes, completed=False, kids=KIDS)
+    return parse_template("task-1", "Vacuum", notes, completed=False, kids=KIDS)
 
 
 def test_seed_reads_how_often_from_its_repeats_line() -> None:

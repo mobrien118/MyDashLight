@@ -6,7 +6,6 @@ import {
   columnsFor,
   DAY_HEAD,
   headAt,
-  compactCardHeight,
   compactHeight,
   compactTripHeight,
   foldsIntoTime,
@@ -211,8 +210,6 @@ test("wrapped text in Compact gets room for every line", () => {
   assert.equal(wrapRows("Home 4:40 with Robin", 1000), 1);
   assert.equal(wrapRows("Robin stays · leaves 3:30", 130, 7), 2);
   assert.equal(wrapRows("Supercalifragilistic", 70, 7), 2);
-  const e = plan.days[0]!.events[0]!;
-  assert.ok(compactCardHeight(e, 150) > compactCardHeight(e, 300));
 });
 
 test("measured text wraps where the browser would, and a no-break space holds words together", () => {

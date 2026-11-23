@@ -19,7 +19,6 @@ from custom_components.mydashlight.week import (
     EventRef,
     KidCalendar,
     WeekInput,
-    addresses,
     build_week,
     make_travel,
     where,
@@ -70,11 +69,6 @@ def test_window_covers_the_morning_after_the_last_day() -> None:
     assert end == datetime(2026, 11, 10, 6, tzinfo=TZ)
 
 
-def test_roles_list_each_calendar_once() -> None:
-    roles = CalendarRoles(kids=(KidCalendar(AVA, "Ava"),), busy={"mom": (ROBIN, SAM), "dad": (SAM,)})
-    assert roles.calendar_ids == (AVA, ROBIN, SAM)
-
-
 def test_kid_events_become_ride_events() -> None:
     w = week(
         {
@@ -122,7 +116,6 @@ def test_kid_events_become_ride_events() -> None:
     assert dance.loc == "?dance"
     assert w.labels.place("?dance") == "Dance"
     assert wed.problems["dance"]
-    assert addresses(w) == [piano.loc]
 
 
 def test_same_event_on_two_kids_calendars() -> None:
@@ -337,7 +330,6 @@ def test_events_at_home_need_no_ride() -> None:
     assert (tutor.loc, tutor.drop, tutor.pick) == (HOME, NOT_NEEDED, NOT_NEEDED)
     assert (lego.loc, lego.drop, lego.pick) == (HOME, NOT_NEEDED, NOT_NEEDED)
     assert w.travel_overrides == {}
-    assert addresses(w) == []
     assert w.labels.place(HOME) == "Home"
 
 

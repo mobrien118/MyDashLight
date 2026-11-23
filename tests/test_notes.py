@@ -40,9 +40,7 @@ def test_block_at_the_end() -> None:
         "Bring shin guards. Field 3.\n\n--- Rides ---\nDrop-off: Sam\nPick-up: the Parkers\n"
         "Stay: yes\nArrive by: 5:15 PM\nTravel: 25 min"
     )
-    assert notes == RideNotes(
-        drop="dad", pick="the Parkers", stay=True, arrive_by=17 * 60 + 15, travel=25, has_block=True
-    )
+    assert notes == RideNotes(drop="dad", pick="the Parkers", stay=True, arrive_by=17 * 60 + 15, travel=25)
 
 
 @pytest.mark.parametrize("text", [None, "", "Just a note", "\n\n"])
@@ -101,12 +99,11 @@ def test_rides_block_shields_the_notes_above_it() -> None:
 def test_loose_lines_count_without_a_block() -> None:
     notes = parse("Coach: Ms. Lee\nDrop off: Mom\nBring water")
     assert notes.drop == "mom"
-    assert notes.has_block is False
 
 
 def test_unrelated_colon_lines_are_ignored() -> None:
     notes = parse("--- Rides ---\nCoach: Ms. Lee\nNote: gate code 1234\nDrop-off: Sam")
-    assert notes == RideNotes(drop="dad", has_block=True)
+    assert notes == RideNotes(drop="dad")
 
 
 def test_last_line_for_a_field_wins() -> None:
@@ -115,7 +112,7 @@ def test_last_line_for_a_field_wins() -> None:
 
 @pytest.mark.parametrize("header", ["--- Rides ---", "---rides---", "-- RIDES --", "  ----- Rides -----  "])
 def test_header_variants(header: str) -> None:
-    assert parse(f"Pick-up: soon\n{header}\nDrop-off: Sam") == RideNotes(drop="dad", has_block=True)
+    assert parse(f"Pick-up: soon\n{header}\nDrop-off: Sam") == RideNotes(drop="dad")
 
 
 @pytest.mark.parametrize(
@@ -228,14 +225,14 @@ def test_html_with_breaks_and_formatting() -> None:
         'Bring <b>cleats</b><br><a href="https://example.com">Map</a><br><br>'
         "--- Rides ---<br><b>Drop-off:</b> Sam<br>Pick-up:&nbsp;the Parkers"
     )
-    assert notes == RideNotes(drop="dad", pick="the Parkers", has_block=True)
+    assert notes == RideNotes(drop="dad", pick="the Parkers")
 
 
 def test_html_paragraphs_and_divs() -> None:
     notes = parse(
         "<p>Hello</p><div>--- Rides ---</div><div>Stay: yes</div><div>Drop-off: Robin</div><div>Pick-up: Robin</div>"
     )
-    assert notes == RideNotes(drop="mom", pick="mom", stay=True, has_block=True)
+    assert notes == RideNotes(drop="mom", pick="mom", stay=True)
 
 
 def test_html_entities() -> None:
@@ -371,7 +368,7 @@ def test_crlf_is_kept() -> None:
 
 def test_written_notes_read_back() -> None:
     text = write("Bring water", drop="the parkers", pick="Rae", stay=False, arrive_by=1035, travel=25)
-    assert parse(text) == RideNotes(drop="the Parkers", pick="mom", arrive_by=1035, travel=25, has_block=True)
+    assert parse(text) == RideNotes(drop="the Parkers", pick="mom", arrive_by=1035, travel=25)
 
 
 def test_html_stays_html() -> None:

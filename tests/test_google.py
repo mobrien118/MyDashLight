@@ -46,8 +46,6 @@ async def test_list_calendars(hass: HomeAssistant, google: FakeGoogle, aioclient
     assert [c.name for c in calendars][:3] == [ACCOUNT, "Kid-Ava", "Kid-Ben"]
     assert calendars[-1].name == "My name"
     assert calendars[0].primary
-    assert calendars[0].writable
-    assert not calendars[-1].writable
     assert len(google.calls) == 5  # 9 entries, 2 per page
     _method, url, _data, headers = aioclient_mock.mock_calls[0]
     assert headers["Authorization"] == "Bearer token-1"

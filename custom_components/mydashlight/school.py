@@ -17,8 +17,6 @@ with the kid's name taken off the front of each title (see :func:`.shared.school
   A school day with no pick gets the kid's default from the settings (Buy, unless changed).
   Titled just "Lunch", the first line of the notes (above the block) is the dish, if any.
   A .ics file of menus can be imported into the lunch calendar once a month.
-* Before MyDashLight 0.16, a pick was its own "Bring Lunch" or "Buy Lunch" event. Those are
-  still read, and folded into the day's lunch event the next time that day is saved.
 
 Nothing about school or lunch is kept in Home Assistant: the events are the record.
 
@@ -30,19 +28,17 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-import html
 import re
 from typing import Any, Final, Literal
 
 from .google import CalendarEvent
+from .notes import plain_text
 
 Lunch = Literal["bring", "buy"]
-LUNCHES: Final[tuple[Lunch, ...]] = ("bring", "buy")
 DEFAULT_LUNCH: Final[Lunch] = "buy"
 PICK_WORDS: Final[dict[Lunch, str]] = {"bring": "Bring", "buy": "Buy"}
 
 _NO_SCHOOL_RE: Final = re.compile(r"\bno[\s-]+school\b", re.IGNORECASE)
-_LUNCH_RE: Final = re.compile(r"^\W*(bring|buy)(?:ing)?\s+lunch\W*$", re.IGNORECASE)
 _MENU_RE: Final = re.compile(r"^\W*lunch(?:\s*$|\s*[:\u2013\u2014-]\s*(.*)$)", re.IGNORECASE)
 MENU_TITLE: Final = "Lunch"
 MENU_MARK: Final = "mydashlight_menu"
@@ -52,18 +48,6 @@ MENU_FROM_FEED: Final = "feed"
 PICK_HEADER: Final = "--- Lunch ---"
 _PICK_HEADER_RE: Final = re.compile(r"^\s*-{2,}\s*lunch\s*-{2,}\s*$", re.IGNORECASE)
 _PICK_LINE_RE: Final = re.compile(r"^\s*(pick|lunch|bring or buy)\s*:\s*(\w+)", re.IGNORECASE)
-_HTML_RE: Final = re.compile(r"<(?:br|p|div|span|b|i|u|a|ul|ol|li|strong|em|font)\b[^>]*>", re.IGNORECASE)
-_HTML_BREAK_RE: Final = re.compile(r"<br\s*/?>|</?(?:p|div|li|ul|ol)\b[^>]*>", re.IGNORECASE)
-_TAG_RE: Final = re.compile(r"<[^>]*>")
-
-
-def lunch_of(title: str) -> Lunch | None:
-    """``bring`` for a "Bring Lunch" event, ``buy`` for "Buy Lunch", else None. Ignores case,
-    spaces and emoji around it. (How picks were saved before MyDashLight 0.16.)"""
-    match = _LUNCH_RE.match(" ".join(title.split()))
-    if not match:
-        return None
-    return "bring" if match.group(1).casefold() == "bring" else "buy"
 
 
 def _pick_word(value: str) -> Lunch | None:
@@ -75,16 +59,9 @@ def _pick_word(value: str) -> Lunch | None:
     return None
 
 
-def _plain(notes: str) -> str:
-    """The notes as plain text: Google keeps them as HTML once someone edits them on the web."""
-    if _HTML_RE.search(notes):
-        notes = html.unescape(_TAG_RE.sub("", _HTML_BREAK_RE.sub("\n", notes))).replace("\xa0", " ")
-    return notes.replace("\r\n", "\n")
-
-
 def split_pick(notes: str) -> tuple[str, Lunch | None]:
     """The notes without the pick block at the end, and the pick in it (or None)."""
-    lines = _plain(notes).split("\n")
+    lines = plain_text(notes).split("\n")
     at = next((i for i, line in enumerate(lines) if _PICK_HEADER_RE.match(line)), None)
     if at is None:
         return "\n".join(lines).strip(), None
@@ -125,16 +102,6 @@ def lunch_event_of(title: str, notes: str = "") -> tuple[str, str, Lunch | None]
     return dish, details, pick
 
 
-def menu_of(title: str, notes: str = "") -> tuple[str, str] | None:
-    """The dish and the rest of the menu: ("Pizza", notes) for a "Lunch: Pizza" event, the
-    notes' first line and the lines after it for one titled just "Lunch", else None.
-    "Lunch with Grandma" isn't a menu, and neither is a "Lunch" with no dish in it."""
-    found = lunch_event_of(title, notes)
-    if found is None or not found[0]:
-        return None
-    return found[0], found[1]
-
-
 def menu_title(dish: str) -> str:
     """The event title for a day's lunch: "Lunch: Pizza", or just "Lunch" with no menu yet."""
     dish = " ".join(dish.split())
@@ -154,8 +121,6 @@ class LunchPick:
     lunch: Lunch
     event_id: str
     etag: str
-    old: bool = False
-    """A "Bring Lunch" or "Buy Lunch" event of its own, from before MyDashLight 0.16."""
     one_day: bool = True
 
 
@@ -200,8 +165,6 @@ class SchoolCalendar:
     days_off: dict[str, list[DayOff]] = field(default_factory=dict)
     lunches: dict[tuple[str, date], list[MenuDay]] = field(default_factory=dict)
     """Every lunch event for each kid and day. More than one only if one was imported twice."""
-    old_picks: dict[tuple[str, date], list[LunchPick]] = field(default_factory=dict)
-    """"Bring Lunch" and "Buy Lunch" events from before MyDashLight 0.16, not folded in yet."""
 
     def lunch_event(self, kid: str, day: date) -> MenuDay | None:
         """The day's lunch event: the one with a menu, else the first, else None."""
@@ -223,12 +186,11 @@ class SchoolCalendar:
         return day.weekday() < 5 and self.day_off(kid, day) is None
 
     def pick(self, kid: str, day: date) -> LunchPick | None:
-        """The kid's pick for the day: from the lunch event, else from an old pick event."""
+        """The kid's pick for the day, from its lunch event."""
         for m in self.lunches.get((kid, day), []):
             if m.pick is not None:
                 return LunchPick(kid, day, m.pick, m.event_id, m.etag, one_day=m.one_day)
-        old = self.old_picks.get((kid, day))
-        return old[0] if old else None
+        return None
 
     def lunch(self, kid: str, day: date) -> Lunch | None:
         if not self.is_school_day(kid, day):
@@ -255,14 +217,6 @@ def read_school(
             one_day = ev_last == ev.start
             if is_no_school(ev.title):
                 offs.append(DayOff(ev.start, ev_last, " ".join(ev.title.split())))
-                continue
-            old = lunch_of(ev.title)
-            if old is not None:
-                day = ev.start
-                while day <= ev_last:
-                    old_pick = LunchPick(kid, day, old, ev.id, ev.etag, old=True, one_day=one_day)
-                    out.old_picks.setdefault((kid, day), []).append(old_pick)
-                    day += timedelta(days=1)
                 continue
             found = lunch_event_of(ev.title, ev.description)
             if found is None:
@@ -315,19 +269,16 @@ def day_changes(
     """The changes that leave ``kid`` with one lunch event on ``day`` holding the menu and the
     pick, with the given parts changed (and the rest as they are).
 
-    A second copy of the day's event and an old "Bring Lunch"/"Buy Lunch" event are folded in
-    and removed. With no menu and no pick left, the day's event goes. An event spanning several
-    days is never changed or removed.
+    A second copy of the day's event is folded in and removed. With no menu and no pick left,
+    the day's event goes. An event spanning several days is never changed or removed.
     """
     found = [m for m in school.lunches.get((kid, day), []) if m.one_day]
-    old = [p for p in school.old_picks.get((kid, day), []) if p.one_day]
     keep = next((m for m in found if m.dish), found[0] if found else None)
     current = school.pick(kid, day)
     want_dish = " ".join((keep.dish if keep else "").split()) if isinstance(dish, _Keep) else " ".join(dish.split())
     want_details = (keep.details if keep else "") if isinstance(details, _Keep) else details.strip()
     want_pick = (current.lunch if current else None) if isinstance(pick, _Keep) else pick
     out = [MenuChange(kid, day, remove=(m.event_id, m.etag)) for m in found if m is not keep]
-    out += [MenuChange(kid, day, remove=(p.event_id, p.etag)) for p in old]
     title, notes = menu_title(want_dish), with_pick(want_details, want_pick)
     if not want_dish and not want_details and want_pick is None:
         if keep is not None:
@@ -364,20 +315,11 @@ def menu_changes(school: SchoolCalendar, kid: str, day: date, dish: str, details
     return day_changes(school, kid, day, dish=dish, details=details, from_feed=False)
 
 
-def fold_old_picks(school: SchoolCalendar) -> dict[str, list[MenuChange]]:
-    """For each kid, the changes that move old "Bring Lunch"/"Buy Lunch" events onto the day's
-    lunch event."""
-    out: dict[str, list[MenuChange]] = {}
-    for kid, day in sorted({key for key, found in school.old_picks.items() if any(p.one_day for p in found)}):
-        out.setdefault(kid, []).extend(day_changes(school, kid, day))
-    return out
-
-
 def lunch_payload(school: SchoolCalendar, kids: Mapping[str, str], today: date) -> dict[str, Any]:
     """What the kitchen app's Lunch tab and lunch chips need."""
     out_kids: list[dict[str, Any]] = []
     for kid, name in kids.items():
-        days = sorted({d for k, d in (*school.lunches, *school.old_picks) if k == kid})
+        days = sorted({d for k, d in school.lunches if k == kid})
         picks = {
             d.isoformat(): p.lunch
             for d in days

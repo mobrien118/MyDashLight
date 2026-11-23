@@ -248,7 +248,6 @@ class RideNotes:
     """Who the event is for, as the For line says it ("Ava & Ben"), or None with no such line."""
     overnight: bool | None = None
     """Whether the event is a stay away from home, as its Overnight line says, or None to guess."""
-    has_block: bool = False
     problems: tuple[str, ...] = ()
     """Lines that couldn't be read, worded for people."""
 
@@ -551,6 +550,13 @@ def _split(description: str) -> _Doc:
     return _Doc(lines, is_html, newline, header)
 
 
+def plain_text(description: str) -> str:
+    """Notes as plain text: Google keeps them as HTML once someone edits them on the web."""
+    if _HTML_RE.search(description):
+        description = html.unescape(_TAG_RE.sub("", _BREAK_RE.sub("\n", description))).replace("\xa0", " ")
+    return description.replace("\r\n", "\n")
+
+
 def _html_text(raw: str) -> str:
     text = html.unescape(_TAG_RE.sub("", raw)).replace("\xa0", " ")
     return " ".join(text.split("\n")).strip()
@@ -656,7 +662,6 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None, event_
         takes=takes,
         people=people,
         overnight=overnight,
-        has_block=doc.header is not None,
         problems=tuple(problems),
     )
 
