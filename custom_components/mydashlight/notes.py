@@ -59,7 +59,9 @@ from .planner import NOT_NEEDED, UNASSIGNED, fmt12
 
 RIDES_HEADER: Final = "--- Rides ---"
 
-Field = Literal["people", "attending", "drop", "pick", "stay", "along", "arrive_by", "leave_by", "travel", "takes"]
+Field = Literal[
+    "people", "attending", "drop", "pick", "stay", "along", "arrive_by", "leave_by", "travel", "takes", "overnight"
+]
 FIELDS: Final[tuple[Field, ...]] = (
     "people",
     "attending",
@@ -71,8 +73,9 @@ FIELDS: Final[tuple[Field, ...]] = (
     "leave_by",
     "travel",
     "takes",
+    "overnight",
 )
-BLOCK_ONLY: Final[frozenset[Field]] = frozenset({"people"})
+BLOCK_ONLY: Final[frozenset[Field]] = frozenset({"people", "overnight"})
 """Fields only read inside the Rides block, never from a loose line."""
 
 
@@ -98,6 +101,7 @@ _LABELS: Final[dict[str, Field]] = {
     "traveltime": "travel",
     "takes": "takes",
     "duration": "takes",
+    "overnight": "overnight",
 }
 _WRITE_LABELS: Final[dict[Field, str]] = {
     "people": "For",
@@ -110,6 +114,7 @@ _WRITE_LABELS: Final[dict[Field, str]] = {
     "leave_by": "Leave by",
     "travel": "Travel",
     "takes": "Takes",
+    "overnight": "Overnight",
 }
 _NOT_NEEDED_WORDS: Final = frozenset({"not needed", "none", "no", "n/a", "na", "no ride", "not required"})
 _TBD_WORDS: Final = frozenset({"", "tbd", "?", "nobody yet", "unassigned", "anyone"})
@@ -241,6 +246,8 @@ class RideNotes:
     """Who rides along on the pick-up, after the driver on its line."""
     people: str | None = None
     """Who the event is for, as the For line says it ("Ava & Ben"), or None with no such line."""
+    overnight: bool | None = None
+    """Whether the event is a stay away from home, as its Overnight line says, or None to guess."""
     has_block: bool = False
     problems: tuple[str, ...] = ()
     """Lines that couldn't be read, worded for people."""
@@ -296,8 +303,19 @@ def parse_notes(
 
 def read_for(description: str | None) -> str | None:
     """The For line's text in the Rides block ("Ava & Ben"), or None when there isn't one."""
+    return _block_line(description, "people")
+
+
+def read_overnight(description: str | None) -> bool | None:
+    """What the Overnight line in the Rides block says: a stay away from home or not, or None
+    when there's no such line (or it isn't yes or no), so the board guesses."""
+    word = (_block_line(description, "overnight") or "").casefold()
+    return True if word in _YES else False if word in _NO and word else None
+
+
+def _block_line(description: str | None, fld: Field) -> str | None:
     doc = _split(description or "")
-    found = _locate(doc)["people"]
+    found = _locate(doc)[fld]
     if not found:
         return None
     m = _LINE_RE.match(doc.lines[found[-1]].text)
@@ -352,6 +370,7 @@ def write_notes(
     drop_riders: Iterable[str] | Keep = KEEP,
     pick_riders: Iterable[str] | Keep = KEEP,
     people: str | Keep | None = KEEP,
+    overnight: bool | Keep | None = KEEP,
     event_start: int | None = None,
     event_end: int | None = None,
 ) -> str:
@@ -386,6 +405,7 @@ def write_notes(
         "leave_by": leave_by,
         "travel": travel,
         "takes": takes,
+        "overnight": overnight,
     }
     changed = {
         f: _norm(f, v, directory)
@@ -562,6 +582,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None, event_
     travel: int | None = None
     takes: int | None = None
     people: str | None = None
+    overnight: bool | None = None
     problems: list[str] = []
     found = _locate(doc)
     for fld in FIELDS:
@@ -595,6 +616,14 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None, event_
                         problems.append(f"{label}: “{name}” isn’t one of the family")
                     elif kid not in along:
                         along.append(kid)
+        elif fld == "overnight":
+            word = raw.casefold()
+            if word in _YES:
+                overnight = True
+            elif word in _NO and word:
+                overnight = False
+            elif word:
+                problems.append(f"{label}: “{raw}” isn’t yes or no")
         elif fld == "stay":
             word = raw.casefold()
             if word in _YES:
@@ -626,6 +655,7 @@ def _read(doc: _Doc, directory: DriverDirectory, event_start: int | None, event_
         travel=travel,
         takes=takes,
         people=people,
+        overnight=overnight,
         has_block=doc.header is not None,
         problems=tuple(problems),
     )
@@ -653,6 +683,8 @@ def _side(driver: str | Keep, riders: Iterable[str] | Keep, now_driver: str, now
 def _norm(fld: Field, value: object, directory: DriverDirectory) -> object:
     if fld == "people":
         return None if value is None else (" ".join(str(value).split()) or None)
+    if fld == "overnight":
+        return None if value is None else bool(value)
     if fld in ("drop", "pick"):
         assert isinstance(value, tuple)
         driver = directory.resolve(str(value[0] or ""))
@@ -685,6 +717,8 @@ def _render(
         return f"{label}: {', '.join([directory.display(driver), *names])}"
     if fld == "stay":
         return f"{label}: yes" if value else None
+    if fld == "overnight":
+        return None if value is None else f"{label}: {'yes' if value else 'no'}"
     if fld == "attending":
         return None if value else f"{label}: no"
     if fld == "along":

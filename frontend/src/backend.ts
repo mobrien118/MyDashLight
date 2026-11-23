@@ -59,11 +59,16 @@ export interface Backend {
   setAttending(event: string, attending: boolean, scope: Scope): Promise<void>;
   applySuggestion(id: string): Promise<void>;
   /** Who an event is for, saved as a "For:" line in its notes; none goes back to the names in its title. */
+  /**
+   * Says who an event is for; `people` null keeps who it's for. `overnight` true makes it a
+   * stay away from home and false "Not a stay"; null takes that away, so the board guesses.
+   */
   setPeople(
     event: string,
-    people: string[],
+    people: string[] | null,
     scope: Scope,
     drive?: StayDrive,
+    overnight?: boolean | null,
   ): Promise<void>;
   /**
    * Calls `onChores` with the chores now and whenever they change; null while they can't be
@@ -507,13 +512,15 @@ export class HassBackend implements Backend {
 
   setPeople(
     event: string,
-    people: string[],
+    people: string[] | null,
     scope: Scope,
     drive?: StayDrive,
+    overnight?: boolean | null,
   ): Promise<void> {
     return this.call("set_people", {
       event,
-      people,
+      ...(people ? { people } : {}),
+      ...(overnight !== undefined ? { overnight } : {}),
       scope,
       ...(drive
         ? {

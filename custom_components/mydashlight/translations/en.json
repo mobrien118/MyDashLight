@@ -547,6 +547,10 @@
         "back_riders": {
           "name": "In the car back",
           "description": "For a hotel stay with a driver: who rides back home with them, when it isn't the same as on the way there."
+        },
+        "overnight": {
+          "name": "Overnight",
+          "description": "Whether it's a stay away from home, where the parents on it start and end their rides: on for yes, off for \"Not a stay\". Leave it out to keep it as it is. Given without People, who it's for stays as it is."
         }
       }
     }

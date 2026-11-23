@@ -68,7 +68,15 @@ async def test_a_parents_busy_time_can_be_marked_not_going(hass: HomeAssistant, 
     # Away for two days: only busy time, never driven to. Not going frees Robin's time.
     google.add(
         FAMILY,
-        **timed("trip", "Robin Car rental", "2026-11-03T08:00:00-06:00", "2026-11-04T18:00:00-06:00", location="Air"),
+        # At an address, it would be a stay, but the board's "Not a stay" says otherwise.
+        **timed(
+            "trip",
+            "Robin Car rental",
+            "2026-11-03T08:00:00-06:00",
+            "2026-11-04T18:00:00-06:00",
+            location="Air",
+            description="--- Rides ---\nOvernight: no",
+        ),
     )
     entry = await load(hass)
     trip = planned(entry, "trip")
@@ -80,7 +88,7 @@ async def test_a_parents_busy_time_can_be_marked_not_going(hass: HomeAssistant, 
 
     await call(hass, "set_attending", event="trip", attending=False)
 
-    assert google.patches[-1][3] == {"description": "--- Rides ---\nAttending: no"}
+    assert google.patches[-1][3] == {"description": "--- Rides ---\nOvernight: no\nAttending: no"}
     trip = planned(entry, "trip")
     assert (trip["attending"], trip["lines"]["drop"]["text"]) == (False, "Not attending")
     days = entry.runtime_data.coordinator.data.days
@@ -533,6 +541,44 @@ async def test_pick_who_is_on_a_stay(hass: HomeAssistant, google: FakeGoogle) ->
     assert (item["people"], item["from_notes"]) == (["mom", "dad", AVA], True)
     assert set(data.week.days[0].homes) == {"mom", "dad"}
     assert (item["driver"], item["riders"]) == ("", [])
+
+
+async def test_staying_here_and_not_a_stay(hass: HomeAssistant, google: FakeGoogle) -> None:
+    # Marty, 2026-11-22: a hotel reservation naming nobody gets "Who's staying?" on the board; a
+    # stay the board guessed wrong gets "Not a stay". Both are an Overnight line in the notes.
+    google.add(
+        FAMILY,
+        **all_day(
+            "hotel",
+            "Reservation at Renaissance Hotel",
+            "2026-11-03",
+            "2026-11-06",
+            location="Renaissance Hotel, 611 Commerce St, Nashville, TN 37203",
+        ),
+    )
+    entry = await load(hass)
+
+    def item() -> dict[str, Any]:
+        data = entry.runtime_data.coordinator.data
+        return next(i for i in data.days[0]["all_day"] if i["id"] == "hotel")
+
+    assert (item()["stay"], item()["can_stay"]) == (False, True)
+
+    await call(hass, "set_people", event="hotel", people=["Robin", "Sam"], overnight=True)
+    assert google.event(FAMILY, "hotel")["description"] == "--- Rides ---\nFor: Robin & Sam\nOvernight: yes"
+    assert (item()["stay"], item()["people"]) == (True, ["mom", "dad"])
+    assert set(entry.runtime_data.coordinator.data.week.days[0].homes) == {"mom", "dad"}
+
+    # Not a stay: who it's for is kept, and it can be made a stay again from its chip.
+    await call(hass, "set_people", event="hotel", overnight=False)
+    assert google.event(FAMILY, "hotel")["description"] == "--- Rides ---\nFor: Robin & Sam\nOvernight: no"
+    assert (item()["stay"], item()["can_stay"]) == (False, True)
+    assert entry.runtime_data.coordinator.data.week.days[0].homes == {}
+
+    # Undo: the line goes, and over days at an address with parents on it, it's a stay again.
+    await call(hass, "set_people", event="hotel", overnight=None)
+    assert google.event(FAMILY, "hotel")["description"] == "--- Rides ---\nFor: Robin & Sam"
+    assert item()["stay"] is True
 
 
 async def test_pick_who_drives_to_a_stay(hass: HomeAssistant, google: FakeGoogle) -> None:

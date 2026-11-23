@@ -402,3 +402,8 @@ set_people:
       selector:
         text:
           multiple: true
+    overnight:
+      required: false
+      example: true
+      selector:
+        boolean:

@@ -49,6 +49,8 @@ class RideChange:
     people: str | Keep | None = KEEP
     """Who the event is for, worded for the For line ("Ava & Ben"), or None to go back to the
     names in the title."""
+    overnight: bool | Keep | None = KEEP
+    """Whether it's a stay away from home, or None to take the line away so the board guesses."""
 
     @property
     def rides(self) -> bool:
@@ -79,7 +81,7 @@ class RideChange:
 
     @property
     def empty(self) -> bool:
-        return not self.rides and isinstance(self.attending, Keep) and isinstance(self.people, Keep)
+        return not self.rides and all(isinstance(v, Keep) for v in (self.attending, self.people, self.overnight))
 
     def apply(
         self, description: str, directory: DriverDirectory, event_start: int | None, event_end: int | None = None
@@ -98,6 +100,7 @@ class RideChange:
             pick_riders=self.pick_riders,
             takes=self.takes,
             people=self.people,
+            overnight=self.overnight,
             event_start=event_start,
             event_end=event_end,
         )
@@ -115,6 +118,7 @@ _LINES: Final = (
     "pick_riders",
     "takes",
     "people",
+    "overnight",
 )
 
 

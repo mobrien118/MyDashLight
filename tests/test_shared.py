@@ -258,3 +258,36 @@ def test_a_stay_away_moves_home_for_its_parents() -> None:
     assert [e.id for e in split.lanes["ava"]] == ["sleepover"]
     assert [e.id for e in split.lanes["mom"]] == ["gone"]
     assert [u.id for u in split.unplaced] == []
+
+
+def test_overnight_at_an_address_is_a_stay_without_the_word() -> None:
+    # Marty, 2026-11-22: the board guesses a stay, shows it as one, and a tap fixes a wrong guess.
+    away = replace(timed("trip", "Robin Denver", "2026-11-20T08:00", "2026-11-22T18:00"), location="Hyatt, Denver")
+    late = replace(timed("gala", "Robin Gala", "2026-11-20T19:00", "2026-11-21T01:00"), location="Hilton, Chicago")
+    week = replace(all_day("lake", "Robin & Sam Lake week", "2026-11-23", "2026-11-26"), location="Lake Resort")
+    expo = replace(all_day("expo", "Robin Expo", "2026-11-24", "2026-11-25"), location="Convention Center")
+    conf = replace(
+        timed("conf", "Sam Conference", "2026-11-20T08:00", "2026-11-21T17:00"),
+        location="Convention Center",
+        description="--- Rides ---\nOvernight: no",
+    )
+    hotel = replace(
+        all_day("hotel", "Reservation at the Renaissance", "2026-11-23", "2026-11-26"), location="Renaissance"
+    )
+    meet = replace(all_day("meet", "Ava Swim meet", "2026-11-23", "2026-11-25"), location="Aquatic Center")
+    split = split_events([away, late, week, expo, conf, hotel, meet], PEOPLE, TZ)
+    stays = {s.id: s for s in split.stays}
+    assert set(stays) == {"trip", "lake"}
+    # Named after its place, as the board shows it: the title after the names.
+    items = {i.id: i for i in split.day_items}
+    assert (stays["trip"].name, items["trip"].title, items["lake"].title) == ("", "Denver", "Lake week")
+    # A late night isn't a night away, and "Not a stay" keeps it in Sam's lane.
+    assert [e.id for e in split.lanes["mom"]] == ["gala"]
+    assert [e.id for e in split.lanes["dad"]] == ["conf"]
+    # Over days at an address, naming no parent: tapping it picks who's staying. One day isn't away.
+    assert (items["hotel"].can_stay, items["meet"].can_stay, items["expo"].can_stay) == (True, True, False)
+    assert items["hotel"].as_dict(date(2026, 11, 23))["can_stay"] is True
+    assert "can_stay" not in items["expo"].as_dict(date(2026, 11, 24))
+    # Picked on the board: it's a stay, whatever its title says.
+    staying = replace(expo, description="--- Rides ---\nFor: Robin\nOvernight: yes")
+    assert [s.id for s in split_events([staying], PEOPLE, TZ).stays] == ["expo"]

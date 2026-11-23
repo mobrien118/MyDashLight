@@ -15,6 +15,7 @@ from custom_components.mydashlight.notes import (
     parse_notes,
     parse_offset,
     read_for,
+    read_overnight,
     skip_prefix,
     write_notes,
 )
@@ -667,3 +668,16 @@ def test_human_notes_long_ones_are_cut_at_a_word() -> None:
     out = human_notes(text)
     assert len(out) <= HUMAN_NOTES_MAX
     assert out.endswith("word…")
+
+
+def test_overnight_line() -> None:
+    # The board's "Not a stay" and "Who's staying?" (Marty, 2026-11-22); only read in the block.
+    assert read_overnight("--- Rides ---\nOvernight: yes") is True
+    assert read_overnight("--- Rides ---\nOvernight: No") is False
+    assert read_overnight("Overnight: no") is None
+    assert read_overnight("--- Rides ---\nOvernight: maybe") is None
+    assert parse("--- Rides ---\nOvernight: maybe").problems == ("Overnight: “maybe” isn’t yes or no",)
+    said = write_notes("Book early.", DIRECTORY, overnight=False)
+    assert said == "Book early.\n\n--- Rides ---\nOvernight: no"
+    assert write_notes(said, DIRECTORY, overnight=True) == "Book early.\n\n--- Rides ---\nOvernight: yes"
+    assert "Overnight" not in write_notes(said, DIRECTORY, overnight=None)

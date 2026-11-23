@@ -32,7 +32,7 @@ import re
 from typing import Final
 
 from .google import CalendarEvent
-from .notes import DriverDirectory, human_notes, parse_notes, read_for
+from .notes import DriverDirectory, human_notes, parse_notes, read_for, read_overnight
 from .who import People, Who, read_names, read_title
 
 
@@ -66,6 +66,9 @@ class DayItem:
     """For a stay, whether it has times, so the drive there and back is planned."""
     no_address: bool = False
     """For a stay, whether the event has no location, so its drives are timed to the name alone."""
+    can_stay: bool = False
+    """Not a stay, but it could be one: it runs over days at an address, so the board offers to
+    pick who's staying there."""
 
     def as_dict(self, day: date) -> dict[str, object]:
         return {
@@ -89,6 +92,8 @@ class DayItem:
                     "no_address": self.no_address,
                 }
                 if self.stay
+                else {"can_stay": True}
+                if self.can_stay
                 else {}
             ),
         }
@@ -200,15 +205,14 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
         if ev.declined:
             continue
         who, from_notes = read_who(ev, people)
-        # Only a parent's stay moves home. "Ava Stay at Noah's" is a sleepover: a ride as usual.
-        place = stay_place(who) if any(p in people.parents for p in who.people) else None
+        place = _stay_name(ev, who, people, tz)
         if place is not None and (stay := _stay(ev, who, place, tz)) is not None:
             out.stays.append(stay)
             out.day_items.append(
                 DayItem(
                     ev.id,
                     # The hotel's name: the board says who's staying beside it.
-                    stay.name or who.title or "Stay",
+                    stay.name or lane_title(who),
                     who.people,
                     stay.first,
                     stay.last,
@@ -225,7 +229,10 @@ def split_events(events: Iterable[CalendarEvent], people: People, tz: tzinfo) ->
             )
             continue
         if ev.all_day:
-            out.day_items.append(_day_item(ev, who))
+            item = _day_item(ev, who)
+            # Away over days but not a stay (it names no parent, or "Not a stay" was picked):
+            # tapping it picks who's staying.
+            out.day_items.append(replace(item, can_stay=not who.cancelled and _away(ev, tz)))
             continue
         assert isinstance(ev.start, datetime)
         assert isinstance(ev.end, datetime)
@@ -297,6 +304,37 @@ def in_window(split: Split, days: Sequence[date]) -> dict[str, dict[str, list[di
 def people_events(split: Split, ids: Mapping[str, object]) -> dict[str, list[CalendarEvent]]:
     """The lanes for the people in ``ids``, each present even when empty."""
     return {pid: list(split.lanes.get(pid, ())) for pid in ids}
+
+
+def _stay_name(ev: CalendarEvent, who: Who, people: People, tz: tzinfo) -> str | None:
+    """What a stay's title calls its place ("" for nothing), or None when the event isn't a stay.
+
+    A stay names a parent: only their rides move. "Ava Stay at Noah's" is a sleepover, a ride as
+    usual. An Overnight line in the notes settles it (the board's "Not a stay" and "Who's
+    staying?"). Without one, "Stay" in the title makes it a stay, and so does running overnight
+    or over days at an address (Marty, 2026-11-22: the board guesses, shows it, and a tap fixes it).
+    """
+    if who.cancelled or not any(p in people.parents for p in who.people):
+        return None
+    said = read_overnight(ev.description)
+    if said is False:
+        return None
+    place = stay_place(who)
+    if place is not None:
+        return place
+    return "" if said or _away(ev, tz) else None
+
+
+def _away(ev: CalendarEvent, tz: tzinfo) -> bool:
+    """Whether an event runs overnight at an address: over two days or more when all day, or
+    past 6 AM the next day with times (one ending earlier is a late night, not a night away)."""
+    if not (ev.location or "").strip():
+        return False
+    if not isinstance(ev.start, datetime) or not isinstance(ev.end, datetime):
+        return ev.end.toordinal() - ev.start.toordinal() >= 2
+    start = ev.start.astimezone(tz)
+    morning = (start + timedelta(days=1)).replace(hour=6, minute=0, second=0, microsecond=0)
+    return ev.end.astimezone(tz) > morning
 
 
 def _stay(ev: CalendarEvent, who: Who, place: str, tz: tzinfo) -> Stay | None:
