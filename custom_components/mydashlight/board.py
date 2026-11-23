@@ -23,6 +23,7 @@ from .planner import (
     UNASSIGNED,
     BusyBlock,
     DayPlan,
+    DriverPlan,
     Labels,
     PlannerSettings,
     RideEvent,
@@ -380,6 +381,16 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
             place = labels.short_place(s.loc)
             own = s.event is not None and s.event.own is not None
             k = labels.kid(s.event.kid) if s.event and not own else ""
+            # At an event the driver stays at but leaves partway for another ride: when they go.
+            gone = _leaves(p, idx, s) if s.kind == "back" or (s.kind == "drop" and s.event and s.event.stay) else None
+            if s.kind == "back":
+                lines.append(f"{at}  Back at {place}")
+                if gone is not None:
+                    lines.append(f"{fmt(gone)}  Leave {place}")
+                said = None
+                continue
+            # Arriving at a kid's event the driver stays at but leaves partway: still staying.
+            sk = "stay" if gone is not None and not own else s.kind
             if s.kind in ("drop", "stay") and o.first_drop is None and not own:
                 # A parent's own event gets no Google reminder: it would be the signed-in account's.
                 o.first_drop = s.event
@@ -395,7 +406,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
             if s.kind in ("drop", "stay", "pick") and k:
                 prev = jobs[-1] if jobs and jobs[-1][1] == place else None
                 same = prev is not None and s.event is not None and job_event == same_event(s.event.id)
-                if prev is not None and prev[0] == s.kind:
+                if prev is not None and prev[0] == sk:
                     prev[2].append(k)
                 elif prev is not None and same and (prev[0], s.kind) == ("drop", "stay"):
                     # Kids at the same event, and the driver stays: "take Ava and Ben to ... and stay".
@@ -403,7 +414,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 elif prev is not None and same and prev[0] == "stay" and s.kind == "pick" and k in prev[2]:
                     pass
                 else:
-                    jobs.append((s.kind, place, [k]))
+                    jobs.append((sk, place, [k]))
                 job_event = same_event(s.event.id) if s.event is not None else None
             if s.event is not None and s.kind in ("drop", "stay", "pick"):
                 # The other parent riding along hears when they leave too.
@@ -411,7 +422,7 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                     o.parents.setdefault(x, f"Leave {home_at} at {fmt12(o.start)} with {name}")
             if s.kind in ("drop", "stay", "pick") and not own:
                 when = at if s.kind != "pick" else fmt(max(s.arrive, s.ready or 0))
-                kind, base = s.kind, same_event(s.event.id) if s.event is not None else None
+                kind, base = sk, same_event(s.event.id) if s.event is not None else None
                 if (
                     said is not None
                     and base is not None
@@ -429,6 +440,10 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                     # A kid the driver stayed with, leaving with them from that same event, needs
                     # no pick-up line after "Leave ...".
                     lines.append(f"{when}  {place}, {text} {' and '.join(who)}")
+            elif own and s.event is not None and s.kind == "pick":
+                # Leaving a parent's own event they left partway and came back to.
+                said = None
+                lines.append(f"{fmt(max(s.arrive, s.ready or 0))}  Leave {place}")
             elif own and s.event is not None:
                 said = None
                 jobs.append(("errand" if s.event.takes is not None else "go", place, [s.event.title]))
@@ -437,6 +452,9 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
                 lines.append(f"{at}  {home}, get " + " and ".join(labels.kid(x) for x in s.car))
             elif s.kind == "end":
                 lines.append(f"{at}  {home}")
+            if gone is not None:
+                lines.append(f"{fmt(gone)}  Leave {place}")
+                said = None
             if s.kind not in ("drop", "stay", "pick") or own:
                 said = None
             left = None
@@ -475,6 +493,17 @@ def _outings(plan: DayPlan, d: str, busy: Mapping[str, Sequence[BusyBlock]], lab
         # An errand's time is the planner's pick, so the driver hears about it.
         o.solo = bool(jobs) and all(j[0] == "go" for j in jobs) and not kids and not o.parents
     return sorted([*outings, *trip_outings], key=lambda o: o.start)
+
+
+def _leaves(p: DriverPlan, idx: int, s: Stop) -> float | None:
+    """When the driver leaves an event they stay at, for a ride in the middle of it, or None when
+    they don't leave it until they're done there."""
+    nxt = p.stops[idx + 1] if idx + 1 < len(p.stops) else None
+    if nxt is None or nxt.loc == s.loc or s.arrive is None:
+        return None
+    arrive = s.arrive
+    there = [g for g in p.segments if g.type == "stay" and g.loc == s.loc and g.start >= arrive]
+    return min(there, key=lambda g: g.start).end if there else None
 
 
 LONG_DRIVE: Final = 120
@@ -679,8 +708,10 @@ def _own_lines(e: RideEvent, plan: DayPlan, labels: Labels) -> CardLines:
         # Only busy time: no drive, just time they can't drive.
         drop = CardLine("Can’t drive then", "muted")
     pick: CardLine | None = None
-    at = next(
-        (i for i, g in enumerate(p.segments) if g.type == "stay" and g.event is not None and g.event.id == e.id), None
+    # The last stay there: one left partway for another ride is gone back to.
+    at = max(
+        (i for i, g in enumerate(p.segments) if g.type == "stay" and g.event is not None and g.event.id == e.id),
+        default=None,
     )
     if at is not None:
         after = next((g for g in p.segments[at + 1 :] if g.type == "drive"), None)

@@ -268,6 +268,8 @@ interface ForPick {
   ownBack?: string[];
   /** A stay with no address on its event. */
   noAddress?: boolean;
+  /** Not a stay yet, but it could be one: saving makes it one. */
+  maybe?: boolean;
 }
 
 /** What to save for a stay's drive: nothing in the notes when it's the first parent with everyone along. */
@@ -1061,7 +1063,7 @@ export class MyDashLightBoard extends LitElement {
     };
   }
 
-  /** Opens the same panel from a hotel stay's chip, to pick who's staying. */
+  /** Opens the same panel from a hotel stay's chip, or one that could be a stay, to pick who's staying. */
   private openStayPick(day: string, id: string): void {
     const plan = this.plan;
     const item = plan?.days.find((d) => d.date === day)?.all_day?.find((i) => i.id === id);
@@ -1090,6 +1092,7 @@ export class MyDashLightBoard extends LitElement {
       ownWay: notInCar(item.riders),
       ownBack: notInCar(item.back_riders ?? item.riders),
       noAddress: !!item.no_address,
+      maybe: !item.stay,
     };
   }
 
@@ -1112,25 +1115,38 @@ export class MyDashLightBoard extends LitElement {
     };
   }
 
-  /** Saves who it's for; `people` empty takes the For line away, back to the names in the title. */
-  private async saveForPick(clear = false): Promise<void> {
+  /** Saves who it's for. "clear" takes the For line away, back to the names in the title;
+   * "notStay" keeps who it's for and says it isn't a stay, with Undo to let the board guess again. */
+  private async saveForPick(mode: "save" | "clear" | "notStay" = "save"): Promise<void> {
     const f = this.forPick;
     const plan = this.plan;
-    if (!f || !plan || !this.backend || (!clear && !f.people.length)) return;
-    const people = clear ? [] : f.people;
+    const b = this.backend;
+    if (!f || !plan || !b || (mode === "save" && !f.people.length)) return;
+    const people = mode === "clear" ? [] : f.people;
     this.forPick = { ...f, busy: true };
     try {
-      await this.backend.setPeople(f.id, people, f.scope, f.stay && f.timed && !clear ? stayDrive(plan, f) : undefined);
+      if (mode === "notStay") await b.setPeople(f.id, null, "this", undefined, false);
+      else
+        await b.setPeople(
+          f.id,
+          people,
+          f.scope,
+          f.stay && f.timed && mode === "save" ? stayDrive(plan, f) : undefined,
+          f.maybe && mode === "save" ? true : undefined,
+        );
       this.forPick = null;
       const title = f.label.replace(/^\S+ /, "");
       const names = people.map((p) => personName(plan, p));
       const parents = driverIds(plan).filter((d) => people.includes(d));
       this.showToast(
-        clear
-          ? `Saved. ${title} goes by the names in its title again.`
-          : f.stay
-            ? `Saved. ${andList(parents.map((d) => driverName(plan, d)))}’s rides start from ${title} now.`
-            : `Saved. ${title} is in ${andList(names)}’s ${names.length > 1 ? "lanes" : "lane"} now.`,
+        mode === "notStay"
+          ? `Saved. ${title} isn’t a stay now.`
+          : mode === "clear"
+            ? `Saved. ${title} goes by the names in its title again.`
+            : f.stay
+              ? `Saved. ${andList(parents.map((d) => driverName(plan, d)))}’s rides start from ${title} now.`
+              : `Saved. ${title} is in ${andList(names)}’s ${names.length > 1 ? "lanes" : "lane"} now.`,
+        mode === "notStay" ? () => void b.setPeople(f.id, null, "this", undefined, null).catch((err) => this.showToast(`Couldn’t undo that. ${String(err)}`)) : null,
       );
     } catch (err) {
       if (this.forPick) this.forPick = { ...this.forPick, busy: false };
@@ -1143,7 +1159,7 @@ export class MyDashLightBoard extends LitElement {
   private renderForPick(f: ForPick): TemplateResult {
     const plan = this.plan;
     const there = f.stay
-      ? plan?.days.some((d) => d.date === f.day && d.all_day?.some((i) => i.id === f.id && i.stay))
+      ? plan?.days.some((d) => d.date === f.day && d.all_day?.some((i) => i.id === f.id && (i.stay || i.can_stay)))
       : f.placed
         ? plan?.days.some((d) => d.date === f.day && d.events.some((e) => e.id === f.id))
         : !!this.findUnplaced(f.day, f.id);
@@ -1242,9 +1258,12 @@ export class MyDashLightBoard extends LitElement {
           : "Saved in the event’s notes, so its title stays as it is."}
       </p>
       ${f.fromNotes
-        ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => void this.saveForPick(true)}>
+        ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => void this.saveForPick("clear")}>
             Go by the names in the title instead
           </button>`
+        : nothing}
+      ${f.stay && !f.maybe
+        ? html`<button type="button" class="chip clear" ?disabled=${busy} @click=${() => void this.saveForPick("notStay")}>Not a stay</button>`
         : nothing}
       <div class="ed-foot">
         <button type="button" class="btn dark save" ?disabled=${busy || !picked.length || noParent} @click=${() => void this.saveForPick()}>
@@ -1986,15 +2005,15 @@ export class MyDashLightBoard extends LitElement {
   private renderStripChip(d: DayHead, c: AllDayChip, pinned: boolean): TemplateResult {
     const inside = html`<span class="strip-title">${c.title}</span>${c.note ? html`<span class="strip-note">${c.note}</span>` : nothing}${c.notes ? NOTE : nothing}`;
     const pick = c.pick;
-    const stay = c.stay;
+    const stay = c.stay ?? c.canStay;
     if (stay) {
       return html`<button
         type="button"
-        class="strip-chip hotel ${c.color ? "" : "plain"} ${c.notes ? "noted" : ""}"
+        class="strip-chip ${c.stay ? "hotel" : "maybe"} ${c.cancelled ? "skipped" : ""} ${c.color ? "" : "plain"} ${c.notes ? "noted" : ""}"
         style=${c.color ? `--c:${c.color.color};--rgb:${c.color.rgb};--ink:${c.color.ink}` : ""}
         tabindex=${pinned ? -1 : 0}
         data-note=${c.notes || nothing}
-        aria-label=${`${c.title}: ${c.note}. Pick who’s staying`}
+        aria-label=${`${c.title}: ${c.note}. ${c.stay ? "Pick who’s staying" : "Staying here? Pick who"}`}
         @click=${() => this.openStayPick(d.date, stay)}
       >
         ${inside}

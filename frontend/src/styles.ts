@@ -789,6 +789,20 @@ export const styles = css`
   button.strip-chip.hotel:focus-visible {
     background: rgba(var(--rgb), 0.2);
   }
+  /* Over days at an address: tap it to say who's staying there. */
+  button.strip-chip.maybe:hover,
+  button.strip-chip.maybe:focus-visible {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  button.strip-chip.maybe::after {
+    content: "›";
+    align-self: center;
+    margin-left: -2px;
+    opacity: 0.45;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+  }
   button.strip-chip.hotel::after {
     content: "›";
     align-self: center;

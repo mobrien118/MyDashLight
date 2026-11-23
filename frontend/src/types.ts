@@ -193,6 +193,8 @@ export interface AllDayItem {
   timed?: boolean;
   /** A stay whose event has no location: its drives are timed to the name alone (0.27.5 and later). */
   no_address?: boolean;
+  /** Not a stay, but it runs over days at an address, so tapping it picks who's staying (0.28 and later). */
+  can_stay?: boolean;
 }
 
 /** A timed event whose title doesn't say who it's for (MyDashLight 0.19 and later). */

@@ -126,6 +126,63 @@ def handoff_day() -> dict[str, Any]:
     }
 
 
+def swim_meet_day(along: list[str]) -> dict[str, Any]:
+    """Sam stays at Ben's swim meet and leaves it partway to take Cleo to dance and back."""
+
+    def event(i: str, kid: str, title: str, loc: str, start: int, end: int, stay: bool) -> dict[str, Any]:
+        return {
+            "id": i,
+            "day": 0,
+            "kid": kid,
+            "title": title,
+            "loc": loc,
+            "start": start,
+            "end": end,
+            "drop": "dad",
+            "pick": "dad",
+            "stay": stay,
+            "arriveBy": None,
+            "along": along if stay else [],
+        }
+
+    return {
+        "events": [
+            event("meet", "ben", "Swim meet", "gym", 600, 960, True),
+            event("dance", "cleo", "Dance", "dance", 780, 840, False),
+        ],
+        "busy": {},
+    }
+
+
+def test_a_parent_at_an_event_leaves_it_partway_and_comes_back() -> None:
+    # Marty, 2026-11-22: wherever a parent is is where their drives start and end.
+    days = [swim_meet_day([]), swim_meet_day(["cleo"])]
+    result = subprocess.run(
+        [NODE or "node", str(CLI), "board"], input=json.dumps(days), capture_output=True, text=True, check=True
+    )
+    reference = json.loads(result.stdout)
+    for day, want in zip(days, reference, strict=True):
+        got = board_json(day)
+        for part in ("expected", "score", "issue_texts", "rides", "outings", "lines"):
+            assert got[part] == want[part], part
+    home, along = (board_json(d)["outings"]["dad"] for d in days)
+    # Cleo at home: fetched on the way. Along at the meet already: straight from there.
+    assert home[0]["lines"] == [
+        "9:55  Gym, stay with Ben",
+        "12:36  Leave Gym",
+        "12:44  Home, get Cleo",
+        "12:55  Dance, drop off Cleo",
+        "1:10  Back at Gym",
+        "1:40  Leave Gym",
+        "2:00  Dance, pick up Cleo",
+        "2:15  Back at Gym",
+        "4:00  Gym, pick up Ben",
+        "4:08  Home",
+    ]
+    assert along[0]["lines"][1:3] == ["12:40  Leave Gym", "12:55  Dance, drop off Cleo"]
+    assert not board_json(days[1])["expected"]["issues"]
+
+
 def test_matches_reference_on_random_days() -> None:
     assert NODE is not None
     rng = random.Random(SEED)

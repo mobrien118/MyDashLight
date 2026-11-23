@@ -144,7 +144,7 @@ class Stop:
     """A place on a driver's route. ``car`` is who is in the car when leaving it."""
 
     loc: str
-    kind: Literal["start", "fetch", "drop", "stay", "pick", "end"]
+    kind: Literal["start", "fetch", "drop", "stay", "pick", "back", "end"]
     car: list[str] = field(default_factory=list)
     event: RideEvent | None = None
     deadline: float | None = None
@@ -458,6 +458,8 @@ class _Task:
     t: int
     late: bool = False
     """For an errand: as late as still works, instead of as early as it can be."""
+    away: bool = False
+    """Arriving at or leaving an event the driver stays at but leaves partway, for another ride."""
 
 
 def plan_driver(
@@ -485,6 +487,7 @@ def plan_driver(
                 tasks.append(_Task("drop", e, arrive_at(e, settings, travel)))
             if e.pick == driver:
                 tasks.append(_Task("pick", e, e.out))
+    _leave_partway(tasks)
     tasks.sort(key=lambda k: k.t)
     _same_place_first(tasks, settings)
     _nearby_first(driver, tasks, busy, travel, settings)
@@ -505,6 +508,33 @@ def plan_driver(
     return _route(driver, tasks, busy, travel, settings)
 
 
+def _leave_partway(tasks: list[_Task]) -> None:
+    """Wherever a parent is is where their drives start and end (Marty, 2026-11-22): staying at
+    the swim meet, they leave it to drive to fencing and come back. A stay with another kid's
+    ride in the middle becomes arriving and leaving, with the time between spent there. A ride
+    for a kid at the event itself is a clash instead: they can't be in two places."""
+    for k in list(tasks):
+        e = k.event
+        if k.type != "stay":
+            continue
+        # The kids it's for: on any copy of it (the same place at an overlapping time). Kids along
+        # with the parent go where they go.
+        there = {e.kid} | {
+            x.event.kid for x in tasks if x.event.loc == e.loc and x.event.start < e.out and e.start < x.event.out
+        }
+        if any(o is not k and e.start < _when(o) < e.out and o.event.kid not in there for o in tasks):
+            i = tasks.index(k)
+            tasks[i : i + 1] = [_Task("drop", k.event, k.t, away=True), _Task("pick", k.event, k.event.out, away=True)]
+
+
+def _when(k: _Task) -> int:
+    """When a ride has to happen, by the event's own times: a drop-off as it starts (or by its
+    Arrive time), a pick-up as it ends."""
+    if k.type == "pick":
+        return k.event.out
+    return k.event.arrive_by if k.event.arrive_by is not None else k.event.start
+
+
 def _cost(p: DriverPlan) -> float:
     return len(p.issues) * 1000 + sum(x.minutes or 0 for x in p.issues) * 10 + p.drive
 
@@ -523,6 +553,9 @@ def _route(
 
     stops = _build_stops(tasks)
     n = len(stops)
+    # The events this driver stays at but leaves partway: where they go back to in between.
+    at_events = [(k.t, k.event.out, k.event) for k in tasks if k.away and k.type == "drop"]
+    back: list[Stop] = []
     # A pick-up gets the same margin for traffic as a drop-off (Marty, 2026-11-12), so the kid
     # isn't left waiting when the drive runs slow. The driver waits there if it doesn't.
     for st in stops:
@@ -663,20 +696,45 @@ def _route(
         car_now = [k for k in s.car if k not in dropped_home]
         here = s.loc
         idle = dep - ready
-        if idle > 0:
-            nxt = stops[j + 1] if j + 1 < n else None
-            back = travel(s.loc, HOME)
-            out_again = travel(HOME, nxt.loc) if nxt else 0
-            direct = travel(s.loc, nxt.loc) if nxt else 0
-            if s.loc != HOME and nxt is not None and idle + direct - back - out_again >= settings.go_home_margin:
-                # Enough spare time to go home in between.
+        at = next((w for w in at_events if w[0] <= ready < w[1]), None) if idle > 0 else None
+        if at is not None and j + 1 < n:
+            # Staying at an event: the time between rides is spent there, never at home.
+            ev, nxt_stop = at[2], stops[j + 1]
+            there, on = travel(s.loc, ev.loc), travel(ev.loc, nxt_stop.loc)
+            if s.loc == ev.loc:
+                tag(Segment("stay", ready, dep, loc=ev.loc, event=ev, kids=car_now), s)
+                t = dep
+                continue
+            if idle + travel(s.loc, nxt_stop.loc) - there - on >= settings.go_home_margin:
                 tag(
-                    Segment("drive", ready, ready + back, from_loc=s.loc, to_loc=HOME, kids=car_now),
+                    Segment("drive", ready, ready + there, from_loc=s.loc, to_loc=ev.loc, kids=car_now),
                     s if s.event is not None else event_stop(j - 1, -1),
                 )
-                out.drive += back
+                out.drive += there
+                t = dep + travel(s.loc, nxt_stop.loc) - on
+                back.append(Stop(ev.loc, "back", list(car_now), event=ev, arrive=ready + there))
+                out.segments.append(Segment("stay", ready + there, t, loc=ev.loc, event=ev, kids=car_now))
+                here = ev.loc
+                continue
+        if idle > 0:
+            nxt = stops[j + 1] if j + 1 < n else None
+            home_in = travel(s.loc, HOME)
+            out_again = travel(HOME, nxt.loc) if nxt else 0
+            direct = travel(s.loc, nxt.loc) if nxt else 0
+            if (
+                at is None
+                and s.loc != HOME
+                and nxt is not None
+                and idle + direct - home_in - out_again >= settings.go_home_margin
+            ):
+                # Enough spare time to go home in between.
+                tag(
+                    Segment("drive", ready, ready + home_in, from_loc=s.loc, to_loc=HOME, kids=car_now),
+                    s if s.event is not None else event_stop(j - 1, -1),
+                )
+                out.drive += home_in
                 leave_home = dep + direct - out_again
-                out.segments.append(Segment("home", ready + back, leave_home))
+                out.segments.append(Segment("home", ready + home_in, leave_home))
                 # Kids with somewhere to be later leave home again in the car; the rest stay home.
                 needed = _needed_later(stops, j + 1)
                 dropped_home = dropped_home + [k for k in car_now if k not in needed]
@@ -689,7 +747,7 @@ def _route(
             else:
                 tag(Segment("wait", ready, dep, loc=s.loc, kids=car_now), event_stop(j + 1, 1))
         t = dep
-    out.stops = stops
+    out.stops = sorted([*stops, *back], key=lambda st: st.arrive if st.arrive is not None else -INF) if back else stops
 
     # The parent's own calendar: being on the road during a busy block is a conflict.
     for b in busy.get(driver, ()):
@@ -820,6 +878,14 @@ def _build_stops(tasks: list[_Task]) -> list[Stop]:
                     stops.append(Stop(HOME, "fetch"))
                 car = riders
                 stops[-1].car = list(car)
+            if k.away:
+                # Left partway for another ride (see _leave_partway): getting there, then leaving.
+                stops.append(
+                    Stop(k.event.loc, "drop", list(car), event=k.event, deadline=k.t)
+                    if k.type == "drop"
+                    else Stop(k.event.loc, "pick", list(car), event=k.event, ready=k.event.out)
+                )
+                continue
             stop = Stop(k.event.loc, "stay", list(car), event=k.event, deadline=k.t)
             if k.event.takes is not None:
                 stop.ready = k.event.start

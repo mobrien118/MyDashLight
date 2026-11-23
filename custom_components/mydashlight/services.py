@@ -28,6 +28,7 @@ from .const import (
     ATTR_EVENT,
     ATTR_KIDS,
     ATTR_MINUTES,
+    ATTR_OVERNIGHT,
     ATTR_PEOPLE,
     ATTR_RIDERS,
     ATTR_SCOPE,
@@ -94,7 +95,9 @@ APPLY_SUGGESTION_SCHEMA = vol.Schema({vol.Required(ATTR_SUGGESTION): cv.string})
 SET_PEOPLE_SCHEMA = vol.Schema(
     {
         **_EVENT_FIELDS,
-        vol.Optional(ATTR_PEOPLE, default=[]): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(ATTR_PEOPLE): vol.All(cv.ensure_list, [cv.string]),
+        # Whether it's a stay away from home (None takes the line away, so the board guesses).
+        vol.Optional(ATTR_OVERNIGHT): vol.Any(None, cv.boolean),
         # A stay only: who drives there and back ("" for the first parent it names, "none" for
         # no drive), and who rides along.
         vol.Optional(ATTR_DRIVER): vol.Any(None, cv.string),
@@ -263,14 +266,15 @@ async def _async_set_people(call: ServiceCall) -> None:
     """Say who an event is for, in a For line in its notes, so its title can stay as it is.
 
     Works on an event the board couldn't place (its title names nobody) as well as on one it
-    did. No people takes the line away, so the names in the title count again.
+    did. No people takes the line away, so the names in the title count again, unless only
+    ``overnight`` is given: then who it's for stays as it is.
     """
     entry = _loaded_entry(call.hass)
     coordinator = entry.runtime_data.coordinator
     people = coordinator.settings.people
     known = {**people.kids, **people.parents}
     ids: list[str] = []
-    for value in call.data[ATTR_PEOPLE]:
+    for value in call.data.get(ATTR_PEOPLE, ()):
         if value in known:
             found: tuple[str, ...] = (value,)
         else:
@@ -286,14 +290,14 @@ async def _async_set_people(call: ServiceCall) -> None:
     wanted_series = call.data.get(ATTR_SCOPE) == SCOPE_SERIES
     strays = coordinator.data.split.unplaced if coordinator.data else []
     stray = next((u for u in strays if u.id == event_id), None)
-    stays = coordinator.data.split.stays if coordinator.data else []
-    stay = next((s for s in stays if s.id == event_id), None)
+    items = coordinator.data.split.day_items if coordinator.data else []
+    item = next((i for i in items if i.id == event_id), None)
     also: list[Target] = []
     series: str | None = None
-    if stay is not None:
-        # A stay away from home: who's staying.
-        title = stay.title
-        target = Target(stay.calendar_id or coordinator.settings.events_calendar, stay.id)
+    if item is not None:
+        # An all-day event, or a stay away from home: who's staying.
+        title = item.title
+        target = Target(item.calendar_id or coordinator.settings.events_calendar, item.id)
     elif stray is not None:
         title = stray.title
         target = Target(stray.calendar_id or coordinator.settings.events_calendar, stray.id)
@@ -314,8 +318,11 @@ async def _async_set_people(call: ServiceCall) -> None:
         series = ref.recurring_id if wanted_series else None
     if series:
         also = [*also, *coordinator.occurrences(target.calendar_id, series)]
-    change = RideChange(people=names_text(ids, people) or None)
-    if stay is not None and ATTR_DRIVER in call.data:
+    keep = ATTR_PEOPLE not in call.data and ATTR_OVERNIGHT in call.data
+    change = RideChange(people=KEEP if keep else names_text(ids, people) or None)
+    if ATTR_OVERNIGHT in call.data:
+        change = replace(change, overnight=call.data[ATTR_OVERNIGHT])
+    if item is not None and item.stay and ATTR_DRIVER in call.data:
         # Who drives there and back, and who's in the car each way (the same back unless said).
         # No driver takes the lines away, so the first parent on it drives with everyone along.
         driver = call.data[ATTR_DRIVER] or ""

@@ -98,4 +98,18 @@ test("a hotel stay's chip names the hotel and who's staying, and can be tapped",
     c.key.endsWith("|trash"),
   )!;
   assert.equal(trash.stay, null);
+  assert.equal(trash.canStay, null);
+  // Over days at an address with no parent on it: tapping it picks who's staying.
+  const away = {
+    ...stay([]).all_day[0]!,
+    title: "Reservation",
+    stay: false,
+    can_stay: true,
+  };
+  const maybe = allDayRow(plan, { ...day, all_day: [away] }, new Map(), 1160)!
+    .chips[0]!;
+  assert.deepEqual(
+    [maybe.title, maybe.stay, maybe.canStay],
+    ["Reservation", null, "hotel"],
+  );
 });

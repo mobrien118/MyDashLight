@@ -238,6 +238,8 @@ export interface AllDayChip {
   pick: string | null;
   /** For a hotel stay, its id: tapping the chip picks who's staying. */
   stay: string | null;
+  /** For an all-day event that could be a stay, its id: tapping it picks who's staying there. */
+  canStay: string | null;
   /** What people wrote in its notes, shown on hover or a held finger: "" for none. */
   notes: string;
 }
@@ -2414,6 +2416,7 @@ export function allDayRow(
         warn: false,
         pick: null,
         stay: i.stay && !i.cancelled ? i.id : null,
+        canStay: !i.stay && i.can_stay ? i.id : null,
         notes: i.notes ?? "",
       };
     }),
@@ -2426,6 +2429,7 @@ export function allDayRow(
       warn: true,
       pick: u.id,
       stay: null,
+      canStay: null,
       notes: u.notes ?? "",
     })),
   ];
