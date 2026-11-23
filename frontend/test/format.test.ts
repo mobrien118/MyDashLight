@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ago, clock, clockAmPm, dayLabel, duration, hourLabel, nowIn, offsetText, rangeLabel, timeField } from "../src/format.ts";
+import { ago, clock, clockAmPm, dayLabel, duration, hourLabel, nowIn, offsetText, timeField } from "../src/format.ts";
 
 test("clock times", () => {
   assert.equal(clock(945), "3:45");
@@ -29,7 +29,6 @@ test("time fields for Home Assistant", () => {
 
 test("dates", () => {
   assert.equal(dayLabel("2026-11-05"), "Thursday, November 5");
-  assert.equal(rangeLabel("2026-11-05", "2026-11-11"), "Thursday, November 5 to Wednesday, November 11");
 });
 
 test("now in the plan's time zone", () => {

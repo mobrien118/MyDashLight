@@ -380,10 +380,6 @@ these lists the first time it runs:
   > Chore days ahead**). Tasks added to a kid's list by hand are one-off chores: they show, and
   can be checked off, but MyDashLight leaves them alone.
 
-Before 0.18, seeds were on four lists (**Chore templates: Daily**, **Weekly**, **Monthly** and
-**School days**). MyDashLight moves them onto Chore seeds as they are, with their history, and
-removes each old list once it's empty.
-
 A seed's notes end in a Chore block, which the `save_chore_template` action writes:
 
 ```
@@ -486,9 +482,7 @@ under **Configure > Calendars**. There's nothing to keep in Home Assistant:
 
   A school day with no pick gets the kid's default: Buy, unless the kid is picked under
   **Configure > Lunch** as bringing by default. A pick on a day with no menu yet goes on a plain
-  **Lunch** event, which the menu fills in later. (Before 0.16, picks were their own **Bring
-  Lunch** and **Buy Lunch** events. Those are still read, and MyDashLight moves them onto the day's
-  lunch event when it starts.)
+  **Lunch** event, which the menu fills in later.
 - A month of menus can be imported into the lunch calendar from a `.ics` file (Google Calendar:
   **Settings > Import & export**), or added on the Lunch tab.
 - **Menu feeds.** Many schools publish their menu as a calendar to subscribe to (look for an

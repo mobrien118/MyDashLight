@@ -6,7 +6,7 @@ returns the plan, and the other services save who drives, Stay, Take along and A
 the events' notes. The kitchen app subscribes to ``mydashlight/rides/subscribe`` for the plan as
 it changes. Each parent can get a reminder on their phone before each drive leaves.
 
-Chores live in Google Tasks: templates on three base lists, and each kid's chores on their own
+Chores live in Google Tasks: templates ("seeds") on one list, and each kid's chores on their own
 list, which MyDashLight keeps filled from the templates. The app subscribes to
 ``mydashlight/chores/subscribe`` for the chores as they change.
 
@@ -18,12 +18,13 @@ chores (like Pack lunch) follow them. The app subscribes to ``mydashlight/lunch/
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import (
@@ -41,6 +42,9 @@ from .api import OAuthTokens
 from .chore_coordinator import STORE_KEY as CHORE_STORE_KEY, STORE_VERSION as CHORE_STORE_VERSION, ChoreCoordinator
 from .chore_services import async_setup_chore_services
 from .const import (
+    CONF_KID_ID,
+    CONF_KIDS,
+    CONF_PLANNER,
     CONF_ROUTES_DAILY_LIMIT,
     CONF_ROUTES_KEY,
     DEFAULT_ROUTES_DAILY_LIMIT,
@@ -93,9 +97,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> bool:
     """Set up MyDashLight from a config entry."""
-    if "auth_implementation" not in entry.data:
-        # Set up with version 0.1, before MyDashLight signed in to Google.
-        raise ConfigEntryError(translation_domain=DOMAIN, translation_key="set_up_again")
     try:
         implementation = await async_get_config_entry_implementation(hass, entry)
     except (ImplementationUnavailableError, ValueError) as err:
@@ -167,7 +168,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
         # School days first, so the first chore read already knows them.
         await lunch.async_refresh()
         await chores.async_refresh()
-        await lunch.async_fold_old_picks()
         await lunch.async_sync_feeds()
 
     entry.async_create_background_task(hass, first_reads(), f"{DOMAIN}_first_reads")
@@ -181,6 +181,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) 
     # The kitchen app: the Rides item in the sidebar, and the kitchen page.
     await async_register_panel(hass)
     entry.async_on_unload(lambda: async_remove_panel(hass))
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: MyDashLightConfigEntry) -> bool:
+    """Take settings nothing reads any more out of the saved options."""
+    if entry.version > 1:
+        return False
+    if entry.minor_version < 2:
+        # Before 0.19 each kid had their own calendar, whose id was the kid's id, and each parent
+        # had calendars of their own. Before 0.20.8 the planner had three "arrive early" settings.
+        options = {k: v for k, v in entry.options.items() if k not in ("mom_calendars", "dad_calendars")}
+        if isinstance(planner := options.get(CONF_PLANNER), Mapping):
+            options[CONF_PLANNER] = {k: v for k, v in planner.items() if not str(k).startswith("arrive_early")}
+        if isinstance(kids := options.get(CONF_KIDS), list):
+            options[CONF_KIDS] = [
+                {CONF_KID_ID: kid.get("calendar_id"), **{k: v for k, v in kid.items() if k != "calendar_id"}}
+                if isinstance(kid, Mapping) and CONF_KID_ID not in kid
+                else kid
+                for kid in kids
+            ]
+        hass.config_entries.async_update_entry(entry, options=options, minor_version=2)
     return True
 
 

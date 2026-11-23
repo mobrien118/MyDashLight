@@ -127,7 +127,6 @@ class Pending:
     created: float
     approving: bool = False
     refresh_token: RefreshToken | None = None
-    approved_by: str | None = None
     expire: CALLBACK_TYPE | None = field(default=None, repr=False)
 
 
@@ -182,7 +181,6 @@ class Pairing:
             self.hass.auth.async_remove_refresh_token(token)
             return False
         p.refresh_token = token
-        p.approved_by = user.name
         if p.home:
             _LOGGER.info("%s paired a screen at %s, signed in as them", user.name, p.address)
         else:

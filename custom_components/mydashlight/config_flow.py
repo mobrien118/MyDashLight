@@ -272,6 +272,7 @@ class MyDashLightConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
     DOMAIN = DOMAIN
     VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         super().__init__()

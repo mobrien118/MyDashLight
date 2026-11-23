@@ -29,8 +29,8 @@ checked off in Google is paused.
 
 Picking weekdays always means a weekly chore: a daily one with Days is read as weekly on those
 days. With no Repeats line, Days says which (weekdays: weekly, dates: monthly, none: daily).
-Templates from before the one list, on "Chore templates: Daily" and the like, said how often
-by their list and how many by an ``Every`` line; they're moved onto the one list as they are.
+An ``Every: 2`` line typed by hand counts too ("Every week" and "Every: 2" is every 2 weeks),
+and is folded into the Repeats line.
 
 A school-days chore is made for each day that's a school day for its kid: a weekday with no
 "No School" event for the kid. Two more lines only mean something there::
@@ -65,7 +65,7 @@ from __future__ import annotations
 
 import calendar
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 import re
 from typing import Final, Literal, Protocol
@@ -171,7 +171,6 @@ class ChoreBlock:
     details: str
     lines: tuple[tuple[str, str], ...]
     """Each recognized line as (field, value), in order. Repeated fields keep every value."""
-    has_block: bool
 
     def first(self, key: str) -> str | None:
         return next((v for k, v in self.lines if k == key), None)
@@ -185,7 +184,7 @@ def read_block(notes: str) -> ChoreBlock:
     lines = notes.replace("\r\n", "\n").split("\n")
     start = next((i for i, line in enumerate(lines) if _HEADER_RE.match(line)), None)
     if start is None:
-        return ChoreBlock(details=notes.strip(), lines=(), has_block=False)
+        return ChoreBlock(details=notes.strip(), lines=())
     found: list[tuple[str, str]] = []
     for line in lines[start + 1 :]:
         match = _LINE_RE.match(line)
@@ -194,26 +193,7 @@ def read_block(notes: str) -> ChoreBlock:
         key = _LABELS.get(re.sub(r"[\s]", "", match.group(1)).casefold())
         if key:
             found.append((key, match.group(2)))
-    return ChoreBlock(details="\n".join(lines[:start]).strip(), lines=tuple(found), has_block=True)
-
-
-def edit_block(notes: str, add: Sequence[tuple[str, str]], drop: Iterable[str] = ()) -> str:
-    """Notes with ``add`` lines put first in the Chore block (one is made when there's none)
-    and the lines for the ``drop`` fields taken out, leaving every other line as it was."""
-    gone = set(drop)
-    text = notes.replace("\r\n", "\n")
-    lines = text.split("\n")
-    start = next((i for i, line in enumerate(lines) if _HEADER_RE.match(line)), None)
-    new = [f"{label}: {value}" for label, value in add]
-    if start is None:
-        return write_block(text, add)
-    kept = []
-    for line in lines[start + 1 :]:
-        match = _LINE_RE.match(line)
-        key = _LABELS.get(re.sub(r"[\s]", "", match.group(1)).casefold()) if match else None
-        if key not in gone:
-            kept.append(line)
-    return "\n".join([*lines[: start + 1], *new, *kept])
+    return ChoreBlock(details="\n".join(lines[:start]).strip(), lines=tuple(found))
 
 
 def write_block(details: str, lines: Iterable[tuple[str, str]]) -> str:
@@ -498,7 +478,6 @@ class Template:
 
 def parse_template(
     task_id: str,
-    repeats: Repeats | None,
     title: str,
     notes: str,
     *,
@@ -507,12 +486,13 @@ def parse_template(
     created: date | None = None,
     position: str = "",
 ) -> Template:
-    """Read a template task. ``kids`` gives each kid's name by kid id. ``repeats`` is how often
-    for a template on one of the old lists; None reads it from the Repeats line."""
+    """Read a template task. ``kids`` gives each kid's name by kid id. How often it repeats is
+    on its Repeats line, or guessed from its Days line when it has none."""
     block = read_block(notes)
     problems: list[str] = []
     every_line = block.first("every")
     every: int | None = None
+    repeats: Repeats | None = None
     if (line := block.first("repeats")) is not None and line.strip():
         found = parse_repeats(line)
         if found is None:
@@ -794,8 +774,3 @@ def schedule(
 ) -> list[Occurrence]:
     """Every active template's chores due from ``first`` to ``last``."""
     return [o for t in templates for o in occurrences(t, first, last, school)]
-
-
-def with_changes(template: Template, **changes: object) -> Template:
-    """A copy of the template with fields changed, its problems cleared."""
-    return replace(template, problems=(), **changes)  # type: ignore[arg-type]

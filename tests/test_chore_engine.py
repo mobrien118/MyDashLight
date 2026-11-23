@@ -21,8 +21,6 @@ from .common import FakeGoogle, FakeTasks, google_error, make_entry, setup_crede
 
 NOW = "2026-11-04T15:00:00+00:00"  # 9 AM in Central time, a Wednesday
 SEEDS = "Chore seeds"
-WEEKLY = "Chore templates: Weekly"
-DAILY = "Chore templates: Daily"
 
 
 @pytest.fixture(autouse=True)
@@ -339,63 +337,6 @@ async def test_a_read_under_way_during_a_save_reads_again(hass: HomeAssistant, t
     coordinator._async_read_and_fill = saved_meanwhile  # type: ignore[method-assign]
     await refresh(hass, entry)
     assert reads == 2
-
-
-async def test_old_template_lists_move_onto_the_seed_list(hass: HomeAssistant, tasks: FakeTasks) -> None:
-    daily = tasks.add_list(DAILY)
-    weekly = tasks.add_list(WEEKLY)
-    tasks.add(daily, "Feed the cat", "--- Chore ---\nId: cat\nWho: Ava\nStarts: 2026-11-01")
-    tasks.add(daily, "Piano", "Scales.\n\n--- Chore ---\nId: piano\nWho: Ben\nDays: Mon, Wed\nStarts: 2026-11-01")
-    tasks.add(weekly, "Mow", "--- Chore ---\nId: mow\nWho: Ava\nDays: Sat\nEvery: 2\nStarts: 2026-11-01")
-    tasks.add(
-        weekly,
-        "Wash the car",
-        "--- Chore ---\nId: car\nWho: Ben\nDays: Sun\nStarts: 2026-11-01",
-        status="completed",
-        completed="2026-11-02T00:00:00.000Z",
-    )
-    tasks.add(weekly, "Dust")  # typed in, never set up
-    ava = tasks.add_list("Chores: Ava")
-    made = tasks.add(ava, "Feed the cat", "--- Chore ---\nFrom: cat\nFor: 2026-11-04", due="2026-11-04T00:00:00.000Z")
-    entry = await load(hass)
-
-    # The old lists are gone, and everything is on the one list, said how often.
-    assert sorted(tl["title"] for tl in tasks.lists.values()) == ["Chore seeds", "Chores: Ava", "Chores: Ben"]
-    seeds = {t["title"]: t for t in tasks.items(SEEDS)}
-    assert sorted(seeds) == ["Dust", "Feed the cat", "Mow", "Piano", "Wash the car"]
-    repeats = {title: read_block(t["notes"]).first("repeats") for title, t in seeds.items()}
-    assert repeats == {
-        "Feed the cat": "Every day",
-        "Piano": "Every week",  # a daily chore on some days is a weekly one
-        "Mow": "Every 2 weeks",
-        "Wash the car": "Every week",
-        "Dust": "Every week",
-    }
-    assert read_block(seeds["Piano"]["notes"]).details == "Scales."
-    assert read_block(seeds["Mow"]["notes"]).first("every") is None
-    assert seeds["Wash the car"]["status"] == "completed"  # still paused
-    # Their chores are still theirs: the cat's chore for today wasn't made again.
-    today = [t["id"] for t in tasks.items("Chores: Ava") if t["due"] == "2026-11-04T00:00:00.000Z"]
-    assert today == [made["id"]]
-    templates = {t.title: t for t in entry.runtime_data.chores.data.templates}
-    assert (templates["Mow"].id, templates["Mow"].every) == ("mow", 2)
-    assert templates["Dust"].problems == ("who:",)
-
-    # Nothing more to move on the next read.
-    calls = len(tasks.calls)
-    await refresh(hass, entry)
-    assert all(method == "GET" for method, _url in tasks.calls[calls:])
-
-
-async def test_a_template_moved_already_isnt_moved_twice(hass: HomeAssistant, tasks: FakeTasks) -> None:
-    # Moved, but the old one wasn't removed (say, Google failed then).
-    seeds = tasks.add_list(SEEDS)
-    tasks.add(seeds, "Mow", "--- Chore ---\nId: mow\nRepeats: Every 2 weeks\nWho: Ava\nDays: Sat\nStarts: 2026-11-01")
-    weekly = tasks.add_list(WEEKLY)
-    tasks.add(weekly, "Mow", "--- Chore ---\nId: mow\nWho: Ava\nDays: Sat\nEvery: 2\nStarts: 2026-11-01")
-    await load(hass)
-    assert [t["title"] for t in tasks.items(SEEDS)] == ["Mow"]
-    assert tasks.list_id(WEEKLY) is None
 
 
 async def test_daily_chores_dont_take_days(hass: HomeAssistant, tasks: FakeTasks) -> None:

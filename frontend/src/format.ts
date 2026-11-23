@@ -61,11 +61,6 @@ export function shortDay(isoDate: string): string {
   return SHORT_WEEKDAY.format(asUtc(isoDate));
 }
 
-/** "Thursday, November 5 to Wednesday, November 11". */
-export function rangeLabel(first: string, last: string): string {
-  return first === last ? dayLabel(first) : `${dayLabel(first)} to ${dayLabel(last)}`;
-}
-
 /** The days between two ISO dates (b minus a). */
 export function daysBetween(a: string, b: string): number {
   return Math.round((asUtc(b).getTime() - asUtc(a).getTime()) / 86_400_000);

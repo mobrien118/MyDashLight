@@ -17,7 +17,7 @@ from pytest_homeassistant_custom_component.components.diagnostics import get_dia
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
-from custom_components.mydashlight.const import DOMAIN, OAUTH_TOKEN
+from custom_components.mydashlight.const import DEFAULT_PLANNER, DOMAIN, OAUTH_TOKEN
 
 from .common import (
     ACCOUNT,
@@ -26,6 +26,8 @@ from .common import (
     FAMILY,
     LUNCH,
     OPTIONS,
+    ROBIN,
+    SAM,
     FakeGoogle,
     all_day,
     google_error,
@@ -345,11 +347,20 @@ async def test_missing_oauth_client(hass: HomeAssistant, google: FakeGoogle) -> 
     assert entry.state is ConfigEntryState.SETUP_RETRY
 
 
-async def test_entry_from_before_sign_in(hass: HomeAssistant) -> None:
-    entry = MockConfigEntry(domain=DOMAIN, options={"mom_name": "Robin", "dad_name": "Sam"})
-    entry = await load(hass, entry)
-    assert entry.state is ConfigEntryState.SETUP_ERROR
-    assert entry.reason is not None
+async def test_old_settings_are_taken_out(hass: HomeAssistant, google: FakeGoogle) -> None:
+    """Settings saved by versions before 0.19 and 0.20.8 that nothing reads any more."""
+    old = {
+        **OPTIONS,
+        "kids": [{"calendar_id": AVA, "name": "Ava"}, {"id": BEN, "name": "Ben"}],
+        "mom_calendars": [ROBIN],
+        "dad_calendars": [SAM],
+        "planner": {**DEFAULT_PLANNER, "arrive_early": 5, "arrive_early_max": 20, "arrive_early_per": 6},
+    }
+    entry = await load(hass, make_entry(old, minor_version=1))
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.minor_version == 2
+    assert entry.options == OPTIONS
+    assert [k.calendar_id for k in entry.runtime_data.settings.roles.kids] == [AVA, BEN]
 
 
 async def test_diagnostics(hass: HomeAssistant, hass_client: ClientSessionGenerator, google: FakeGoogle) -> None:
