@@ -29,6 +29,16 @@ FAMILY = "family-calendar@group.calendar.google.com"
 """The shared calendar every family event is on, each title starting with who it's for."""
 LUNCH = "lunch-calendar@group.calendar.google.com"
 
+
+def with_repeats(repeats: str, notes: str) -> str:
+    """A chore seed's notes with a Repeats line for ``repeats`` (daily, weekly, monthly or
+    school) at the top of the Chore block, unless they have one already or no block."""
+    if "--- Chore ---" not in notes or "Repeats:" in notes:
+        return notes
+    label = {"daily": "Every day", "weekly": "Every week", "monthly": "Every month", "school": "School days"}[repeats]
+    return notes.replace("--- Chore ---", f"--- Chore ---\nRepeats: {label}", 1)
+
+
 CALENDARS = [
     {"id": ACCOUNT, "summary": ACCOUNT, "primary": True, "accessRole": "owner"},
     {"id": AVA, "summary": "Kid-Ava", "accessRole": "owner"},
@@ -48,7 +58,7 @@ OPTIONS: dict[str, Any] = {
     "carpools": ["the Parkers"],
     "planner": dict(DEFAULT_PLANNER),
     # The kids had calendars of their own before 0.19, and their ids are still the kids' ids.
-    "kids": [{"calendar_id": AVA, "name": "Ava"}, {"calendar_id": BEN, "name": "Ben"}],
+    "kids": [{"id": AVA, "name": "Ava"}, {"id": BEN, "name": "Ben"}],
     "events_calendar": FAMILY,
     "lunch_calendar": LUNCH,
     # Off here so the tests of other changes see only their own saves. test_alerts turns it on.
@@ -244,7 +254,10 @@ async def setup_credentials(hass: HomeAssistant) -> None:
 
 
 def make_entry(
-    options: Mapping[str, Any] | None = None, expires_at: float | None = None, **data: Any
+    options: Mapping[str, Any] | None = None,
+    expires_at: float | None = None,
+    minor_version: int = 2,
+    **data: Any,
 ) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
@@ -262,6 +275,7 @@ def make_entry(
             **data,
         },
         options=dict(OPTIONS if options is None else options),
+        minor_version=minor_version,
     )
 
 

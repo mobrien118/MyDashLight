@@ -574,9 +574,6 @@
     "google_error": {
       "message": "Couldn't read Google Calendar: {error}"
     },
-    "set_up_again": {
-      "message": "This MyDashLight entry was set up before Google sign-in was added. Delete it and add MyDashLight again."
-    },
     "event_not_found": {
       "message": "MyDashLight isn't planning an event with the id {event}. It may have moved out of the next 7 days, or been deleted."
     },

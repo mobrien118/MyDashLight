@@ -39,7 +39,6 @@ from .school import (
     Lunch,
     MenuChange,
     SchoolCalendar,
-    fold_old_picks,
     is_no_school,
     lunch_payload,
     menu_changes,
@@ -186,22 +185,6 @@ class LunchCoordinator(DataUpdateCoordinator[SchoolCalendar]):
             await self._async_menu_changes(kid, pick_changes(school, kid, days, lunch))
 
         await self._async_write(apply)
-
-    async def async_fold_old_picks(self) -> None:
-        """Move "Bring Lunch" and "Buy Lunch" events (how picks were saved before 0.16) onto
-        each day's lunch event."""
-        school = self.data
-        if school is None or not any(school.old_picks.values()):
-            return
-
-        async def apply(school: SchoolCalendar) -> None:
-            for kid, changes in fold_old_picks(school).items():
-                await self._async_menu_changes(kid, changes)
-
-        try:
-            await self._async_write(apply)
-        except GoogleError as err:
-            _LOGGER.warning("Couldn't move the lunch picks onto the lunch events: %s", err)
 
     async def async_set_menu(self, kids: Iterable[str], day: date, dish: str, details: str = "") -> None:
         """Save the menu on ``day`` for each of ``kids``: a "<Kid> Lunch: <dish>" event on the lunch

@@ -21,29 +21,18 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .chore_rules import (
-    REPEATS,
-    Repeats,
-    SchoolDays,
-    Template,
-    edit_block,
-    parse_template,
-    read_block,
-    repeats_label,
-    template_notes,
-)
+from .chore_rules import SchoolDays, Template, parse_template, read_block, template_notes
 from .chores import Chore, Make, Remove, TaskItem, Update, board_items, plan_changes, read_chore, template_item
 from .const import (
     CHORE_UPDATE_SECONDS,
     DOMAIN,
     KID_LIST_TITLE,
-    OLD_TEMPLATE_LIST_TITLES,
     SEED_LIST_TITLE,
     TASKS_SCOPE,
 )
 from .google import GoogleApiDisabled, GoogleAuthError, GoogleError
 from .settings import HubSettings
-from .tasks_api import GoogleTasksApi, TaskList, TaskRecord, TasksNeedSignIn, TasksNotFound
+from .tasks_api import GoogleTasksApi, TaskRecord, TasksNeedSignIn, TasksNotFound
 
 if TYPE_CHECKING:
     from . import MyDashLightConfigEntry
@@ -162,8 +151,8 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
 
     async def _async_read_and_fill(self, data: ChoreData, now: datetime) -> ChoreData:
         today = now.date()
-        seed_list, old_lists, kid_lists = await self._async_lists()
-        templates = await self._async_templates(seed_list, old_lists, today)
+        seed_list, kid_lists = await self._async_lists()
+        templates = await self._async_templates(seed_list, today)
         chores = await self._async_chores(kid_lists, now)
         school = self.school()
         # A first fill can be more than one batch of changes; keep going, a few batches a read.
@@ -200,25 +189,22 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
                 except TasksNotFound:
                     _LOGGER.debug("A chore changed in Google while being saved: %s", change)
 
-    async def _async_lists(self) -> tuple[str, dict[Repeats, str], dict[str, str]]:
-        """The seed list and each kid's list, made when missing, and any of the old template
-        lists still there. A kid's list is renamed when the kid is."""
+    async def _async_lists(self) -> tuple[str, dict[str, str]]:
+        """The seed list and each kid's list, made when missing. A kid's list is renamed when
+        the kid is."""
         if self._ids is None:
             self._ids = await self._store.async_load() or {}
         ids = self._ids
-        saved_old: dict[str, str] = dict(ids.get("templates") or {})
         saved_kids: dict[str, str] = dict(ids.get("kids") or {})
         lists = await self.api.async_lists()
         by_id = {tl.id: tl for tl in lists}
         changed = False
 
-        def existing(saved: str | None, title: str) -> TaskList | None:
-            found = by_id.get(saved or "")
-            return found or next((tl for tl in lists if tl.title.casefold() == title.casefold()), None)
-
         async def find(saved: str | None, title: str, rename: bool) -> str:
             nonlocal changed
-            found = existing(saved, title)
+            found = by_id.get(saved or "") or next(
+                (tl for tl in lists if tl.title.casefold() == title.casefold()), None
+            )
             if found is None:
                 async with self.write_lock:
                     found = await self.api.async_create_list(title)
@@ -232,31 +218,22 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
             return found.id
 
         seed_list = await find(ids.get("seeds"), SEED_LIST_TITLE, False)
-        old_lists: dict[Repeats, str] = {}
-        for repeats in REPEATS:
-            if (old := existing(saved_old.get(repeats), OLD_TEMPLATE_LIST_TITLES[repeats])) is not None:
-                old_lists[repeats] = old.id
-        if set(old_lists.items()) != set(saved_old.items()):
-            changed = True
         kid_lists: dict[str, str] = {}
         for kid, name in self.kids.items():
             kid_lists[kid] = await find(saved_kids.get(kid), KID_LIST_TITLE.format(name=name), True)
         if changed or set(saved_kids) != set(kid_lists):
-            self._ids = {"seeds": seed_list, "templates": dict(old_lists), "kids": kid_lists}
+            self._ids = {"seeds": seed_list, "kids": kid_lists}
             await self._store.async_save(self._ids)
-        return seed_list, old_lists, kid_lists
+        return seed_list, kid_lists
 
-    async def _async_templates(self, seed_list: str, old_lists: Mapping[Repeats, str], today: date) -> list[Template]:
+    async def _async_templates(self, seed_list: str, today: date) -> list[Template]:
         kids = self.kids
         tasks = await self.api.async_tasks(seed_list)
-        if old_lists:
-            tasks = [*tasks, *await self._async_move_old(seed_list, old_lists, tasks)]
         templates: list[Template] = []
         seen: set[str] = set()
         for task in tasks:
             template = parse_template(
                 task.id,
-                None,
                 task.title,
                 task.notes,
                 completed=task.completed is not None,
@@ -267,36 +244,6 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
             seen.add(template.id)
             templates.append(template)
         return templates
-
-    async def _async_move_old(
-        self, seed_list: str, old_lists: Mapping[Repeats, str], seeds: list[TaskRecord]
-    ) -> list[TaskRecord]:
-        """Move the templates on the old Daily, Weekly, Monthly and School days lists onto the
-        seed list, as they are plus a Repeats line (and an Id, so their chores stay linked),
-        then remove each old list once it's empty."""
-        kids = self.kids
-        have = {parse_template(t.id, None, t.title, t.notes, completed=False, kids=kids).id for t in seeds}
-        moved: list[TaskRecord] = []
-        async with self.write_lock:
-            for repeats, list_id in old_lists.items():
-                for task in await self.api.async_tasks(list_id):
-                    old = parse_template(
-                        task.id, repeats, task.title, task.notes, completed=task.completed is not None, kids=kids
-                    )
-                    if old.id not in have:
-                        # Moved and checked off as it was, so a paused one stays paused.
-                        add = [("Id", old.id), ("Repeats", repeats_label(old.repeats, old.every))]
-                        notes = edit_block(task.notes, add, drop=("id", "repeats", "every"))
-                        made = await self.api.async_insert(seed_list, task.title, notes)
-                        if task.completed is not None:
-                            made = await self.api.async_update(seed_list, made.id, done=True) or made
-                        moved.append(made)
-                        have.add(old.id)
-                    await self.api.async_delete(list_id, task.id)
-                if not await self.api.async_tasks(list_id):
-                    await self.api.async_delete_list(list_id)
-                    _LOGGER.info("Moved the chores on %s to %s", OLD_TEMPLATE_LIST_TITLES[repeats], SEED_LIST_TITLE)
-        return moved
 
     async def _async_tidy(
         self, list_id: str, task: TaskRecord, template: Template, seen: set[str], today: date

@@ -48,11 +48,9 @@ SCOPES: Final = (
 TASKS_SCOPE: Final = SCOPES[-1]
 
 # The kids: a list of {"id", "name", "aliases"}, in the order their lanes are shown. A kid's id
-# never changes. Before 0.19 each kid had their own calendar, and its id (under "calendar_id")
-# is still that kid's id, so their settings carry over.
+# never changes. (Before 0.19 each kid had their own calendar, and its id is still that kid's id.)
 CONF_KIDS: Final = "kids"
 CONF_KID_ID: Final = "id"
-CONF_CALENDAR_ID: Final = "calendar_id"
 CONF_NAME: Final = "name"
 CONF_ALIASES: Final = "aliases"
 CONF_ALL_KIDS: Final = "all_kids"
@@ -61,9 +59,6 @@ CONF_ALL_KIDS: Final = "all_kids"
 CONF_EVENTS_CALENDAR: Final = "events_calendar"
 # Where MyDashLight keeps the kids' lunches: one calendar, each title starting with the kid's name.
 CONF_LUNCH_CALENDAR: Final = "lunch_calendar"
-# Before 0.19: the parents' own calendars. Read once more when switching to the shared calendar.
-CONF_MOM_CALENDARS: Final = "mom_calendars"
-CONF_DAD_CALENDARS: Final = "dad_calendars"
 
 UPDATE_SECONDS: Final = 60
 PLAN_DAYS: Final = 7
@@ -138,13 +133,6 @@ CONF_CHORE_DAYS: Final = "chore_days_ahead"
 DEFAULT_CHORE_DAYS: Final = 7
 MAX_CHORE_DAYS: Final = 28
 SEED_LIST_TITLE: Final = "Chore seeds"
-OLD_TEMPLATE_LIST_TITLES: Final = {
-    # The lists from before the one seed list: their templates move onto it.
-    "daily": "Chore templates: Daily",
-    "weekly": "Chore templates: Weekly",
-    "monthly": "Chore templates: Monthly",
-    "school": "Chore templates: School days",
-}
 KID_LIST_TITLE: Final = "Chores: {name}"
 CHORE_UPDATE_SECONDS: Final = 60
 SIGNAL_CHORES_UPDATED: Final = f"{DOMAIN}_chores_updated"

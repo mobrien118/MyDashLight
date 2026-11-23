@@ -12,7 +12,6 @@ from typing import Any
 from .const import (
     CONF_ALIASES,
     CONF_ALL_KIDS,
-    CONF_CALENDAR_ID,
     CONF_CALENDAR_REMINDERS,
     CONF_CARPOOLS,
     CONF_CHORE_DAYS,
@@ -199,8 +198,8 @@ def _names(value: object) -> tuple[str, ...]:
 
 
 def kid_id(item: Mapping[str, Any]) -> str:
-    """A kid's id in the options: its own, or the id of the calendar they had before 0.19."""
-    return str(item.get(CONF_KID_ID) or item.get(CONF_CALENDAR_ID) or "")
+    """A kid's id in the options."""
+    return str(item.get(CONF_KID_ID) or "")
 
 
 def _kids(value: object) -> tuple[KidCalendar, ...]:

@@ -980,25 +980,6 @@ export function compactHeight(
   return Math.ceil(h) + 1;
 }
 
-/** A Compact card's height for an event on its own: its title, times and ride lines. */
-export function compactCardHeight(e: PlanEvent, colW: number): number {
-  const ln = e.own ? e.lines : compactLines(e.lines);
-  const time =
-    spanText(e) +
-    (e.arrive_by != null ? ` · arrive ${clock(e.arrive_by)}` : "") +
-    leaveText(e);
-  return compactHeight(
-    {
-      title: e.title,
-      time,
-      ...ln,
-      inline: foldsIntoTime(ln, e.attending === false),
-    },
-    colW,
-    { noted: !!e.notes },
-  );
-}
-
 /**
  * Compact: a trip's stop said shortly, with the card's arrows. "4:35  Soccer fields, drop off
  * Cleo" is "4:35  Soccer fields ↓ Cleo", a pick-up is ↑, and "Home, get Ben" is "Home ↑ Ben".

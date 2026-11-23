@@ -19,6 +19,8 @@ from custom_components.mydashlight.chores import (
     read_chore,
 )
 
+from .common import with_repeats
+
 KIDS = {"ava": "Ava", "ben": "Ben"}
 LISTS = {"ava": "list-ava", "ben": "list-ben"}
 CENTRAL = timezone(timedelta(hours=-6))
@@ -28,7 +30,7 @@ TODAY = date(2026, 11, 4)
 
 def template(repeats: str, rules: str, *, tid: str = "t1", title: str = "Vacuum", paused: bool = False) -> Template:
     notes = f"Details.\n\n--- Chore ---\nId: {tid}\n{rules}"
-    return parse_template(f"task-{tid}", repeats, title, notes, completed=paused, kids=KIDS)  # type: ignore[arg-type]
+    return parse_template(f"task-{tid}", title, with_repeats(repeats, notes), completed=paused, kids=KIDS)
 
 
 def chore(

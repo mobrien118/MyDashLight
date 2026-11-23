@@ -12,7 +12,6 @@ from .const import (
     CONF_ALL_KIDS,
     CONF_CARPOOLS,
     CONF_DAD_ALIASES,
-    CONF_DAD_CALENDARS,
     CONF_DAD_NAME,
     CONF_EVENTS_CALENDAR,
     CONF_KIDS,
@@ -20,7 +19,6 @@ from .const import (
     CONF_LUNCH_DEFAULTS,
     CONF_LUNCH_FEEDS,
     CONF_MOM_ALIASES,
-    CONF_MOM_CALENDARS,
     CONF_MOM_NAME,
     CONF_ROUTES_KEY,
 )
@@ -37,8 +35,6 @@ TO_REDACT = {
     CONF_CARPOOLS,
     CONF_KIDS,
     CONF_ALL_KIDS,
-    CONF_MOM_CALENDARS,
-    CONF_DAD_CALENDARS,
     CONF_EVENTS_CALENDAR,
     CONF_LUNCH_CALENDAR,
     # Keyed by kid id, which can be the email-like id of a kid's old calendar.

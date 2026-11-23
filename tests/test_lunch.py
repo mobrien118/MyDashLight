@@ -23,7 +23,6 @@ from .test_menu_feed import FEED
 FEED_URL = "https://school.example/calendar/menus.ics"
 
 NOW = "2026-11-04T15:00:00+00:00"  # 9 AM in Central time, a Wednesday
-SCHOOL = "Chore templates: School days"
 
 
 @pytest.fixture(autouse=True)
@@ -76,10 +75,14 @@ def titles(google: FakeGoogle, kid: str) -> list[tuple[str, str]]:
     return sorted((e["start"]["date"], e["summary"][cut:]) for e in kid_events(google, kid))
 
 
+BRING = "--- Lunch ---\nPick: Bring"
+BUY = "--- Lunch ---\nPick: Buy"
+
+
 async def test_reads_picks_and_days_off(hass: HomeAssistant, google: FakeGoogle) -> None:
     google.add(FAMILY, **all_day("off", "Ava No School – Thanksgiving Break", "2026-11-25", "2026-11-28"))
-    google.add(LUNCH, **all_day("b1", "Ava Bring Lunch", "2026-11-05", "2026-11-06"))
-    google.add(LUNCH, **all_day("b2", "Ben Buy Lunch", "2026-11-06", "2026-11-07"))
+    google.add(LUNCH, **all_day("b1", "Ava Lunch", "2026-11-05", "2026-11-06", description=BRING))
+    google.add(LUNCH, **all_day("b2", "Ben Lunch", "2026-11-06", "2026-11-07", description=BUY))
     await load(hass)
     lunches = await call(hass, "get_lunches")
     assert lunches["first"] == "2026-11-01"
@@ -132,24 +135,6 @@ async def test_set_lunch(hass: HomeAssistant, google: FakeGoogle) -> None:
 
     with pytest.raises(ServiceValidationError):
         await call(hass, "set_lunch", kid="Zed", dates=["2026-11-06"], lunch="buy")
-
-
-async def test_old_picks_fold_in(hass: HomeAssistant, google: FakeGoogle) -> None:
-    """Picks saved before 0.16 as their own events move onto the day's lunch event."""
-    google.add(LUNCH, **all_day("b1", "Ava Buy Lunch", "2026-11-06", "2026-11-07"))
-    google.add(LUNCH, **all_day("b2", "Ava Bring Lunch", "2026-11-09", "2026-11-10"))
-    google.add(LUNCH, **all_day("m1", "Ava Lunch: Pizza", "2026-11-09", "2026-11-10", description="Or: salad"))
-    # One spanning several days, typed by hand, is read but left alone.
-    google.add(LUNCH, **all_day("b3", "Ben Bring Lunch", "2026-11-16", "2026-11-21"))
-    await load(hass)
-    assert titles(google, AVA) == [("2026-11-06", "Lunch"), ("2026-11-09", "Lunch: Pizza")]
-    assert notes(google, AVA, "2026-11-06") == "--- Lunch ---\nPick: Buy"
-    assert notes(google, AVA, "2026-11-09") == "Or: salad\n\n--- Lunch ---\nPick: Bring"
-    assert sorted(google.deleted) == [(LUNCH, "b1"), (LUNCH, "b2")]
-    assert titles(google, BEN) == [("2026-11-16", "Bring Lunch")]
-    ava, ben = (await call(hass, "get_lunches"))["kids"]
-    assert ava["picks"] == {"2026-11-06": "buy", "2026-11-09": "bring"}
-    assert list(ben["picks"]) == ["2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20"]
 
 
 async def test_menus(hass: HomeAssistant, google: FakeGoogle) -> None:
@@ -273,15 +258,16 @@ async def test_menu_feed(hass: HomeAssistant, google: FakeGoogle, aioclient_mock
 
 
 async def test_pack_lunch_follows_the_picks(hass: HomeAssistant, google: FakeGoogle, tasks: FakeTasks) -> None:
-    school = tasks.add_list(SCHOOL)
+    seeds = tasks.add_list("Chore seeds")
     tasks.add(
-        school,
+        seeds,
         "Pack lunch",
-        "--- Chore ---\nId: pack\nWho: Ava, Ben\nWhen: Night before\nOnly: Bring lunch days\nStarts: 2026-11-01",
+        "--- Chore ---\nId: pack\nRepeats: School days\nWho: Ava, Ben\nWhen: Night before\nOnly: Bring lunch days\n"
+        "Starts: 2026-11-01",
     )
-    tasks.add(school, "Fill up water", "--- Chore ---\nId: water\nWho: Ava\nStarts: 2026-11-01")
+    tasks.add(seeds, "Fill up water", "--- Chore ---\nId: water\nRepeats: School days\nWho: Ava\nStarts: 2026-11-01")
     google.add(FAMILY, **all_day("off", "Ava No School", "2026-11-09", "2026-11-10"))
-    google.add(LUNCH, **all_day("b1", "Ava Bring Lunch", "2026-11-05", "2026-11-06"))
+    google.add(LUNCH, **all_day("b1", "Ava Lunch", "2026-11-05", "2026-11-06", description=BRING))
     await load(hass, {**OPTIONS, "lunch_defaults": {BEN: "bring"}})
 
     def made(kid: str, title: str) -> list[str]:
