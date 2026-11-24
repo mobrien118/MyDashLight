@@ -2392,6 +2392,38 @@ export const styles = css`
   .phone .tmpl-list {
     grid-template-columns: minmax(0, 1fr);
   }
+  .week-points {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  .week-points-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .week-kid {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .week-kid .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  .week-kid strong {
+    font-variant-numeric: tabular-nums;
+    color: var(--c);
+  }
   .manage-group {
     display: flex;
     flex-direction: column;

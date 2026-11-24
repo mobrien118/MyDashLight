@@ -492,3 +492,33 @@ export function parsePoints(text: string): number | null {
   const digits = /\d+/.exec(text)?.[0];
   return digits ? Math.min(1000, Number(digits.slice(0, 5))) : null;
 }
+
+/** How many times a chore comes up in an average week, for each kid it's for. */
+export function timesAWeek(t: ChoreTemplate): number {
+  const every = Math.max(1, t.every ?? 1);
+  const days = (t.days ?? defaultDays(t.repeats)).trim();
+  let times: number;
+  if (t.repeats === "daily") times = 7 / every;
+  else if (t.repeats === "monthly") times = 12 / 52 / every;
+  else if (t.repeats === "school") times = days ? (weekdaysOf(days)?.size ?? 5) : 5;
+  else times = days === "" || days.toLowerCase() === "any" ? 1 / every : (weekdaysOf(days)?.size ?? 1) / every;
+  // Taking turns shares it out.
+  return t.take_turns && t.who.length > 1 ? times / t.who.length : times;
+}
+
+/**
+ * The points each kid can earn in a week, doing every chore on time, by kid id: what the chore
+ * editor's Points give. Paused chores and ones that need setting up don't count. ``Only on Bring
+ * lunch days`` counts every school day, so it's the most it could be.
+ */
+export function weeklyPoints(templates: ChoreTemplate[], kids: string[], fallback = 1): Record<string, number> {
+  const out: Record<string, number> = Object.fromEntries(kids.map((k) => [k, 0]));
+  for (const t of templates) {
+    if (t.paused || t.problems.length) continue;
+    const each = (t.points ?? fallback) * timesAWeek(t);
+    for (const k of t.who) if (k in out) out[k] = out[k]! + each;
+  }
+  // To the nearest half, as the board shows points.
+  for (const k of kids) out[k] = Math.round(out[k]! * 2) / 2;
+  return out;
+}

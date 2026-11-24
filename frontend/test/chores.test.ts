@@ -16,12 +16,14 @@ import {
   ordinal,
   parsePoints,
   pointsText,
+  weeklyPoints,
   problemText,
   scheduleText,
   weekdaysLabel,
   weekdaysOf,
   whoText,
   type Chore,
+  type ChoreTemplate,
   type ChoresPayload,
 } from "../src/chores.ts";
 import { kidColor } from "../src/colors.ts";
@@ -193,6 +195,25 @@ test("a night-before chore waits for the afternoon of the day before", () => {
   // Once school has started it's moot: off the list and out of Needs attention.
   assert.deepEqual(choreColumns(morningOf, undefined, 13 * 60).find((c) => c.kid === "ben")!.now, []);
   assert.deepEqual(choresNeedingAttention(morningOf, 13 * 60), []);
+});
+
+test("points a kid can earn in a week", () => {
+  const t = (extra: Partial<ChoreTemplate>): ChoreTemplate => ({ id: "x", repeats: "daily", title: "x", icon: null, who: ["ava"], paused: false, problems: [], ...extra });
+  const week = weeklyPoints(
+    [
+      t({}), // every day: 7
+      t({ repeats: "weekly", days: "Mon, Wed", points: 2 }), // 2 days x 2: 4
+      t({ repeats: "weekly", days: "Any", who: ["ava", "ben"], take_turns: true, points: 3 }), // 1 x 3, shared: 1.5 each
+      t({ repeats: "school", days: "", points: 0 }), // worth nothing
+      t({ repeats: "school", days: "Mon-Wed", who: ["ben"] }), // 3
+      t({ repeats: "daily", every: 2, who: ["ben"] }), // 3.5
+      t({ repeats: "monthly", days: "last", who: ["ben"], points: 4 }), // about 0.9
+      t({ paused: true }),
+      t({ problems: ["who:"] }),
+    ],
+    ["ava", "ben", "cleo"],
+  );
+  assert.deepEqual(week, { ava: 12.5, ben: 9, cleo: 0 });
 });
 
 test("points as the board shows and takes them", () => {

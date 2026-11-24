@@ -50,6 +50,7 @@ import {
   choreNote,
   parsePoints,
   pointsText,
+  weeklyPoints,
   choresNeedingAttention,
   defaultDays,
   draftFields,
@@ -2712,6 +2713,21 @@ export class MyDashLightBoard extends LitElement {
     </div>`;
   }
 
+  /** What each kid can earn in a week, so the chores can be shared out fairly. */
+  private renderWeeklyPoints(data: ChoresPayload): TemplateResult {
+    const week = weeklyPoints(data.templates, data.kids.map((k) => k.id), data.points?.default ?? 1);
+    const colors = this.plan ? kidColors(this.plan) : undefined;
+    return html`<section class="week-points" aria-label="Points a week">
+      <span class="week-points-label">Points a week, all done on time</span>
+      ${data.kids.map((k, i) => {
+        const c = colors?.get(k.id) ?? kidColor(i);
+        return html`<span class="week-kid" style="--c:${c.color};--rgb:${c.rgb}"
+          ><span class="avatar" aria-hidden="true">${initial(k.name)}</span>${k.name} <strong>${pointsText(week[k.id] ?? 0)}</strong></span
+        >`;
+      })}
+    </section>`;
+  }
+
   /** One chore template, as Manage chores and the set-up list show it. Tap to change it. */
   private renderTemplateRow(t: ChoreTemplate): TemplateResult {
     const data = this.chores!;
@@ -2720,7 +2736,7 @@ export class MyDashLightBoard extends LitElement {
     const sel = this.choreEdit?.template === t.id;
     const status = t.problems.length
       ? html`<span class="tmpl-note bad">${t.problems.map(problemText).join(" · ")} · tap to set up</span>`
-      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1, !!t.night_before, !!t.bring_only)}</span>`;
+      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1, !!t.night_before, !!t.bring_only)}${data.points ? ` · ${pointsWord(t.points ?? data.points.default)}` : ""}</span>`;
     return html`<button type="button" class="tmpl ${t.problems.length ? "needs" : ""} ${t.paused ? "paused" : ""} ${sel ? "sel" : ""}" @click=${() => this.editChore(t)}>
       <span class="tmpl-icon" aria-hidden="true">${t.icon ?? "•"}</span>
       <span class="chore-text">
@@ -2754,6 +2770,7 @@ export class MyDashLightBoard extends LitElement {
           this.manage = false;
         }}>Done</button>
       </div>
+      ${data.points && data.templates.length ? this.renderWeeklyPoints(data) : nothing}
       ${data.templates.length
         ? groups.map(([r, label]) => {
             const list = data.templates.filter((t) => t.repeats === r);
@@ -3577,4 +3594,9 @@ function draftMatches(c: Chore, want: ChoreDraftState): boolean {
   if (want === false) return !isDone(c);
   if (want === true) return isDone(c) && !isSkip(c.state);
   return c.state === want;
+}
+
+/** "1 point", "2 points". */
+function pointsWord(n: number): string {
+  return `${pointsText(n)} ${n === 1 ? "point" : "points"}`;
 }
