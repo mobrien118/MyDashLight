@@ -2133,7 +2133,7 @@ export class MyDashLightBoard extends LitElement {
               <span class="ch-text">
                 <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}</span>
                 <span class="sub-row"
-                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 64 - c.sub.length * 6.4) : nothing}</span
+                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 64 - Math.min(c.sub.length, 12) * 6.4) : nothing}</span
                 >
               </span>
             </div>`,

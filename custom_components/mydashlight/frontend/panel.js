@@ -3648,7 +3648,7 @@ var ur=Object.defineProperty;var Nn=(i,t)=>()=>(i&&(t=i(i=0)),t);var fr=(i,t)=>{
               <span class="ch-text">
                 <span class="name-row"><span class="name">${a.name}</span>${this.renderScore(a.id)}</span>
                 <span class="sub-row"
-                  ><span class="sub ${a.subWarn?"warn":""}">${a.sub}</span>${a.kind==="kid"?this.renderLunchChip(a.id,!0,a.w-64-a.sub.length*6.4):y}</span
+                  ><span class="sub ${a.subWarn?"warn":""}">${a.sub}</span>${a.kind==="kid"?this.renderLunchChip(a.id,!0,a.w-64-Math.min(a.sub.length,12)*6.4):y}</span
                 >
               </span>
             </div>`)}

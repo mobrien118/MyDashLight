@@ -3517,7 +3517,7 @@ var ga=Object.defineProperty;var Xn=(s,t)=>()=>(s&&(t=s(s=0)),t);var ma=(s,t)=>{
               <span class="ch-text">
                 <span class="name-row"><span class="name">${l.name}</span>${this.renderScore(l.id)}</span>
                 <span class="sub-row"
-                  ><span class="sub ${l.subWarn?"warn":""}">${l.sub}</span>${l.kind==="kid"?this.renderLunchChip(l.id,!0,l.w-64-l.sub.length*6.4):$}</span
+                  ><span class="sub ${l.subWarn?"warn":""}">${l.sub}</span>${l.kind==="kid"?this.renderLunchChip(l.id,!0,l.w-64-Math.min(l.sub.length,12)*6.4):$}</span
                 >
               </span>
             </div>`)}
