@@ -2147,6 +2147,51 @@ export const styles = css`
   .chore.done .chore-note {
     color: var(--ok);
   }
+  .pts-flash {
+    margin-left: auto;
+    flex: none;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--ok);
+    animation: pts-rise 2.6s ease-out forwards;
+  }
+  @keyframes pts-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(6px) scale(0.9);
+    }
+    12% {
+      opacity: 1;
+      transform: none;
+    }
+    75% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pts-flash {
+      animation: none;
+    }
+  }
+  .score {
+    flex: none;
+    font-size: 12.5px;
+    line-height: 18px;
+    font-weight: 700;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .score.lead {
+    color: #b7791f;
+  }
+  .points-input {
+    max-width: 120px;
+  }
   .chore-none {
     margin: 4px;
     font-size: 14px;

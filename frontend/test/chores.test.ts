@@ -14,6 +14,8 @@ import {
   newDraft,
   noChoresYet,
   ordinal,
+  parsePoints,
+  pointsText,
   problemText,
   scheduleText,
   weekdaysLabel,
@@ -97,7 +99,9 @@ test("the line under a chore", () => {
   assert.equal(note({ state: "upcoming", due: "2026-11-06" }), "");
   assert.equal(note({ state: "upcoming", due: "2026-11-08", shows_from: "2026-11-05", repeats: "weekly" }), "By Sun");
   // A night-before school chore says which school day it's for.
-  assert.equal(note({ repeats: "school", for_day: "2026-11-05" }), "Tonight · for tomorrow");
+  assert.equal(note({ repeats: "school", due: "2026-11-05", shows_from: TODAY, for_day: "2026-11-05" }), "Tonight · for tomorrow");
+  // On the school morning it's just due today.
+  assert.equal(note({ repeats: "school", due: TODAY, shows_from: "2026-11-03", for_day: TODAY }), "Today");
 });
 
 test("one column per kid, grouped and in order", () => {
@@ -158,11 +162,11 @@ test("needs attention lists overdue chores first, then today's", () => {
   );
 });
 
-test("a night-before chore waits for the afternoon of its day", () => {
+test("a night-before chore waits for the afternoon of the day before", () => {
   const data = payload([
-    chore("ben", "Pack lunch", { repeats: "school", for_day: "2026-11-05" }),
+    chore("ben", "Pack lunch", { repeats: "school", due: "2026-11-05", shows_from: TODAY, for_day: "2026-11-05" }),
     chore("ben", "Make bed"),
-    chore("cleo", "Pack lunch", { repeats: "school", for_day: "2026-11-05", state: "done" }),
+    chore("cleo", "Pack lunch", { repeats: "school", due: "2026-11-05", shows_from: TODAY, for_day: "2026-11-05", state: "done" }),
   ]);
   // Morning: coming up later today, not to do.
   const morning = choreColumns(data, undefined, 9 * 60).find((c) => c.kid === "ben")!;
@@ -178,6 +182,21 @@ test("a night-before chore waits for the afternoon of its day", () => {
   // Done early stays done.
   const cleo = choreColumns(data, undefined, 9 * 60).find((c) => c.kid === "cleo")!;
   assert.deepEqual(cleo.done.map((c) => c.title), ["Pack lunch"]);
+  // Not done by the school morning: still to do, and on time.
+  const morningOf = payload([chore("ben", "Pack lunch", { repeats: "school", due: TODAY, shows_from: "2026-11-03", for_day: TODAY })]);
+  assert.deepEqual(choreColumns(morningOf, undefined, 7 * 60).find((c) => c.kid === "ben")!.now.map((c) => c.title), ["Pack lunch"]);
+  assert.deepEqual(choresNeedingAttention(morningOf, 7 * 60).map((c) => c.title), ["Pack lunch"]);
+});
+
+test("points as the board shows and takes them", () => {
+  assert.equal(pointsText(2), "2");
+  assert.equal(pointsText(0.5), "0.5");
+  assert.equal(pointsText(1.25), "1.3");
+  assert.equal(parsePoints(""), null);
+  assert.equal(parsePoints(" 3 "), 3);
+  assert.equal(parsePoints("0"), 0);
+  assert.equal(parsePoints("2.5"), 2);
+  assert.equal(parsePoints("99999"), 1000);
 });
 
 test("no chores yet only when there are no chores and no templates", () => {
@@ -259,7 +278,11 @@ test("editing a template: what's sent, and what stops a save", () => {
     days: "Fri",
     every: 1,
     paused: false,
+    points: null,
   });
+  // Points: blank is the default (null), 0 is kept.
+  assert.equal(draftFields(draftOf({ ...t, points: 3 })).points, 3);
+  assert.equal(draftFields(draftOf({ ...t, points: 0 })).points, 0);
   // One kid can't take turns; no icon is sent as empty.
   assert.equal(draftFields({ ...d, who: ["ava"], icon: null }).take_turns, false);
   assert.equal(draftFields({ ...d, icon: null }).icon, "");
