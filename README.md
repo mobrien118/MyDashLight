@@ -403,8 +403,8 @@ Points: 1
 | Take turns | The kids in Who take turns, one each time, in order from Starts. |
 | Days | Weekly: weekdays such as `Mon, Thu` or `Mon-Fri`, or `Any` for sometime that week (shows from Monday, due Sunday). Monthly: a date such as `15` or `last`, a day such as `1st Sat`, or `Any` for sometime that month. School days: which weekdays (none for every school day). Daily chores have no Days: picking days makes a chore weekly, so "every 2 days, on Mondays" can't happen. Several are separated by commas. |
 | Starts, Ends | The first and last days. Starts is the day the template was made if left out. |
-| Points | Saved on each chore for later. Nothing uses it yet. |
-| When | School days only: `Night before` makes it due the day before each school day (Sunday for Monday); the board shows it from 1 PM that day. Left out, it's due that morning. |
+| Points | What the chore earns when it's done on time (see **Points** below). Left out, it's worth the default from **Configure > Chore points**. `0` for a chore that shouldn't count, such as packing a lunch the kid chose to bring. |
+| When | School days only: `Night before` shows it from the evening before each school day (Sunday for Monday); the board shows it from 1 PM that day. It's still due on the school day, so doing it that morning is on time. Left out, it shows that morning. |
 | Only | School days only: `Bring lunch days` makes it only on days the kid brings lunch, for chores like packing it. |
 
 Text above the block is the chore's details, shown when it's tapped. A leading emoji in the title
@@ -425,6 +425,23 @@ Each chore on a kid's list has the template's title and details, and a Chore blo
   counted.
 - **Template changed:** chores coming up that aren't done yet follow it (new title, day or kid).
   Done chores and chores whose day has passed never change, so the history stays true.
+
+**Points.** Each check-off earns points, written on the chore as `Earned: <points>` so a setting
+changed later never changes what was earned. A chore checked off in the Google Tasks app gets its
+line on the next read.
+
+| Done | Earns |
+| --- | --- |
+| On time, by the kid it's for | All its points |
+| Late (after its due day), by anyone, the kid it's for included | The late share, 50% unless set otherwise |
+| By someone else before it's late | Nothing: it's a favor |
+| Missed (closed out) | Nothing. Points are never taken away. |
+
+**Configure > Chore points** sets the default points, the late share and how long after a chore
+turns late before someone else earns points for it. Keep the late share under 100%, or two kids
+would earn more by swapping their chores than by doing their own. `get_chores` returns each
+chore's `worth` and `earned`, and under `points`, everyone's `scores` for the last 7 days (kids
+and parents, by id) and the `leaders`: the kids with the most, or none while everyone has 0.
 
 The actions: `mydashlight.get_chores` returns the chores the board shows (each kid's open and
 overdue chores, those coming up, and those done today) and the templates;

@@ -85,6 +85,7 @@
         "menu_options": {
           "settings": "Names and planner timing",
           "calendars": "Calendars",
+          "chores": "Chore points",
           "lunch": "Lunch",
           "drive_times": "Drive times",
           "reminders": "Reminders"
@@ -190,6 +191,20 @@
         },
         "data_description": {
           "bring_by_default": "Kids who bring lunch unless they pick Buy. Everyone else buys unless they pick Bring."
+        }
+      },
+      "chores": {
+        "title": "Chore points",
+        "description": "Each chore earns points when it's checked off. The board shows everyone's points for the last 7 days, and a star for the kid with the most.\n\nDone on time by the kid it's for, a chore earns all its points. Once its day is over it's late, and whoever does it then earns the late share. Done by someone else before that, it's a favor and earns nothing. A missed chore earns nothing, and points are never taken away.",
+        "data": {
+          "default": "Points for a chore",
+          "late_share": "Late share",
+          "open_after": "Wait before others can earn a late chore"
+        },
+        "data_description": {
+          "default": "What a chore is worth when its seed doesn't set its own points. A seed can set 0 for a chore that shouldn't count.",
+          "late_share": "The part of a chore's points for doing it late, whoever does it. Keep it under 100%, or two kids would earn more by swapping their chores than by doing their own.",
+          "open_after": "Hours after a chore turns late before a brother, sister or parent earns points for it. Before then, doing it is a favor. 0 opens it as soon as it's late."
         }
       }
     },
@@ -432,7 +447,7 @@
         },
         "points": {
           "name": "Points",
-          "description": "Points for doing it, saved for later."
+          "description": "What it earns when done on time. Left out, the default from Configure > Chore points. 0 for a chore that shouldn't count."
         },
         "paused": {
           "name": "Paused",
@@ -440,7 +455,7 @@
         },
         "night_before": {
           "name": "Night before",
-          "description": "School days only: due the evening before each school day (Sunday for Monday) instead of that morning."
+          "description": "School days only: shows from the evening before each school day (Sunday for Monday) instead of that morning. It's still due on the school day."
         },
         "bring_only": {
           "name": "Only on Bring lunch days",

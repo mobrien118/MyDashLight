@@ -38,7 +38,8 @@ A school-days chore is made for each day that's a school day for its kid: a week
     When: Night before
     Only: Bring lunch days
 
-``When: Night before`` makes it due the evening before the school day (Sunday for Monday).
+``When: Night before`` shows it from the evening before (Sunday for Monday). It's still due on
+the school day, so doing it that morning is on time.
 ``Only: Bring lunch days`` makes it only on days the kid brings lunch.
 
 Each chore made from a template is a task on that kid's list, due on its day, with the same
@@ -159,6 +160,7 @@ _LABELS: Final[dict[str, str]] = {
     "closed": "closed",
     "doneby": "done_by",
     "completedby": "done_by",
+    "earned": "earned",
     "when": "when",
     "only": "only",
 }
@@ -755,17 +757,17 @@ def _school_occurrences(template: Template, first: date, last: date, school: Sch
     shift = timedelta(days=1 if template.night_before else 0)
     starts = template.starts or first
     out: list[Occurrence] = []
-    for i, (day, _shows) in enumerate(_due_days(template, min(starts, first + shift), last + shift)):
-        due = day - shift
-        if due < first:
+    for i, (due, _shows) in enumerate(_due_days(template, min(starts, first), last + shift)):
+        shows = due - shift
+        if due < first or shows > last:
             continue
         kids = (template.who[i % len(template.who)],) if template.take_turns else template.who
         for kid in kids:
-            if not school.is_school_day(kid, day):
+            if not school.is_school_day(kid, due):
                 continue
-            if template.bring_only and school.lunch(kid, day) != "bring":
+            if template.bring_only and school.lunch(kid, due) != "bring":
                 continue
-            out.append(Occurrence(template.id, kid, due, due))
+            out.append(Occurrence(template.id, kid, due, shows))
     return out
 
 

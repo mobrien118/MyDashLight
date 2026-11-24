@@ -18,8 +18,9 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
+from .chore_points import earned
 from .chore_rules import REPEATS, DaysError, Repeats, Template, kid_for, parse_days, split_icon, template_notes
-from .chores import done_by_notes
+from .chores import done_by_notes, earned_notes
 from .const import (
     ATTR_BY,
     ATTR_CHORE,
@@ -122,8 +123,21 @@ async def _async_set_chore_done(call: ServiceCall) -> None:
                 translation_placeholders={"name": call.data[ATTR_BY]},
             )
         by = found
-    # Who did it is saved on the chore itself, so the history stays in Google Tasks.
-    notes = done_by_notes(chore.task.notes, people.get(by, by) if done else None)
+    # Who did it, and what it earned, are saved on the chore itself, so the history stays in
+    # Google Tasks and a setting changed later doesn't change it.
+    name = people.get(by, by) if done else None
+    notes = done_by_notes(chore.task.notes, name)
+    points = None
+    if done:
+        now = dt_util.now()
+        checked = replace(
+            chore,
+            task=replace(chore.task, notes=notes, completed=chore.task.completed or now),
+            done_by=name,
+            earned=None,
+        )
+        points = earned(checked, coordinator.settings.points, now.tzinfo or dt_util.UTC, people)
+    notes = earned_notes(notes, points)
     if done == chore.done and notes == chore.task.notes:
         return
     async with coordinator.write_lock:

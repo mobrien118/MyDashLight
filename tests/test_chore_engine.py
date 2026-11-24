@@ -3,6 +3,7 @@ template changes through the services, the live feed, and sign-ins from before c
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from freezegun.api import FrozenDateTimeFactory
@@ -17,7 +18,7 @@ from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 from custom_components.mydashlight.chore_rules import read_block
 from custom_components.mydashlight.const import DOMAIN
 
-from .common import FakeGoogle, FakeTasks, google_error, make_entry, setup_credentials
+from .common import AVA, BEN, FakeGoogle, FakeTasks, google_error, make_entry, setup_credentials
 
 NOW = "2026-11-04T15:00:00+00:00"  # 9 AM in Central time, a Wednesday
 SEEDS = "Chore seeds"
@@ -351,3 +352,79 @@ async def test_daily_chores_dont_take_days(hass: HomeAssistant, tasks: FakeTasks
     [template] = [t for t in chores["templates"] if t["id"] == saved["template"]]
     assert (template["repeats"], template["every"], template["repeats_label"]) == ("daily", 3, "Every 3 days")
     assert [c["due"] for c in chores["chores"]] == ["2026-11-04", "2026-11-07", "2026-11-10"]
+
+
+async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> None:
+    seeds = tasks.add_list(SEEDS)
+    tasks.add(
+        seeds, "Feed the cat", "--- Chore ---\nId: cat\nRepeats: Every day\nWho: Ava\nPoints: 2\nStarts: 2026-11-01"
+    )
+    await load(hass)
+    chores = await call(hass, "get_chores")
+    assert chores["points"] == {
+        "days": 7,
+        "default": 1,
+        "scores": dict.fromkeys((AVA, BEN, "mom", "dad"), 0.0),
+        "leaders": [],
+    }
+    today = next(c for c in chores["chores"] if c["due"] == "2026-11-04")
+    assert (today["worth"], today["earned"]) == (2, None)
+
+    def saved() -> dict[str, Any]:
+        return next(t for t in tasks.items("Chores: Ava") if t["id"] == today["id"])
+
+    # Done on time by the kid it's for: all of it, written on the chore.
+    await call(hass, "set_chore_done", chore=today["id"])
+    assert read_block(saved()["notes"]).every("earned") == ["2"]
+    chores = await call(hass, "get_chores")
+    assert next(c for c in chores["chores"] if c["id"] == today["id"])["earned"] == 2
+    assert chores["points"]["scores"][AVA] == 2
+    assert chores["points"]["leaders"] == [AVA]
+
+    # Ben did it before it was late: a favor, worth nothing.
+    await call(hass, "set_chore_done", chore=today["id"], by="Ben")
+    assert read_block(saved()["notes"]).every("earned") == ["0"]
+    chores = await call(hass, "get_chores")
+    assert (chores["points"]["scores"][AVA], chores["points"]["scores"][BEN]) == (0, 0)
+    assert chores["points"]["leaders"] == []
+
+    # Opened again: the line goes.
+    await call(hass, "set_chore_done", chore=today["id"], done=False)
+    assert read_block(saved()["notes"]).every("earned") == []
+
+
+async def test_a_late_chore_earns_the_late_share_for_whoever_does_it(
+    hass: HomeAssistant, tasks: FakeTasks, freezer: FrozenDateTimeFactory
+) -> None:
+    seeds = tasks.add_list(SEEDS)
+    # A daily chore missed is closed out once the next one shows; a weekly one waits for anyone.
+    tasks.add(
+        seeds,
+        "Vacuum",
+        "--- Chore ---\nId: vac\nRepeats: Every week\nDays: Wed\nWho: Ava\nPoints: 2\nStarts: 2026-11-01",
+    )
+    entry = await load(hass, make_entry(expires_at=time.time() + 3 * 86400))
+    wednesday = next(c for c in (await call(hass, "get_chores"))["chores"] if c["due"] == "2026-11-04")
+
+    freezer.move_to("2026-11-05T15:00:00+00:00")
+    tasks.now = "2026-11-05T15:00:00.000Z"
+    await refresh(hass, entry)
+    late = next(c for c in (await call(hass, "get_chores"))["chores"] if c["id"] == wednesday["id"])
+    assert late["state"] == "overdue"
+
+    await call(hass, "set_chore_done", chore=wednesday["id"], by="Ben")
+    saved = next(t for t in tasks.items("Chores: Ava") if t["id"] == wednesday["id"])
+    assert read_block(saved["notes"]).every("earned") == ["1"]
+    assert (await call(hass, "get_chores"))["points"]["scores"][BEN] == 1
+
+
+async def test_a_chore_ticked_in_google_gets_what_it_earned(hass: HomeAssistant, tasks: FakeTasks) -> None:
+    seeds = tasks.add_list(SEEDS)
+    tasks.add(seeds, "Feed the cat", "--- Chore ---\nId: cat\nRepeats: Every day\nWho: Ava\nStarts: 2026-11-01")
+    entry = await load(hass)
+    task = next(t for t in tasks.items("Chores: Ava") if t["due"].startswith("2026-11-04"))
+    # Ticked in the Google Tasks app: no Done by line, nothing earned written.
+    task.update(status="completed", completed="2026-11-04T14:00:00.000Z")
+    await refresh(hass, entry)
+    assert read_block(task["notes"]).every("earned") == ["1"]
+    assert (await call(hass, "get_chores"))["points"]["scores"][AVA] == 1

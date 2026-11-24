@@ -7,8 +7,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any
 
+from .chore_points import DEFAULT_LATE_SHARE, DEFAULT_OPEN_AFTER, DEFAULT_POINTS, PointsSettings
 from .const import (
     CONF_ALIASES,
     CONF_ALL_KIDS,
@@ -37,6 +39,10 @@ from .const import (
     CONF_NO_DRIVER_ALERTS,
     CONF_NO_DRIVER_HOURS,
     CONF_PLANNER,
+    CONF_POINTS,
+    CONF_POINTS_DEFAULT,
+    CONF_POINTS_LATE_SHARE,
+    CONF_POINTS_OPEN_AFTER,
     CONF_REMIND_BEFORE,
     CONF_TAKE_ALONG_WINDOW,
     CONF_TIGHT_SLACK,
@@ -82,6 +88,7 @@ class HubSettings:
     reminders: ReminderSettings = field(default_factory=ReminderSettings)
     chore_days_ahead: int = DEFAULT_CHORE_DAYS
     """How many days of chores, counting today, to keep on the kids' lists."""
+    points: PointsSettings = field(default_factory=PointsSettings)
     lunch_defaults: Mapping[str, str] = field(default_factory=dict)
     """Each kid's lunch when nobody picked, ``buy`` or ``bring``, by kid id."""
     lunch_feeds: Mapping[str, str] = field(default_factory=dict)
@@ -145,6 +152,7 @@ class HubSettings:
                 },
             ),
             chore_days_ahead=min(MAX_CHORE_DAYS, max(1, int(options.get(CONF_CHORE_DAYS, DEFAULT_CHORE_DAYS)))),
+            points=_points(options.get(CONF_POINTS)),
             lunch_defaults=_lunch_defaults(options.get(CONF_LUNCH_DEFAULTS), kids),
             lunch_feeds=_lunch_feeds(options.get(CONF_LUNCH_FEEDS), kids),
             events_calendar=str(options.get(CONF_EVENTS_CALENDAR) or ""),
@@ -156,6 +164,22 @@ class HubSettings:
                 all_kids=_names(options.get(CONF_ALL_KIDS)),
             ),
         )
+
+
+def _points(value: object) -> PointsSettings:
+    saved: Mapping[str, Any] = value if isinstance(value, Mapping) else {}
+
+    def number(key: str, default: int, low: int, high: int) -> int:
+        try:
+            return min(high, max(low, int(saved.get(key, default))))
+        except (TypeError, ValueError):
+            return default
+
+    return PointsSettings(
+        default=number(CONF_POINTS_DEFAULT, DEFAULT_POINTS, 0, 1000),
+        late_share=number(CONF_POINTS_LATE_SHARE, DEFAULT_LATE_SHARE, 0, 100),
+        open_after=timedelta(hours=number(CONF_POINTS_OPEN_AFTER, DEFAULT_OPEN_AFTER, 0, 168)),
+    )
 
 
 def _lunch_defaults(value: object, kids: tuple[KidCalendar, ...]) -> dict[str, str]:

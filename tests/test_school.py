@@ -229,12 +229,20 @@ def test_school_days_skip_days_off_and_weekends() -> None:
     assert occurrences(t, date(2026, 11, 24), date(2026, 11, 30)) == []
 
 
-def test_night_before_is_due_the_evening_before() -> None:
+def test_night_before_is_due_on_the_school_day_and_shows_the_evening_before() -> None:
     s = school(ava=[day("off", "No School", "2026-11-25", "2026-11-27")])
     t = template("Who: Ava\nWhen: Night before")
-    got = [o.due.isoformat() for o in occurrences(t, date(2026, 11, 20), date(2026, 11, 30), s)]
-    # Sunday for Monday; nothing the nights before days off; Sunday the 29th for Monday the 30th.
-    assert got == ["2026-11-22", "2026-11-23", "2026-11-29", "2026-11-30"]
+    got = [
+        (o.due.isoformat(), o.shows_from.isoformat()) for o in occurrences(t, date(2026, 11, 20), date(2026, 11, 30), s)
+    ]
+    # Monday's shows Sunday; none for days off; Tuesday the 1st's shows on the 30th, so it's made.
+    assert got == [
+        ("2026-11-20", "2026-11-19"),
+        ("2026-11-23", "2026-11-22"),
+        ("2026-11-24", "2026-11-23"),
+        ("2026-11-30", "2026-11-29"),
+        ("2026-12-01", "2026-11-30"),
+    ]
 
 
 def test_bring_lunch_days_only() -> None:
@@ -244,8 +252,8 @@ def test_bring_lunch_days_only() -> None:
     )
     t = template("Who: Ava, Ben\nWhen: Night before\nOnly: Bring lunch days")
     got = [(o.kid, o.due.isoformat()) for o in occurrences(t, date(2026, 11, 4), date(2026, 11, 8), s)]
-    # Ava buys by default, Ben brings by default.
-    assert got == [("ava", "2026-11-04"), ("ben", "2026-11-05"), ("ben", "2026-11-08")]
+    # Ava buys by default, Ben brings by default. Monday's shows Sunday the 8th.
+    assert got == [("ben", "2026-11-04"), ("ava", "2026-11-05"), ("ben", "2026-11-06"), ("ben", "2026-11-09")]
 
 
 def test_turns_count_weekdays_so_a_day_off_changes_nothing_else() -> None:
@@ -262,9 +270,10 @@ def test_plan_follows_lunch_picks_and_holds_without_calendars() -> None:
     t = template("Who: Ava\nWhen: Night before\nOnly: Bring lunch days")
     bring = school(ava=[pick_day("b", "Bring", "2026-11-05")])
     changes = plan_changes([t], [], LISTS, TODAY, 3, bring).changes
-    assert [(c.list_id, c.due.isoformat()) for c in changes if isinstance(c, Make)] == [("list-ava", "2026-11-04")]
+    assert [(c.list_id, c.due.isoformat()) for c in changes if isinstance(c, Make)] == [("list-ava", "2026-11-05")]
 
-    made = read_chore(TaskItem("c1", "Pack lunch", chore_notes("", "t1", TODAY, None), TODAY), "ava", "list-ava")
+    thursday = date(2026, 11, 5)
+    made = read_chore(TaskItem("c1", "Pack lunch", chore_notes("", "t1", thursday, None), thursday), "ava", "list-ava")
     # Switched to Buy: the chore goes.
     buy = school(ava=[pick_day("b", "Buy", "2026-11-05")])
     assert plan_changes([t], [made], LISTS, TODAY, 3, buy).changes == [Remove("list-ava", "c1")]
@@ -275,13 +284,18 @@ def test_plan_follows_lunch_picks_and_holds_without_calendars() -> None:
 def test_board_says_which_school_day_a_night_before_chore_is_for() -> None:
     t = template("Who: Ava\nWhen: Night before")
     thursday = date(2026, 11, 5)
-    sunday = date(2026, 11, 8)
+    friday = date(2026, 11, 6)
+    monday = date(2026, 11, 9)
     chores = [
         read_chore(TaskItem(f"c{d.day}", "Pack lunch", chore_notes("", "t1", d, None), d), "ava", "list-ava")
-        for d in (thursday, sunday)
+        for d in (friday, monday)
     ]
     items = board_items(chores, [t], ["ava"], thursday, 4, CENTRAL, None, school())
-    assert [(i["due"], i["for_day"]) for i in items] == [("2026-11-05", "2026-11-06"), ("2026-11-08", "2026-11-09")]
+    # Due on the school day, showing from the evening before: Monday's from Sunday.
+    assert [(i["due"], i["shows_from"], i["for_day"]) for i in items] == [
+        ("2026-11-06", "2026-11-05", "2026-11-06"),
+        ("2026-11-09", "2026-11-08", "2026-11-09"),
+    ]
 
 
 def test_menu_titles() -> None:
