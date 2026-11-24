@@ -50,6 +50,7 @@ import {
   choreNote,
   parsePoints,
   pointsText,
+  weeklyPoints,
   choresNeedingAttention,
   defaultDays,
   draftFields,
@@ -866,14 +867,6 @@ export class MyDashLightBoard extends LitElement {
     }, 2600);
   }
 
-  /** About how wide renderScore's chip is, so the lunch chip beside it knows its room. */
-  private scoreRoom(id: string): number {
-    const p = this.chores?.points;
-    const score = p?.scores[id];
-    if (!p || score === undefined) return 0;
-    return 14 + pointsText(score).length * 7.5 + (p.leaders.includes(id) ? 24 : 0);
-  }
-
   /** Someone's points for the last few days, small beside their name. Nothing without chore points. */
   private renderScore(id: string): TemplateResult | typeof nothing {
     const p = this.chores?.points;
@@ -882,7 +875,7 @@ export class MyDashLightBoard extends LitElement {
     const lead = p.leaders.includes(id);
     const text = pointsText(score);
     const label = `${text} ${score === 1 ? "point" : "points"} in the last ${p.days} days${lead ? ", the most" : ""}`;
-    return html`<span class="score ${lead ? "lead" : ""}" role="img" aria-label=${label} title=${label}>${lead ? "★ " : ""}${text}</span>`;
+    return html`<span class="score ${lead ? "lead" : ""}" role="img" aria-label=${label} title=${label}>${lead ? "★ " : ""}${text}</span>`;
   }
 
   private choreDone(c: Chore): boolean {
@@ -1376,9 +1369,15 @@ export class MyDashLightBoard extends LitElement {
   private renderForLine(plan: Plan, day: PlanDay, e: PlanEvent): TemplateResult | typeof nothing {
     const who = plan.who?.[e.event_id];
     if (!who) return nothing;
-    const names = who.people.map((p) => personName(plan, p));
+    const colors = kidColors(plan);
     return html`<span class="ed-for"
-      >For ${andList(names)}${who.from_notes ? "" : " · from the title"}<button
+      >${who.people.map((p) => {
+        const c = colors.get(p) ?? OWN_COLOR;
+        const name = personName(plan, p);
+        return html`<span class="for-who" style="--c:${c.color};--rgb:${c.rgb}"
+          ><span class="avatar ${colors.has(p) ? "" : "driver"}" aria-hidden="true">${initial(name)}</span>${name}</span
+        >`;
+      })}${who.from_notes ? "" : html`<span class="for-guess">from the title</span>`}<button
         type="button"
         class="ed-for-change"
         @click=${() => this.changeForPick(plan, day, e)}
@@ -2138,8 +2137,10 @@ export class MyDashLightBoard extends LitElement {
             (c) => html`<div class="col-head ${c.kind} ${isLeader(this.chores, c.id) ? "leader" : ""}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
               <span class="avatar ${c.kind}" aria-hidden="true">${initial(c.name)}</span>
               <span class="ch-text">
-                <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 58 - c.name.length * 10.6 - this.scoreRoom(c.id)) : nothing}</span>
-                <span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>
+                <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}</span>
+                <span class="sub-row"
+                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 64 - Math.min(c.sub.length, 12) * 6.4) : nothing}</span
+                >
               </span>
             </div>`,
           )}
@@ -2718,6 +2719,21 @@ export class MyDashLightBoard extends LitElement {
     </div>`;
   }
 
+  /** What each kid can earn in a week, so the chores can be shared out fairly. */
+  private renderWeeklyPoints(data: ChoresPayload): TemplateResult {
+    const week = weeklyPoints(data.templates, data.kids.map((k) => k.id), data.points?.default ?? 1);
+    const colors = this.plan ? kidColors(this.plan) : undefined;
+    return html`<section class="week-points" aria-label="Points a week">
+      <span class="week-points-label">Points available per week</span>
+      ${data.kids.map((k, i) => {
+        const c = colors?.get(k.id) ?? kidColor(i);
+        return html`<span class="week-kid" style="--c:${c.color};--rgb:${c.rgb}"
+          ><span class="avatar" aria-hidden="true">${initial(k.name)}</span>${k.name} <strong>${pointsText(week[k.id] ?? 0)}</strong></span
+        >`;
+      })}
+    </section>`;
+  }
+
   /** One chore template, as Manage chores and the set-up list show it. Tap to change it. */
   private renderTemplateRow(t: ChoreTemplate): TemplateResult {
     const data = this.chores!;
@@ -2726,7 +2742,7 @@ export class MyDashLightBoard extends LitElement {
     const sel = this.choreEdit?.template === t.id;
     const status = t.problems.length
       ? html`<span class="tmpl-note bad">${t.problems.map(problemText).join(" · ")} · tap to set up</span>`
-      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1, !!t.night_before, !!t.bring_only)}</span>`;
+      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1, !!t.night_before, !!t.bring_only)}${data.points ? ` · ${pointsWord(t.points ?? data.points.default)}` : ""}</span>`;
     return html`<button type="button" class="tmpl ${t.problems.length ? "needs" : ""} ${t.paused ? "paused" : ""} ${sel ? "sel" : ""}" @click=${() => this.editChore(t)}>
       <span class="tmpl-icon" aria-hidden="true">${t.icon ?? "•"}</span>
       <span class="chore-text">
@@ -2760,6 +2776,7 @@ export class MyDashLightBoard extends LitElement {
           this.manage = false;
         }}>Done</button>
       </div>
+      ${data.points && data.templates.length ? this.renderWeeklyPoints(data) : nothing}
       ${data.templates.length
         ? groups.map(([r, label]) => {
             const list = data.templates.filter((t) => t.repeats === r);
@@ -3256,12 +3273,22 @@ export class MyDashLightBoard extends LitElement {
       const label = s === "both" ? "Riding along, both ways" : "Riding along";
       return html`<div class="field-sub">
         <span class="field-label">${label} <span class="field-hint">${s === "pick" ? "Coming home too. Anyone already there just gets in." : s === "both" ? "In the car there and back." : "In the car too, from home unless they’re already out."}</span></span>
-        <div role="group" aria-label=${s === "drop" ? "Riding along on the drop-off" : s === "pick" ? "Riding along on the pick-up" : "Riding along both ways"} class="chips">
-          ${choices.map(
-            (k) => html`<button type="button" class="chip" aria-pressed=${cur.includes(k) ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleAlong(e, k, s)}>
-              ${drivers.includes(k) ? driverName(plan, k) : kidName(plan, k)}
-            </button>`,
-          )}
+        <div role="group" aria-label=${s === "drop" ? "Riding along on the drop-off" : s === "pick" ? "Riding along on the pick-up" : "Riding along both ways"} class="who-chips">
+          ${choices.map((k) => {
+            const parent = drivers.includes(k);
+            const name = parent ? driverName(plan, k) : kidName(plan, k);
+            const c = parent ? OWN_COLOR : (kidColors(plan).get(k) ?? kidColor(0));
+            return html`<button
+              type="button"
+              class="who-chip"
+              style="--c:${c.color};--rgb:${c.rgb}"
+              aria-pressed=${cur.includes(k) ? "true" : "false"}
+              ?disabled=${busy}
+              @click=${() => this.toggleAlong(e, k, s)}
+            >
+              <span class="avatar ${parent ? "driver" : ""}" aria-hidden="true">${initial(name)}</span>${name}
+            </button>`;
+          })}
         </div>
       </div>`;
     };
@@ -3583,4 +3610,9 @@ function draftMatches(c: Chore, want: ChoreDraftState): boolean {
   if (want === false) return !isDone(c);
   if (want === true) return isDone(c) && !isSkip(c.state);
   return c.state === want;
+}
+
+/** "1 point", "2 points". */
+function pointsWord(n: number): string {
+  return `${pointsText(n)} ${n === 1 ? "point" : "points"}`;
 }

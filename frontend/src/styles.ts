@@ -609,6 +609,27 @@ export const styles = css`
   .col-head .sub.warn {
     color: var(--warn-ink);
   }
+  .col-head .ch-text {
+    flex: 1;
+  }
+  /* The second line: this week's count, and a kid's lunch tucked at the right. */
+  .sub-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .sub-row .sub {
+    min-width: 0;
+  }
+  .sub-row .lunch-chip.small {
+    margin-left: auto;
+    height: 18px;
+    font-size: 11.5px;
+  }
+  .sub-row .lunch-chip.small.icon {
+    width: 22px;
+  }
   .pinned,
   .day-head {
     box-sizing: border-box;
@@ -2191,7 +2212,7 @@ export const styles = css`
     white-space: nowrap;
   }
   .score.lead {
-    padding: 0 7px;
+    padding: 0 6px;
     border-radius: 999px;
     color: #7a4b00;
     background: linear-gradient(135deg, #fff3c4, #f7d774);
@@ -2370,6 +2391,38 @@ export const styles = css`
   .phone .setup-list,
   .phone .tmpl-list {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .week-points {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  .week-points-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .week-kid {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .week-kid .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  .week-kid strong {
+    font-variant-numeric: tabular-nums;
+    color: var(--c);
   }
   .manage-group {
     display: flex;
@@ -2556,6 +2609,64 @@ export const styles = css`
     margin-top: 2px;
     color: var(--muted);
     font-size: 13px;
+  }
+  .ed-for {
+    flex-wrap: wrap;
+  }
+  /* The driver picks stay quiet (outlined, not a solid black block) so the kids lead the eye. */
+  .ride-box > .choices .choice {
+    min-height: 40px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .ride-box > .choices .choice[aria-pressed="true"] {
+    background: var(--control);
+    border-color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink);
+    color: var(--ink);
+    font-weight: 800;
+  }
+  /* A kid picked to ride along is filled in their own color. */
+  .field-sub .who-chip[aria-pressed="true"] {
+    background: var(--c);
+    color: #fff;
+  }
+  .field-sub .who-chip[aria-pressed="true"] .avatar {
+    background: #fff;
+    color: var(--c);
+  }
+  /* Riders: the same colored chips as everywhere else, a size down to fit the driver box. */
+  .field-sub .who-chip {
+    min-height: 40px;
+    padding: 0 12px 0 4px;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .field-sub .who-chip .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+  /* Who the event is for, in their colors, so the kids stand out as much as the drivers. */
+  .for-who {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px 3px 3px;
+    border-radius: 16px;
+    background: rgba(var(--rgb), 0.14);
+    box-shadow: inset 0 0 0 1px rgba(var(--rgb), 0.5);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .for-who .avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .for-guess {
+    font-size: 12px;
   }
   .ed-for-change {
     min-height: 28px;
