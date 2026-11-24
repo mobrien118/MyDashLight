@@ -866,14 +866,6 @@ export class MyDashLightBoard extends LitElement {
     }, 2600);
   }
 
-  /** About how wide renderScore's chip is, so the lunch chip beside it knows its room. */
-  private scoreRoom(id: string): number {
-    const p = this.chores?.points;
-    const score = p?.scores[id];
-    if (!p || score === undefined) return 0;
-    return 14 + pointsText(score).length * 7.5 + (p.leaders.includes(id) ? 24 : 0);
-  }
-
   /** Someone's points for the last few days, small beside their name. Nothing without chore points. */
   private renderScore(id: string): TemplateResult | typeof nothing {
     const p = this.chores?.points;
@@ -882,7 +874,7 @@ export class MyDashLightBoard extends LitElement {
     const lead = p.leaders.includes(id);
     const text = pointsText(score);
     const label = `${text} ${score === 1 ? "point" : "points"} in the last ${p.days} days${lead ? ", the most" : ""}`;
-    return html`<span class="score ${lead ? "lead" : ""}" role="img" aria-label=${label} title=${label}>${lead ? "★ " : ""}${text}</span>`;
+    return html`<span class="score ${lead ? "lead" : ""}" role="img" aria-label=${label} title=${label}>${lead ? "★ " : ""}${text}</span>`;
   }
 
   private choreDone(c: Chore): boolean {
@@ -2138,8 +2130,10 @@ export class MyDashLightBoard extends LitElement {
             (c) => html`<div class="col-head ${c.kind} ${isLeader(this.chores, c.id) ? "leader" : ""}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
               <span class="avatar ${c.kind}" aria-hidden="true">${initial(c.name)}</span>
               <span class="ch-text">
-                <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 58 - c.name.length * 10.6 - this.scoreRoom(c.id)) : nothing}</span>
-                <span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>
+                <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}</span>
+                <span class="sub-row"
+                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 64 - c.sub.length * 6.4) : nothing}</span
+                >
               </span>
             </div>`,
           )}

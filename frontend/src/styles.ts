@@ -609,6 +609,27 @@ export const styles = css`
   .col-head .sub.warn {
     color: var(--warn-ink);
   }
+  .col-head .ch-text {
+    flex: 1;
+  }
+  /* The second line: this week's count, and a kid's lunch tucked at the right. */
+  .sub-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .sub-row .sub {
+    min-width: 0;
+  }
+  .sub-row .lunch-chip.small {
+    margin-left: auto;
+    height: 18px;
+    font-size: 11.5px;
+  }
+  .sub-row .lunch-chip.small.icon {
+    width: 22px;
+  }
   .pinned,
   .day-head {
     box-sizing: border-box;
@@ -2191,7 +2212,7 @@ export const styles = css`
     white-space: nowrap;
   }
   .score.lead {
-    padding: 0 7px;
+    padding: 0 6px;
     border-radius: 999px;
     color: #7a4b00;
     background: linear-gradient(135deg, #fff3c4, #f7d774);
