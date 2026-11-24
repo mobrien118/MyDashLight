@@ -2147,6 +2147,10 @@ export const styles = css`
   .chore.done .chore-note {
     color: var(--ok);
   }
+  .chore.skipped .chore-note {
+    color: var(--muted);
+    font-weight: 600;
+  }
   .pts-flash {
     margin-left: auto;
     flex: none;

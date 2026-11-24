@@ -4,7 +4,9 @@
 import { kidColor, type KidColor } from "./colors.ts";
 import { daysBetween, shortDay } from "./format.ts";
 
-export type ChoreState = "upcoming" | "open" | "overdue" | "done" | "late";
+export type ChoreState = "upcoming" | "open" | "overdue" | "done" | "late" | Skip;
+/** Closed without doing it: skipped (counts as a miss) or excused (sick, away). Earns nothing. */
+export type Skip = "skipped" | "excused";
 export type Repeats = "daily" | "weekly" | "monthly" | "school";
 
 export interface Chore {
@@ -102,9 +104,13 @@ export interface ChoresPayload {
   status: { ok: boolean; error: string | null; needs: "sign_in" | "tasks_api" | null };
 }
 
-/** Checked off, on time or late. */
+/** Checked off, on time or late, or marked skipped or excused: off the to-do list either way. */
 export function isDone(c: Chore): boolean {
-  return c.state === "done" || c.state === "late";
+  return c.state === "done" || c.state === "late" || isSkip(c.state);
+}
+
+export function isSkip(state: ChoreState): state is Skip {
+  return state === "skipped" || state === "excused";
 }
 
 /** When a night-before chore shows on its day: 1 PM, when the lunch chips turn to the next day too. */
@@ -135,6 +141,8 @@ export function isDoable(c: Chore): boolean {
 
 /** "Missed Mon", "By Sun", "Done 4:12 PM": the line under a chore. Empty when there's nothing to add. */
 export function choreNote(c: Chore, today: string, timeZone: string): string {
+  if (c.state === "skipped") return "Skipped";
+  if (c.state === "excused") return "Excused";
   if (isDone(c)) {
     const at = c.done_at ? doneTime(c.done_at, today, timeZone) : "";
     return c.state === "late" ? `Done late${at ? ` · ${at}` : ""}` : `Done${at ? ` ${at}` : ""}`;
