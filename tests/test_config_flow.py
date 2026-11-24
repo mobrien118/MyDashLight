@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -15,6 +16,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 import voluptuous as vol
 
+from custom_components.mydashlight.chore_points import PointsSettings
 from custom_components.mydashlight.const import DEFAULT_PLANNER, DOMAIN, OAUTH_AUTHORIZE, OAUTH_TOKEN, SCOPES
 
 from .common import (
@@ -236,7 +238,7 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["settings", "calendars", "lunch", "drive_times", "reminders"]
+    assert result["menu_options"] == ["settings", "calendars", "chores", "lunch", "drive_times", "reminders"]
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     assert result["step_id"] == "settings"
 
@@ -282,6 +284,26 @@ async def test_options_settings(hass: HomeAssistant, google: FakeGoogle) -> None
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     assert result["data_schema"]({"planner": DEFAULT_PLANNER})["Ava's other names"] == ["Aves"]
+
+
+async def test_options_chore_points(hass: HomeAssistant, google: FakeGoogle) -> None:
+    entry = await loaded_entry(hass)
+    assert entry.runtime_data.settings.points == PointsSettings()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "chores"})
+    assert result["step_id"] == "chores"
+    assert result["data_schema"]({}) == {"default": 1, "late_share": 50, "open_after": 0}
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"default": 2, "late_share": 40.0, "open_after": 12}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["points"] == {"default": 2, "late_share": 40, "open_after": 12}
+    assert entry.runtime_data.settings.points == PointsSettings(
+        default=2, late_share=40, open_after=timedelta(hours=12)
+    )
 
 
 async def test_options_calendars(hass: HomeAssistant, google: FakeGoogle) -> None:

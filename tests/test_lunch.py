@@ -273,10 +273,18 @@ async def test_pack_lunch_follows_the_picks(hass: HomeAssistant, google: FakeGoo
     def made(kid: str, title: str) -> list[str]:
         return sorted(t["due"][:10] for t in tasks.items(f"Chores: {kid}") if t["title"] == title)
 
-    # Ava buys by default, so she packs only the night before Thursday the 5th. Ben brings
-    # every school day: each school night, Sunday for Monday.
-    assert made("Ava", "Pack lunch") == ["2026-11-04"]
-    assert made("Ben", "Pack lunch") == ["2026-11-04", "2026-11-05", "2026-11-08", "2026-11-09", "2026-11-10"]
+    # Ava buys by default, so she packs only for Thursday the 5th. Ben brings every school day.
+    # Each is due on its school day and shows the evening before, so the 11th's shows on the
+    # last day of the week ahead and is made too.
+    assert made("Ava", "Pack lunch") == ["2026-11-05"]
+    assert made("Ben", "Pack lunch") == [
+        "2026-11-04",
+        "2026-11-05",
+        "2026-11-06",
+        "2026-11-09",
+        "2026-11-10",
+        "2026-11-11",
+    ]
     # Water every school day for Ava, but not Monday the 9th: no school.
     assert made("Ava", "Fill up water") == ["2026-11-04", "2026-11-05", "2026-11-06", "2026-11-10"]
 
@@ -284,7 +292,7 @@ async def test_pack_lunch_follows_the_picks(hass: HomeAssistant, google: FakeGoo
     await call(hass, "set_lunch", kid="Ava", dates=["2026-11-06"], lunch="bring")
     await hass.async_block_till_done()
     await hass.config_entries.async_entries(DOMAIN)[0].runtime_data.chores.async_refresh()
-    assert made("Ava", "Pack lunch") == ["2026-11-05"]
+    assert made("Ava", "Pack lunch") == ["2026-11-06"]
     chores = await call(hass, "get_chores")
     pack = next(c for c in chores["chores"] if c["title"] == "Pack lunch" and c["kid"] == AVA)
     assert pack["for_day"] == "2026-11-06"

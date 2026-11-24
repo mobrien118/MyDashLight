@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -21,6 +21,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .chore_points import SCORE_DAYS, leaders, scores
 from .chore_rules import SchoolDays, Template, parse_template, read_block, template_notes
 from .chores import Chore, Make, Remove, TaskItem, Update, board_items, plan_changes, read_chore, template_item
 from .const import (
@@ -157,7 +158,17 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         school = self.school()
         # A first fill can be more than one batch of changes; keep going, a few batches a read.
         for _batch in range(FILL_BATCHES):
-            plan = plan_changes(templates, chores, kid_lists, today, self.settings.chore_days_ahead, school)
+            plan = plan_changes(
+                templates,
+                chores,
+                kid_lists,
+                today,
+                self.settings.chore_days_ahead,
+                school,
+                self.settings.points,
+                now,
+                self.people,
+            )
             if not plan.changes:
                 break
             await self._async_apply(plan.changes)
@@ -316,6 +327,16 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         found = self.data.templates if self.data else []
         return next((t for t in found if template_id in (t.id, t.task_id)), None)
 
+    def _points(self, data: ChoreData, tz: tzinfo) -> dict[str, Any]:
+        """Everyone's points for the last few days, and the kids in the lead."""
+        totals = scores(data.chores, self.settings.points, tz, self.people, dt_util.now(tz))
+        return {
+            "days": SCORE_DAYS,
+            "default": self.settings.points.default,
+            "scores": totals,
+            "leaders": leaders(totals, self.kids),
+        }
+
     def payload(self) -> dict[str, Any] | None:
         """The chores for the board and ``get_chores``."""
         data = self.data
@@ -342,7 +363,9 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
                 tz,
                 self.people,
                 self.school(),
+                self.settings.points,
             ),
+            "points": self._points(data, tz),
             "templates": [template_item(t) for t in data.templates],
             "status": {"ok": self.last_update_success and data.needs is None, "error": error, "needs": data.needs},
         }

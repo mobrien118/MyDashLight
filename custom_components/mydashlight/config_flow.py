@@ -66,6 +66,10 @@ from .const import (
     CONF_NO_DRIVER_ALERTS,
     CONF_NO_DRIVER_HOURS,
     CONF_PLANNER,
+    CONF_POINTS,
+    CONF_POINTS_DEFAULT,
+    CONF_POINTS_LATE_SHARE,
+    CONF_POINTS_OPEN_AFTER,
     CONF_REMIND_BEFORE,
     CONF_REMOVE_ROUTES_KEY,
     CONF_ROUTES_DAILY_LIMIT,
@@ -378,7 +382,7 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_show_menu(
-            step_id="init", menu_options=["settings", "calendars", "lunch", "drive_times", "reminders"]
+            step_id="init", menu_options=["settings", "calendars", "chores", "lunch", "drive_times", "reminders"]
         )
 
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -560,6 +564,40 @@ class MyDashLightOptionsFlow(OptionsFlowWithReload):
             NumberSelectorConfig(min=1, max=168, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="h")
         )
         return self.async_show_form(step_id="reminders", data_schema=vol.Schema(fields))
+
+    async def async_step_chores(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Points for chores: what one is worth when its seed doesn't say, the share for doing one
+        late, and how long after it turns late before someone else earns points for it."""
+        options = self.config_entry.options
+        if user_input is not None:
+            return self.async_create_entry(
+                data={
+                    **options,
+                    CONF_POINTS: {
+                        CONF_POINTS_DEFAULT: int(user_input[CONF_POINTS_DEFAULT]),
+                        CONF_POINTS_LATE_SHARE: int(user_input[CONF_POINTS_LATE_SHARE]),
+                        CONF_POINTS_OPEN_AFTER: int(user_input[CONF_POINTS_OPEN_AFTER]),
+                    },
+                }
+            )
+        points = HubSettings.from_options(options).points
+
+        def box(high: int, unit: str = "") -> NumberSelector:
+            config = NumberSelectorConfig(min=0, max=high, step=1, mode=NumberSelectorMode.BOX)
+            if unit:
+                config["unit_of_measurement"] = unit
+            return NumberSelector(config)
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_POINTS_DEFAULT, default=points.default): box(1000),
+                vol.Required(CONF_POINTS_LATE_SHARE, default=points.late_share): box(100, "%"),
+                vol.Required(CONF_POINTS_OPEN_AFTER, default=int(points.open_after.total_seconds() // 3600)): box(
+                    168, "h"
+                ),
+            }
+        )
+        return self.async_show_form(step_id="chores", data_schema=schema)
 
     async def async_step_lunch(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Which kids bring lunch on a school day nobody picked for (the rest buy), and each kid's

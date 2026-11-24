@@ -132,6 +132,12 @@ ROUTES_AT_ONCE: Final = 4
 CONF_CHORE_DAYS: Final = "chore_days_ahead"
 DEFAULT_CHORE_DAYS: Final = 7
 MAX_CHORE_DAYS: Final = 28
+CONF_POINTS: Final = "points"
+"""Points for chores: the default a chore is worth, the share for doing one late, and how long
+after a chore turns late before someone else earns points for it (``open_after``, hours)."""
+CONF_POINTS_DEFAULT: Final = "default"
+CONF_POINTS_LATE_SHARE: Final = "late_share"
+CONF_POINTS_OPEN_AFTER: Final = "open_after"
 SEED_LIST_TITLE: Final = "Chore seeds"
 KID_LIST_TITLE: Final = "Chores: {name}"
 CHORE_UPDATE_SECONDS: Final = 60
