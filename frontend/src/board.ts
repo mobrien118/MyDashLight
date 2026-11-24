@@ -1369,9 +1369,15 @@ export class MyDashLightBoard extends LitElement {
   private renderForLine(plan: Plan, day: PlanDay, e: PlanEvent): TemplateResult | typeof nothing {
     const who = plan.who?.[e.event_id];
     if (!who) return nothing;
-    const names = who.people.map((p) => personName(plan, p));
+    const colors = kidColors(plan);
     return html`<span class="ed-for"
-      >For ${andList(names)}${who.from_notes ? "" : " · from the title"}<button
+      >${who.people.map((p) => {
+        const c = colors.get(p) ?? OWN_COLOR;
+        const name = personName(plan, p);
+        return html`<span class="for-who" style="--c:${c.color};--rgb:${c.rgb}"
+          ><span class="avatar ${colors.has(p) ? "" : "driver"}" aria-hidden="true">${initial(name)}</span>${name}</span
+        >`;
+      })}${who.from_notes ? "" : html`<span class="for-guess">from the title</span>`}<button
         type="button"
         class="ed-for-change"
         @click=${() => this.changeForPick(plan, day, e)}
@@ -2718,7 +2724,7 @@ export class MyDashLightBoard extends LitElement {
     const week = weeklyPoints(data.templates, data.kids.map((k) => k.id), data.points?.default ?? 1);
     const colors = this.plan ? kidColors(this.plan) : undefined;
     return html`<section class="week-points" aria-label="Points a week">
-      <span class="week-points-label">Points a week, all done on time</span>
+      <span class="week-points-label">Points available per week</span>
       ${data.kids.map((k, i) => {
         const c = colors?.get(k.id) ?? kidColor(i);
         return html`<span class="week-kid" style="--c:${c.color};--rgb:${c.rgb}"
@@ -3267,12 +3273,22 @@ export class MyDashLightBoard extends LitElement {
       const label = s === "both" ? "Riding along, both ways" : "Riding along";
       return html`<div class="field-sub">
         <span class="field-label">${label} <span class="field-hint">${s === "pick" ? "Coming home too. Anyone already there just gets in." : s === "both" ? "In the car there and back." : "In the car too, from home unless they’re already out."}</span></span>
-        <div role="group" aria-label=${s === "drop" ? "Riding along on the drop-off" : s === "pick" ? "Riding along on the pick-up" : "Riding along both ways"} class="chips">
-          ${choices.map(
-            (k) => html`<button type="button" class="chip" aria-pressed=${cur.includes(k) ? "true" : "false"} ?disabled=${busy} @click=${() => this.toggleAlong(e, k, s)}>
-              ${drivers.includes(k) ? driverName(plan, k) : kidName(plan, k)}
-            </button>`,
-          )}
+        <div role="group" aria-label=${s === "drop" ? "Riding along on the drop-off" : s === "pick" ? "Riding along on the pick-up" : "Riding along both ways"} class="who-chips">
+          ${choices.map((k) => {
+            const parent = drivers.includes(k);
+            const name = parent ? driverName(plan, k) : kidName(plan, k);
+            const c = parent ? OWN_COLOR : (kidColors(plan).get(k) ?? kidColor(0));
+            return html`<button
+              type="button"
+              class="who-chip"
+              style="--c:${c.color};--rgb:${c.rgb}"
+              aria-pressed=${cur.includes(k) ? "true" : "false"}
+              ?disabled=${busy}
+              @click=${() => this.toggleAlong(e, k, s)}
+            >
+              <span class="avatar ${parent ? "driver" : ""}" aria-hidden="true">${initial(name)}</span>${name}
+            </button>`;
+          })}
         </div>
       </div>`;
     };

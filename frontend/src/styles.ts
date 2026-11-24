@@ -2610,6 +2610,42 @@ export const styles = css`
     color: var(--muted);
     font-size: 13px;
   }
+  .ed-for {
+    flex-wrap: wrap;
+  }
+  /* Riders: the same colored chips as everywhere else, a size down to fit the driver box. */
+  .field-sub .who-chip {
+    min-height: 40px;
+    padding: 0 12px 0 4px;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .field-sub .who-chip .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+  /* Who the event is for, in their colors, so the kids stand out as much as the drivers. */
+  .for-who {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px 3px 3px;
+    border-radius: 16px;
+    background: rgba(var(--rgb), 0.14);
+    box-shadow: inset 0 0 0 1px rgba(var(--rgb), 0.5);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .for-who .avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .for-guess {
+    font-size: 12px;
+  }
   .ed-for-change {
     min-height: 28px;
     padding: 0 10px;
