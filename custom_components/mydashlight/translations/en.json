@@ -381,7 +381,7 @@
     },
     "set_chore_done": {
       "name": "Check off a chore",
-      "description": "Checks a chore off in Google Tasks and saves who did it, or opens it again.",
+      "description": "Checks a chore off in Google Tasks and saves who did it, marks it skipped or excused, or opens it again.",
       "fields": {
         "chore": {
           "name": "Chore",
@@ -394,6 +394,10 @@
         "by": {
           "name": "Done by",
           "description": "Who did it: a kid or a parent, by name or id. Leave it out for the kid the chore is for."
+        },
+        "skip": {
+          "name": "Not done",
+          "description": "Closes the chore without doing it, for no points: skipped (counts as a miss) or excused (sick, away, not needed). Leave it out when it was done."
         }
       }
     },

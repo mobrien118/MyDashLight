@@ -150,6 +150,7 @@ SERVICE_SAVE_CHORE_TEMPLATE: Final = "save_chore_template"
 SERVICE_REMOVE_CHORE_TEMPLATE: Final = "remove_chore_template"
 ATTR_CHORE: Final = "chore"
 ATTR_BY: Final = "by"
+ATTR_SKIP: Final = "skip"
 ATTR_DONE: Final = "done"
 ATTR_TEMPLATE: Final = "template"
 

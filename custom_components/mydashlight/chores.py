@@ -40,11 +40,14 @@ from .chore_rules import (
 )
 
 CLOSED_MISSED: Final = "missed"
+SKIPS: Final = ("skipped", "excused")
+"""How someone can close a chore without doing it. ``Closed: skipped`` counts as a miss;
+``Closed: excused`` (sick, away, no longer needed) doesn't. Neither earns points."""
 MAX_CHANGES: Final = 40
 """Changes saved per run, so the first run after setting up doesn't flood Google. The
 rest follow on the next runs."""
 
-State = Literal["upcoming", "open", "overdue", "done", "late"]
+State = Literal["upcoming", "open", "overdue", "done", "late", "skipped", "excused"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +82,8 @@ class Chore:
     """Who checked it off, as the ``Done by`` line names them, or None when it doesn't say."""
     earned: float | None = None
     """What checking it off earned, from the ``Earned`` line, or None when it doesn't say."""
+    skipped: str | None = None
+    """``skipped`` or ``excused`` when someone closed it without doing it, else None."""
 
     @property
     def done(self) -> bool:
@@ -96,6 +101,7 @@ def read_chore(task: TaskItem, kid: str, list_id: str) -> Chore:
     template = (block.first("from") or "").strip() or None
     scheduled = _date(block.first("for"))
     missed = tuple(sorted({d for v in block.every("missed") if (d := _date(v))}))
+    closed = (block.first("closed") or "").strip().casefold()
     points = None
     if (value := block.first("points")) is not None:
         try:
@@ -111,7 +117,8 @@ def read_chore(task: TaskItem, kid: str, list_id: str) -> Chore:
         scheduled=scheduled if template else None,
         points=points,
         missed=missed,
-        closed=(block.first("closed") or "").strip().casefold() == CLOSED_MISSED,
+        closed=closed == CLOSED_MISSED,
+        skipped=closed if closed in SKIPS else None,
         done_by=" ".join((block.first("done_by") or "").split()) or None,
         earned=parse_points(block.first("earned")),
     )
@@ -166,6 +173,18 @@ def earned_notes(notes: str, points: float | None) -> str:
     if value is None and all(k == "earned" for k, _v in block.lines):
         return block.details
     return _with_lines(notes, [("Earned", value)] if value else [], drop="earned")
+
+
+def skip_notes(notes: str, skip: str | None) -> str:
+    """Notes saying the chore was skipped or excused (``Closed``), or with that line taken out
+    when ``skip`` is None. A ``Closed: missed`` line is MyDashLight's own and is left alone."""
+    block = read_block(notes)
+    now = [v.strip().casefold() for v in block.every("closed")]
+    if CLOSED_MISSED in now or now == ([skip] if skip else []):
+        return notes
+    if skip is None and all(k == "closed" for k, _v in block.lines):
+        return block.details
+    return _with_lines(notes, [("Closed", skip)] if skip else [], drop="closed")
 
 
 # Changes
@@ -320,6 +339,7 @@ def _needs_earned(chore: Chore, now: datetime) -> bool:
     return (
         chore.earned is None
         and not chore.closed
+        and chore.skipped is None
         and done_at is not None
         and now - timedelta(days=SCORE_DAYS) < done_at <= now
     )
@@ -334,6 +354,10 @@ _REPEATS_ORDER: Final[dict[Repeats | None, int]] = {"daily": 0, "school": 1, "we
 def chore_state(chore: Chore, today: date, tz: tzinfo, shows_from: date | None) -> State:
     due = chore.task.due
     if chore.task.completed is not None:
+        if chore.skipped == "excused":
+            return "excused"
+        if chore.skipped == "skipped":
+            return "skipped"
         done_day = chore.task.completed.astimezone(tz).date()
         return "late" if due is not None and (chore.missed or done_day > due) else "done"
     if due is not None and due < today:
@@ -378,7 +402,7 @@ def board_items(
         state = chore_state(chore, today, tz, shows_from)
         due = chore.task.due
         done_today = chore.task.completed is not None and chore.task.completed.astimezone(tz).date() == today
-        if state in ("done", "late") and not done_today and (due is None or due < today):
+        if state in ("done", "late", "skipped", "excused") and not done_today and (due is None or due < today):
             continue
         if state == "upcoming" and shows_from is not None and shows_from > last:
             continue

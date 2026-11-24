@@ -14,6 +14,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
+import voluptuous as vol
 
 from custom_components.mydashlight.chore_rules import read_block
 from custom_components.mydashlight.const import DOMAIN
@@ -428,3 +429,58 @@ async def test_a_chore_ticked_in_google_gets_what_it_earned(hass: HomeAssistant,
     await refresh(hass, entry)
     assert read_block(task["notes"]).every("earned") == ["1"]
     assert (await call(hass, "get_chores"))["points"]["scores"][AVA] == 1
+
+
+async def test_skip_or_excuse_a_chore(hass: HomeAssistant, tasks: FakeTasks, freezer: FrozenDateTimeFactory) -> None:
+    seeds = tasks.add_list(SEEDS)
+    tasks.add(
+        seeds,
+        "Vacuum",
+        "--- Chore ---\nId: vac\nRepeats: Every week\nDays: Wed\nWho: Ava\nPoints: 2\nStarts: 2026-11-01",
+    )
+    entry = await load(hass, make_entry(expires_at=time.time() + 3 * 86400))
+    wednesday = next(c for c in (await call(hass, "get_chores"))["chores"] if c["due"] == "2026-11-04")
+
+    def saved() -> dict[str, Any]:
+        return next(t for t in tasks.items("Chores: Ava") if t["id"] == wednesday["id"])
+
+    async def row() -> dict[str, Any]:
+        chores = await call(hass, "get_chores")
+        return next(c for c in chores["chores"] if c["id"] == wednesday["id"])
+
+    # Done first, then marked skipped instead: closed, the points it had earned taken off.
+    await call(hass, "set_chore_done", chore=wednesday["id"])
+    assert (await row())["earned"] == 2
+    await call(hass, "set_chore_done", chore=wednesday["id"], skip="skipped", by="mom")
+    block = read_block(saved()["notes"])
+    assert (block.every("closed"), block.every("earned"), block.every("done_by")) == (["skipped"], [], ["Robin"])
+    assert saved()["status"] == "completed"
+    skipped = await row()
+    assert (skipped["state"], skipped["earned"]) == ("skipped", 0)
+    assert (await call(hass, "get_chores"))["points"]["scores"][AVA] == 0
+
+    # Excused instead: one Closed line, saying so.
+    await call(hass, "set_chore_done", chore=wednesday["id"], skip="excused")
+    assert read_block(saved()["notes"]).every("closed") == ["excused"]
+    assert (await row())["state"] == "excused"
+
+    # A day later it stays closed: not missed, and nobody can earn points for it.
+    freezer.move_to("2026-11-05T15:00:00+00:00")
+    tasks.now = "2026-11-05T15:00:00.000Z"
+    await refresh(hass, entry)
+    block = read_block(saved()["notes"])
+    assert (block.every("missed"), block.every("earned")) == ([], [])
+    assert all(c["id"] != wednesday["id"] for c in (await call(hass, "get_chores"))["chores"])
+
+    # Opened again: the line goes, and it's overdue like any other.
+    await call(hass, "set_chore_done", chore=wednesday["id"], done=False)
+    block = read_block(saved()["notes"])
+    assert (block.every("closed"), block.every("done_by")) == ([], [])
+    assert (await row())["state"] == "overdue"
+
+    # Then done late by Ben after all: the late share, as usual.
+    await call(hass, "set_chore_done", chore=wednesday["id"], by="Ben")
+    assert read_block(saved()["notes"]).every("earned") == ["1"]
+
+    with pytest.raises(vol.Invalid):
+        await call(hass, "set_chore_done", chore=wednesday["id"], skip="lazy")
