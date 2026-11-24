@@ -67,6 +67,7 @@ import {
   type Person,
   type Repeats,
   isDone,
+  isLeader,
   isSkip,
   isDoable,
   noChoresYet,
@@ -870,7 +871,7 @@ export class MyDashLightBoard extends LitElement {
     const p = this.chores?.points;
     const score = p?.scores[id];
     if (!p || score === undefined) return 0;
-    return 14 + pointsText(score).length * 7.5 + (p.leaders.includes(id) ? 12 : 0);
+    return 14 + pointsText(score).length * 7.5 + (p.leaders.includes(id) ? 24 : 0);
   }
 
   /** Someone's points for the last few days, small beside their name. Nothing without chore points. */
@@ -2134,7 +2135,7 @@ export class MyDashLightBoard extends LitElement {
       >
         <div class="heads" style="width:${W}px">
           ${b.columns.map(
-            (c) => html`<div class="col-head ${c.kind}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
+            (c) => html`<div class="col-head ${c.kind} ${isLeader(this.chores, c.id) ? "leader" : ""}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
               <span class="avatar ${c.kind}" aria-hidden="true">${initial(c.name)}</span>
               <span class="ch-text">
                 <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 58 - c.name.length * 10.6 - this.scoreRoom(c.id)) : nothing}</span>
@@ -2683,7 +2684,7 @@ export class MyDashLightBoard extends LitElement {
       <div class="chore-cols" style="--n:${cols.length}">
         ${cols.map((col) => {
           const left = col.overdue.filter((c) => !this.choreDone(c)).length + col.now.filter((c) => !this.choreDone(c)).length;
-          return html`<section class="chore-col" style="--c:${col.color.color};--rgb:${col.color.rgb}" aria-label=${`${col.name}’s chores`}>
+          return html`<section class="chore-col ${isLeader(data, col.kid) ? "leader" : ""}" style="--c:${col.color.color};--rgb:${col.color.rgb}" aria-label=${`${col.name}’s chores`}>
             <div class="chore-head">
               <span class="avatar" aria-hidden="true">${initial(col.name)}</span>
               <span class="ch-text">

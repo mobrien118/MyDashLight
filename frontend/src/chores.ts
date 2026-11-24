@@ -464,7 +464,15 @@ export function problemText(p: string): string {
 
 /** "2", "0.5": points as the board shows them. */
 export function pointsText(n: number): string {
-  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+  if (Number.isInteger(n)) return String(n);
+  const whole = Math.trunc(n);
+  if (Math.abs(Math.abs(n - whole) - 0.5) < 1e-9) return `${n < 0 ? "-" : ""}${Math.abs(whole) || ""}½`;
+  return String(Math.round(n * 10) / 10);
+}
+
+/** The kid is in the lead on points (ties share it; nobody leads at 0). */
+export function isLeader(data: ChoresPayload | null | undefined, id: string): boolean {
+  return !!data?.points?.leaders.includes(id);
 }
 
 /** A typed Points value: a whole number from 0 to 1000, or null (blank, so the default). */

@@ -194,7 +194,9 @@ test("a night-before chore waits for the afternoon of the day before", () => {
 
 test("points as the board shows and takes them", () => {
   assert.equal(pointsText(2), "2");
-  assert.equal(pointsText(0.5), "0.5");
+  assert.equal(pointsText(0.5), "½");
+  assert.equal(pointsText(1.5), "1½");
+  assert.equal(pointsText(12.5), "12½");
   assert.equal(pointsText(1.25), "1.3");
   assert.equal(parsePoints(""), null);
   assert.equal(parsePoints(" 3 "), 3);
