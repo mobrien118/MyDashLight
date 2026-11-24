@@ -123,15 +123,26 @@ function isEveningBefore(c: Chore, today: string): boolean {
 
 /**
  * A night-before chore (like packing lunch) waits until the afternoon of the day before: until
- * then it's listed as coming up later today, not to do. On the school morning it's just due today.
+ * then it's listed as coming up later today, not to do. On the school morning it's still to do,
+ * for school today.
  */
 export function waitsForEvening(c: Chore, today: string, minutes: number): boolean {
   return c.state === "open" && isEveningBefore(c, today) && minutes < EVENING_FROM;
 }
 
-/** The chores as they stand at ``minutes`` past midnight: night-before ones not yet showing are coming up. */
+/** A night-before chore not done by the school morning: it's for school today. */
+function isSchoolMorning(c: Chore, today: string): boolean {
+  return c.state === "open" && !!c.for_day && c.for_day === today;
+}
+
+/**
+ * The chores as they stand at ``minutes`` past midnight: night-before ones not yet showing are
+ * coming up, and once school has started (from 1 PM) ones left over from the morning drop off.
+ */
 function atTime(data: ChoresPayload, minutes: number): Chore[] {
-  return data.chores.map((c) => (waitsForEvening(c, data.today, minutes) ? { ...c, state: "upcoming" as const, shows_from: data.today } : c));
+  return data.chores
+    .filter((c) => !(minutes >= EVENING_FROM && isSchoolMorning(c, data.today)))
+    .map((c) => (waitsForEvening(c, data.today, minutes) ? { ...c, state: "upcoming" as const, shows_from: data.today } : c));
 }
 
 /** Ready to check off now: today's, this week's or this month's, and overdue ones. */
@@ -160,6 +171,7 @@ export function choreNote(c: Chore, today: string, timeZone: string): string {
     return `By ${ahead === 1 ? "tomorrow" : ahead < 7 ? shortDay(c.due) : monthDay(c.due)}`;
   }
   if (isEveningBefore(c, today)) return `Tonight · for ${dayWord(c.for_day!, today)}`;
+  if (isSchoolMorning(c, today)) return "For school today";
   if (c.due && c.due > today) {
     const ahead = daysBetween(today, c.due);
     return ahead === 1 ? "By tomorrow" : `By ${ahead < 7 ? shortDay(c.due) : monthDay(c.due)}`;

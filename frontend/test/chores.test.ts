@@ -105,7 +105,7 @@ test("the line under a chore", () => {
   // A night-before school chore says which school day it's for.
   assert.equal(note({ repeats: "school", due: "2026-11-05", shows_from: TODAY, for_day: "2026-11-05" }), "Tonight · for tomorrow");
   // On the school morning it's just due today.
-  assert.equal(note({ repeats: "school", due: TODAY, shows_from: "2026-11-03", for_day: TODAY }), "Today");
+  assert.equal(note({ repeats: "school", due: TODAY, shows_from: "2026-11-03", for_day: TODAY }), "For school today");
 });
 
 test("one column per kid, grouped and in order", () => {
@@ -190,6 +190,9 @@ test("a night-before chore waits for the afternoon of the day before", () => {
   const morningOf = payload([chore("ben", "Pack lunch", { repeats: "school", due: TODAY, shows_from: "2026-11-03", for_day: TODAY })]);
   assert.deepEqual(choreColumns(morningOf, undefined, 7 * 60).find((c) => c.kid === "ben")!.now.map((c) => c.title), ["Pack lunch"]);
   assert.deepEqual(choresNeedingAttention(morningOf, 7 * 60).map((c) => c.title), ["Pack lunch"]);
+  // Once school has started it's moot: off the list and out of Needs attention.
+  assert.deepEqual(choreColumns(morningOf, undefined, 13 * 60).find((c) => c.kid === "ben")!.now, []);
+  assert.deepEqual(choresNeedingAttention(morningOf, 13 * 60), []);
 });
 
 test("points as the board shows and takes them", () => {
