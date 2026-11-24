@@ -67,9 +67,12 @@ import {
   type Person,
   type Repeats,
   isDone,
+  isLeader,
+  isSkip,
   isDoable,
   noChoresYet,
   type Chore,
+  type Skip,
   type ChoresPayload,
 } from "./chores.ts";
 import {
@@ -386,8 +389,8 @@ export class MyDashLightBoard extends LitElement {
   declare page: Page;
   /** Undefined until the first read; null when chores can't be read. */
   declare chores: ChoresPayload | null | undefined;
-  /** Check-offs tapped but not confirmed yet: chore id to done. */
-  declare choreDraft: ReadonlyMap<string, boolean>;
+  /** Check-offs tapped but not confirmed yet: chore id to done, or to skipped or excused. */
+  declare choreDraft: ReadonlyMap<string, ChoreDraftState>;
   /** A check-off's points, shown as "+N" on its row for a moment once MyDashLight confirms it. */
   declare pointsFlash: ReadonlyMap<string, number>;
   /** The chores page shows the list of chores to change instead of each kid's chores. */
@@ -601,9 +604,10 @@ export class MyDashLightBoard extends LitElement {
       if (chores && this.choreDraft.size) {
         const left = new Map(this.choreDraft);
         for (const c of chores.chores) {
-          if (!left.has(c.id) || isDone(c) !== left.get(c.id)) continue;
+          const want = left.get(c.id);
+          if (want === undefined || !draftMatches(c, want)) continue;
           left.delete(c.id);
-          if (isDone(c) && c.earned) this.flashPoints(c.id, c.earned);
+          if (want === true && c.earned) this.flashPoints(c.id, c.earned);
         }
         for (const id of left.keys()) if (!chores.chores.some((c) => c.id === id)) left.delete(id);
         this.choreDraft = left;
@@ -832,16 +836,16 @@ export class MyDashLightBoard extends LitElement {
   }
 
   /** Checks a chore off, or opens it again. Shown straight away; undone if saving fails. */
-  private async toggleChore(c: Chore, by?: string): Promise<void> {
+  private async toggleChore(c: Chore, by?: string, skip?: Skip): Promise<void> {
     if (!this.backend) return;
     this.whoFor = null;
     this.whoOthers = false;
-    const done = !this.choreDone(c);
+    const done = skip !== undefined || !this.choreDone(c);
     const draft = new Map(this.choreDraft);
-    draft.set(c.id, done);
+    draft.set(c.id, skip ?? done);
     this.choreDraft = draft;
     try {
-      await this.backend.setChoreDone(c.id, done, by && by !== c.kid ? by : undefined);
+      await this.backend.setChoreDone(c.id, done, by && by !== c.kid ? by : undefined, skip);
     } catch (err) {
       const back = new Map(this.choreDraft);
       back.delete(c.id);
@@ -867,7 +871,7 @@ export class MyDashLightBoard extends LitElement {
     const p = this.chores?.points;
     const score = p?.scores[id];
     if (!p || score === undefined) return 0;
-    return 14 + pointsText(score).length * 7.5 + (p.leaders.includes(id) ? 12 : 0);
+    return 14 + pointsText(score).length * 7.5 + (p.leaders.includes(id) ? 24 : 0);
   }
 
   /** Someone's points for the last few days, small beside their name. Nothing without chore points. */
@@ -882,7 +886,8 @@ export class MyDashLightBoard extends LitElement {
   }
 
   private choreDone(c: Chore): boolean {
-    return this.choreDraft.get(c.id) ?? isDone(c);
+    const want = this.choreDraft.get(c.id);
+    return want === undefined ? isDone(c) : want !== false;
   }
 
   /** Opens the menu editor on a kid's day, with the other kids who have the same menu that day. */
@@ -2130,7 +2135,7 @@ export class MyDashLightBoard extends LitElement {
       >
         <div class="heads" style="width:${W}px">
           ${b.columns.map(
-            (c) => html`<div class="col-head ${c.kind}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
+            (c) => html`<div class="col-head ${c.kind} ${isLeader(this.chores, c.id) ? "leader" : ""}" style="left:${c.x}px;width:${c.w}px;--c:${c.dot};--rgb:${c.rgb}">
               <span class="avatar ${c.kind}" aria-hidden="true">${initial(c.name)}</span>
               <span class="ch-text">
                 <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 58 - c.name.length * 10.6 - this.scoreRoom(c.id)) : nothing}</span>
@@ -2595,7 +2600,11 @@ export class MyDashLightBoard extends LitElement {
     const kid = data.kids.findIndex((k) => k.id === c.kid);
     const color = (this.plan ? kidColors(this.plan).get(c.kid) : undefined) ?? kidColor(Math.max(0, kid));
     const name = data.kids[kid]?.name ?? "";
-    const shown: Chore = done === isDone(c) ? c : { ...c, state: done ? "done" : "open", done_at: done ? new Date().toISOString() : null };
+    const want = this.choreDraft.get(c.id);
+    const shown: Chore =
+      want === undefined || draftMatches(c, want)
+        ? c
+        : { ...c, state: want === false ? "open" : want === true ? "done" : want, done_at: want === false ? null : new Date().toISOString() };
     const by = done && shown.done_by && shown.done_by !== c.kid ? (data.people?.find((p) => p.id === shown.done_by)?.name ?? shown.done_by_name ?? null) : null;
     const note = `${choreNote(shown, data.today, data.time_zone)}${by ? ` · by ${by}` : ""}`;
     const canTap = done || isDoable(c);
@@ -2603,7 +2612,7 @@ export class MyDashLightBoard extends LitElement {
     const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${flash ? `Earned ${pointsText(flash)}. ` : ""}${done ? "Done. Tap to undo." : "Tap when it’s done."}`;
     const body = html`<span class="box" aria-hidden="true"
         >${done
-          ? svg`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></svg>`
+          ? svg`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d=${isSkip(shown.state) ? "M6 12h12" : "M5 12.5l4.5 4.5L19 7.5"}/></svg>`
           : nothing}</span
       >
       ${c.icon ? html`<span class="chore-icon" aria-hidden="true">${c.icon}</span>` : nothing}
@@ -2612,7 +2621,7 @@ export class MyDashLightBoard extends LitElement {
         ${note ? html`<span class="chore-note">${note}</span>` : nothing}
       </span>
       ${flash ? html`<span class="pts-flash" aria-hidden="true">+${pointsText(flash)}</span>` : nothing}`;
-    const cls = `chore ${done ? "done" : ""} ${c.state === "overdue" && !done ? "overdue" : ""} ${canTap ? "" : "later"}`;
+    const cls = `chore ${done ? "done" : ""} ${isSkip(shown.state) ? "skipped" : ""} ${c.state === "overdue" && !done ? "overdue" : ""} ${canTap ? "" : "later"}`;
     const style = `--c:${color.color};--rgb:${color.rgb};--k:${color.ink}`;
     return canTap
       ? html`<button type="button" class=${cls} style=${style} aria-pressed=${done ? "true" : "false"} aria-label=${label} @click=${() => this.tapChore(c)}>
@@ -2675,7 +2684,7 @@ export class MyDashLightBoard extends LitElement {
       <div class="chore-cols" style="--n:${cols.length}">
         ${cols.map((col) => {
           const left = col.overdue.filter((c) => !this.choreDone(c)).length + col.now.filter((c) => !this.choreDone(c)).length;
-          return html`<section class="chore-col" style="--c:${col.color.color};--rgb:${col.color.rgb}" aria-label=${`${col.name}’s chores`}>
+          return html`<section class="chore-col ${isLeader(data, col.kid) ? "leader" : ""}" style="--c:${col.color.color};--rgb:${col.color.rgb}" aria-label=${`${col.name}’s chores`}>
             <div class="chore-head">
               <span class="avatar" aria-hidden="true">${initial(col.name)}</span>
               <span class="ch-text">
@@ -3114,6 +3123,14 @@ export class MyDashLightBoard extends LitElement {
               )}
             </div>`
           : html`<button type="button" class="choice wide" @click=${() => (this.whoOthers = true)}>Someone else did</button>`}
+      </div>
+      <div class="field">
+        <span class="field-label">Not done?</span>
+        <div role="group" aria-label="Not done" class="choices skip-choices" style="grid-template-columns:1fr 1fr">
+          <button type="button" class="choice" @click=${() => void this.toggleChore(c, undefined, "skipped")}>Skipped</button>
+          <button type="button" class="choice" @click=${() => void this.toggleChore(c, undefined, "excused")}>Excused (sick, away)</button>
+        </div>
+        <p class="field-hint">Takes it off the list with no points. Skipped counts as missed; excused doesn’t.</p>
       </div>
     `;
   }
@@ -3556,4 +3573,14 @@ function foldEdges(w: number, h: number): TemplateResult {
       <path class="fold-edge" d=${`M${top.join(" L")}`}></path>
       <path class="fold-edge" d=${`M${bottom.join(" L")}`}></path>`}
   </svg>`;
+}
+
+/** A check-off waiting to be confirmed: done (true), opened again (false), or skipped or excused. */
+type ChoreDraftState = boolean | Skip;
+
+/** The chore has come back from MyDashLight the way it was tapped. */
+function draftMatches(c: Chore, want: ChoreDraftState): boolean {
+  if (want === false) return !isDone(c);
+  if (want === true) return isDone(c) && !isSkip(c.state);
+  return c.state === want;
 }

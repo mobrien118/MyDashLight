@@ -5,7 +5,7 @@
 
 import { timeField } from "./format.ts";
 import type { Plan, Scope, Side } from "./types.ts";
-import type { ChoresPayload, ChoreTemplate, TemplateFields } from "./chores.ts";
+import type { ChoresPayload, ChoreTemplate, Skip, TemplateFields } from "./chores.ts";
 import type { Lunch, LunchPayload } from "./lunch.ts";
 
 /** Who drives to a stay and back: "" for the first parent on it with everyone else along, or "none". */
@@ -76,7 +76,7 @@ export interface Backend {
    */
   watchChores(onChores: (chores: ChoresPayload | null) => void): () => void;
   /** Checks a chore off, or opens it again. `by` is who did it, when it wasn't the kid it's for. */
-  setChoreDone(chore: string, done: boolean, by?: string): Promise<void>;
+  setChoreDone(chore: string, done: boolean, by?: string, skip?: Skip): Promise<void>;
   /** Adds a chore template (no `template`) or changes one. */
   saveChoreTemplate(fields: TemplateFields): Promise<void>;
   /** Removes a chore template; its chores that aren't done yet go too. */
@@ -626,11 +626,12 @@ export class HassBackend implements Backend {
     await this.choreCall("set_lunch_menu", { kids, date, menu: dish, details });
   }
 
-  async setChoreDone(chore: string, done: boolean, by?: string): Promise<void> {
+  async setChoreDone(chore: string, done: boolean, by?: string, skip?: Skip): Promise<void> {
     await this.choreCall("set_chore_done", {
       chore,
       done,
       ...(done && by ? { by } : {}),
+      ...(done && skip ? { skip } : {}),
     });
   }
 
@@ -743,7 +744,7 @@ export class PreviewBackend implements Backend {
   }
 
   /** Chore changes stay in this page only, so the preview can be tried out. */
-  async setChoreDone(chore: string, done: boolean, by?: string): Promise<void> {
+  async setChoreDone(chore: string, done: boolean, by?: string, skip?: Skip): Promise<void> {
     const data = this.chores;
     if (!data) return this.nope();
     const chores = data.chores.map((c) => {
@@ -762,10 +763,10 @@ export class PreviewBackend implements Backend {
       // Roughly as MyDashLight scores it: all of it on time by its kid, half late, nothing for a favor.
       const worth = c.worth ?? data.points?.default ?? 1;
       const who = by ?? c.kid;
-      const earned = c.state === "overdue" ? worth / 2 : who === c.kid ? worth : 0;
+      const earned = skip ? 0 : c.state === "overdue" ? worth / 2 : who === c.kid ? worth : 0;
       return {
         ...c,
-        state: c.state === "overdue" ? ("late" as const) : ("done" as const),
+        state: skip ?? (c.state === "overdue" ? ("late" as const) : ("done" as const)),
         done_at: new Date().toISOString(),
         done_by: who,
         earned,

@@ -2147,6 +2147,10 @@ export const styles = css`
   .chore.done .chore-note {
     color: var(--ok);
   }
+  .chore.skipped .chore-note {
+    color: var(--muted);
+    font-weight: 600;
+  }
   .pts-flash {
     margin-left: auto;
     flex: none;
@@ -2187,7 +2191,57 @@ export const styles = css`
     white-space: nowrap;
   }
   .score.lead {
-    color: #b7791f;
+    padding: 0 7px;
+    border-radius: 999px;
+    color: #7a4b00;
+    background: linear-gradient(135deg, #fff3c4, #f7d774);
+    box-shadow: 0 0 0 1px rgba(183, 121, 31, 0.35);
+  }
+  /* The kid leading on points: a gold name, a gold ring and a little crown. */
+  .leader .name {
+    background: linear-gradient(100deg, #a8660a 0%, #e0a91c 35%, #fff1a8 50%, #e0a91c 65%, #a8660a 100%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: leader-shine 6s ease-in-out infinite;
+  }
+  .leader .avatar {
+    position: relative;
+    overflow: visible;
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px #e0a91c,
+      0 0 10px rgba(224, 169, 28, 0.55);
+  }
+  .leader .avatar::after {
+    content: "👑";
+    position: absolute;
+    top: -13px;
+    right: -9px;
+    font-size: 15px;
+    line-height: 1;
+    transform: rotate(18deg);
+  }
+  /* The rides board's heads sit at the very top of the scroller: keep the crown inside. */
+  .col-head.leader .avatar::after {
+    top: -9px;
+    right: -11px;
+  }
+  @keyframes leader-shine {
+    0%,
+    70% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .leader .name {
+      animation: none;
+      background-position: 50% 0;
+    }
   }
   .points-input {
     max-width: 120px;

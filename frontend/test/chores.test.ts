@@ -95,6 +95,10 @@ test("the line under a chore", () => {
   assert.equal(note({ state: "late", done_at: "2026-11-04T22:12:00Z" }), "Done late · 4:12 PM");
   assert.equal(note({ state: "done", done_at: "2026-11-03T22:12:00Z", due: "2026-11-05" }), "Done Tue 4:12 PM");
   assert.equal(note({ state: "done", done_at: null }), "Done");
+  // Skipped or excused: off the list, said in place of the time.
+  assert.equal(note({ state: "skipped", done_at: "2026-11-04T22:12:00Z" }), "Skipped");
+  assert.equal(note({ state: "excused", done_at: "2026-11-04T22:12:00Z" }), "Excused");
+  assert.ok(isDone(chore("ava", "x", { state: "excused" })));
   // Coming up: the board shows the day, so only a later due day is said.
   assert.equal(note({ state: "upcoming", due: "2026-11-06" }), "");
   assert.equal(note({ state: "upcoming", due: "2026-11-08", shows_from: "2026-11-05", repeats: "weekly" }), "By Sun");
@@ -190,7 +194,9 @@ test("a night-before chore waits for the afternoon of the day before", () => {
 
 test("points as the board shows and takes them", () => {
   assert.equal(pointsText(2), "2");
-  assert.equal(pointsText(0.5), "0.5");
+  assert.equal(pointsText(0.5), "½");
+  assert.equal(pointsText(1.5), "1½");
+  assert.equal(pointsText(12.5), "12½");
   assert.equal(pointsText(1.25), "1.3");
   assert.equal(parsePoints(""), null);
   assert.equal(parsePoints(" 3 "), 3);
