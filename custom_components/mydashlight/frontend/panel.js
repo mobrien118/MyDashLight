@@ -2749,6 +2749,28 @@ var ur=Object.defineProperty;var Nn=(i,t)=>()=>(i&&(t=i(i=0)),t);var fr=(i,t)=>{
   .ed-for {
     flex-wrap: wrap;
   }
+  /* The driver picks stay quiet (outlined, not a solid black block) so the kids lead the eye. */
+  .ride-box > .choices .choice {
+    min-height: 40px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .ride-box > .choices .choice[aria-pressed="true"] {
+    background: var(--control);
+    border-color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink);
+    color: var(--ink);
+    font-weight: 800;
+  }
+  /* A kid picked to ride along is filled in their own color. */
+  .field-sub .who-chip[aria-pressed="true"] {
+    background: var(--c);
+    color: #fff;
+  }
+  .field-sub .who-chip[aria-pressed="true"] .avatar {
+    background: #fff;
+    color: var(--c);
+  }
   /* Riders: the same colored chips as everywhere else, a size down to fit the driver box. */
   .field-sub .who-chip {
     min-height: 40px;
