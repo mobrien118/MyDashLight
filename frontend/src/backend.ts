@@ -757,15 +757,31 @@ export class PreviewBackend implements Backend {
               : ("open" as const),
           done_at: null,
           done_by: null,
+          earned: null,
         };
+      // Roughly as MyDashLight scores it: all of it on time by its kid, half late, nothing for a favor.
+      const worth = c.worth ?? data.points?.default ?? 1;
+      const who = by ?? c.kid;
+      const earned = c.state === "overdue" ? worth / 2 : who === c.kid ? worth : 0;
       return {
         ...c,
         state: c.state === "overdue" ? ("late" as const) : ("done" as const),
         done_at: new Date().toISOString(),
-        done_by: by ?? c.kid,
+        done_by: who,
+        earned,
       };
     });
-    this.setChores({ ...data, chores });
+    let points = data.points;
+    if (points) {
+      const before = data.chores.find((c) => c.id === chore);
+      const after = chores.find((c) => c.id === chore);
+      const scores = { ...points.scores };
+      if (before?.earned && before.done_by) scores[before.done_by] = (scores[before.done_by] ?? 0) - before.earned;
+      if (after?.earned && after.done_by) scores[after.done_by] = (scores[after.done_by] ?? 0) + after.earned;
+      const top = Math.max(0, ...data.kids.map((k) => scores[k.id] ?? 0));
+      points = { ...points, scores, leaders: top > 0 ? data.kids.filter((k) => (scores[k.id] ?? 0) === top).map((k) => k.id) : [] };
+    }
+    this.setChores({ ...data, chores, ...(points ? { points } : {}) });
   }
 
   async saveChoreTemplate(fields: TemplateFields): Promise<void> {

@@ -38,23 +38,27 @@ function sampleChores(plan: Plan): ChoresPayload {
       done_at: null,
       missed: 0,
       points: null,
+      worth: 1,
+      earned: null,
       template: null,
       order: chores.length,
       ...extra,
     });
   };
   const doneAt = new Date(Date.now() - 50 * 60_000).toISOString();
-  add(0, "🛏️", "Make bed", { state: "done", done_at: doneAt });
+  add(0, "🛏️", "Make bed", { state: "done", done_at: doneAt, earned: 1 });
   add(0, "🐕", "Feed the dog", {});
   add(0, "🎻", "Practice violin", { due: day(-1), state: "overdue", missed: 1 });
   add(0, "🧺", "Put away laundry", { repeats: "weekly", due: day(3), shows_from: day(-2) });
   add(1, "🛏️", "Make bed", {});
   add(1, "🍽️", "Clear the table", {});
   add(1, "🗑️", "Take out recycling", { repeats: "weekly", due: day(2), shows_from: day(2), state: "upcoming" });
-  add(2, "🛏️", "Make bed", { state: "done", done_at: doneAt });
-  add(2, "🪥", "Brush teeth", { state: "done", done_at: doneAt });
+  add(2, "🛏️", "Make bed", { state: "done", done_at: doneAt, earned: 1 });
+  add(2, "🪥", "Brush teeth", { state: "done", done_at: doneAt, earned: 1 });
   add(2, "🧸", "Tidy room", { repeats: "weekly", due: day(4), shows_from: day(1), state: "upcoming" });
-  add(1, "🥪", "Pack lunch", { repeats: "school", due: today, for_day: addDays(today, weekday(today) === 4 ? 3 : 1) });
+  // Night before: due on the school day, showing from the evening before.
+  const school = addDays(today, weekday(today) === 4 ? 3 : 1);
+  add(1, "🥪", "Pack lunch", { repeats: "school", due: school, shows_from: today, for_day: school });
   return {
     updated: new Date(Date.now() - 60_000).toISOString(),
     today,
@@ -62,6 +66,7 @@ function sampleChores(plan: Plan): ChoresPayload {
     days_ahead: 7,
     kids: kids.map((k) => ({ id: k.id, name: k.name })),
     chores,
+    points: samplePoints(plan, kids.map((k) => k.id)),
     templates: sampleTemplates(kids.map((k) => k.id)),
     people: [
       ...kids.map((k) => ({ id: k.id, name: k.name, role: "kid" as const })),
@@ -69,6 +74,16 @@ function sampleChores(plan: Plan): ChoresPayload {
     ],
     status: { ok: true, error: null, needs: null },
   };
+}
+
+/** Made-up scores for the last 7 days: everyone listed, the first kid ahead. */
+function samplePoints(plan: Plan, kids: string[]): NonNullable<ChoresPayload["points"]> {
+  const scores: Record<string, number> = {};
+  [12, 9.5, 7].forEach((n, i) => {
+    if (kids[i]) scores[kids[i]!] = n;
+  });
+  (plan.people?.drivers ?? []).forEach((d, i) => (scores[d.id] = i ? 2 : 4));
+  return { days: 7, default: 1, scores, leaders: kids.length ? [kids[0]!] : [] };
 }
 
 /** The templates behind the sample chores, plus one typed into Google Tasks and not set up yet. */

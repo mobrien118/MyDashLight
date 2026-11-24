@@ -30,10 +30,28 @@ export interface Chore {
   /** Days missed so far. */
   missed: number;
   points: number | null;
+  /** What it's worth done on time (MyDashLight 0.29 and later). */
+  worth?: number | null;
+  /** What checking it off earned, or null while it's open. Can be 0.5 (MyDashLight 0.29 and later). */
+  earned?: number | null;
   template: string | null;
   order: number;
-  /** The school day a night-before chore gets ready for, such as Pack lunch (MyDashLight 0.11 and later). */
+  /**
+   * The school day a night-before chore gets ready for, such as Pack lunch (MyDashLight 0.11 and
+   * later). From 0.29 it's also the due day, and the chore shows from the evening before.
+   */
   for_day?: string | null;
+}
+
+/** Everyone's points for chores checked off in the last few days (MyDashLight 0.29 and later). */
+export interface ChorePoints {
+  days: number;
+  /** What a chore is worth when its seed doesn't say. */
+  default: number;
+  /** By person id: the kids and the parents. */
+  scores: Record<string, number>;
+  /** The kids with the most points, ties included; none when nobody has any. */
+  leaders: string[];
 }
 
 export interface Person {
@@ -61,7 +79,7 @@ export interface ChoreTemplate {
   ends?: string | null;
   points?: number | null;
   paused: boolean;
-  /** School days: due the evening before each school day. */
+  /** School days: shows from the evening before each school day. */
   night_before?: boolean;
   /** School days: only on days the kid brings lunch. */
   bring_only?: boolean;
@@ -78,6 +96,7 @@ export interface ChoresPayload {
   /** Everyone who can check a chore off: the kids, then the parents (MyDashLight 0.11 and later). */
   people?: Person[];
   chores: Chore[];
+  points?: ChorePoints;
   templates: ChoreTemplate[];
   /** `needs` says what's stopping chores: signing in to Google again, or the Tasks API. */
   status: { ok: boolean; error: string | null; needs: "sign_in" | "tasks_api" | null };
@@ -88,16 +107,20 @@ export function isDone(c: Chore): boolean {
   return c.state === "done" || c.state === "late";
 }
 
-/** Ready to check off now: today's, this week's or this month's, and overdue ones. */
 /** When a night-before chore shows on its day: 1 PM, when the lunch chips turn to the next day too. */
 export const EVENING_FROM = 13 * 60;
 
+/** The evening before a night-before chore's school day, when it starts showing. */
+function isEveningBefore(c: Chore, today: string): boolean {
+  return !!c.for_day && (c.shows_from ?? c.due) === today && !!c.due && c.due > today;
+}
+
 /**
- * A night-before chore (like packing lunch) waits until the afternoon of its day: until then it's
- * listed as coming up later today, not to do.
+ * A night-before chore (like packing lunch) waits until the afternoon of the day before: until
+ * then it's listed as coming up later today, not to do. On the school morning it's just due today.
  */
 export function waitsForEvening(c: Chore, today: string, minutes: number): boolean {
-  return c.state === "open" && !!c.for_day && c.due === today && minutes < EVENING_FROM;
+  return c.state === "open" && isEveningBefore(c, today) && minutes < EVENING_FROM;
 }
 
 /** The chores as they stand at ``minutes`` past midnight: night-before ones not yet showing are coming up. */
@@ -105,6 +128,7 @@ function atTime(data: ChoresPayload, minutes: number): Chore[] {
   return data.chores.map((c) => (waitsForEvening(c, data.today, minutes) ? { ...c, state: "upcoming" as const, shows_from: data.today } : c));
 }
 
+/** Ready to check off now: today's, this week's or this month's, and overdue ones. */
 export function isDoable(c: Chore): boolean {
   return c.state === "open" || c.state === "overdue";
 }
@@ -127,7 +151,7 @@ export function choreNote(c: Chore, today: string, timeZone: string): string {
     const ahead = daysBetween(today, c.due);
     return `By ${ahead === 1 ? "tomorrow" : ahead < 7 ? shortDay(c.due) : monthDay(c.due)}`;
   }
-  if (c.for_day && c.due === today) return `Tonight · for ${dayWord(c.for_day, today)}`;
+  if (isEveningBefore(c, today)) return `Tonight · for ${dayWord(c.for_day!, today)}`;
   if (c.due && c.due > today) {
     const ahead = daysBetween(today, c.due);
     return ahead === 1 ? "By tomorrow" : `By ${ahead < 7 ? shortDay(c.due) : monthDay(c.due)}`;
@@ -207,11 +231,13 @@ export function choreColumns(data: ChoresPayload, colors?: Map<string, KidColor>
 /**
  * The chores Needs attention lists: overdue ones, and ones due today. A chore done sometime this
  * week or month only joins on its last day, so the list stays short. A night-before chore joins
- * from 1 PM.
+ * from 1 PM the day before.
  */
 export function choresNeedingAttention(data: ChoresPayload, minutes = 24 * 60): Chore[] {
   return atTime(data, minutes)
-    .filter((c) => c.state === "overdue" || (c.state === "open" && (c.due == null || c.due <= data.today)))
+    .filter(
+      (c) => c.state === "overdue" || (c.state === "open" && (c.due == null || c.due <= data.today || isEveningBefore(c, data.today))),
+    )
     .sort((a, b) => (a.state === b.state ? a.order - b.order : a.state === "overdue" ? -1 : 1));
 }
 
@@ -271,10 +297,12 @@ export interface ChoreDraft {
   days: string;
   every: number;
   paused: boolean;
-  /** School days: due the evening before. */
+  /** School days: shows from the evening before. */
   night_before: boolean;
   /** School days: only on Bring lunch days. */
   bring_only: boolean;
+  /** Points for doing it on time; null uses the default. */
+  points: number | null;
 }
 
 /** What `save_chore_template` is sent. Fields left out keep what the template has. */
@@ -292,6 +320,8 @@ export interface TemplateFields {
   /** Only sent for school-days chores, so older versions of MyDashLight still take the rest. */
   night_before?: boolean;
   bring_only?: boolean;
+  /** Null uses the default. Left out, the template keeps its points. */
+  points?: number | null;
 }
 
 /** The Days a chore starts with: every day (or school day), or sometime that week or month. */
@@ -313,6 +343,7 @@ export function newDraft(who: string[] = []): ChoreDraft {
     paused: false,
     night_before: false,
     bring_only: false,
+    points: null,
   };
 }
 
@@ -333,6 +364,7 @@ export function draftOf(t: ChoreTemplate): ChoreDraft {
     paused: t.paused,
     night_before: !!t.night_before,
     bring_only: !!t.bring_only,
+    points: t.points ?? null,
   };
 }
 
@@ -357,6 +389,7 @@ export function draftFields(d: ChoreDraft): TemplateFields {
     every: d.repeats === "school" ? 1 : d.every,
     paused: d.paused,
     ...(d.repeats === "school" ? { night_before: d.night_before, bring_only: d.bring_only } : {}),
+    points: d.points,
   };
 }
 
@@ -419,4 +452,15 @@ export function problemText(p: string): string {
     default:
       return `The ${field.replace(/_/g, " ")} line (“${value}”) couldn’t be read`;
   }
+}
+
+/** "2", "0.5": points as the board shows them. */
+export function pointsText(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+}
+
+/** A typed Points value: a whole number from 0 to 1000, or null (blank, so the default). */
+export function parsePoints(text: string): number | null {
+  const digits = /\d+/.exec(text)?.[0];
+  return digits ? Math.min(1000, Number(digits.slice(0, 5))) : null;
 }
