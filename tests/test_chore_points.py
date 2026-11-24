@@ -17,7 +17,7 @@ from custom_components.mydashlight.chore_points import (
     worth,
 )
 from custom_components.mydashlight.chore_rules import read_block, write_block
-from custom_components.mydashlight.chores import Chore, TaskItem, chore_notes, earned_notes, read_chore
+from custom_components.mydashlight.chores import Chore, TaskItem, chore_notes, earned_notes, read_chore, skip_notes
 
 CENTRAL = ZoneInfo("America/Chicago")
 PEOPLE = {"ava": "Ava", "ben": "Ben", "mom": "Robin", "dad": "Sam"}
@@ -134,3 +134,28 @@ def test_format_and_parse() -> None:
         None,
         None,
     )
+
+
+@pytest.mark.parametrize("skip", ["skipped", "excused"])
+def test_skipped_and_excused_earn_nothing(skip: str) -> None:
+    closed = chore(done_at=at(4, 12), extra=f"\nClosed: {skip}\nEarned: 2")
+    assert closed.skipped == skip
+    assert not closed.closed
+    assert earned(closed, SETTINGS, CENTRAL, PEOPLE) == 0.0
+    assert scores([closed], SETTINGS, CENTRAL, PEOPLE, at(5, 9))["ava"] == 0.0
+
+
+def test_skip_notes() -> None:
+    notes = chore_notes("Both floors.", "t1", DUE, 2)
+    skipped = skip_notes(notes, "skipped")
+    assert read_block(skipped).every("closed") == ["skipped"]
+    assert skip_notes(skipped, "skipped") == skipped
+    assert read_block(skip_notes(skipped, "excused")).every("closed") == ["excused"]
+    assert read_block(skip_notes(skipped, None)) == read_block(notes)
+    assert skip_notes(notes, None) == notes
+    # MyDashLight's own close-out stays.
+    missed = notes + "\nClosed: missed"
+    assert skip_notes(missed, "excused") == missed
+    assert skip_notes(missed, None) == missed
+    # A one-off whose block only said it was skipped goes back to its own notes.
+    assert skip_notes(skip_notes("Just this once", "excused"), None) == "Just this once"

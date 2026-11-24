@@ -20,11 +20,12 @@ import voluptuous as vol
 
 from .chore_points import earned
 from .chore_rules import REPEATS, DaysError, Repeats, Template, kid_for, parse_days, split_icon, template_notes
-from .chores import done_by_notes, earned_notes
+from .chores import SKIPS, done_by_notes, earned_notes, skip_notes
 from .const import (
     ATTR_BY,
     ATTR_CHORE,
     ATTR_DONE,
+    ATTR_SKIP,
     ATTR_TEMPLATE,
     DOMAIN,
     SERVICE_GET_CHORES,
@@ -44,6 +45,7 @@ SET_CHORE_DONE_SCHEMA = vol.Schema(
         vol.Required(ATTR_CHORE): cv.string,
         vol.Optional(ATTR_DONE, default=True): cv.boolean,
         vol.Optional(ATTR_BY): cv.string,
+        vol.Optional(ATTR_SKIP): vol.In(SKIPS),
     }
 )
 SAVE_TEMPLATE_SCHEMA = vol.Schema(
@@ -111,7 +113,8 @@ async def _async_set_chore_done(call: ServiceCall) -> None:
             translation_key="chore_not_found",
             translation_placeholders={"chore": call.data[ATTR_CHORE]},
         )
-    done: bool = call.data[ATTR_DONE]
+    skip: str | None = call.data.get(ATTR_SKIP)
+    done: bool = call.data[ATTR_DONE] or skip is not None
     people = coordinator.people
     by = chore.kid
     if ATTR_BY in call.data:
@@ -125,16 +128,18 @@ async def _async_set_chore_done(call: ServiceCall) -> None:
         by = found
     # Who did it, and what it earned, are saved on the chore itself, so the history stays in
     # Google Tasks and a setting changed later doesn't change it.
+    # Skipped or excused: closed without doing it, worth nothing, and the line says which.
     name = people.get(by, by) if done else None
-    notes = done_by_notes(chore.task.notes, name)
+    notes = done_by_notes(skip_notes(chore.task.notes, skip if done else None), name)
     points = None
-    if done:
+    if done and skip is None:
         now = dt_util.now()
         checked = replace(
             chore,
             task=replace(chore.task, notes=notes, completed=chore.task.completed or now),
             done_by=name,
             earned=None,
+            skipped=None,
         )
         points = earned(checked, coordinator.settings.points, now.tzinfo or dt_util.UTC, people)
     notes = earned_notes(notes, points)

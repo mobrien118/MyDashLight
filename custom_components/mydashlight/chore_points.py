@@ -9,7 +9,7 @@ The rules, kept simple on purpose:
   than by doing their own.
 * Done by someone else before it's late, or before it's been late for ``open_after``: a favor,
   worth nothing.
-* Missed (closed out by MyDashLight): nothing. Points are never taken away.
+* Missed (closed out by MyDashLight), skipped or excused: nothing. Points are never taken away.
 
 A chore is late once its due day is over. Google Tasks keeps due dates without a time.
 
@@ -76,10 +76,10 @@ def earned(
     """What the check-off earned, or None while the chore is open. The ``Earned`` line wins."""
     if not chore.done:
         return None
+    if chore.closed or chore.skipped:
+        return 0.0
     if chore.earned is not None:
         return chore.earned
-    if chore.closed:
-        return 0.0
     full = worth(chore, settings)
     cutoff = late_after(chore, tz)
     done_at = chore.task.completed
@@ -106,7 +106,7 @@ def scores(
     out = dict.fromkeys(people, 0.0)
     for chore in chores:
         done_at = chore.task.completed
-        if done_at is None or chore.closed or not since < done_at <= now:
+        if done_at is None or chore.closed or chore.skipped or not since < done_at <= now:
             continue
         points = earned(chore, settings, tz, people)
         if points:

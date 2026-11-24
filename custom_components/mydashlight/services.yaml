@@ -197,6 +197,13 @@ set_chore_done:
       example: Audrey
       selector:
         text:
+    skip:
+      required: false
+      selector:
+        select:
+          options:
+            - skipped
+            - excused
 
 save_chore_template:
   fields:

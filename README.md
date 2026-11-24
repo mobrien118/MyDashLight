@@ -419,6 +419,9 @@ Each chore on a kid's list has the template's title and details, and a Chore blo
   after its due day counts as late. Checked off through MyDashLight, it also records who did it
   with a `Done by: <name>` line: the kid it's for, or anyone else picked, parents included.
   Opening it again takes that line out.
+- **Skipped or excused:** closed without being done, with `Closed: skipped` (it wasn't done and
+  counts as a miss) or `Closed: excused` (sick, away, or not needed that day). Neither earns
+  points, and nobody can earn them for it afterwards. Opening it again takes the line out.
 - **Still open after its due day:** MyDashLight adds `Missed: <day>` to its notes, once for each
   day it missed. When the next one of that chore shows (or its template is paused), the missed one
   is checked off with `Closed: missed`, so the board shows one, not a pile, and the miss stays
@@ -435,6 +438,7 @@ line on the next read.
 | On time, by the kid it's for | All its points |
 | Late (after its due day), by anyone, the kid it's for included | The late share, 50% unless set otherwise |
 | By someone else before it's late | Nothing: it's a favor |
+| Skipped or excused | Nothing |
 | Missed (closed out) | Nothing. Points are never taken away. |
 
 **Configure > Chore points** sets the default points, the late share and how long after a chore
@@ -445,8 +449,8 @@ and parents, by id) and the `leaders`: the kids with the most, or none while eve
 
 The actions: `mydashlight.get_chores` returns the chores the board shows (each kid's open and
 overdue chores, those coming up, and those done today) and the templates;
-`mydashlight.set_chore_done` checks one off (with `by` for someone other than the kid it's for)
-or opens it again; `mydashlight.save_chore_template`
+`mydashlight.set_chore_done` checks one off (with `by` for someone other than the kid it's for,
+and `skip: skipped` or `skip: excused` when it wasn't done) or opens it again; `mydashlight.save_chore_template`
 adds or changes a template; `mydashlight.remove_chore_template` removes one. The app subscribes
 to `{"type": "mydashlight/chores/subscribe"}` for the same chores as they change.
 
