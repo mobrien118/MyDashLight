@@ -823,11 +823,12 @@ export class MyDashLightBoard extends LitElement {
   }
 
   /**
-   * A chore was tapped. Done ones open again straight away. Otherwise the panel asks who did it,
-   * when MyDashLight can record that; without it, the chore is checked off for its kid.
+   * A chore was tapped. A done one opens a panel that asks before marking it not done, so a stray
+   * tap never undoes it. Otherwise the panel asks who did it, when MyDashLight can record that;
+   * without it, the chore is checked off for its kid.
    */
   private tapChore(c: Chore): void {
-    if (this.choreDone(c) || !this.chores?.people?.length) {
+    if (!this.choreDone(c) && !this.chores?.people?.length) {
       void this.toggleChore(c);
       return;
     }
@@ -1665,7 +1666,9 @@ export class MyDashLightBoard extends LitElement {
             ? "Change a chore"
             : "Add a chore"
           : this.whoFor
-            ? "Who did it"
+            ? this.choreDone(this.whoFor)
+              ? "Done chore"
+              : "Who did it"
             : this.sel
               ? "Change this ride"
               : "Needs attention";
@@ -2610,7 +2613,7 @@ export class MyDashLightBoard extends LitElement {
     const note = `${choreNote(shown, data.today, data.time_zone)}${by ? ` · by ${by}` : ""}`;
     const canTap = done || isDoable(c);
     const flash = done ? this.pointsFlash.get(c.id) : undefined;
-    const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${flash ? `Earned ${pointsText(flash)}. ` : ""}${done ? "Done. Tap to undo." : "Tap when it’s done."}`;
+    const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${flash ? `Earned ${pointsText(flash)}. ` : ""}${done ? "Done." : "Tap when it’s done."}`;
     const body = html`<span class="box" aria-hidden="true"
         >${done
           ? svg`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d=${isSkip(shown.state) ? "M6 12h12" : "M5 12.5l4.5 4.5L19 7.5"}/></svg>`
@@ -3106,6 +3109,7 @@ export class MyDashLightBoard extends LitElement {
   private renderWhoDidIt(c: Chore): TemplateResult {
     const data = this.chores;
     if (!data) return html``;
+    if (this.choreDone(c)) return this.renderDoneChore(c, data);
     const people: Person[] = data.people?.length ? data.people : data.kids.map((k) => ({ ...k, role: "kid" as const }));
     const kidIndex = data.kids.findIndex((k) => k.id === c.kid);
     const kid = data.kids[kidIndex];
@@ -3148,6 +3152,28 @@ export class MyDashLightBoard extends LitElement {
           <button type="button" class="choice" @click=${() => void this.toggleChore(c, undefined, "excused")}>Excused (sick, away)</button>
         </div>
         <p class="field-hint">Takes it off the list with no points. Skipped counts as missed; excused doesn’t.</p>
+      </div>
+    `;
+  }
+
+  /** A done chore, tapped: what was recorded, and a way to mark it not done after all. */
+  private renderDoneChore(c: Chore, data: ChoresPayload): TemplateResult {
+    const kid = data.kids.find((k) => k.id === c.kid);
+    const by = c.done_by && c.done_by !== c.kid ? (data.people?.find((p) => p.id === c.done_by)?.name ?? c.done_by_name) : null;
+    const note = `${choreNote(c, data.today, data.time_zone)}${by ? ` · by ${by}` : ""}`;
+    const earned = !isSkip(c.state) && c.earned != null ? ` · ${pointsWord(c.earned)}` : "";
+    return html`
+      <div class="ed-head">
+        <div class="ed-titles">
+          <span class="ed-title">${c.icon ? html`<span class="ed-icon" aria-hidden="true">${c.icon}</span>` : nothing}${c.title}</span>
+          <span class="ed-meta">${kid?.name ?? ""} · ${note}${earned}</span>
+        </div>
+        <button type="button" class="btn" @click=${() => this.closeChorePanels()}>Close</button>
+      </div>
+      <div class="field">
+        <span class="field-label">Not done after all?</span>
+        <button type="button" class="choice wide" @click=${() => void this.toggleChore(c)}>Mark not done</button>
+        <p class="field-hint">Puts it back on the list to do${c.earned ? ", and takes off its points" : ""}.</p>
       </div>
     `;
   }

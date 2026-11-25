@@ -192,8 +192,11 @@ test("a night-before chore waits for the afternoon of the day before", () => {
   const morningOf = payload([chore("ben", "Pack lunch", { repeats: "school", due: TODAY, shows_from: "2026-11-03", for_day: TODAY })]);
   assert.deepEqual(choreColumns(morningOf, undefined, 7 * 60).find((c) => c.kid === "ben")!.now.map((c) => c.title), ["Pack lunch"]);
   assert.deepEqual(choresNeedingAttention(morningOf, 7 * 60).map((c) => c.title), ["Pack lunch"]);
-  // Once school has started it's moot: off the list and out of Needs attention.
-  assert.deepEqual(choreColumns(morningOf, undefined, 13 * 60).find((c) => c.kid === "ben")!.now, []);
+  // Once school has started it's missed: still on the board to check off, out of Needs attention.
+  const after = choreColumns(morningOf, undefined, 13 * 60).find((c) => c.kid === "ben")!;
+  assert.deepEqual(after.now, []);
+  assert.deepEqual(after.overdue.map((c) => c.title), ["Pack lunch"]);
+  assert.equal(choreNote(after.overdue[0]!, TODAY, TZ), "Missed today");
   assert.deepEqual(choresNeedingAttention(morningOf, 13 * 60), []);
 });
 
