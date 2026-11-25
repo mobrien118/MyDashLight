@@ -47,7 +47,6 @@ function chore(kid: string, title: string, extra: Partial<Chore> = {}): Chore {
     state: "open",
     done_at: null,
     missed: 0,
-    points: null,
     template: null,
     order: next,
     ...extra,

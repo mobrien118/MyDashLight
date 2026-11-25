@@ -5,8 +5,8 @@ changes that make the lists match the templates:
 
 * **Make** each chore the templates ask for in the next few days that isn't on its kid's
   list yet, done or not.
-* **Fix** a chore that's coming up and not done yet when its template's title, details or
-  points changed, and **remove** one whose template no longer asks for it (paused, moved to
+* **Fix** a chore that's coming up and not done yet when its template's title or details
+  changed, and **remove** one whose template no longer asks for it (paused, moved to
   another day or kid, or deleted). Done chores and chores whose day has passed are never
   changed or removed, so the history stays true.
 * **Mark missed** a chore still open after its due day, once for each due day it missed.
@@ -24,10 +24,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta, tzinfo
+from datetime import date, datetime, timedelta, tzinfo
 from typing import Any, Final, Literal
 
-from .chore_points import SCORE_DAYS, PointsSettings, earned, format_points, parse_points, worth
+from .chore_points import PointsSettings, earned, worth
 from .chore_rules import (
     Repeats,
     SchoolDays,
@@ -75,13 +75,10 @@ class Chore:
     """The template it was made from, or None for a one-off."""
     scheduled: date | None
     """The day it was made for (the ``For`` line)."""
-    points: int | None
     missed: tuple[date, ...]
     closed: bool
     done_by: str | None = None
     """Who checked it off, as the ``Done by`` line names them, or None when it doesn't say."""
-    earned: float | None = None
-    """What checking it off earned, from the ``Earned`` line, or None when it doesn't say."""
     skipped: str | None = None
     """``skipped`` or ``excused`` when someone closed it without doing it, else None."""
 
@@ -102,12 +99,6 @@ def read_chore(task: TaskItem, kid: str, list_id: str) -> Chore:
     scheduled = _date(block.first("for"))
     missed = tuple(sorted({d for v in block.every("missed") if (d := _date(v))}))
     closed = (block.first("closed") or "").strip().casefold()
-    points = None
-    if (value := block.first("points")) is not None:
-        try:
-            points = int(value)
-        except ValueError:
-            points = None
     return Chore(
         task=task,
         kid=kid,
@@ -115,19 +106,15 @@ def read_chore(task: TaskItem, kid: str, list_id: str) -> Chore:
         details=block.details,
         template=template if scheduled else None,
         scheduled=scheduled if template else None,
-        points=points,
         missed=missed,
         closed=closed == CLOSED_MISSED,
         skipped=closed if closed in SKIPS else None,
         done_by=" ".join((block.first("done_by") or "").split()) or None,
-        earned=parse_points(block.first("earned")),
     )
 
 
-def chore_notes(details: str, template: str, scheduled: date, points: int | None, missed: Iterable[date] = ()) -> str:
+def chore_notes(details: str, template: str, scheduled: date, missed: Iterable[date] = ()) -> str:
     lines = [("From", template), ("For", scheduled.isoformat())]
-    if points is not None:
-        lines.append(("Points", str(points)))
     lines.extend(("Missed", d.isoformat()) for d in sorted(set(missed)))
     return write_block(details, lines)
 
@@ -135,20 +122,31 @@ def chore_notes(details: str, template: str, scheduled: date, points: int | None
 _LINE_LABELS: Final = {
     "from": "From",
     "for": "For",
-    "points": "Points",
     "missed": "Missed",
     "closed": "Closed",
     "id": "Id",
     "done_by": "Done by",
-    "earned": "Earned",
 }
+
+_STALE: Final = frozenset({"points", "earned"})
+"""Lines chores carried before 0.29.6 (a copy of the seed's points, what a check-off earned).
+Points are worked out fresh now, so these are taken out whenever a chore's notes are written."""
 
 
 def _with_lines(notes: str, extra: Iterable[tuple[str, str]], *, drop: str | None = None) -> str:
     """Notes with lines added at the end of the Chore block, leaving out ``drop`` lines."""
     block = read_block(notes)
-    lines = [(_LINE_LABELS.get(k, k.title()), v) for k, v in block.lines if k != drop]
+    lines = [(_LINE_LABELS.get(k, k.title()), v) for k, v in block.lines if k != drop and k not in _STALE]
     return write_block(block.details, [*lines, *extra])
+
+
+def has_stale_lines(notes: str) -> bool:
+    return any(k in _STALE for k, _v in read_block(notes).lines)
+
+
+def seed_points(templates: Iterable[Template]) -> dict[str, int | None]:
+    """Each seed's ``Points`` by id: what its chores are worth (None means the default)."""
+    return {t.id: t.points for t in templates}
 
 
 def done_by_notes(notes: str, name: str | None) -> str:
@@ -161,18 +159,6 @@ def done_by_notes(notes: str, name: str | None) -> str:
         # The block only said who did it: a one-off goes back to its own notes.
         return block.details
     return _with_lines(notes, [("Done by", name)] if name else [], drop="done_by")
-
-
-def earned_notes(notes: str, points: float | None) -> str:
-    """Notes saying what checking the chore off earned (``Earned``), or with that line taken
-    out when ``points`` is None. Notes with nothing to change come back as they were."""
-    block = read_block(notes)
-    value = format_points(points) if points is not None else None
-    if block.every("earned") == ([value] if value else []):
-        return notes
-    if value is None and all(k == "earned" for k, _v in block.lines):
-        return block.details
-    return _with_lines(notes, [("Earned", value)] if value else [], drop="earned")
 
 
 def skip_notes(notes: str, skip: str | None) -> str:
@@ -230,9 +216,6 @@ def plan_changes(
     today: date,
     days_ahead: int,
     school: SchoolDays | None = None,
-    points: PointsSettings | None = None,
-    now: datetime | None = None,
-    people: Mapping[str, str] | None = None,
 ) -> ChangePlan:
     """The changes that bring the kids' lists in line with the templates.
 
@@ -242,9 +225,7 @@ def plan_changes(
     ``school`` says which days are school days and lunches. Without it (the calendars couldn't
     be read), school-days chores are left as they are: none made, changed or removed.
 
-    With ``points`` and ``now``, a chore checked off in the last few days without saying what
-    it earned (say, ticked in the Google Tasks app) gets its ``Earned`` line. ``people`` names
-    everyone who can check one off, by id.
+    A chore still carrying a line from before 0.29.6 (``Points``, ``Earned``) has it taken out.
     """
     last = today + timedelta(days=max(1, days_ahead) - 1)
     by_id = {t.id: t for t in templates}
@@ -275,18 +256,13 @@ def plan_changes(
         if key in have:
             continue
         source = by_id[o.template]
-        changes.append(
-            Make(kid_lists[o.kid], source.title, chore_notes(source.details, source.id, o.due, source.points), o.due)
-        )
+        changes.append(Make(kid_lists[o.kid], source.title, chore_notes(source.details, source.id, o.due), o.due))
 
     for chore in have.values():
         t = by_id.get(chore.template or "")
         assert chore.scheduled is not None
         assert chore.template is not None
         if chore.done:
-            if points is not None and now is not None and _needs_earned(chore, now):
-                value = earned(chore, points, now.tzinfo or UTC, people or {})
-                changes.append(Update(chore.list_id, chore.task.id, notes=earned_notes(chore.task.notes, value)))
             continue
         due = chore.task.due or chore.scheduled
         if due < today:
@@ -320,7 +296,7 @@ def plan_changes(
         if chore.key not in wanted or t is None:
             changes.append(Remove(chore.list_id, chore.task.id))
             continue
-        notes = chore_notes(t.details, t.id, chore.scheduled, t.points)
+        notes = chore_notes(t.details, t.id, chore.scheduled)
         if chore.task.title != t.title or read_block(chore.task.notes) != read_block(notes):
             changes.append(
                 Update(
@@ -331,18 +307,12 @@ def plan_changes(
                 )
             )
 
+    touched = {c.task_id for c in changes if isinstance(c, (Update, Remove))}
+    for chore in have.values():
+        if chore.task.id not in touched and has_stale_lines(chore.task.notes):
+            changes.append(Update(chore.list_id, chore.task.id, notes=_with_lines(chore.task.notes, [])))
+
     return ChangePlan(changes[:MAX_CHANGES], more=len(changes) > MAX_CHANGES)
-
-
-def _needs_earned(chore: Chore, now: datetime) -> bool:
-    done_at = chore.task.completed
-    return (
-        chore.earned is None
-        and not chore.closed
-        and chore.skipped is None
-        and done_at is not None
-        and now - timedelta(days=SCORE_DAYS) < done_at <= now
-    )
 
 
 # What the board shows
@@ -388,6 +358,7 @@ def board_items(
     off earned (``earned``)."""
     last = today + timedelta(days=max(1, days_ahead) - 1)
     by_id = {t.id: t for t in templates}
+    values = seed_points(templates)
     shows = {
         o.key: o.shows_from for o in schedule(templates, today - timedelta(days=62), last + timedelta(days=31), school)
     }
@@ -424,9 +395,8 @@ def board_items(
             "done_by": kid_for(chore.done_by, people or {}) if chore.done and chore.done_by else None,
             "done_by_name": chore.done_by if chore.done else None,
             "missed": len(chore.missed),
-            "points": chore.points,
-            "worth": worth(chore, points) if points is not None else None,
-            "earned": earned(chore, points, tz, people or {}) if points is not None else None,
+            "worth": worth(chore, points, values) if points is not None else None,
+            "earned": earned(chore, points, tz, people or {}, values) if points is not None else None,
             "template": chore.template,
             "for_day": chore.scheduled.isoformat() if night_before and chore.scheduled else None,
         }

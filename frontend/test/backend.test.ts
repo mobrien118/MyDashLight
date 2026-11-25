@@ -255,7 +255,6 @@ function sampleChore(): ChoresPayload["chores"][number] {
     state: "open",
     done_at: null,
     missed: 0,
-    points: null,
     template: null,
     order: 0,
   };

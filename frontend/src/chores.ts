@@ -31,7 +31,6 @@ export interface Chore {
   done_by_name?: string | null;
   /** Days missed so far. */
   missed: number;
-  points: number | null;
   /** What it's worth done on time (MyDashLight 0.29 and later). */
   worth?: number | null;
   /** What checking it off earned, or null while it's open. Can be 0.5 (MyDashLight 0.29 and later). */

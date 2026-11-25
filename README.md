@@ -429,9 +429,10 @@ Each chore on a kid's list has the template's title and details, and a Chore blo
 - **Template changed:** chores coming up that aren't done yet follow it (new title, day or kid).
   Done chores and chores whose day has passed never change, so the history stays true.
 
-**Points.** Each check-off earns points, written on the chore as `Earned: <points>` so a setting
-changed later never changes what was earned. A chore checked off in the Google Tasks app gets its
-line on the next read.
+**Points.** Nothing about points is written on the chores. MyDashLight works them out each time
+from who checked a chore off and when, its seed's Points as they are now, and the settings, so
+changing a chore's points or a setting counts for check-offs already made too. A chore whose seed
+is gone counts at the default. Lines older versions wrote (`Points`, `Earned`) are taken out.
 
 | Done | Earns |
 | --- | --- |

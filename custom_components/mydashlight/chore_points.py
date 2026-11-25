@@ -2,7 +2,8 @@
 
 The rules, kept simple on purpose:
 
-* A chore is worth its seed's ``Points`` line, or the default points when it has none.
+* A chore is worth its seed's ``Points`` line as it is now, or the default points when the seed
+  has none (or is gone).
 * Done on time by the kid it's for: all of it.
 * Done late: the late share (half, unless set otherwise), whoever does it, the kid it's for
   included. Keep the share under 100%, or two kids would earn more by swapping their chores
@@ -13,8 +14,8 @@ The rules, kept simple on purpose:
 
 A chore is late once its due day is over. Google Tasks keeps due dates without a time.
 
-What a check-off earned is written on the task (``Earned``), so changing a setting later never
-changes what was earned before.
+Nothing earned is written down: points are worked out from the chore's current value and the
+settings each time, so changing a value or a setting counts for check-offs already made too.
 
 Pure module, no Home Assistant imports.
 """
@@ -47,9 +48,10 @@ class PointsSettings:
     open_after: timedelta = timedelta(hours=DEFAULT_OPEN_AFTER)
 
 
-def worth(chore: Chore, settings: PointsSettings) -> int:
-    """What the chore is worth done on time."""
-    return settings.default if chore.points is None else max(0, chore.points)
+def worth(chore: Chore, settings: PointsSettings, values: Mapping[str, int | None]) -> int:
+    """What the chore is worth done on time. ``values`` gives each seed's ``Points``, by seed id."""
+    points = values.get(chore.template) if chore.template else None
+    return settings.default if points is None else max(0, points)
 
 
 def late_after(chore: Chore, tz: tzinfo) -> datetime | None:
@@ -72,15 +74,14 @@ def earned(
     settings: PointsSettings,
     tz: tzinfo,
     people: Mapping[str, str],
+    values: Mapping[str, int | None],
 ) -> float | None:
-    """What the check-off earned, or None while the chore is open. The ``Earned`` line wins."""
+    """What the check-off earned, or None while the chore is open."""
     if not chore.done:
         return None
     if chore.closed or chore.skipped:
         return 0.0
-    if chore.earned is not None:
-        return chore.earned
-    full = worth(chore, settings)
+    full = worth(chore, settings, values)
     cutoff = late_after(chore, tz)
     done_at = chore.task.completed
     assert done_at is not None
@@ -97,6 +98,7 @@ def scores(
     settings: PointsSettings,
     tz: tzinfo,
     people: Mapping[str, str],
+    values: Mapping[str, int | None],
     now: datetime,
     days: int = SCORE_DAYS,
 ) -> dict[str, float]:
@@ -108,7 +110,7 @@ def scores(
         done_at = chore.task.completed
         if done_at is None or chore.closed or chore.skipped or not since < done_at <= now:
             continue
-        points = earned(chore, settings, tz, people)
+        points = earned(chore, settings, tz, people, values)
         if points:
             who = doer(chore, people)
             out[who] = round(out.get(who, 0.0) + points, 1)
@@ -120,21 +122,6 @@ def leaders(totals: Mapping[str, float], kids: Iterable[str]) -> list[str]:
     kid_scores = {k: totals.get(k, 0.0) for k in kids}
     top = max(kid_scores.values(), default=0.0)
     return [k for k, v in kid_scores.items() if v == top] if top > 0 else []
-
-
-def format_points(value: float) -> str:
-    """``2`` for whole points, ``0.5`` otherwise."""
-    return str(int(value)) if value == int(value) else f"{value:.1f}"
-
-
-def parse_points(value: str | None) -> float | None:
-    if value is None:
-        return None
-    try:
-        number = float(value.strip())
-    except ValueError:
-        return None
-    return number if number >= 0 else None
 
 
 def _share(full: int, percent: int) -> float:

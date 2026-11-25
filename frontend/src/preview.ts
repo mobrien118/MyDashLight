@@ -37,7 +37,6 @@ function sampleChores(plan: Plan): ChoresPayload {
       state: "open",
       done_at: null,
       missed: 0,
-      points: null,
       worth: 1,
       earned: null,
       template: null,
