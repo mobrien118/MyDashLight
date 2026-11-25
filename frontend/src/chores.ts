@@ -137,12 +137,23 @@ function isSchoolMorning(c: Chore, today: string): boolean {
 
 /**
  * The chores as they stand at ``minutes`` past midnight: night-before ones not yet showing are
- * coming up, and once school has started (from 1 PM) ones left over from the morning drop off.
+ * coming up, and once school has started (from 1 PM) ones left over from the morning are missed.
+ * They stay on the board, so one done but not ticked (or ticked off again by mistake) can still
+ * be checked off.
  */
 function atTime(data: ChoresPayload, minutes: number): Chore[] {
-  return data.chores
-    .filter((c) => !(minutes >= EVENING_FROM && isSchoolMorning(c, data.today)))
-    .map((c) => (waitsForEvening(c, data.today, minutes) ? { ...c, state: "upcoming" as const, shows_from: data.today } : c));
+  return data.chores.map((c) =>
+    waitsForEvening(c, data.today, minutes)
+      ? { ...c, state: "upcoming" as const, shows_from: data.today }
+      : minutes >= EVENING_FROM && isSchoolMorning(c, data.today)
+        ? { ...c, state: "overdue" as const }
+        : c,
+  );
+}
+
+/** A school-morning chore left over once school has started: missed, but nothing to chase now. */
+function missedThisMorning(c: Chore, today: string): boolean {
+  return c.state === "overdue" && c.for_day === today;
 }
 
 /** Ready to check off now: today's, this week's or this month's, and overdue ones. */
@@ -256,7 +267,9 @@ export function choreColumns(data: ChoresPayload, colors?: Map<string, KidColor>
 export function choresNeedingAttention(data: ChoresPayload, minutes = 24 * 60): Chore[] {
   return atTime(data, minutes)
     .filter(
-      (c) => c.state === "overdue" || (c.state === "open" && (c.due == null || c.due <= data.today || isEveningBefore(c, data.today))),
+      (c) =>
+        (c.state === "overdue" && !missedThisMorning(c, data.today)) ||
+        (c.state === "open" && (c.due == null || c.due <= data.today || isEveningBefore(c, data.today))),
     )
     .sort((a, b) => (a.state === b.state ? a.order - b.order : a.state === "overdue" ? -1 : 1));
 }
