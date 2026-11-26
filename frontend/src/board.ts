@@ -2176,7 +2176,7 @@ export class MyDashLightBoard extends LitElement {
               <span class="ch-text">
                 <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}</span>
                 <span class="sub-row"
-                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 64 - Math.min(c.sub.length, 12) * 6.4) : nothing}</span
+                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true) : nothing}</span
                 >
               </span>
             </div>`,
@@ -2429,10 +2429,9 @@ export class MyDashLightBoard extends LitElement {
     return kidColor(Math.max(0, i));
   }
 
-  /** "Buy today" or "Bring tomorrow" on a kid's column: what to pack for, glanceable. */
-  /** In a column's heading, `room` is about how many pixels the name leaves: too few for the word
-   * shows only the picture (a bag to bring, a fork and knife to buy), so the name isn't cut off. */
-  private renderLunchChip(kid: string, small = false, room = Infinity): TemplateResult | typeof nothing {
+  /** "Buy today" or "Bring tomorrow" on a kid's column: what to pack for, glanceable. The small one
+   * in a column's heading always shows the whole word; the line beside it gives way instead. */
+  private renderLunchChip(kid: string, small = false): TemplateResult | typeof nothing {
     const data = this.lunch;
     const k = data?.kids.find((x) => x.id === kid);
     if (!data || !k) return nothing;
@@ -2442,11 +2441,6 @@ export class MyDashLightBoard extends LitElement {
     if (!chip) return nothing;
     const word = LUNCH_WORD[chip.lunch];
     const title = `${word} lunch ${chip.when}${chip.menu ? `: ${chip.menu}` : ""}`;
-    if (small && room < 36 + word.length * 7.4) {
-      return html`<span class="lunch-chip ${chip.lunch} small icon" role="img" aria-label=${title} title=${title}
-        >${chip.lunch === "bring" ? BAG : TRAY}</span
-      >`;
-    }
     return html`<span class="lunch-chip ${chip.lunch} ${small ? "small" : ""}" title=${title}
       >${chip.lunch === "bring" ? BAG : TRAY}<span class="lunch-chip-text"
         >${word}${small ? nothing : ` ${chip.when}`}${!small && chip.menu ? html`<span class="lunch-chip-menu"> · ${chip.menu}</span>` : nothing}</span

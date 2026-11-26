@@ -598,7 +598,8 @@ export function columnsFor(
       name: kidName(plan, k),
       dot: colors.get(k)!.color,
       rgb: colors.get(k)!.rgb,
-      sub: `${missing ? "Needs a ride · " : ""}${evs.length} this week`,
+      // A missing ride is the one thing worth the room, so it takes the line on its own.
+      sub: missing ? "Needs a ride" : `${evs.length} this week`,
       subWarn: missing,
     });
     x += kidW + (i < kids.length - 1 ? KID_GAP : 0);

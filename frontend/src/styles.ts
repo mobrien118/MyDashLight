@@ -622,13 +622,13 @@ export const styles = css`
   .sub-row .sub {
     min-width: 0;
   }
+  /* Bring or Buy never shrinks: the count beside it gives way instead. */
   .sub-row .lunch-chip.small {
+    flex: none;
+    max-width: none;
     margin-left: auto;
     height: 18px;
     font-size: 11.5px;
-  }
-  .sub-row .lunch-chip.small.icon {
-    width: 22px;
   }
   .pinned,
   .day-head {
@@ -2856,12 +2856,6 @@ export const styles = css`
     padding: 0 7px;
     gap: 3px;
     font-size: 12px;
-  }
-  .lunch-chip.small.icon {
-    flex: none;
-    width: 26px;
-    padding: 0;
-    justify-content: center;
   }
   .lunch-chip.small svg {
     width: 13px;
