@@ -273,7 +273,7 @@ def test_plan_follows_lunch_picks_and_holds_without_calendars() -> None:
     assert [(c.list_id, c.due.isoformat()) for c in changes if isinstance(c, Make)] == [("list-ava", "2026-11-05")]
 
     thursday = date(2026, 11, 5)
-    made = read_chore(TaskItem("c1", "Pack lunch", chore_notes("", "t1", thursday, None), thursday), "ava", "list-ava")
+    made = read_chore(TaskItem("c1", "Pack lunch", chore_notes("", "t1", thursday), thursday), "ava", "list-ava")
     # Switched to Buy: the chore goes.
     buy = school(ava=[pick_day("b", "Buy", "2026-11-05")])
     assert plan_changes([t], [made], LISTS, TODAY, 3, buy).changes == [Remove("list-ava", "c1")]
@@ -287,7 +287,7 @@ def test_board_says_which_school_day_a_night_before_chore_is_for() -> None:
     friday = date(2026, 11, 6)
     monday = date(2026, 11, 9)
     chores = [
-        read_chore(TaskItem(f"c{d.day}", "Pack lunch", chore_notes("", "t1", d, None), d), "ava", "list-ava")
+        read_chore(TaskItem(f"c{d.day}", "Pack lunch", chore_notes("", "t1", d), d), "ava", "list-ava")
         for d in (friday, monday)
     ]
     items = board_items(chores, [t], ["ava"], thursday, 4, CENTRAL, None, school())

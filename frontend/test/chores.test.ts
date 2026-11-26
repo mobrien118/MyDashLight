@@ -25,6 +25,8 @@ import {
   type Chore,
   type ChoreTemplate,
   type ChoresPayload,
+  pointsLog,
+  pointsNote,
 } from "../src/chores.ts";
 import { kidColor } from "../src/colors.ts";
 
@@ -47,7 +49,6 @@ function chore(kid: string, title: string, extra: Partial<Chore> = {}): Chore {
     state: "open",
     done_at: null,
     missed: 0,
-    points: null,
     template: null,
     order: next,
     ...extra,
@@ -336,4 +337,25 @@ test("editing a template: what's sent, and what stops a save", () => {
   assert.equal(old.repeats, "weekly");
   assert.equal(old.every, 1);
   assert.equal(draftFields({ ...old, repeats: "daily" }).days, "");
+});
+
+test("what each person's points came from", () => {
+  const data = payload([]);
+  data.points = {
+    days: 7,
+    default: 1,
+    scores: { ava: 2.5, ben: 0 },
+    leaders: ["ava"],
+    log: [
+      { id: "1", title: "Bins", icon: null, kid: "ben", by: "ava", done_at: "2026-11-04T15:00:00Z", points: 0.5, late: true },
+      { id: "2", title: "Feed the dog", icon: null, kid: "ava", by: "ava", done_at: "2026-11-03T13:00:00Z", points: 2, late: false },
+      { id: "3", title: "Tidy room", icon: null, kid: "cleo", by: "ava", done_at: "2026-11-03T13:00:00Z", points: 0, late: false },
+      { id: "4", title: "Make bed", icon: null, kid: "ben", by: "ben", done_at: "2026-11-03T13:00:00Z", points: 1, late: false },
+    ],
+  };
+  const ava = pointsLog(data, "ava");
+  assert.deepEqual(ava.map((e) => e.title), ["Bins", "Feed the dog", "Tidy room"]);
+  assert.equal(pointsNote(ava[0]!, data), "9:00 AM · late · from Ben");
+  assert.equal(pointsNote(ava[1]!, data), "Tue 7:00 AM");
+  assert.equal(pointsNote(ava[2]!, data), "Tue 7:00 AM · from Cleo · a favor");
 });

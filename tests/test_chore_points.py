@@ -9,20 +9,21 @@ import pytest
 
 from custom_components.mydashlight.chore_points import (
     PointsSettings,
+    checkoffs,
     earned,
-    format_points,
     leaders,
-    parse_points,
     scores,
     worth,
 )
 from custom_components.mydashlight.chore_rules import read_block, write_block
-from custom_components.mydashlight.chores import Chore, TaskItem, chore_notes, earned_notes, read_chore, skip_notes
+from custom_components.mydashlight.chores import Chore, TaskItem, chore_notes, read_chore, skip_notes
 
 CENTRAL = ZoneInfo("America/Chicago")
 PEOPLE = {"ava": "Ava", "ben": "Ben", "mom": "Robin", "dad": "Sam"}
 DUE = date(2026, 11, 4)  # a Wednesday
 SETTINGS = PointsSettings()
+VALUES = {"t1": 2}
+"""The seed's Points, by seed id."""
 
 
 def at(day: int, hour: int) -> datetime:
@@ -31,28 +32,28 @@ def at(day: int, hour: int) -> datetime:
 
 def chore(
     *,
-    points: int | None = 2,
     done_at: datetime | None = None,
     by: str | None = None,
     kid: str = "ava",
     extra: str = "",
+    template: str = "t1",
 ) -> Chore:
-    notes = chore_notes("", "t1", DUE, points)
+    notes = chore_notes("", template, DUE)
     if by or extra:
         block = read_block(notes)
-        lines = [("From", "t1"), ("For", DUE.isoformat())]
-        if points is not None:
-            lines.append(("Points", str(points)))
+        lines = [("From", template), ("For", DUE.isoformat())]
         if by:
             lines.append(("Done by", by))
         notes = write_block(block.details, lines) + extra
     return read_chore(TaskItem("c1", "Vacuum", notes, DUE, done_at), kid, f"list-{kid}")
 
 
-def test_worth() -> None:
-    assert worth(chore(points=3), SETTINGS) == 3
-    assert worth(chore(points=None), PointsSettings(default=2)) == 2
-    assert worth(chore(points=0), SETTINGS) == 0
+def test_worth_is_the_seeds_points_now() -> None:
+    assert worth(chore(), SETTINGS, {"t1": 3}) == 3
+    assert worth(chore(), PointsSettings(default=2), {"t1": None}) == 2
+    assert worth(chore(), SETTINGS, {"t1": 0}) == 0
+    # The seed is gone, or it's a one-off: the default.
+    assert worth(chore(template="gone"), PointsSettings(default=2), VALUES) == 2
 
 
 @pytest.mark.parametrize(
@@ -69,41 +70,37 @@ def test_worth() -> None:
     ],
 )
 def test_earned(done_at: datetime | None, by: str | None, points: float | None) -> None:
-    assert earned(chore(done_at=done_at, by=by), SETTINGS, CENTRAL, PEOPLE) == points
+    assert earned(chore(done_at=done_at, by=by), SETTINGS, CENTRAL, PEOPLE, VALUES) == points
 
 
 def test_waiting_before_others_earn_a_late_chore() -> None:
     wait = PointsSettings(open_after=timedelta(hours=12))
-    assert earned(chore(done_at=at(5, 7), by="Ben"), wait, CENTRAL, PEOPLE) == 0.0
-    assert earned(chore(done_at=at(5, 13), by="Ben"), wait, CENTRAL, PEOPLE) == 1.0
+    assert earned(chore(done_at=at(5, 7), by="Ben"), wait, CENTRAL, PEOPLE, VALUES) == 0.0
+    assert earned(chore(done_at=at(5, 13), by="Ben"), wait, CENTRAL, PEOPLE, VALUES) == 1.0
     # The kid it's for gets the late share straight away.
-    assert earned(chore(done_at=at(5, 7), by="Ava"), wait, CENTRAL, PEOPLE) == 1.0
+    assert earned(chore(done_at=at(5, 7), by="Ava"), wait, CENTRAL, PEOPLE, VALUES) == 1.0
 
 
 def test_late_share_and_odd_points() -> None:
-    assert earned(chore(points=1, done_at=at(5, 7)), SETTINGS, CENTRAL, PEOPLE) == 0.5
-    assert earned(chore(points=3, done_at=at(5, 7)), PointsSettings(late_share=0), CENTRAL, PEOPLE) == 0.0
-    assert earned(chore(points=0, done_at=at(4, 12)), SETTINGS, CENTRAL, PEOPLE) == 0.0
+    assert earned(chore(done_at=at(5, 7)), SETTINGS, CENTRAL, PEOPLE, {"t1": 1}) == 0.5
+    assert earned(chore(done_at=at(5, 7)), PointsSettings(late_share=0), CENTRAL, PEOPLE, {"t1": 3}) == 0.0
+    assert earned(chore(done_at=at(4, 12)), SETTINGS, CENTRAL, PEOPLE, {"t1": 0}) == 0.0
 
 
-def test_the_earned_line_wins_and_missed_chores_earn_nothing() -> None:
-    saved = chore(done_at=at(4, 12), extra="\nEarned: 1.5")
-    assert saved.earned == 1.5
-    assert earned(saved, SETTINGS, CENTRAL, PEOPLE) == 1.5
+def test_points_follow_the_seed_and_settings_as_they_are_now() -> None:
+    """Nothing earned is kept: a check-off already made counts at the new value."""
+    done = chore(done_at=at(5, 7))  # late, by the kid it's for
+    assert earned(done, SETTINGS, CENTRAL, PEOPLE, {"t1": 2}) == 1.0
+    assert earned(done, SETTINGS, CENTRAL, PEOPLE, {"t1": 4}) == 2.0
+    assert earned(done, PointsSettings(late_share=75), CENTRAL, PEOPLE, {"t1": 4}) == 3.0
+    # An old Earned or Points line on the chore is ignored.
+    old = chore(done_at=at(4, 12), extra="\nPoints: 1\nEarned: 1.5")
+    assert earned(old, SETTINGS, CENTRAL, PEOPLE, {"t1": 4}) == 4.0
+
+
+def test_missed_chores_earn_nothing() -> None:
     closed = chore(done_at=at(6, 0), extra="\nMissed: 2026-11-04\nClosed: missed")
-    assert earned(closed, SETTINGS, CENTRAL, PEOPLE) == 0.0
-
-
-def test_earned_notes() -> None:
-    notes = chore_notes("Both floors.", "t1", DUE, 2)
-    with_points = earned_notes(notes, 1.5)
-    assert read_block(with_points).every("earned") == ["1.5"]
-    assert read_block(with_points).details == "Both floors."
-    assert earned_notes(with_points, 1.5) == with_points
-    assert read_block(earned_notes(with_points, 2)).every("earned") == ["2"]
-    assert read_block(earned_notes(with_points, None)).every("earned") == []
-    # A one-off whose block only said what it earned goes back to its own notes.
-    assert earned_notes(earned_notes("Just this once", 1), None) == "Just this once"
+    assert earned(closed, SETTINGS, CENTRAL, PEOPLE, VALUES) == 0.0
 
 
 def test_scores_count_the_last_seven_days_for_whoever_did_it() -> None:
@@ -111,12 +108,23 @@ def test_scores_count_the_last_seven_days_for_whoever_did_it() -> None:
     chores = [
         chore(done_at=at(4, 8)),  # just over 7 days ago: not counted
         chore(done_at=at(5, 7), by="Ben"),  # 1 to Ben
-        chore(done_at=at(10, 12), extra="\nEarned: 2"),  # 2 to Ava
-        chore(done_at=at(10, 12), by="Sam", extra="\nEarned: 1"),  # 1 to the parent
+        chore(done_at=at(10, 12)),  # late: 1 to Ava
+        chore(done_at=at(10, 12), by="Sam"),  # late: 1 to the parent
         chore(done_at=at(10, 12), extra="\nMissed: 2026-11-04\nClosed: missed"),
         chore(),  # open
     ]
-    assert scores(chores, SETTINGS, CENTRAL, PEOPLE, now) == {"ava": 2.0, "ben": 1.0, "mom": 0.0, "dad": 1.0}
+    done = checkoffs(chores, SETTINGS, CENTRAL, PEOPLE, VALUES, now)
+    assert scores(done, PEOPLE) == {"ava": 1.0, "ben": 1.0, "mom": 0.0, "dad": 1.0}
+    # Each check-off, newest first: who did it, what it earned, and whether it was late.
+    assert [(c.by, c.points, c.late) for c in done] == [("ava", 1.0, True), ("dad", 1.0, True), ("ben", 1.0, True)]
+    # Worth more now: the week's scores follow.
+    assert scores(checkoffs(chores, SETTINGS, CENTRAL, PEOPLE, {"t1": 4}, now), PEOPLE)["ava"] == 2.0
+
+
+def test_favors_are_listed_at_nothing() -> None:
+    [favor] = checkoffs([chore(done_at=at(4, 12), by="Ben")], SETTINGS, CENTRAL, PEOPLE, VALUES, at(5, 9))
+    assert (favor.by, favor.chore.kid, favor.points, favor.late) == ("ben", "ava", 0.0, False)
+    assert scores([favor], PEOPLE)["ben"] == 0.0
 
 
 def test_leaders() -> None:
@@ -126,27 +134,17 @@ def test_leaders() -> None:
     assert leaders({}, ["ava"]) == []
 
 
-def test_format_and_parse() -> None:
-    assert (format_points(2.0), format_points(0.5)) == ("2", "0.5")
-    assert (parse_points("1.5"), parse_points(" 2 "), parse_points("lots"), parse_points("-1")) == (
-        1.5,
-        2.0,
-        None,
-        None,
-    )
-
-
 @pytest.mark.parametrize("skip", ["skipped", "excused"])
 def test_skipped_and_excused_earn_nothing(skip: str) -> None:
     closed = chore(done_at=at(4, 12), extra=f"\nClosed: {skip}\nEarned: 2")
     assert closed.skipped == skip
     assert not closed.closed
-    assert earned(closed, SETTINGS, CENTRAL, PEOPLE) == 0.0
-    assert scores([closed], SETTINGS, CENTRAL, PEOPLE, at(5, 9))["ava"] == 0.0
+    assert earned(closed, SETTINGS, CENTRAL, PEOPLE, VALUES) == 0.0
+    assert checkoffs([closed], SETTINGS, CENTRAL, PEOPLE, VALUES, at(5, 9)) == []
 
 
 def test_skip_notes() -> None:
-    notes = chore_notes("Both floors.", "t1", DUE, 2)
+    notes = chore_notes("Both floors.", "t1", DUE)
     skipped = skip_notes(notes, "skipped")
     assert read_block(skipped).every("closed") == ["skipped"]
     assert skip_notes(skipped, "skipped") == skipped

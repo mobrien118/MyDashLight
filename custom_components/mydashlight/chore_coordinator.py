@@ -21,9 +21,21 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .chore_points import SCORE_DAYS, leaders, scores
+from .chore_points import SCORE_DAYS, checkoffs, leaders, scores
 from .chore_rules import SchoolDays, Template, parse_template, read_block, template_notes
-from .chores import Chore, Make, Remove, TaskItem, Update, board_items, plan_changes, read_chore, template_item
+from .chores import (
+    Chore,
+    Make,
+    Remove,
+    TaskItem,
+    Update,
+    board_items,
+    checkoff_item,
+    plan_changes,
+    read_chore,
+    seed_points,
+    template_item,
+)
 from .const import (
     CHORE_UPDATE_SECONDS,
     DOMAIN,
@@ -165,9 +177,6 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
                 today,
                 self.settings.chore_days_ahead,
                 school,
-                self.settings.points,
-                now,
-                self.people,
             )
             if not plan.changes:
                 break
@@ -329,12 +338,15 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
 
     def _points(self, data: ChoreData, tz: tzinfo) -> dict[str, Any]:
         """Everyone's points for the last few days, and the kids in the lead."""
-        totals = scores(data.chores, self.settings.points, tz, self.people, dt_util.now(tz))
+        values = seed_points(data.templates)
+        done = checkoffs(data.chores, self.settings.points, tz, self.people, values, dt_util.now(tz))
+        totals = scores(done, self.people)
         return {
             "days": SCORE_DAYS,
             "default": self.settings.points.default,
             "scores": totals,
             "leaders": leaders(totals, self.kids),
+            "log": [checkoff_item(c) for c in done],
         }
 
     def payload(self) -> dict[str, Any] | None:

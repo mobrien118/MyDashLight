@@ -2,7 +2,7 @@
 
 import { PreviewBackend } from "./backend.ts";
 import "./board.ts";
-import type { Chore, ChoresPayload, ChoreTemplate } from "./chores.ts";
+import type { Chore, ChoresPayload, ChoreTemplate, PointsEntry } from "./chores.ts";
 import { addDays, weekday, type LunchPayload } from "./lunch.ts";
 import { nowIn } from "./format.ts";
 import type { Plan } from "./types.ts";
@@ -37,7 +37,6 @@ function sampleChores(plan: Plan): ChoresPayload {
       state: "open",
       done_at: null,
       missed: 0,
-      points: null,
       worth: 1,
       earned: null,
       template: null,
@@ -83,7 +82,38 @@ function samplePoints(plan: Plan, kids: string[]): NonNullable<ChoresPayload["po
     if (kids[i]) scores[kids[i]!] = n;
   });
   (plan.people?.drivers ?? []).forEach((d, i) => (scores[d.id] = i ? 2 : 4));
-  return { days: 7, default: 1, scores, leaders: kids.length ? [kids[0]!] : [] };
+  const [a = "", b = "", c = ""] = kids;
+  const ago = (days: number, hour: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    d.setUTCHours(hour + 6, 12, 0, 0); // the sample family is on Central time
+    return d.toISOString();
+  };
+  const log: PointsEntry[] = [];
+  const add = (by: string, kid: string, icon: string, title: string, points: number, days: number, hour: number, late = false): void => {
+    if (by && kid) log.push({ id: `log${log.length}`, title, icon, kid, by, done_at: ago(days, hour), points, late });
+  };
+  add(a, a, "🛏️", "Make bed", 1, 0, 7);
+  add(c, a, "🐕", "Feed the dog", 0, 0, 7);
+  add(a, b, "🧻", "Restock TP", 1.5, 1, 18, true);
+  add(a, a, "🧹", "Vacuum stairs", 4, 2, 16);
+  add(a, a, "🐕", "Feed the dog", 2, 2, 7);
+  add(a, a, "🐕", "Feed the dog", 2, 3, 7);
+  add(a, a, "🛏️", "Make bed", 0.5, 4, 9, true);
+  add(a, a, "🛏️", "Make bed", 1, 5, 7);
+  add(b, b, "🍽️", "Clear the table", 2, 0, 19);
+  add(b, b, "🍽️", "Clear the table", 2, 1, 19);
+  add(b, b, "🧺", "Put away laundry", 3, 3, 17);
+  add(b, b, "🛏️", "Make bed", 1, 4, 7);
+  add(b, b, "🛏️", "Make bed", 1, 5, 7);
+  add(b, b, "🛏️", "Make bed", 0.5, 6, 10, true);
+  add(c, c, "🛏️", "Make bed", 1, 0, 7);
+  add(c, c, "🪥", "Brush teeth", 1, 0, 8);
+  add(c, c, "🧸", "Tidy room", 2, 2, 17);
+  add(c, c, "🧸", "Tidy room", 2, 4, 17);
+  add(c, c, "🛏️", "Make bed", 1, 5, 7);
+  log.sort((x, y) => (y.done_at ?? "").localeCompare(x.done_at ?? ""));
+  return { days: 7, default: 1, scores, leaders: kids.length ? [kids[0]!] : [], log };
 }
 
 /** The templates behind the sample chores, plus one typed into Google Tasks and not set up yet. */

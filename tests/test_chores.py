@@ -45,7 +45,7 @@ def chore(
     extra: str = "",
     details: str = "Details.",
 ) -> Chore:
-    notes = chore_notes(details, tid, due, None, missed) + extra
+    notes = chore_notes(details, tid, due, missed) + extra
     return read_chore(TaskItem(task_id, title, notes, due, done), kid, LISTS[kid])
 
 
@@ -240,7 +240,7 @@ def test_done_after_the_due_day_is_late() -> None:
 
 
 def test_done_by_notes_add_change_and_remove_the_line() -> None:
-    notes = chore_notes("Details.", "t1", TODAY, None)
+    notes = chore_notes("Details.", "t1", TODAY)
     by_ava = done_by_notes(notes, "Ava")
     assert by_ava == "Details.\n\n--- Chore ---\nFrom: t1\nFor: 2026-11-04\nDone by: Ava"
     assert done_by_notes(by_ava, "Ava") is by_ava
@@ -267,6 +267,6 @@ def test_done_by_on_the_board_and_ignored_by_the_engine() -> None:
     reopened = chore("c", TODAY + timedelta(days=1), extra="\nDone by: Ava")
     assert board_items([reopened], [t], ["ava"], TODAY, 7, CENTRAL, people)[0]["done_by"] is None
     changes = plan([t], [reopened])
-    assert Update("list-ava", "c", notes=chore_notes("Details.", "t1", TODAY + timedelta(days=1), None)) in changes
+    assert Update("list-ava", "c", notes=chore_notes("Details.", "t1", TODAY + timedelta(days=1))) in changes
     # A done chore's line is never touched.
     assert not any(getattr(c, "task_id", None) == "a" for c in plan([t], [sniped]))

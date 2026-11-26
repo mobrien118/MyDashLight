@@ -367,6 +367,7 @@ async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> 
         "default": 1,
         "scores": dict.fromkeys((AVA, BEN, "mom", "dad"), 0.0),
         "leaders": [],
+        "log": [],
     }
     today = next(c for c in chores["chores"] if c["due"] == "2026-11-04")
     assert (today["worth"], today["earned"]) == (2, None)
@@ -374,9 +375,9 @@ async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> 
     def saved() -> dict[str, Any]:
         return next(t for t in tasks.items("Chores: Ava") if t["id"] == today["id"])
 
-    # Done on time by the kid it's for: all of it, written on the chore.
+    # Done on time by the kid it's for: all of it. Only who did it is written on the chore.
     await call(hass, "set_chore_done", chore=today["id"])
-    assert read_block(saved()["notes"]).every("earned") == ["2"]
+    assert read_block(saved()["notes"]).lines == (("from", "cat"), ("for", "2026-11-04"), ("done_by", "Ava"))
     chores = await call(hass, "get_chores")
     assert next(c for c in chores["chores"] if c["id"] == today["id"])["earned"] == 2
     assert chores["points"]["scores"][AVA] == 2
@@ -384,14 +385,29 @@ async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> 
 
     # Ben did it before it was late: a favor, worth nothing.
     await call(hass, "set_chore_done", chore=today["id"], by="Ben")
-    assert read_block(saved()["notes"]).every("earned") == ["0"]
     chores = await call(hass, "get_chores")
     assert (chores["points"]["scores"][AVA], chores["points"]["scores"][BEN]) == (0, 0)
     assert chores["points"]["leaders"] == []
 
-    # Opened again: the line goes.
-    await call(hass, "set_chore_done", chore=today["id"], done=False)
-    assert read_block(saved()["notes"]).every("earned") == []
+    # Ava after all, then the chore made worth more: what she has follows.
+    await call(hass, "set_chore_done", chore=today["id"], by="Ava")
+    await call(
+        hass, "save_chore_template", template="cat", repeats="daily", title="Feed the cat", who=["Ava"], points=5
+    )
+    chores = await call(hass, "get_chores")
+    assert next(c for c in chores["chores"] if c["id"] == today["id"])["earned"] == 5
+    assert chores["points"]["scores"][AVA] == 5
+    [entry] = chores["points"]["log"]
+    assert entry == {
+        "id": today["id"],
+        "title": "Feed the cat",
+        "icon": None,
+        "kid": AVA,
+        "by": AVA,
+        "done_at": entry["done_at"],
+        "points": 5,
+        "late": False,
+    }
 
 
 async def test_a_late_chore_earns_the_late_share_for_whoever_does_it(
@@ -414,21 +430,42 @@ async def test_a_late_chore_earns_the_late_share_for_whoever_does_it(
     assert late["state"] == "overdue"
 
     await call(hass, "set_chore_done", chore=wednesday["id"], by="Ben")
-    saved = next(t for t in tasks.items("Chores: Ava") if t["id"] == wednesday["id"])
-    assert read_block(saved["notes"]).every("earned") == ["1"]
     assert (await call(hass, "get_chores"))["points"]["scores"][BEN] == 1
 
 
-async def test_a_chore_ticked_in_google_gets_what_it_earned(hass: HomeAssistant, tasks: FakeTasks) -> None:
+async def test_a_chore_ticked_in_google_counts_too(hass: HomeAssistant, tasks: FakeTasks) -> None:
     seeds = tasks.add_list(SEEDS)
     tasks.add(seeds, "Feed the cat", "--- Chore ---\nId: cat\nRepeats: Every day\nWho: Ava\nStarts: 2026-11-01")
     entry = await load(hass)
     task = next(t for t in tasks.items("Chores: Ava") if t["due"].startswith("2026-11-04"))
-    # Ticked in the Google Tasks app: no Done by line, nothing earned written.
+    # Ticked in the Google Tasks app: no Done by line. Nothing needs writing.
     task.update(status="completed", completed="2026-11-04T14:00:00.000Z")
     await refresh(hass, entry)
-    assert read_block(task["notes"]).every("earned") == ["1"]
+    assert read_block(task["notes"]).every("done_by") == []
     assert (await call(hass, "get_chores"))["points"]["scores"][AVA] == 1
+
+
+async def test_old_points_and_earned_lines_are_taken_off(hass: HomeAssistant, tasks: FakeTasks) -> None:
+    """Before 0.29.6 chores carried a copy of their points and what a check-off earned."""
+    seeds = tasks.add_list(SEEDS)
+    tasks.add(
+        seeds, "Feed the cat", "--- Chore ---\nId: cat\nRepeats: Every day\nWho: Ava\nPoints: 3\nStarts: 2026-11-01"
+    )
+    kid = tasks.add_list("Chores: Ava")
+    old = "Bowl by the door.\n\n--- Chore ---\nFrom: cat\nFor: {day}\nPoints: 1\nDone by: Ava\nEarned: 1"
+    done = tasks.add(kid, "Feed the cat", old.format(day="2026-11-03"), due="2026-11-03")
+    done.update(status="completed", completed="2026-11-03T14:00:00.000Z")
+    coming = tasks.add(
+        kid, "Feed the cat", old.format(day="2026-11-05").replace("\nDone by: Ava\nEarned: 1", ""), due="2026-11-05"
+    )
+    await load(hass)
+    for task in (done, coming):
+        block = read_block(task["notes"])
+        assert (block.every("points"), block.every("earned")) == ([], [])
+    done_block = read_block(done["notes"])
+    assert (done_block.details, done_block.every("done_by")) == ("Bowl by the door.", ["Ava"])
+    # Counted at the seed's points now, not the old copy.
+    assert (await call(hass, "get_chores"))["points"]["scores"][AVA] == 3
 
 
 async def test_skip_or_excuse_a_chore(hass: HomeAssistant, tasks: FakeTasks, freezer: FrozenDateTimeFactory) -> None:
@@ -453,7 +490,7 @@ async def test_skip_or_excuse_a_chore(hass: HomeAssistant, tasks: FakeTasks, fre
     assert (await row())["earned"] == 2
     await call(hass, "set_chore_done", chore=wednesday["id"], skip="skipped", by="mom")
     block = read_block(saved()["notes"])
-    assert (block.every("closed"), block.every("earned"), block.every("done_by")) == (["skipped"], [], ["Robin"])
+    assert (block.every("closed"), block.every("done_by")) == (["skipped"], ["Robin"])
     assert saved()["status"] == "completed"
     skipped = await row()
     assert (skipped["state"], skipped["earned"]) == ("skipped", 0)
@@ -469,7 +506,7 @@ async def test_skip_or_excuse_a_chore(hass: HomeAssistant, tasks: FakeTasks, fre
     tasks.now = "2026-11-05T15:00:00.000Z"
     await refresh(hass, entry)
     block = read_block(saved()["notes"])
-    assert (block.every("missed"), block.every("earned")) == ([], [])
+    assert block.every("missed") == []
     assert all(c["id"] != wednesday["id"] for c in (await call(hass, "get_chores"))["chores"])
 
     # Opened again: the line goes, and it's overdue like any other.
@@ -480,7 +517,7 @@ async def test_skip_or_excuse_a_chore(hass: HomeAssistant, tasks: FakeTasks, fre
 
     # Then done late by Ben after all: the late share, as usual.
     await call(hass, "set_chore_done", chore=wednesday["id"], by="Ben")
-    assert read_block(saved()["notes"]).every("earned") == ["1"]
+    assert (await call(hass, "get_chores"))["points"]["scores"][BEN] == 1
 
     with pytest.raises(vol.Invalid):
         await call(hass, "set_chore_done", chore=wednesday["id"], skip="lazy")
