@@ -446,7 +446,9 @@ is gone counts at the default. Lines older versions wrote (`Points`, `Earned`) a
 turns late before someone else earns points for it. Keep the late share under 100%, or two kids
 would earn more by swapping their chores than by doing their own. `get_chores` returns each
 chore's `worth` and `earned`, and under `points`, everyone's `scores` for the last 7 days (kids
-and parents, by id) and the `leaders`: the kids with the most, or none while everyone has 0.
+and parents, by id), the `leaders` (the kids with the most, or none while everyone has 0), and the
+`log`: each check-off counted, newest first, with who did it, who it was for, when, its points and
+whether it was late. The board's **Points this week** button shows it.
 
 The actions: `mydashlight.get_chores` returns the chores the board shows (each kid's open and
 overdue chores, those coming up, and those done today) and the templates;

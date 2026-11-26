@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, tzinfo
 from typing import Any, Final, Literal
 
-from .chore_points import PointsSettings, earned, worth
+from .chore_points import Checkoff, PointsSettings, earned, worth
 from .chore_rules import (
     Repeats,
     SchoolDays,
@@ -413,6 +413,22 @@ def board_items(
     for i, (_order, row) in enumerate(rows):
         row["order"] = i
     return [row for _order, row in rows]
+
+
+def checkoff_item(c: Checkoff) -> dict[str, Any]:
+    """A check-off as the board's points view shows it."""
+    icon, title = split_icon(c.chore.task.title)
+    done_at = c.chore.task.completed
+    return {
+        "id": c.chore.task.id,
+        "title": title,
+        "icon": icon,
+        "kid": c.chore.kid,
+        "by": c.by,
+        "done_at": done_at.isoformat() if done_at else None,
+        "points": c.points,
+        "late": c.late,
+    }
 
 
 def template_item(template: Template) -> dict[str, Any]:

@@ -53,6 +53,38 @@ export interface ChorePoints {
   scores: Record<string, number>;
   /** The kids with the most points, ties included; none when nobody has any. */
   leaders: string[];
+  /** Every check-off counted, newest first (MyDashLight 0.29.7 and later). */
+  log?: PointsEntry[];
+}
+
+/** A chore checked off in the last few days, and what it earned whoever did it. */
+export interface PointsEntry {
+  id: string;
+  title: string;
+  icon: string | null;
+  /** The kid it was for. */
+  kid: string;
+  /** Who did it: a kid's or a parent's id. */
+  by: string;
+  done_at: string | null;
+  points: number;
+  late: boolean;
+}
+
+/** What ``person`` checked off in the last few days, newest first. */
+export function pointsLog(data: ChoresPayload, person: string): PointsEntry[] {
+  return (data.points?.log ?? []).filter((e) => e.by === person);
+}
+
+/** "Mon 4:12 PM · late · from Ava": when, and how it was earned. */
+export function pointsNote(e: PointsEntry, data: ChoresPayload): string {
+  const parts = [e.done_at ? doneTime(e.done_at, data.today, data.time_zone) : ""];
+  if (e.late) parts.push("late");
+  if (e.kid !== e.by) {
+    parts.push(`from ${data.kids.find((k) => k.id === e.kid)?.name ?? "someone else"}`);
+    if (!e.late && !e.points) parts.push("a favor");
+  }
+  return parts.filter(Boolean).join(" · ");
 }
 
 export interface Person {

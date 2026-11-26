@@ -2057,6 +2057,87 @@ export const styles = css`
     font-size: 13px;
     line-height: 18px;
     color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chore-head .ch-text {
+    flex: 1;
+  }
+  /* The name gets the whole first line; the lunch chip sits beside the count below it. */
+  .chore-head .sub-row .sub {
+    flex: none;
+    max-width: 100%;
+  }
+  .chore-head .sub-row .lunch-chip {
+    height: 24px;
+    padding: 0 9px;
+    font-size: 12.5px;
+    max-width: 78%;
+  }
+  .chore-list,
+  .points-log {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .chore-cols.flip .chore-col {
+    animation: card-flip 0.32s ease-out both;
+  }
+  @keyframes card-flip {
+    from {
+      transform: perspective(900px) rotateY(-80deg);
+      opacity: 0.4;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chore-cols.flip .chore-col {
+      animation: none;
+    }
+  }
+  .log-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    background: rgba(var(--rgb), 0.06);
+    border: 1px solid rgba(var(--rgb), 0.14);
+  }
+  .log-row .chore-icon {
+    width: 26px;
+    text-align: center;
+  }
+  .log-row .chore-text {
+    flex: 1;
+  }
+  .log-pts {
+    flex: none;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--k, var(--ink));
+  }
+  .log-row.nothing {
+    background: transparent;
+  }
+  .log-row.nothing .chore-title,
+  .log-row.nothing .log-pts {
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .log-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px 0;
+    margin-top: 2px;
+    border-top: 1px solid var(--line);
+    font-size: 16px;
+    font-weight: 800;
   }
   .chore-group {
     margin: 8px 4px 0;

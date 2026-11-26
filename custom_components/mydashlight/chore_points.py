@@ -93,7 +93,18 @@ def earned(
     return _share(full, settings.late_share)
 
 
-def scores(
+@dataclass(frozen=True, slots=True)
+class Checkoff:
+    """A chore checked off in the last few days: who did it, what it earned, and whether it was late."""
+
+    chore: Chore
+    by: str
+    """Who did it, by id."""
+    points: float
+    late: bool
+
+
+def checkoffs(
     chores: Iterable[Chore],
     settings: PointsSettings,
     tz: tzinfo,
@@ -101,19 +112,35 @@ def scores(
     values: Mapping[str, int | None],
     now: datetime,
     days: int = SCORE_DAYS,
-) -> dict[str, float]:
-    """Everyone's points for chores checked off in the last ``days`` days, by person id.
-    Everyone in ``people`` is listed, with 0 when they earned nothing."""
+) -> list[Checkoff]:
+    """The chores checked off in the last ``days`` days, newest first, favors (worth 0) included.
+    Skipped, excused and missed ones aren't check-offs."""
     since = now - timedelta(days=days)
-    out = dict.fromkeys(people, 0.0)
+    out: list[Checkoff] = []
     for chore in chores:
         done_at = chore.task.completed
         if done_at is None or chore.closed or chore.skipped or not since < done_at <= now:
             continue
-        points = earned(chore, settings, tz, people, values)
-        if points:
-            who = doer(chore, people)
-            out[who] = round(out.get(who, 0.0) + points, 1)
+        cutoff = late_after(chore, tz)
+        out.append(
+            Checkoff(
+                chore,
+                doer(chore, people),
+                earned(chore, settings, tz, people, values) or 0.0,
+                cutoff is not None and done_at >= cutoff,
+            )
+        )
+    out.sort(key=lambda c: c.chore.task.completed or now, reverse=True)
+    return out
+
+
+def scores(done: Iterable[Checkoff], people: Mapping[str, str]) -> dict[str, float]:
+    """Everyone's points from ``done``, by person id. Everyone in ``people`` is listed, with 0
+    when they earned nothing."""
+    out = dict.fromkeys(people, 0.0)
+    for c in done:
+        if c.points:
+            out[c.by] = round(out.get(c.by, 0.0) + c.points, 1)
     return out
 
 

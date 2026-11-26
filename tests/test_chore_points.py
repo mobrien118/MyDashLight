@@ -9,6 +9,7 @@ import pytest
 
 from custom_components.mydashlight.chore_points import (
     PointsSettings,
+    checkoffs,
     earned,
     leaders,
     scores,
@@ -112,9 +113,18 @@ def test_scores_count_the_last_seven_days_for_whoever_did_it() -> None:
         chore(done_at=at(10, 12), extra="\nMissed: 2026-11-04\nClosed: missed"),
         chore(),  # open
     ]
-    assert scores(chores, SETTINGS, CENTRAL, PEOPLE, VALUES, now) == {"ava": 1.0, "ben": 1.0, "mom": 0.0, "dad": 1.0}
+    done = checkoffs(chores, SETTINGS, CENTRAL, PEOPLE, VALUES, now)
+    assert scores(done, PEOPLE) == {"ava": 1.0, "ben": 1.0, "mom": 0.0, "dad": 1.0}
+    # Each check-off, newest first: who did it, what it earned, and whether it was late.
+    assert [(c.by, c.points, c.late) for c in done] == [("ava", 1.0, True), ("dad", 1.0, True), ("ben", 1.0, True)]
     # Worth more now: the week's scores follow.
-    assert scores(chores, SETTINGS, CENTRAL, PEOPLE, {"t1": 4}, now)["ava"] == 2.0
+    assert scores(checkoffs(chores, SETTINGS, CENTRAL, PEOPLE, {"t1": 4}, now), PEOPLE)["ava"] == 2.0
+
+
+def test_favors_are_listed_at_nothing() -> None:
+    [favor] = checkoffs([chore(done_at=at(4, 12), by="Ben")], SETTINGS, CENTRAL, PEOPLE, VALUES, at(5, 9))
+    assert (favor.by, favor.chore.kid, favor.points, favor.late) == ("ben", "ava", 0.0, False)
+    assert scores([favor], PEOPLE)["ben"] == 0.0
 
 
 def test_leaders() -> None:
@@ -130,7 +140,7 @@ def test_skipped_and_excused_earn_nothing(skip: str) -> None:
     assert closed.skipped == skip
     assert not closed.closed
     assert earned(closed, SETTINGS, CENTRAL, PEOPLE, VALUES) == 0.0
-    assert scores([closed], SETTINGS, CENTRAL, PEOPLE, VALUES, at(5, 9))["ava"] == 0.0
+    assert checkoffs([closed], SETTINGS, CENTRAL, PEOPLE, VALUES, at(5, 9)) == []
 
 
 def test_skip_notes() -> None:

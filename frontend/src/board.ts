@@ -69,6 +69,9 @@ import {
   type Repeats,
   isDone,
   isLeader,
+  pointsLog,
+  pointsNote,
+  type ChoreColumn,
   isSkip,
   isDoable,
   noChoresYet,
@@ -159,6 +162,7 @@ function localZone(): string {
 const PLUS = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>`;
 /** A note: the event has notes people wrote, shown on hover or a held finger. */
 const NOTE = svg`<svg class="note-mark" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M5 3h10l4 4v14H5zM9 11h6M9 15h6"/></svg>`;
+const STAR = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3.2l2.7 5.5 6 .9-4.35 4.25 1.03 6-5.38-2.83-5.38 2.83 1.03-6L3.3 9.6l6-.9z"/></svg>`;
 const PENCIL = svg`<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.3V20h2.7l9.9-9.9-2.7-2.7zM19.7 7a1 1 0 0 0 0-1.4l-1.3-1.3a1 1 0 0 0-1.4 0l-1.2 1.2 2.7 2.7z"/></svg>`;
 /** Pictures for a chore; a kitchen screen has no emoji keyboard. */
 /** Every emoji, for the chore picture's More button: served with the app, so it works offline. */
@@ -337,6 +341,7 @@ export class MyDashLightBoard extends LitElement {
     choreDraft: { state: true },
     pointsFlash: { state: true },
     manage: { state: true },
+    totals: { state: true },
     choreEdit: { state: true },
     choreBusy: { state: true },
     removeArmed: { state: true },
@@ -396,6 +401,10 @@ export class MyDashLightBoard extends LitElement {
   declare pointsFlash: ReadonlyMap<string, number>;
   /** The chores page shows the list of chores to change instead of each kid's chores. */
   declare manage: boolean;
+  /** The chores page shows the cards flipped over: what each kid's points this week came from. */
+  declare totals: boolean;
+  /** The cards turn over until then (ms), when the points view is opened or closed. */
+  private flipUntil = 0;
   /** A chore being added or changed in the panel. */
   declare choreEdit: ChoreDraft | null;
   declare choreBusy: boolean;
@@ -494,6 +503,7 @@ export class MyDashLightBoard extends LitElement {
     this.choreDraft = new Map();
     this.pointsFlash = new Map();
     this.manage = false;
+    this.totals = false;
     this.choreEdit = null;
     this.choreBusy = false;
     this.iconMore = false;
@@ -814,6 +824,7 @@ export class MyDashLightBoard extends LitElement {
     this.closeEditor();
     this.closeChorePanels();
     this.manage = false;
+    this.totals = false;
     this.lunchMonth = null;
     this.lunchKid = null;
     this.menuMode = false;
@@ -2677,7 +2688,14 @@ export class MyDashLightBoard extends LitElement {
     const cols = choreColumns(data, this.plan ? kidColors(this.plan) : undefined, this.today().minutes);
     return html`<div class="chores-scroll">
       <div class="chores-bar">
-        <span class="chores-hint">Tap a chore when it’s done.</span>
+        <span class="chores-hint">${this.totals ? `What each person’s points came from, the last ${data.points?.days ?? 7} days.` : "Tap a chore when it’s done."}</span>
+        ${data.points
+          ? html`<button type="button" class="btn ${this.totals ? "dark" : ""}" aria-pressed=${this.totals ? "true" : "false"} @click=${() => {
+              this.closeChorePanels();
+              this.flipUntil = Date.now() + 400;
+              this.totals = !this.totals;
+            }}>${this.totals ? "Back to chores" : html`${STAR} Points this week`}</button>`
+          : nothing}
         <button type="button" class="btn" @click=${() => this.editChore(null)}>${PLUS} Add a chore</button>
         <button type="button" class="btn" @click=${() => {
           this.closeChorePanels();
@@ -2685,18 +2703,30 @@ export class MyDashLightBoard extends LitElement {
         }}>${PENCIL} Manage chores</button>
       </div>
       ${problems}
-      <div class="chore-cols" style="--n:${cols.length}">
+      <div class="chore-cols ${Date.now() < this.flipUntil ? "flip" : ""}" style="--n:${cols.length}">
         ${cols.map((col) => {
           const left = col.overdue.filter((c) => !this.choreDone(c)).length + col.now.filter((c) => !this.choreDone(c)).length;
-          return html`<section class="chore-col ${isLeader(data, col.kid) ? "leader" : ""}" style="--c:${col.color.color};--rgb:${col.color.rgb}" aria-label=${`${col.name}’s chores`}>
+          return html`<section class="chore-col ${isLeader(data, col.kid) ? "leader" : ""}" style="--c:${col.color.color};--rgb:${col.color.rgb};--k:${col.color.ink}" aria-label=${`${col.name}’s chores`}>
             <div class="chore-head">
               <span class="avatar" aria-hidden="true">${initial(col.name)}</span>
               <span class="ch-text">
                 <span class="name-row"><span class="name">${col.name}</span>${this.renderScore(col.kid)}</span>
-                <span class="sub">${left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span>
+                <span class="sub-row"
+                  ><span class="sub">${this.totals ? doneCount(pointsLog(data, col.kid).length) : left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span
+                  >${this.renderLunchChip(col.kid)}</span
+                >
               </span>
-              ${this.renderLunchChip(col.kid)}
             </div>
+            ${this.totals ? this.renderPointsLog(data, col.kid) : this.renderChoreList(data, col)}
+          </section>`;
+        })}
+      </div>
+    </div>`;
+  }
+
+  /** One kid's chores: missed, to do, done, and coming up. */
+  private renderChoreList(data: ChoresPayload, col: ChoreColumn): TemplateResult {
+    return html`<div class="chore-list">
             ${col.overdue.length
               ? html`<h3 class="chore-group overdue">Missed</h3>
                   ${col.overdue.map((c) => this.renderChoreRow(c))}`
@@ -2716,9 +2746,27 @@ export class MyDashLightBoard extends LitElement {
             ${!col.overdue.length && !col.now.length && !col.done.length && !col.later.length
               ? html`<p class="chore-none">No chores this week.</p>`
               : nothing}
-          </section>`;
-        })}
-      </div>
+          </div>`;
+  }
+
+  /** The back of a kid's card: each chore they did in the last few days and what it earned. */
+  private renderPointsLog(data: ChoresPayload, kid: string): TemplateResult {
+    const log = pointsLog(data, kid);
+    const total = data.points?.scores[kid] ?? 0;
+    return html`<div class="points-log">
+      ${log.length
+        ? log.map(
+            (e) => html`<div class="log-row ${e.points ? "" : "nothing"}">
+              ${e.icon ? html`<span class="chore-icon" aria-hidden="true">${e.icon}</span>` : html`<span class="chore-icon"></span>`}
+              <span class="chore-text">
+                <span class="chore-title">${e.title}</span>
+                <span class="chore-note">${pointsNote(e, data)}</span>
+              </span>
+              <span class="log-pts">${e.points ? `+${pointsText(e.points)}` : "0"}</span>
+            </div>`,
+          )
+        : html`<p class="chore-none">No chores done in the last ${data.points?.days ?? 7} days.</p>`}
+      ${log.length ? html`<div class="log-total"><span>Total</span><span>${pointsText(total)}</span></div>` : nothing}
     </div>`;
   }
 
@@ -3636,6 +3684,11 @@ function draftMatches(c: Chore, want: ChoreDraftState): boolean {
   if (want === false) return !isDone(c);
   if (want === true) return isDone(c) && !isSkip(c.state);
   return c.state === want;
+}
+
+/** "1 chore done", "4 chores done". */
+function doneCount(n: number): string {
+  return `${n} ${n === 1 ? "chore" : "chores"} done`;
 }
 
 /** "1 point", "2 points". */
