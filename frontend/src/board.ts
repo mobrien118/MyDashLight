@@ -2022,7 +2022,7 @@ export class MyDashLightBoard extends LitElement {
       <ol class="qw-steps">
         <li>
           <span class="qw-num">1</span>
-          <span><strong>Add it to a kid’s calendar</strong>Put the address in the event’s location, so drive times come out right.</span>
+          <span><strong>Add it to the family calendar</strong>Start the title with who it’s for, and put the address in the event’s location so drive times come out right.</span>
         </li>
         <li>
           <span class="qw-num">2</span>
@@ -2511,11 +2511,12 @@ export class MyDashLightBoard extends LitElement {
         ${kids.map((k) => this.renderLunchCard(data, k, month, shown !== null))}
       </div>
       <p class="message-aside">
-        Each day’s lunch is a <strong>Lunch: Pizza</strong> all-day event on the kid’s calendar, with the rest of the
-        menu in its notes and the Bring or Buy pick at the end. Menus can
+        Each day’s lunch is an all-day event on the lunch calendar that starts with the kid’s name, like
+        <strong>${data.kids[0]?.name ?? "Ava"} Lunch: Pizza</strong>, with the rest of the menu in its notes and the Bring
+        or Buy pick at the end. Menus can
         come from the school’s menu feed (set in Home Assistant under MyDashLight’s options, Lunch), a calendar file
         imported once a month, or <strong>Edit menus</strong> here.
-        Days off come from <strong>No School</strong> events there. A day nobody picked gets the kid’s default, set in
+        Days off come from <strong>No School</strong> all-day events on the family calendar. A day nobody picked gets the kid’s default, set in
         Home Assistant under MyDashLight’s options. For a Pack lunch reminder, add a School days chore set to
         <strong>Only on Bring lunch days</strong>.
       </p>
@@ -2908,7 +2909,7 @@ export class MyDashLightBoard extends LitElement {
           <div role="group" aria-label="School days of the week" class="day-chips five">
             ${WEEKDAYS.slice(0, 5).map((w, i) => chip(set.has(i), w.slice(0, 2), () => toggleDay(i), w))}
           </div>
-          <p class="field-hint">Weekdays with no “No School” event on the kid’s calendar.</p>
+          <p class="field-hint">Weekdays with no “No School” event for the kid on the family calendar.</p>
         </div>
         <div class="field">
           <span class="field-label">When</span>
