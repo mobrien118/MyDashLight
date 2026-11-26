@@ -2730,7 +2730,7 @@ export class MyDashLightBoard extends LitElement {
               <span class="ch-text">
                 <span class="name-row"><span class="name">${col.name}</span>${this.renderScore(col.kid)}</span>
                 <span class="sub-row"
-                  ><span class="sub">${this.totals ? outOf(data, col.kid) : left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span
+                  ><span class="sub">${this.totals ? doneCount(pointsLog(data, col.kid).length) : left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span
                   >${this.renderLunchChip(col.kid)}</span
                 >
               </span>
@@ -3709,14 +3709,9 @@ function draftMatches(c: Chore, want: ChoreDraftState): boolean {
   return c.state === want;
 }
 
-/** "12½/15 possible": the kid's points out of what their own chores were worth; before 0.29.9, "4 chores done". */
-function outOf(data: ChoresPayload, kid: string): string {
-  const out = data.points?.possible?.[kid];
-  if (out === undefined) {
-    const n = pointsLog(data, kid).length;
-    return `${n} ${n === 1 ? "chore" : "chores"} done`;
-  }
-  return `${pointsText(data.points?.scores[kid] ?? 0)}/${pointsText(out)} possible`;
+/** "1 chore done", "4 chores done". */
+function doneCount(n: number): string {
+  return `${n} ${n === 1 ? "chore" : "chores"} done`;
 }
 
 /** "1 point", "2 points". */
