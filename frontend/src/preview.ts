@@ -113,7 +113,11 @@ function samplePoints(plan: Plan, kids: string[]): NonNullable<ChoresPayload["po
   add(c, c, "🧸", "Tidy room", 2, 4, 17);
   add(c, c, "🛏️", "Make bed", 1, 5, 7);
   log.sort((x, y) => (y.done_at ?? "").localeCompare(x.done_at ?? ""));
-  return { days: 7, default: 1, scores, leaders: kids.length ? [kids[0]!] : [], log };
+  const possible: Record<string, number> = {};
+  [14, 11, 6].forEach((n, i) => {
+    if (kids[i]) possible[kids[i]!] = n;
+  });
+  return { days: 7, default: 1, scores, leaders: kids.length ? [kids[0]!] : [], log, possible };
 }
 
 /** The templates behind the sample chores, plus one typed into Google Tasks and not set up yet. */

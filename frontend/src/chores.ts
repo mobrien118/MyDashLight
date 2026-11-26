@@ -55,6 +55,8 @@ export interface ChorePoints {
   leaders: string[];
   /** Every check-off counted, newest first (MyDashLight 0.29.7 and later). */
   log?: PointsEntry[];
+  /** By kid id: what their own chores due in those days were worth on time (0.29.9 and later). */
+  possible?: Record<string, number>;
 }
 
 /** A chore checked off in the last few days, and what it earned whoever did it. */

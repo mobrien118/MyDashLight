@@ -898,15 +898,20 @@ export class MyDashLightBoard extends LitElement {
   }
 
   /** Someone's points for the last few days, small beside their name. Nothing without chore points. */
-  private renderScore(id: string): TemplateResult | typeof nothing {
+  /** A person's points beside their name; with ``outOf``, out of what their own chores were worth ("12½/15"). */
+  private renderScore(id: string, outOf = false): TemplateResult | typeof nothing {
     const p = this.chores?.points;
     const score = p?.scores[id];
     if (!p || score === undefined) return nothing;
     const lead = p.leaders.includes(id);
     const text = pointsText(score);
-    const label = `${text} ${score === 1 ? "point" : "points"} in the last ${p.days} days${lead ? ", the most" : ""}`;
-    return html`<span class="score ${lead ? "lead" : ""}" role="img" aria-label=${label} title=${label}>${lead ? "★ " : ""}${text}</span>`;
+    const of = outOf ? p.possible?.[id] : undefined;
+    const label = `${text} ${score === 1 ? "point" : "points"}${of !== undefined ? ` out of ${pointsText(of)}` : ""} in the last ${p.days} days${lead ? ", the most" : ""}`;
+    return html`<span class="score ${lead ? "lead" : ""}" role="img" aria-label=${label} title=${label}
+      >${lead ? "★ " : ""}${text}${of !== undefined ? html`<span class="out-of">/${pointsText(of)}</span>` : nothing}</span
+    >`;
   }
+
 
   private choreDone(c: Chore): boolean {
     const want = this.choreDraft.get(c.id);
@@ -2706,7 +2711,7 @@ export class MyDashLightBoard extends LitElement {
     const cols = choreColumns(data, this.plan ? kidColors(this.plan) : undefined, this.today().minutes);
     return html`<div class="chores-scroll">
       <div class="chores-bar">
-        <span class="chores-hint">${this.totals ? `What each person’s points came from, the last ${data.points?.days ?? 7} days.` : "Tap a chore when it’s done."}</span>
+        <span class="chores-hint">${this.totals ? `Points from the last ${data.points?.days ?? 7} days, out of what each kid’s own chores were worth.` : "Tap a chore when it’s done."}</span>
         ${data.points
           ? html`<button type="button" class="btn ${this.totals ? "dark" : ""}" aria-pressed=${this.totals ? "true" : "false"} @click=${() => {
               this.closeChorePanels();
@@ -2728,7 +2733,7 @@ export class MyDashLightBoard extends LitElement {
             <div class="chore-head">
               <span class="avatar" aria-hidden="true">${initial(col.name)}</span>
               <span class="ch-text">
-                <span class="name-row"><span class="name">${col.name}</span>${this.renderScore(col.kid)}</span>
+                <span class="name-row"><span class="name">${col.name}</span>${this.renderScore(col.kid, this.totals)}</span>
                 <span class="sub-row"
                   ><span class="sub">${this.totals ? doneCount(pointsLog(data, col.kid).length) : left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span
                   >${this.renderLunchChip(col.kid)}</span
@@ -2770,7 +2775,6 @@ export class MyDashLightBoard extends LitElement {
   /** The back of a kid's card: each chore they did in the last few days and what it earned. */
   private renderPointsLog(data: ChoresPayload, kid: string): TemplateResult {
     const log = pointsLog(data, kid);
-    const total = data.points?.scores[kid] ?? 0;
     return html`<div class="points-log">
       ${log.length
         ? log.map(
@@ -2784,7 +2788,6 @@ export class MyDashLightBoard extends LitElement {
             </div>`,
           )
         : html`<p class="chore-none">No chores done in the last ${data.points?.days ?? 7} days.</p>`}
-      ${log.length ? html`<div class="log-total"><span>Total</span><span>${pointsText(total)}</span></div>` : nothing}
     </div>`;
   }
 

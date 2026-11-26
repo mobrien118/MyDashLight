@@ -368,6 +368,7 @@ async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> 
         "scores": dict.fromkeys((AVA, BEN, "mom", "dad"), 0.0),
         "leaders": [],
         "log": [],
+        "possible": {AVA: 2, BEN: 0},
     }
     today = next(c for c in chores["chores"] if c["due"] == "2026-11-04")
     assert (today["worth"], today["earned"]) == (2, None)
@@ -397,6 +398,7 @@ async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> 
     chores = await call(hass, "get_chores")
     assert next(c for c in chores["chores"] if c["id"] == today["id"])["earned"] == 5
     assert chores["points"]["scores"][AVA] == 5
+    assert chores["points"]["possible"][AVA] == 5
     [entry] = chores["points"]["log"]
     assert entry == {
         "id": today["id"],

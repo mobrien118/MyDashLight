@@ -12,6 +12,7 @@ from custom_components.mydashlight.chore_points import (
     checkoffs,
     earned,
     leaders,
+    possible,
     scores,
     worth,
 )
@@ -157,3 +158,19 @@ def test_skip_notes() -> None:
     assert skip_notes(missed, None) == missed
     # A one-off whose block only said it was skipped goes back to its own notes.
     assert skip_notes(skip_notes("Just this once", "excused"), None) == "Just this once"
+
+
+def test_possible_counts_own_chores_due_in_the_last_seven_days() -> None:
+    def due(day: int, extra: str = "") -> Chore:
+        notes = chore_notes("", "t1", date(2026, 11, day)) + extra
+        return read_chore(TaskItem(f"c{day}", "Vacuum", notes, date(2026, 11, day), None), "ava", "list-ava")
+
+    chores = [
+        due(4),  # 8 days before the 11th: too long ago
+        due(5),
+        due(8, "\nClosed: excused"),  # excused: not expected
+        due(9, "\nClosed: skipped"),  # skipped still counts
+        due(11),  # today, not done yet
+        due(12),  # tomorrow
+    ]
+    assert possible(chores, SETTINGS, VALUES, ["ava", "ben"], date(2026, 11, 11)) == {"ava": 6, "ben": 0}

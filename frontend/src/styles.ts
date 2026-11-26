@@ -2130,14 +2130,9 @@ export const styles = css`
     color: var(--muted);
     font-weight: 600;
   }
-  .log-total {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 12px 0;
-    margin-top: 2px;
-    border-top: 1px solid var(--line);
-    font-size: 16px;
-    font-weight: 800;
+  .out-of {
+    opacity: 0.6;
+    font-weight: 600;
   }
   .chore-group {
     margin: 8px 4px 0;
