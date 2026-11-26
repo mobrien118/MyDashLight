@@ -90,9 +90,11 @@ Add these to the address you give the setup:
 | --- | --- |
 | `?view=compact` or `?view=timeline` | Opens the board in that view. |
 | `?page=chores` | Opens on the chores board instead of rides. |
+| `?page=lunch` | Opens on the Lunch tab instead of rides. |
 | `?keyboard=off` | Hides the on-screen keyboard, for a screen with a real keyboard. |
 | `?cursor=show` | Keeps the mouse pointer on screen. Otherwise it hides after 3 seconds without movement. |
 | `?daypicker=off` | Leaves out the week's days that slide out at the board's edge while scrolling. |
+| `?past=show` | Keeps activities and trips that are over on the board. |
 
 Combine them with `&`, for example `.../mydashlight-kitchen?view=compact&keyboard=off`.
 

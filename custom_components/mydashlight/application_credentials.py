@@ -16,7 +16,7 @@ async def async_get_authorization_server(hass: HomeAssistant) -> AuthorizationSe
 async def async_get_description_placeholders(hass: HomeAssistant) -> dict[str, str]:
     """Links shown in the dialog for adding the OAuth client."""
     return {
-        "more_info_url": "https://github.com/mobrien118/MyDashLight#google-sign-in",
+        "more_info_url": "https://github.com/mobrien118/MyDashLight/blob/main/docs/setup.md#2-set-up-google-sign-in",
         "oauth_consent_url": "https://console.cloud.google.com/auth/overview",
         "oauth_creds_url": "https://console.cloud.google.com/auth/clients",
     }
