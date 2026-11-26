@@ -2144,6 +2144,10 @@ export class MyDashLightBoard extends LitElement {
     const isSel = (t: Target | null): boolean => !!t && !!sel && t.day === sel.day && selIds.has(t.event);
     const pinned = b.dayHeads.find((h) => h.date === this.pinDay) ?? b.dayHeads[0];
     const W = b.width;
+    // The columns end with the last day. The room under them only lets that day scroll up to the
+    // top, so a line there says the board ends rather than leaving empty columns running on.
+    const last = b.dayHeads[b.dayHeads.length - 1];
+    const colH = Math.max(b.height + 8, 192);
     // Cards and the add-ons built onto them, drawn back to front so each add-on tucks behind.
     type Piece =
       | { t: "link"; x: Board["links"][number]; z: number }
@@ -2192,10 +2196,13 @@ export class MyDashLightBoard extends LitElement {
             (c) =>
               html`<div
                 class="col-bg ${c.kind}"
-                style="left:${c.x}px;width:${c.w}px;height:${Math.max(b.height + 392, 592)}px;--rgb:${c.rgb}"
+                style="left:${c.x}px;width:${c.w}px;height:${colH}px;--rgb:${c.rgb}"
               ></div>`,
           )}
-          <span class="sep" style="left:${b.sepX}px;height:${Math.max(b.height + 392, 592)}px"></span>
+          <span class="sep" style="left:${b.sepX}px;height:${colH}px"></span>
+          ${last
+            ? html`<span class="empty board-end" style="top:${colH + 14}px">That’s everything through ${last.label}.</span>`
+            : nothing}
           ${b.dayHeads.map(
             (d) => html`<div class="day-head" style="top:${d.y}px;width:${W}px;height:${d.h}px">${this.renderHead(d)}</div>`,
           )}
