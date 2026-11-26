@@ -21,7 +21,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .chore_points import SCORE_DAYS, checkoffs, leaders, scores
+from .chore_points import SCORE_DAYS, checkoffs, leaders, possible, scores
 from .chore_rules import SchoolDays, Template, parse_template, read_block, template_notes
 from .chores import (
     Chore,
@@ -339,7 +339,8 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
     def _points(self, data: ChoreData, tz: tzinfo) -> dict[str, Any]:
         """Everyone's points for the last few days, and the kids in the lead."""
         values = seed_points(data.templates)
-        done = checkoffs(data.chores, self.settings.points, tz, self.people, values, dt_util.now(tz))
+        now = dt_util.now(tz)
+        done = checkoffs(data.chores, self.settings.points, tz, self.people, values, now)
         totals = scores(done, self.people)
         return {
             "days": SCORE_DAYS,
@@ -347,6 +348,7 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
             "scores": totals,
             "leaders": leaders(totals, self.kids),
             "log": [checkoff_item(c) for c in done],
+            "possible": possible(data.chores, self.settings.points, values, self.kids, now.date()),
         }
 
     def payload(self) -> dict[str, Any] | None:

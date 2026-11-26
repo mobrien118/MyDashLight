@@ -2706,7 +2706,7 @@ export class MyDashLightBoard extends LitElement {
     const cols = choreColumns(data, this.plan ? kidColors(this.plan) : undefined, this.today().minutes);
     return html`<div class="chores-scroll">
       <div class="chores-bar">
-        <span class="chores-hint">${this.totals ? `What each person’s points came from, the last ${data.points?.days ?? 7} days.` : "Tap a chore when it’s done."}</span>
+        <span class="chores-hint">${this.totals ? `Points from the last ${data.points?.days ?? 7} days, out of what each kid’s own chores were worth.` : "Tap a chore when it’s done."}</span>
         ${data.points
           ? html`<button type="button" class="btn ${this.totals ? "dark" : ""}" aria-pressed=${this.totals ? "true" : "false"} @click=${() => {
               this.closeChorePanels();
@@ -2730,7 +2730,7 @@ export class MyDashLightBoard extends LitElement {
               <span class="ch-text">
                 <span class="name-row"><span class="name">${col.name}</span>${this.renderScore(col.kid)}</span>
                 <span class="sub-row"
-                  ><span class="sub">${this.totals ? doneCount(pointsLog(data, col.kid).length) : left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span
+                  ><span class="sub">${this.totals ? outOf(data, col.kid) : left ? `${left} to do` : col.done.length ? "All done for now" : "Nothing to do now"}</span
                   >${this.renderLunchChip(col.kid)}</span
                 >
               </span>
@@ -2771,6 +2771,7 @@ export class MyDashLightBoard extends LitElement {
   private renderPointsLog(data: ChoresPayload, kid: string): TemplateResult {
     const log = pointsLog(data, kid);
     const total = data.points?.scores[kid] ?? 0;
+    const out = data.points?.possible?.[kid];
     return html`<div class="points-log">
       ${log.length
         ? log.map(
@@ -2784,7 +2785,11 @@ export class MyDashLightBoard extends LitElement {
             </div>`,
           )
         : html`<p class="chore-none">No chores done in the last ${data.points?.days ?? 7} days.</p>`}
-      ${log.length ? html`<div class="log-total"><span>Total</span><span>${pointsText(total)}</span></div>` : nothing}
+      ${log.length || out
+        ? html`<div class="log-total"
+            ><span>Total</span><span>${pointsText(total)}${out !== undefined ? html`<span class="out-of">/${pointsText(out)}</span>` : nothing}</span></div
+          >`
+        : nothing}
     </div>`;
   }
 
@@ -3704,9 +3709,14 @@ function draftMatches(c: Chore, want: ChoreDraftState): boolean {
   return c.state === want;
 }
 
-/** "1 chore done", "4 chores done". */
-function doneCount(n: number): string {
-  return `${n} ${n === 1 ? "chore" : "chores"} done`;
+/** "12½/15 possible": the kid's points out of what their own chores were worth; before 0.29.9, "4 chores done". */
+function outOf(data: ChoresPayload, kid: string): string {
+  const out = data.points?.possible?.[kid];
+  if (out === undefined) {
+    const n = pointsLog(data, kid).length;
+    return `${n} ${n === 1 ? "chore" : "chores"} done`;
+  }
+  return `${pointsText(data.points?.scores[kid] ?? 0)}/${pointsText(out)} possible`;
 }
 
 /** "1 point", "2 points". */

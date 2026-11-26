@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, tzinfo
+from datetime import date, datetime, time, timedelta, tzinfo
 from typing import TYPE_CHECKING, Final
 
 from .chore_rules import kid_for
@@ -131,6 +131,27 @@ def checkoffs(
             )
         )
     out.sort(key=lambda c: c.chore.task.completed or now, reverse=True)
+    return out
+
+
+def possible(
+    chores: Iterable[Chore],
+    settings: PointsSettings,
+    values: Mapping[str, int | None],
+    kids: Iterable[str],
+    today: date,
+    days: int = SCORE_DAYS,
+) -> dict[str, int]:
+    """What each kid's own chores due in the last ``days`` days (today included) were worth on
+    time, by kid id: what they could have earned. Excused ones don't count; skipped and missed
+    ones do. A kid who also does others' chores late can end up with more than this."""
+    first = today - timedelta(days=days - 1)
+    out = dict.fromkeys(kids, 0)
+    for chore in chores:
+        due = chore.task.due
+        if chore.kid not in out or due is None or not first <= due <= today or chore.skipped == "excused":
+            continue
+        out[chore.kid] += worth(chore, settings, values)
     return out
 
 

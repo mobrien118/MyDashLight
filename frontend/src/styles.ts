@@ -2139,6 +2139,10 @@ export const styles = css`
     font-size: 16px;
     font-weight: 800;
   }
+  .out-of {
+    color: var(--muted);
+    font-weight: 600;
+  }
   .chore-group {
     margin: 8px 4px 0;
     font-size: 12px;
