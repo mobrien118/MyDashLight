@@ -45,6 +45,7 @@ export function timeField(m: number): string {
 const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" });
 const SHORT_WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
 const MONTH_DAY = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+const SHORT_MONTH_DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 function asUtc(isoDate: string): Date {
   return new Date(`${isoDate}T12:00:00Z`);
@@ -54,6 +55,11 @@ function asUtc(isoDate: string): Date {
 export function dayLabel(isoDate: string): string {
   const d = asUtc(isoDate);
   return `${WEEKDAY.format(d)}, ${MONTH_DAY.format(d)}`;
+}
+
+/** "Nov 25". */
+export function shortMonthDay(isoDate: string): string {
+  return SHORT_MONTH_DAY.format(asUtc(isoDate));
 }
 
 /** "Thu". */
@@ -68,9 +74,25 @@ export function daysBetween(a: string, b: string): number {
 
 /** Today's date and the minutes past midnight right now, in the plan's time zone. */
 export function nowIn(timeZone: string, at: Date = new Date()): { date: string; minutes: number } {
-  let parts: Intl.DateTimeFormatPart[];
+  const fmt = zoneClock(timeZone);
+  if (!fmt) return nowIn("UTC", at);
+  const parts = fmt.formatToParts(at);
+  const get = (t: string): string => parts.find((p) => p.type === t)?.value ?? "0";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: Number(get("hour")) * 60 + Number(get("minute")),
+  };
+}
+
+// Making a formatter is slow (a few milliseconds on a Raspberry Pi), and the board asks for the
+// time on every scroll, so each time zone's is made once. null: a zone this browser doesn't know.
+const zoneClocks = new Map<string, Intl.DateTimeFormat | null>();
+
+function zoneClock(timeZone: string): Intl.DateTimeFormat | null {
+  let fmt = zoneClocks.get(timeZone);
+  if (fmt !== undefined) return fmt;
   try {
-    parts = new Intl.DateTimeFormat("en-CA", {
+    fmt = new Intl.DateTimeFormat("en-CA", {
       timeZone,
       year: "numeric",
       month: "2-digit",
@@ -78,15 +100,12 @@ export function nowIn(timeZone: string, at: Date = new Date()): { date: string; 
       hour: "2-digit",
       minute: "2-digit",
       hourCycle: "h23",
-    }).formatToParts(at);
+    });
   } catch {
-    return nowIn("UTC", at);
+    fmt = null;
   }
-  const get = (t: string): string => parts.find((p) => p.type === t)?.value ?? "0";
-  return {
-    date: `${get("year")}-${get("month")}-${get("day")}`,
-    minutes: Number(get("hour")) * 60 + Number(get("minute")),
-  };
+  zoneClocks.set(timeZone, fmt);
+  return fmt;
 }
 
 /** "just now", "3 min ago", "at 4:35 PM". */

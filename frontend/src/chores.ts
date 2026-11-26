@@ -2,7 +2,7 @@
 // and how the board groups them. Pure module: plain data in, lists and labels out.
 
 import { kidColor, type KidColor } from "./colors.ts";
-import { daysBetween, shortDay } from "./format.ts";
+import { daysBetween, shortDay, shortMonthDay } from "./format.ts";
 
 export type ChoreState = "upcoming" | "open" | "overdue" | "done" | "late" | Skip;
 /** Closed without doing it: skipped (counts as a miss) or excused (sick, away). Earns nothing. */
@@ -230,22 +230,37 @@ function dayWord(date: string, today: string): string {
 }
 
 function monthDay(date: string): string {
-  const [y, m, d] = date.split("-").map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return shortMonthDay(date);
 }
 
 function doneTime(iso: string, today: string, timeZone: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return "";
+  const f = doneFormats(timeZone);
+  const day = f.day.format(at);
+  const time = f.time.format(at);
+  return day === today ? time : `${shortDay(day)} ${time}`;
+}
+
+// Made once per time zone: making them is slow on the kitchen's Raspberry Pi. A zone this
+// browser doesn't know falls back to the screen's own.
+const doneFormatsByZone = new Map<string, { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat }>();
+
+function doneFormats(timeZone: string): { day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } {
+  let f = doneFormatsByZone.get(timeZone);
+  if (f) return f;
   let tz: string | undefined = timeZone;
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: tz });
   } catch {
     tz = undefined;
   }
-  const day = at.toLocaleDateString("en-CA", { timeZone: tz });
-  const time = at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz });
-  return day === today ? time : `${shortDay(day)} ${time}`;
+  f = {
+    day: new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "numeric", day: "numeric", timeZone: tz }),
+    time: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }),
+  };
+  doneFormatsByZone.set(timeZone, f);
+  return f;
 }
 
 export interface ChoreColumn {

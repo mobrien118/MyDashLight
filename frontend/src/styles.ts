@@ -2306,7 +2306,9 @@ export const styles = css`
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: leader-shine 6s ease-in-out infinite;
+    background-position: 100% 0;
+    /* Its own layer: each frame of the shine redraws just the name, not the board around it. */
+    will-change: transform;
   }
   .leader .avatar {
     position: relative;
@@ -2330,18 +2332,10 @@ export const styles = css`
     top: -9px;
     right: -11px;
   }
-  @keyframes leader-shine {
-    0%,
-    70% {
-      background-position: 100% 0;
-    }
-    100% {
-      background-position: 0 0;
-    }
-  }
+  /* The shine sweeps across every 6 s (board.ts runs it). Between sweeps nothing moves, so the
+     screen isn't redrawn 60 times a second for a name that's standing still. */
   @media (prefers-reduced-motion: reduce) {
     .leader .name {
-      animation: none;
       background-position: 50% 0;
     }
   }
