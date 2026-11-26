@@ -7,7 +7,7 @@ import { LitElement, html, nothing, svg, type PropertyValues, type TemplateResul
 import { repeat } from "lit/directives/repeat.js";
 import { BackendError, calendarProblem, problemLine, type Backend, type StayDrive } from "./backend.ts";
 import { kidColor } from "./colors.ts";
-import { ago, clock, clockAmPm, dayLabel, duration, nowIn, offsetText, shortDay } from "./format.ts";
+import { ago, clock, clockAmPm, dayLabel, duration, nowIn, offsetText, shortDay, shortMonthDay } from "./format.ts";
 import {
   DAY_HEAD,
   headAt,
@@ -134,6 +134,10 @@ import { NoteTip } from "./notetip.ts";
   });
 })();
 
+/** How often the points leader's name shines, and how long the sweep takes. */
+const SHINE_EVERY_MS = 6_000;
+const SHINE_MS = 1_800;
+
 // Renamed when Compact became the default, so every screen starts there once, then remembers.
 const MODE_KEY = "mydashlight.rides.view";
 /** Below this width the side panel becomes a sheet over the board. */
@@ -192,8 +196,7 @@ function initial(name: string): string {
 
 /** "Nov 25". */
 function shortDate(date: string): string {
-  const [y, m, d] = date.split("-").map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return shortMonthDay(date);
 }
 
 /** "Tomorrow", or "Sat" for a day later this week. */
@@ -434,6 +437,7 @@ export class MyDashLightBoard extends LitElement {
   private stopWatching: (() => void) | null = null;
   private resize: ResizeObserver | null = null;
   private clockTimer: ReturnType<typeof setInterval> | null = null;
+  private shineTimer: ReturnType<typeof setInterval> | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   /** What the toast's Undo button does, while the toast is up. */
@@ -530,6 +534,7 @@ export class MyDashLightBoard extends LitElement {
         this.tick++;
       }
     }, 5_000);
+    this.shineTimer = setInterval(() => this.shineLeaders(), SHINE_EVERY_MS);
     this.addEventListener("pointerdown", this.onActivity, { capture: true });
     this.addEventListener("keydown", this.onKey);
     this.noteTip ??= new NoteTip(this, this.renderRoot as ShadowRoot);
@@ -550,6 +555,7 @@ export class MyDashLightBoard extends LitElement {
     for (const t of [this.idleTimer, this.toastTimer, this.arriveTimer, this.leaveTimer, this.railTimer]) if (t) clearTimeout(t);
     this.stopHold();
     if (this.clockTimer) clearInterval(this.clockTimer);
+    if (this.shineTimer) clearInterval(this.shineTimer);
     this.removeEventListener("pointerdown", this.onActivity, { capture: true });
     this.removeEventListener("keydown", this.onKey);
     this.noteTip?.disconnect();
@@ -635,6 +641,18 @@ export class MyDashLightBoard extends LitElement {
         this.error = err;
       },
     );
+  }
+
+  /**
+   * The points leader's gold name: one shine sweeps across it. Run from here, not as an endless
+   * CSS animation, because Chromium redraws every frame of one, even while it holds still, and
+   * that alone kept the kitchen's Raspberry Pi busy.
+   */
+  private shineLeaders(): void {
+    if (document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    for (const el of this.renderRoot.querySelectorAll<HTMLElement>(".leader .name")) {
+      el.animate?.([{ backgroundPosition: "100% 0" }, { backgroundPosition: "0 0" }], { duration: SHINE_MS, easing: "ease-in-out" });
+    }
   }
 
   private measure(): void {
