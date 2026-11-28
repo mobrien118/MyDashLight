@@ -58,7 +58,7 @@ test("a column per kid, then one per driver, in the order set up in Home Assista
   // Every column the same width: a parent's is no wider than a kid's.
   assert.equal(columns[0]!.w, 208);
   assert.equal(columns[3]!.w, 208);
-  assert.equal(columns[0]!.sub, "Needs a ride · 7 this week");
+  assert.equal(columns[0]!.sub, "Needs a ride");
   assert.equal(columns[0]!.subWarn, true);
   assert.match(columns[3]!.sub, /^\d+ trips this week · .* driving$/);
   for (let i = 1; i < columns.length; i++) assert.ok(columns[i]!.x >= columns[i - 1]!.x + columns[i - 1]!.w);

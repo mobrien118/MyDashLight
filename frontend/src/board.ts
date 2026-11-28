@@ -78,6 +78,7 @@ import {
   type Chore,
   type Skip,
   type ChoresPayload,
+  upForGrabs,
 } from "./chores.ts";
 import {
   addDays,
@@ -2144,6 +2145,10 @@ export class MyDashLightBoard extends LitElement {
     const isSel = (t: Target | null): boolean => !!t && !!sel && t.day === sel.day && selIds.has(t.event);
     const pinned = b.dayHeads.find((h) => h.date === this.pinDay) ?? b.dayHeads[0];
     const W = b.width;
+    // The columns end with the last day. The room under them only lets that day scroll up to the
+    // top, so a line there says the board ends rather than leaving empty columns running on.
+    const last = b.dayHeads[b.dayHeads.length - 1];
+    const colH = Math.max(b.height + 8, 192);
     // Cards and the add-ons built onto them, drawn back to front so each add-on tucks behind.
     type Piece =
       | { t: "link"; x: Board["links"][number]; z: number }
@@ -2176,7 +2181,7 @@ export class MyDashLightBoard extends LitElement {
               <span class="ch-text">
                 <span class="name-row"><span class="name">${c.name}</span>${this.renderScore(c.id)}</span>
                 <span class="sub-row"
-                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true, c.w - 64 - Math.min(c.sub.length, 12) * 6.4) : nothing}</span
+                  ><span class="sub ${c.subWarn ? "warn" : ""}">${c.sub}</span>${c.kind === "kid" ? this.renderLunchChip(c.id, true) : nothing}</span
                 >
               </span>
             </div>`,
@@ -2192,10 +2197,13 @@ export class MyDashLightBoard extends LitElement {
             (c) =>
               html`<div
                 class="col-bg ${c.kind}"
-                style="left:${c.x}px;width:${c.w}px;height:${Math.max(b.height + 392, 592)}px;--rgb:${c.rgb}"
+                style="left:${c.x}px;width:${c.w}px;height:${colH}px;--rgb:${c.rgb}"
               ></div>`,
           )}
-          <span class="sep" style="left:${b.sepX}px;height:${Math.max(b.height + 392, 592)}px"></span>
+          <span class="sep" style="left:${b.sepX}px;height:${colH}px"></span>
+          ${last
+            ? html`<span class="empty board-end" style="top:${colH + 14}px">That’s everything through ${last.label}.</span>`
+            : nothing}
           ${b.dayHeads.map(
             (d) => html`<div class="day-head" style="top:${d.y}px;width:${W}px;height:${d.h}px">${this.renderHead(d)}</div>`,
           )}
@@ -2429,10 +2437,9 @@ export class MyDashLightBoard extends LitElement {
     return kidColor(Math.max(0, i));
   }
 
-  /** "Buy today" or "Bring tomorrow" on a kid's column: what to pack for, glanceable. */
-  /** In a column's heading, `room` is about how many pixels the name leaves: too few for the word
-   * shows only the picture (a bag to bring, a fork and knife to buy), so the name isn't cut off. */
-  private renderLunchChip(kid: string, small = false, room = Infinity): TemplateResult | typeof nothing {
+  /** "Buy today" or "Bring tomorrow" on a kid's column: what to pack for, glanceable. The small one
+   * in a column's heading always shows the whole word; the line beside it gives way instead. */
+  private renderLunchChip(kid: string, small = false): TemplateResult | typeof nothing {
     const data = this.lunch;
     const k = data?.kids.find((x) => x.id === kid);
     if (!data || !k) return nothing;
@@ -2442,11 +2449,6 @@ export class MyDashLightBoard extends LitElement {
     if (!chip) return nothing;
     const word = LUNCH_WORD[chip.lunch];
     const title = `${word} lunch ${chip.when}${chip.menu ? `: ${chip.menu}` : ""}`;
-    if (small && room < 36 + word.length * 7.4) {
-      return html`<span class="lunch-chip ${chip.lunch} small icon" role="img" aria-label=${title} title=${title}
-        >${chip.lunch === "bring" ? BAG : TRAY}</span
-      >`;
-    }
     return html`<span class="lunch-chip ${chip.lunch} ${small ? "small" : ""}" title=${title}
       >${chip.lunch === "bring" ? BAG : TRAY}<span class="lunch-chip-text"
         >${word}${small ? nothing : ` ${chip.when}`}${!small && chip.menu ? html`<span class="lunch-chip-menu"> · ${chip.menu}</span>` : nothing}</span
@@ -2648,7 +2650,9 @@ export class MyDashLightBoard extends LitElement {
     const note = `${choreNote(shown, data.today, data.time_zone)}${by ? ` · by ${by}` : ""}`;
     const canTap = done || isDoable(c);
     const flash = done ? this.pointsFlash.get(c.id) : undefined;
-    const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${flash ? `Earned ${pointsText(flash)}. ` : ""}${done ? "Done." : "Tap when it’s done."}`;
+    // Quiet on purpose: a word beside the note, not a badge.
+    const grabs = !done && upForGrabs(c, Date.now());
+    const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${grabs ? "Up for grabs. " : ""}${flash ? `Earned ${pointsText(flash)}. ` : ""}${done ? "Done." : "Tap when it’s done."}`;
     const body = html`<span class="box" aria-hidden="true"
         >${done
           ? svg`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d=${isSkip(shown.state) ? "M6 12h12" : "M5 12.5l4.5 4.5L19 7.5"}/></svg>`
@@ -2657,7 +2661,9 @@ export class MyDashLightBoard extends LitElement {
       ${c.icon ? html`<span class="chore-icon" aria-hidden="true">${c.icon}</span>` : nothing}
       <span class="chore-text">
         <span class="chore-title">${withName ? html`<span class="chore-kid">${name}</span> · ` : nothing}${c.title}</span>
-        ${note ? html`<span class="chore-note">${note}</span>` : nothing}
+        ${note || grabs
+          ? html`<span class="chore-note">${note}${grabs ? html`<span class="grabs">${note ? " · " : ""}up for grabs</span>` : nothing}</span>`
+          : nothing}
       </span>
       ${flash ? html`<span class="pts-flash" aria-hidden="true">+${pointsText(flash)}</span>` : nothing}`;
     const cls = `chore ${done ? "done" : ""} ${isSkip(shown.state) ? "skipped" : ""} ${c.state === "overdue" && !done ? "overdue" : ""} ${canTap ? "" : "later"}`;

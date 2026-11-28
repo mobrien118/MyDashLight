@@ -372,6 +372,8 @@ async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> 
     }
     today = next(c for c in chores["chores"] if c["due"] == "2026-11-04")
     assert (today["worth"], today["earned"]) == (2, None)
+    # Up for grabs from midnight after its due day (no wait set); gone once it's done.
+    assert today["open_to_others"] == "2026-11-05T00:00:00-06:00"
 
     def saved() -> dict[str, Any]:
         return next(t for t in tasks.items("Chores: Ava") if t["id"] == today["id"])
@@ -380,7 +382,8 @@ async def test_check_off_earns_points(hass: HomeAssistant, tasks: FakeTasks) -> 
     await call(hass, "set_chore_done", chore=today["id"])
     assert read_block(saved()["notes"]).lines == (("from", "cat"), ("for", "2026-11-04"), ("done_by", "Ava"))
     chores = await call(hass, "get_chores")
-    assert next(c for c in chores["chores"] if c["id"] == today["id"])["earned"] == 2
+    row = next(c for c in chores["chores"] if c["id"] == today["id"])
+    assert (row["earned"], row["open_to_others"]) == (2, None)
     assert chores["points"]["scores"][AVA] == 2
     assert chores["points"]["leaders"] == [AVA]
 

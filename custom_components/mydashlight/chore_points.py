@@ -62,6 +62,14 @@ def late_after(chore: Chore, tz: tzinfo) -> datetime | None:
     return datetime.combine(due + timedelta(days=1), time(0), tz)
 
 
+def open_to_others(chore: Chore, settings: PointsSettings, tz: tzinfo) -> datetime | None:
+    """When someone besides the kid it's for starts earning points for the chore ("up for grabs"):
+    once it's been late for ``open_after``. Kept apart from turning late, though with the default
+    wait of 0 both happen at once. None when it has no due day."""
+    cutoff = late_after(chore, tz)
+    return None if cutoff is None else cutoff + settings.open_after
+
+
 def doer(chore: Chore, people: Mapping[str, str]) -> str:
     """Who checked the chore off, by id: the ``Done by`` person, else the kid it's for."""
     if chore.done_by:
@@ -88,7 +96,8 @@ def earned(
     late = cutoff is not None and done_at >= cutoff
     if doer(chore, people) == chore.kid:
         return _share(full, settings.late_share) if late else float(full)
-    if not late or cutoff is None or done_at < cutoff + settings.open_after:
+    opens = open_to_others(chore, settings, tz)
+    if opens is None or done_at < opens:
         return 0.0
     return _share(full, settings.late_share)
 

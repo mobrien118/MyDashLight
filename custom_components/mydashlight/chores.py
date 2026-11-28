@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, tzinfo
 from typing import Any, Final, Literal
 
-from .chore_points import Checkoff, PointsSettings, earned, worth
+from .chore_points import Checkoff, PointsSettings, earned, open_to_others, worth
 from .chore_rules import (
     Repeats,
     SchoolDays,
@@ -337,6 +337,11 @@ def chore_state(chore: Chore, today: date, tz: tzinfo, shows_from: date | None) 
     return "open"
 
 
+def _opens(chore: Chore, points: PointsSettings | None, tz: tzinfo) -> datetime | None:
+    """When an open chore is up for grabs; None once it's done, or without points or a due day."""
+    return None if points is None or chore.done else open_to_others(chore, points, tz)
+
+
 def board_items(
     chores: Sequence[Chore],
     templates: Sequence[Template],
@@ -397,6 +402,7 @@ def board_items(
             "missed": len(chore.missed),
             "worth": worth(chore, points, values) if points is not None else None,
             "earned": earned(chore, points, tz, people or {}, values) if points is not None else None,
+            "open_to_others": opens.isoformat() if (opens := _opens(chore, points, tz)) else None,
             "template": chore.template,
             "for_day": chore.scheduled.isoformat() if night_before and chore.scheduled else None,
         }

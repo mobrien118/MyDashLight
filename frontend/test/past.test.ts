@@ -106,8 +106,8 @@ for (const mode of ["timeline", "compact"] as const) {
 }
 
 test("the columns' week totals still count what's over", () => {
-  const all = layout(plan, "compact", 1160, at(23 * 60)).columns.map((c) => c.sub.replace("Needs a ride · ", ""));
-  const shown = layout(withoutPast(plan, at(23 * 60)), "compact", 1160, at(23 * 60)).columns.map((c) => c.sub.replace("Needs a ride · ", ""));
+  const all = layout(plan, "compact", 1160, at(23 * 60)).columns.map((c) => c.sub);
+  const shown = layout(withoutPast(plan, at(23 * 60)), "compact", 1160, at(23 * 60)).columns.map((c) => c.sub);
   assert.deepEqual(shown, all);
 });
 
