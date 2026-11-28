@@ -4228,12 +4228,8 @@ var wr=Object.defineProperty;var Fn=(s,t)=>()=>(s&&(t=s(s=0)),t);var $r=(s,t)=>{
         <p class="field-hint">Blank uses the default from Configure › Chore points.</p>
       </div>
       <div class="field">
-        <span class="field-label">Can be stolen?</span>
-        <div role="group" aria-label="Can be stolen" class="choices" style="grid-template-columns:1fr 1fr">
-          ${u(e.can_be_stolen,"Yes, once it’s late",()=>this.changeDraft({can_be_stolen:!0}))}
-          ${u(!e.can_be_stolen,"No, only theirs",()=>this.changeDraft({can_be_stolen:!1}))}
-        </div>
-        <p class="field-hint">${e.can_be_stolen?"Once it’s late, anyone who does it earns points for it.":"Like practicing piano: nobody else can do it for them, however late."}</p>
+        ${u(!e.can_be_stolen,"Can’t be stolen",()=>this.changeDraft({can_be_stolen:!e.can_be_stolen}),!0)}
+        <p class="field-hint">${e.can_be_stolen?"Off: once it’s late, anyone who does it earns points. Turn on for chores like practicing piano.":"On: only the kid it’s for can do it, however late, like practicing piano."}</p>
       </div>
       <div class="field">
         <label class="field-label" for="chore-details">Notes <span class="field-hint">Optional, shown with the chore</span></label>

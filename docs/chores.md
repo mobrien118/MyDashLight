@@ -77,8 +77,8 @@ is gone counts at the default. Lines older versions wrote (`Points`, `Earned`) a
 
 **Configure > Chore points** sets the default points, the late share and how long after a chore
 turns late before someone else earns points for it. From then until it's done, the chore says
-**up for grabs** under its name (each chore's `open_to_others` time). A chore set to **Can be
-stolen: No, only theirs** in its editor (like practicing piano) is never up for grabs, and its
+**up for grabs** under its name (each chore's `open_to_others` time). A chore with **Can't be
+stolen** turned on in its editor (like practicing piano) is never up for grabs, and its
 check-off panel has no "Someone else did". Keep the late share under 100%, or two kids
 would earn more by swapping their chores than by doing their own. `get_chores` returns each
 chore's `worth` and `earned`, and under `points`, everyone's `scores` for the last 7 days (kids
