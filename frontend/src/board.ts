@@ -2821,7 +2821,7 @@ export class MyDashLightBoard extends LitElement {
     const sel = this.choreEdit?.template === t.id;
     const status = t.problems.length
       ? html`<span class="tmpl-note bad">${t.problems.map(problemText).join(" · ")} · tap to set up</span>`
-      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1, !!t.night_before, !!t.bring_only)}${data.points ? ` · ${pointsWord(t.points ?? data.points.default)}` : ""}</span>`;
+      : html`<span class="tmpl-note">${whoText(t.who, kids, t.take_turns)} · ${scheduleText(t.repeats, t.days ?? "", t.every ?? 1, !!t.night_before, !!t.bring_only)}${data.points ? ` · ${pointsWord(t.points ?? data.points.default)}` : ""}${t.can_be_stolen === false ? " · only theirs" : ""}</span>`;
     return html`<button type="button" class="tmpl ${t.problems.length ? "needs" : ""} ${t.paused ? "paused" : ""} ${sel ? "sel" : ""}" @click=${() => this.editChore(t)}>
       <span class="tmpl-icon" aria-hidden="true">${t.icon ?? "•"}</span>
       <span class="chore-text">
@@ -3083,6 +3083,16 @@ export class MyDashLightBoard extends LitElement {
         <p class="field-hint">Blank uses the default from Configure › Chore points.</p>
       </div>
       <div class="field">
+        <span class="field-label">Can be stolen?</span>
+        <div role="group" aria-label="Can be stolen" class="choices" style="grid-template-columns:1fr 1fr">
+          ${choice(d.can_be_stolen, "Yes, once it’s late", () => this.changeDraft({ can_be_stolen: true }))}
+          ${choice(!d.can_be_stolen, "No, only theirs", () => this.changeDraft({ can_be_stolen: false }))}
+        </div>
+        <p class="field-hint">${d.can_be_stolen
+          ? "Once it’s late, anyone who does it earns points for it."
+          : "Like practicing piano: nobody else can do it for them, however late."}</p>
+      </div>
+      <div class="field">
         <label class="field-label" for="chore-details">Notes <span class="field-hint">Optional, shown with the chore</span></label>
         <textarea
           id="chore-details"
@@ -3210,7 +3220,9 @@ export class MyDashLightBoard extends LitElement {
           <span class="avatar" aria-hidden="true">${initial(kid?.name ?? "?")}</span>
           <span>${kid?.name ?? "Done"} did it</span>
         </button>
-        ${this.whoOthers
+        ${c.can_be_stolen === false
+          ? html`<p class="field-hint">Only ${kid?.name ?? "they"} can do this one.</p>`
+          : this.whoOthers
           ? html`<div role="group" aria-label="Who else did it" class="done-by-list">
               ${others.map(
                 (p) => html`<button type="button" class="done-by" style="--c:${personColor(p)}" @click=${() => void this.toggleChore(c, p.id)}>

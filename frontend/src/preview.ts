@@ -47,8 +47,8 @@ function sampleChores(plan: Plan): ChoresPayload {
   const doneAt = new Date(Date.now() - 50 * 60_000).toISOString();
   add(0, "🛏️", "Make bed", { state: "done", done_at: doneAt, earned: 1 });
   add(0, "🐕", "Feed the dog", {});
-  // Late since midnight, and with no wait set, up for grabs from then too.
-  add(0, "🎻", "Practice violin", { due: day(-1), state: "overdue", missed: 1, open_to_others: new Date(Date.now() - 60 * 60_000).toISOString() });
+  // Practice is the kid's own: late, but never up for grabs.
+  add(0, "🎻", "Practice violin", { due: day(-1), state: "overdue", missed: 1, can_be_stolen: false, template: "t-violin" });
   add(0, "🧺", "Put away laundry", { repeats: "weekly", due: day(3), shows_from: day(-2) });
   add(1, "🛏️", "Make bed", {});
   add(1, "🍽️", "Clear the table", {});
@@ -141,7 +141,7 @@ function sampleTemplates(kids: string[]): ChoreTemplate[] {
   return [
     t("t-bed", "🛏️", "Make bed", { who: [a, b, c].filter(Boolean) }),
     t("t-dog", "🐕", "Feed the dog", { who: [a].filter(Boolean) }),
-    t("t-violin", "🎻", "Practice violin", { who: [a].filter(Boolean), repeats: "weekly", days: "Mon-Fri" }),
+    t("t-violin", "🎻", "Practice violin", { who: [a].filter(Boolean), repeats: "weekly", days: "Mon-Fri", can_be_stolen: false }),
     t("t-table", "🍽️", "Clear the table", { who: [b].filter(Boolean) }),
     t("t-teeth", "🪥", "Brush teeth", { who: [c].filter(Boolean) }),
     t("t-laundry", "🧺", "Put away laundry", { repeats: "weekly", who: [a].filter(Boolean), days: "Any" }),

@@ -148,6 +148,19 @@ def test_template_notes_round_trip() -> None:
     assert template("weekly", written) == t
 
 
+def test_can_be_stolen_line() -> None:
+    base = "--- Chore ---\nId: abc\nWho: Ben\n"
+    assert template("daily", base).stealable
+    assert template("daily", base + "Can be stolen: yes").stealable
+    t = template("daily", base + "Can be stolen: no")
+    assert not t.stealable
+    written = template_notes(t, KIDS)
+    assert "Can be stolen: no" in written
+    assert template("daily", written) == t
+    assert "Can be stolen" not in template_notes(template("daily", base), KIDS), "only written when off"
+    assert template("daily", base + "Can be stolen: maybe").problems == ("steal:maybe",)
+
+
 def test_daily_on_some_weekdays() -> None:
     t = template("daily", "--- Chore ---\nWho: Ava\nDays: Mon-Fri\nStarts: 2026-11-01")
     assert due_days(t, last=date(2026, 11, 10)) == [

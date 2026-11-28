@@ -41,6 +41,8 @@ export interface Chore {
    * earn a late chore" setting can put it later (MyDashLight 0.29.11 and later).
    */
   open_to_others?: string | null;
+  /** False when only the kid it's for can do it, from its seed (MyDashLight 0.29.12 and later). */
+  can_be_stolen?: boolean;
   template: string | null;
   order: number;
   /**
@@ -124,6 +126,9 @@ export interface ChoreTemplate {
   night_before?: boolean;
   /** School days: only on days the kid brings lunch. */
   bring_only?: boolean;
+  /** False when its chores are the kid's own, like practicing piano: nobody else earns points for
+   * them (MyDashLight 0.29.12 and later). */
+  can_be_stolen?: boolean;
   /** What couldn't be read, such as "who:" or "days:Funday". A template with problems makes no chores. */
   problems: string[];
 }
@@ -397,6 +402,8 @@ export interface ChoreDraft {
   bring_only: boolean;
   /** Points for doing it on time; null uses the default. */
   points: number | null;
+  /** False keeps its chores the kid's own: nobody else earns points for them. */
+  can_be_stolen: boolean;
 }
 
 /** What `save_chore_template` is sent. Fields left out keep what the template has. */
@@ -416,6 +423,8 @@ export interface TemplateFields {
   bring_only?: boolean;
   /** Null uses the default. Left out, the template keeps its points. */
   points?: number | null;
+  /** Left out, the template keeps what it has. */
+  can_be_stolen?: boolean;
 }
 
 /** The Days a chore starts with: every day (or school day), or sometime that week or month. */
@@ -438,6 +447,7 @@ export function newDraft(who: string[] = []): ChoreDraft {
     night_before: false,
     bring_only: false,
     points: null,
+    can_be_stolen: true,
   };
 }
 
@@ -459,6 +469,7 @@ export function draftOf(t: ChoreTemplate): ChoreDraft {
     night_before: !!t.night_before,
     bring_only: !!t.bring_only,
     points: t.points ?? null,
+    can_be_stolen: t.can_be_stolen !== false,
   };
 }
 
@@ -484,6 +495,7 @@ export function draftFields(d: ChoreDraft): TemplateFields {
     paused: d.paused,
     ...(d.repeats === "school" ? { night_before: d.night_before, bring_only: d.bring_only } : {}),
     points: d.points,
+    can_be_stolen: d.can_be_stolen,
   };
 }
 

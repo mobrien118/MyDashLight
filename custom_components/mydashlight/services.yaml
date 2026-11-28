@@ -288,6 +288,10 @@ save_chore_template:
       required: false
       selector:
         boolean:
+    can_be_stolen:
+      required: false
+      selector:
+        boolean:
 
 remove_chore_template:
   fields:

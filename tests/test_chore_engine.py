@@ -438,6 +438,33 @@ async def test_a_late_chore_earns_the_late_share_for_whoever_does_it(
     assert (await call(hass, "get_chores"))["points"]["scores"][BEN] == 1
 
 
+async def test_a_chore_that_cant_be_stolen(
+    hass: HomeAssistant, tasks: FakeTasks, freezer: FrozenDateTimeFactory
+) -> None:
+    seeds = tasks.add_list(SEEDS)
+    tasks.add(
+        seeds,
+        "Piano",
+        "--- Chore ---\nId: pia\nRepeats: Every week\nDays: Wed\nWho: Ava\nStarts: 2026-11-01",
+    )
+    entry = await load(hass, make_entry(expires_at=time.time() + 3 * 86400))
+    chores = await call(hass, "get_chores")
+    assert chores["templates"][0]["can_be_stolen"] is True
+    # Turned off in the editor: written on the seed, and its chores are the kid's own.
+    await call(hass, "save_chore_template", template="pia", can_be_stolen=False)
+    assert "Can be stolen: no" in next(t for t in tasks.items(SEEDS) if t["title"] == "Piano")["notes"]
+    chores = await call(hass, "get_chores")
+    assert chores["templates"][0]["can_be_stolen"] is False
+    wednesday = next(c for c in chores["chores"] if c["due"] == "2026-11-04")
+    assert (wednesday["can_be_stolen"], wednesday["open_to_others"]) == (False, None)
+
+    freezer.move_to("2026-11-05T15:00:00+00:00")
+    tasks.now = "2026-11-05T15:00:00.000Z"
+    await refresh(hass, entry)
+    await call(hass, "set_chore_done", chore=wednesday["id"], by="Ben")
+    assert (await call(hass, "get_chores"))["points"]["scores"][BEN] == 0
+
+
 async def test_a_chore_ticked_in_google_counts_too(hass: HomeAssistant, tasks: FakeTasks) -> None:
     seeds = tasks.add_list(SEEDS)
     tasks.add(seeds, "Feed the cat", "--- Chore ---\nId: cat\nRepeats: Every day\nWho: Ava\nStarts: 2026-11-01")

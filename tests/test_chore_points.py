@@ -92,6 +92,16 @@ def test_up_for_grabs_is_its_own_time_after_turning_late() -> None:
     assert open_to_others(chore(), PointsSettings(open_after=timedelta(hours=12)), CENTRAL) == at(5, 12)
 
 
+def test_a_chore_that_cant_be_stolen() -> None:
+    own = frozenset({"t1"})
+    assert open_to_others(chore(), SETTINGS, CENTRAL, own) is None
+    # Someone else checking it off late earns nothing; the kid it's for still gets the late share.
+    assert earned(chore(done_at=at(5, 7), by="Ben"), SETTINGS, CENTRAL, PEOPLE, VALUES, own) == 0.0
+    assert earned(chore(done_at=at(5, 7), by="Ava"), SETTINGS, CENTRAL, PEOPLE, VALUES, own) == 1.0
+    # Other seeds' chores are unaffected.
+    assert open_to_others(chore(template="t2"), SETTINGS, CENTRAL, own) == at(5, 0)
+
+
 def test_late_share_and_odd_points() -> None:
     assert earned(chore(done_at=at(5, 7)), SETTINGS, CENTRAL, PEOPLE, {"t1": 1}) == 0.5
     assert earned(chore(done_at=at(5, 7)), PointsSettings(late_share=0), CENTRAL, PEOPLE, {"t1": 3}) == 0.0

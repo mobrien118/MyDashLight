@@ -149,6 +149,11 @@ def seed_points(templates: Iterable[Template]) -> dict[str, int | None]:
     return {t.id: t.points for t in templates}
 
 
+def own_seeds(templates: Iterable[Template]) -> frozenset[str]:
+    """The seeds whose chores can't be stolen ("Can be stolen: no"), by id."""
+    return frozenset(t.id for t in templates if not t.stealable)
+
+
 def done_by_notes(notes: str, name: str | None) -> str:
     """Notes saying who checked the chore off (``Done by``), or with that line taken out when
     ``name`` is None. Notes with nothing to change come back as they were."""
@@ -337,9 +342,10 @@ def chore_state(chore: Chore, today: date, tz: tzinfo, shows_from: date | None) 
     return "open"
 
 
-def _opens(chore: Chore, points: PointsSettings | None, tz: tzinfo) -> datetime | None:
-    """When an open chore is up for grabs; None once it's done, or without points or a due day."""
-    return None if points is None or chore.done else open_to_others(chore, points, tz)
+def _opens(chore: Chore, points: PointsSettings | None, tz: tzinfo, own: frozenset[str]) -> datetime | None:
+    """When an open chore is up for grabs; None once it's done, without points or a due day, or
+    when it can't be stolen."""
+    return None if points is None or chore.done else open_to_others(chore, points, tz, own)
 
 
 def board_items(
@@ -364,6 +370,7 @@ def board_items(
     last = today + timedelta(days=max(1, days_ahead) - 1)
     by_id = {t.id: t for t in templates}
     values = seed_points(templates)
+    own = own_seeds(templates)
     shows = {
         o.key: o.shows_from for o in schedule(templates, today - timedelta(days=62), last + timedelta(days=31), school)
     }
@@ -401,8 +408,9 @@ def board_items(
             "done_by_name": chore.done_by if chore.done else None,
             "missed": len(chore.missed),
             "worth": worth(chore, points, values) if points is not None else None,
-            "earned": earned(chore, points, tz, people or {}, values) if points is not None else None,
-            "open_to_others": opens.isoformat() if (opens := _opens(chore, points, tz)) else None,
+            "earned": earned(chore, points, tz, people or {}, values, own) if points is not None else None,
+            "open_to_others": opens.isoformat() if (opens := _opens(chore, points, tz, own)) else None,
+            "can_be_stolen": template.stealable if template else True,
             "template": chore.template,
             "for_day": chore.scheduled.isoformat() if night_before and chore.scheduled else None,
         }
@@ -457,6 +465,7 @@ def template_item(template: Template) -> dict[str, Any]:
         "paused": template.paused,
         "night_before": template.night_before,
         "bring_only": template.bring_only,
+        "can_be_stolen": template.stealable,
         "problems": list(template.problems),
     }
 

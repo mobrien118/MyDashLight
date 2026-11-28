@@ -464,6 +464,10 @@
         "bring_only": {
           "name": "Only on Bring lunch days",
           "description": "School days only: made only on days the kid brings lunch, such as Pack lunch."
+        },
+        "can_be_stolen": {
+          "name": "Can be stolen",
+          "description": "Whether someone else earns points for doing it once it's late. Turn off for chores only the kid can do, like practicing piano. Left out, it stays as it is (new chores can be stolen)."
         }
       }
     },
