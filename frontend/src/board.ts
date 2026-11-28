@@ -78,6 +78,7 @@ import {
   type Chore,
   type Skip,
   type ChoresPayload,
+  upForGrabs,
 } from "./chores.ts";
 import {
   addDays,
@@ -2649,7 +2650,9 @@ export class MyDashLightBoard extends LitElement {
     const note = `${choreNote(shown, data.today, data.time_zone)}${by ? ` · by ${by}` : ""}`;
     const canTap = done || isDoable(c);
     const flash = done ? this.pointsFlash.get(c.id) : undefined;
-    const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${flash ? `Earned ${pointsText(flash)}. ` : ""}${done ? "Done." : "Tap when it’s done."}`;
+    // Quiet on purpose: a word beside the note, not a badge.
+    const grabs = !done && upForGrabs(c, Date.now());
+    const label = `${withName ? `${name}: ` : ""}${c.title}. ${note ? `${note}. ` : ""}${grabs ? "Up for grabs. " : ""}${flash ? `Earned ${pointsText(flash)}. ` : ""}${done ? "Done." : "Tap when it’s done."}`;
     const body = html`<span class="box" aria-hidden="true"
         >${done
           ? svg`<svg width="18" height="18" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d=${isSkip(shown.state) ? "M6 12h12" : "M5 12.5l4.5 4.5L19 7.5"}/></svg>`
@@ -2658,7 +2661,9 @@ export class MyDashLightBoard extends LitElement {
       ${c.icon ? html`<span class="chore-icon" aria-hidden="true">${c.icon}</span>` : nothing}
       <span class="chore-text">
         <span class="chore-title">${withName ? html`<span class="chore-kid">${name}</span> · ` : nothing}${c.title}</span>
-        ${note ? html`<span class="chore-note">${note}</span>` : nothing}
+        ${note || grabs
+          ? html`<span class="chore-note">${note}${grabs ? html`<span class="grabs">${note ? " · " : ""}up for grabs</span>` : nothing}</span>`
+          : nothing}
       </span>
       ${flash ? html`<span class="pts-flash" aria-hidden="true">+${pointsText(flash)}</span>` : nothing}`;
     const cls = `chore ${done ? "done" : ""} ${isSkip(shown.state) ? "skipped" : ""} ${c.state === "overdue" && !done ? "overdue" : ""} ${canTap ? "" : "later"}`;

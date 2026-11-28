@@ -2241,6 +2241,11 @@ export const styles = css`
     color: var(--bad-ink);
     font-weight: 600;
   }
+  /* Up for grabs: anyone who does it now earns points. Muted, so it doesn't shout over "Missed". */
+  .chore-note .grabs {
+    color: var(--muted);
+    font-weight: 600;
+  }
   .chore.done .chore-note {
     color: var(--ok);
   }

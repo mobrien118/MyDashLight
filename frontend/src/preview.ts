@@ -47,7 +47,8 @@ function sampleChores(plan: Plan): ChoresPayload {
   const doneAt = new Date(Date.now() - 50 * 60_000).toISOString();
   add(0, "🛏️", "Make bed", { state: "done", done_at: doneAt, earned: 1 });
   add(0, "🐕", "Feed the dog", {});
-  add(0, "🎻", "Practice violin", { due: day(-1), state: "overdue", missed: 1 });
+  // Late since midnight, and with no wait set, up for grabs from then too.
+  add(0, "🎻", "Practice violin", { due: day(-1), state: "overdue", missed: 1, open_to_others: new Date(Date.now() - 60 * 60_000).toISOString() });
   add(0, "🧺", "Put away laundry", { repeats: "weekly", due: day(3), shows_from: day(-2) });
   add(1, "🛏️", "Make bed", {});
   add(1, "🍽️", "Clear the table", {});

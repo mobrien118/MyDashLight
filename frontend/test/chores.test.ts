@@ -27,6 +27,7 @@ import {
   type ChoresPayload,
   pointsLog,
   pointsNote,
+  upForGrabs,
 } from "../src/chores.ts";
 import { kidColor } from "../src/colors.ts";
 
@@ -358,4 +359,14 @@ test("what each person's points came from", () => {
   assert.equal(pointsNote(ava[0]!, data), "9:00 AM · late · from Ben");
   assert.equal(pointsNote(ava[1]!, data), "Tue 7:00 AM");
   assert.equal(pointsNote(ava[2]!, data), "Tue 7:00 AM · from Cleo · a favor");
+});
+
+test("up for grabs once the wait after late is over, and not once it's done", () => {
+  const at = Date.parse("2026-11-04T06:00:00Z");
+  const late = chore("ava", "Make bed", { state: "overdue", due: "2026-11-03", open_to_others: "2026-11-04T06:00:00Z" });
+  assert.equal(upForGrabs(late, at - 1), false, "late, but the wait isn't over yet");
+  assert.equal(upForGrabs(late, at), true);
+  assert.equal(upForGrabs({ ...late, state: "late", done_at: "2026-11-04T07:00:00Z" }, at + 1), false);
+  assert.equal(upForGrabs({ ...late, open_to_others: null }, at), false);
+  assert.equal(upForGrabs({ ...late, open_to_others: undefined }, at), false, "an older MyDashLight");
 });

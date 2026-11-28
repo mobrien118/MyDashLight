@@ -35,6 +35,12 @@ export interface Chore {
   worth?: number | null;
   /** What checking it off earned, or null while it's open. Can be 0.5 (MyDashLight 0.29 and later). */
   earned?: number | null;
+  /**
+   * When someone besides the kid it's for starts earning points for it: "up for grabs". Null once
+   * it's done, or when it has no due day. Separate from turning late: the "wait before others can
+   * earn a late chore" setting can put it later (MyDashLight 0.29.11 and later).
+   */
+  open_to_others?: string | null;
   template: string | null;
   order: number;
   /**
@@ -192,6 +198,13 @@ function missedThisMorning(c: Chore, today: string): boolean {
 /** Ready to check off now: today's, this week's or this month's, and overdue ones. */
 export function isDoable(c: Chore): boolean {
   return c.state === "open" || c.state === "overdue";
+}
+
+/** Open, and late enough that anyone who does it earns points for it. */
+export function upForGrabs(c: Chore, now: number): boolean {
+  if (isDone(c) || !c.open_to_others) return false;
+  const at = Date.parse(c.open_to_others);
+  return !Number.isNaN(at) && now >= at;
 }
 
 /** "Missed Mon", "By Sun", "Done 4:12 PM": the line under a chore. Empty when there's nothing to add. */

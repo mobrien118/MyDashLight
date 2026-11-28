@@ -11,7 +11,9 @@ from custom_components.mydashlight.chore_points import (
     PointsSettings,
     checkoffs,
     earned,
+    late_after,
     leaders,
+    open_to_others,
     possible,
     scores,
     worth,
@@ -80,6 +82,14 @@ def test_waiting_before_others_earn_a_late_chore() -> None:
     assert earned(chore(done_at=at(5, 13), by="Ben"), wait, CENTRAL, PEOPLE, VALUES) == 1.0
     # The kid it's for gets the late share straight away.
     assert earned(chore(done_at=at(5, 7), by="Ava"), wait, CENTRAL, PEOPLE, VALUES) == 1.0
+
+
+def test_up_for_grabs_is_its_own_time_after_turning_late() -> None:
+    # No wait: up for grabs the moment it turns late, at midnight after the due day.
+    assert late_after(chore(), CENTRAL) == at(5, 0)
+    assert open_to_others(chore(), SETTINGS, CENTRAL) == at(5, 0)
+    # With a wait, late first and up for grabs later.
+    assert open_to_others(chore(), PointsSettings(open_after=timedelta(hours=12)), CENTRAL) == at(5, 12)
 
 
 def test_late_share_and_odd_points() -> None:
