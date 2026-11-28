@@ -9,7 +9,7 @@ The rules, kept simple on purpose:
   included. Keep the share under 100%, or two kids would earn more by swapping their chores
   than by doing their own.
 * Done by someone else before it's late, or before it's been late for ``open_after``: a favor,
-  worth nothing.
+  worth nothing. The same, however late, for a chore whose seed says it can't be stolen.
 * Missed (closed out by MyDashLight), skipped or excused: nothing. Points are never taken away.
 
 A chore is late once its due day is over. Google Tasks keeps due dates without a time.
@@ -22,7 +22,7 @@ Pure module, no Home Assistant imports.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, tzinfo
 from typing import TYPE_CHECKING, Final
@@ -62,12 +62,17 @@ def late_after(chore: Chore, tz: tzinfo) -> datetime | None:
     return datetime.combine(due + timedelta(days=1), time(0), tz)
 
 
-def open_to_others(chore: Chore, settings: PointsSettings, tz: tzinfo) -> datetime | None:
+def open_to_others(
+    chore: Chore, settings: PointsSettings, tz: tzinfo, own: Collection[str] = frozenset()
+) -> datetime | None:
     """When someone besides the kid it's for starts earning points for the chore ("up for grabs"):
     once it's been late for ``open_after``. Kept apart from turning late, though with the default
-    wait of 0 both happen at once. None when it has no due day."""
+    wait of 0 both happen at once. None when it has no due day, or its seed is in ``own``: the
+    seeds whose chores can't be stolen."""
     cutoff = late_after(chore, tz)
-    return None if cutoff is None else cutoff + settings.open_after
+    if cutoff is None or (chore.template is not None and chore.template in own):
+        return None
+    return cutoff + settings.open_after
 
 
 def doer(chore: Chore, people: Mapping[str, str]) -> str:
@@ -83,8 +88,10 @@ def earned(
     tz: tzinfo,
     people: Mapping[str, str],
     values: Mapping[str, int | None],
+    own: Collection[str] = frozenset(),
 ) -> float | None:
-    """What the check-off earned, or None while the chore is open."""
+    """What the check-off earned, or None while the chore is open. ``own`` holds the seeds whose
+    chores can't be stolen."""
     if not chore.done:
         return None
     if chore.closed or chore.skipped:
@@ -96,7 +103,7 @@ def earned(
     late = cutoff is not None and done_at >= cutoff
     if doer(chore, people) == chore.kid:
         return _share(full, settings.late_share) if late else float(full)
-    opens = open_to_others(chore, settings, tz)
+    opens = open_to_others(chore, settings, tz, own)
     if opens is None or done_at < opens:
         return 0.0
     return _share(full, settings.late_share)
@@ -121,6 +128,7 @@ def checkoffs(
     values: Mapping[str, int | None],
     now: datetime,
     days: int = SCORE_DAYS,
+    own: Collection[str] = frozenset(),
 ) -> list[Checkoff]:
     """The chores checked off in the last ``days`` days, newest first, favors (worth 0) included.
     Skipped, excused and missed ones aren't check-offs."""
@@ -135,7 +143,7 @@ def checkoffs(
             Checkoff(
                 chore,
                 doer(chore, people),
-                earned(chore, settings, tz, people, values) or 0.0,
+                earned(chore, settings, tz, people, values, own) or 0.0,
                 cutoff is not None and done_at >= cutoff,
             )
         )

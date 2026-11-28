@@ -314,7 +314,10 @@ test("editing a template: what's sent, and what stops a save", () => {
     every: 1,
     paused: false,
     points: null,
+    can_be_stolen: true,
   });
+  // Can be stolen unless the seed says not.
+  assert.equal(draftFields(draftOf({ ...t, can_be_stolen: false })).can_be_stolen, false);
   // Points: blank is the default (null), 0 is kept.
   assert.equal(draftFields(draftOf({ ...t, points: 3 })).points, 3);
   assert.equal(draftFields(draftOf({ ...t, points: 0 })).points, 0);

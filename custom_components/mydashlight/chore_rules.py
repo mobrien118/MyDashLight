@@ -14,9 +14,13 @@ rules are lines in a block at the end of its notes::
     Starts: 2026-11-04
     Ends: 2027-06-05
     Points: 1
+    Can be stolen: no
 
 Text above the block is the chore's details, shown when it's tapped. A template that's
 checked off in Google is paused.
+
+``Can be stolen: no`` keeps its chores the kid's own, like practicing piano: nobody else earns
+points for one, however late. With no line, they can be stolen once late.
 
 ``Repeats`` is one of four kinds, each counted in its own unit so they can't mix:
 
@@ -163,6 +167,9 @@ _LABELS: Final[dict[str, str]] = {
     "earned": "earned",
     "when": "when",
     "only": "only",
+    "canbestolen": "steal",
+    "steal": "steal",
+    "stealable": "steal",
 }
 
 
@@ -459,6 +466,8 @@ class Template:
     """A school-days chore due the evening before its school day."""
     bring_only: bool = False
     """A school-days chore made only on days the kid brings lunch."""
+    stealable: bool = True
+    """Whether someone else can earn its chores' points once they're late ("Can be stolen")."""
     problems: tuple[str, ...] = ()
     """What couldn't be read, such as "who:Zed". A template with problems makes no chores."""
 
@@ -552,6 +561,9 @@ def parse_template(
     when = " ".join((block.first("when") or "").split()).casefold()
     if when not in _NIGHT_BEFORE and when not in _MORNING:
         problems.append(f"when:{block.first('when')}")
+    steal = (block.first("steal") or "").strip().casefold()
+    if steal not in _YES and steal not in _NO:
+        problems.append(f"steal:{block.first('steal')}")
     only = " ".join((block.first("only") or "").split()).casefold()
     if only and only not in _BRING_ONLY:
         problems.append(f"only:{block.first('only')}")
@@ -574,6 +586,7 @@ def parse_template(
         problems=tuple(problems),
         night_before=school and when in _NIGHT_BEFORE,
         bring_only=school and bool(only),
+        stealable=steal in _YES or not steal,
     )
 
 
@@ -593,6 +606,8 @@ def template_notes(template: Template, kids: Mapping[str, str]) -> str:
         lines.append(("Ends", template.ends.isoformat()))
     if template.points is not None:
         lines.append(("Points", str(template.points)))
+    if not template.stealable:
+        lines.append(("Can be stolen", "no"))
     if template.repeats == "school" and template.night_before:
         lines.append(("When", "Night before"))
     if template.repeats == "school" and template.bring_only:

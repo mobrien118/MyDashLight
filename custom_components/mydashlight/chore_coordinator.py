@@ -31,6 +31,7 @@ from .chores import (
     Update,
     board_items,
     checkoff_item,
+    own_seeds,
     plan_changes,
     read_chore,
     seed_points,
@@ -340,7 +341,7 @@ class ChoreCoordinator(DataUpdateCoordinator[ChoreData]):
         """Everyone's points for the last few days, and the kids in the lead."""
         values = seed_points(data.templates)
         now = dt_util.now(tz)
-        done = checkoffs(data.chores, self.settings.points, tz, self.people, values, now)
+        done = checkoffs(data.chores, self.settings.points, tz, self.people, values, now, own=own_seeds(data.templates))
         totals = scores(done, self.people)
         return {
             "days": SCORE_DAYS,

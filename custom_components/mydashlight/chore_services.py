@@ -64,6 +64,7 @@ SAVE_TEMPLATE_SCHEMA = vol.Schema(
         vol.Optional("paused"): cv.boolean,
         vol.Optional("night_before"): cv.boolean,
         vol.Optional("bring_only"): cv.boolean,
+        vol.Optional("can_be_stolen"): cv.boolean,
     }
 )
 REMOVE_TEMPLATE_SCHEMA = vol.Schema({vol.Required(ATTR_TEMPLATE): cv.string})
@@ -264,6 +265,7 @@ def build_template(fields: dict[str, Any], old: Template | None, kids: dict[str,
         paused=bool(pick("paused", old.paused if old else False)),
         night_before=repeats == "school" and bool(pick("night_before", old.night_before if old else False)),
         bring_only=repeats == "school" and bool(pick("bring_only", old.bring_only if old else False)),
+        stealable=bool(pick("can_be_stolen", old.stealable if old else True)),
     )
 
 
